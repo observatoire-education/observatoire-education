@@ -861,6 +861,12 @@ test("bloc A4 : moyennes seules, sources numérotées, QR", () => {
 - **404 :** une adresse `/etablissement/[0-9a-z]{8}/` contenant des minuscules redirige (`location.replace`) vers sa forme en majuscules. Sinon, la page propose un lien vers l'accueil et la recherche.
 - **Sitemap :** toutes les pages, avec pour `<lastmod>` la date de collecte la plus récente.
 
+**Mise en œuvre et mesures (tâche 10, 2026-11-23) :**
+- Page département (`pages/departement/[dep]/index.astro`) : les onglets sont des ancres vers des sections toutes visibles (une par famille), lisibles sans JavaScript ; `liste.js` ajoute filtres (secteur, éducation prioritaire, texte) et tri sur chaque colonne, les absences restant en fin de liste quel que soit le sens. Distribution des IPS rendue par Plot (`svgDistribution`). Communes listées en texte (leurs pages arrivent en phase 2). CSV `/departement/{dep}/etablissements.csv` (séparateur « ; », point décimal ; absence vide, ou `non_publie_prive`).
+- Recherche : `recherche.json` est le tableau `{u,n,c,d,f,s}` (1,2 Mo, 200 Ko compressé, chargé au premier focus) ; les départements sont intégrés à l'accueil (`script#departements`) ; la recherche de l'en-tête des autres pages renvoie vers `/?q=`. Le nom du département entre dans la recherche ; les résultats dont les mots commencent par les termes saisis passent devant, puis l'ordre alphabétique (pertinence de la recherche, pas un classement).
+- `/sources/` lit aussi le journal (`archives/journal.jsonl`, ou `OBS_JOURNAL`) ; `/methode/` reprend les décisions prises (multi-sites, alternance de l'annuaire, seuil de 50 % pour la part de filles, effectifs sans post-bac).
+- Build réel : 11 327 pages en 43 s ; page du département 44 : 178 Ko.
+
 - [ ] **Step 1 : écrire les tests qui doivent échouer**
 
 ```ts

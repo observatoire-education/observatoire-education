@@ -1,0 +1,51 @@
+---
+// Sources : chaque jeu, son producteur, sa page d'origine et toutes ses versions archivées (liens permanents).
+import { date, entier } from "@obs/shared/format";
+import Base from "../layouts/Base.astro";
+import { lireSources } from "../lib/donnees";
+import { executionsRecentes } from "../lib/journal";
+
+const sources = Object.values(lireSources());
+const executions = executionsRecentes();
+const ACTIONS: Record<string, string> = { inchange: "inchangé", telecharge: "nouvelle version", rejete: "version rejetée", erreur: "erreur" };
+---
+<Base titre="Sources" chemin="/sources/" description="Sources des données de l'observatoire : producteurs, jeux, versions archivées et dates de collecte.">
+  <div class="texte">
+    <h1>Sources</h1>
+    <p class="mute">Toutes les données viennent de jeux publics diffusés sous Licence Ouverte (Etalab) par le ministère de l'Éducation nationale et sa direction statistique (DEPP), sur data.education.gouv.fr. Elles sont collectées automatiquement chaque nuit ; un jeu n'est téléchargé que s'il a changé. Chaque version téléchargée est archivée telle quelle, avec son empreinte, et reste téléchargeable à une adresse permanente : un chiffre cité peut toujours être retrouvé.</p>
+    <p class="mute">Les données retraitées par l'observatoire sont diffusées sous Licence Ouverte 2.0.</p>
+  </div>
+  {sources.map((s) => (
+    <section id={s.id}>
+      <h2>{s.titre}</h2>
+      <p style="margin:0 0 10px;font-size:14px">{s.producteur} · <a href={s.pageUrl}>page du jeu sur data.education.gouv.fr</a></p>
+      {s.versions.length === 0 ? <p class="mute">Aucune version archivée.</p> : (
+        <div class="card" style="padding:4px 6px"><div class="table-wrap"><table>
+          <thead><tr><th>Collectée le</th><th>Modifiée par le producteur</th><th class="n">Lignes</th><th>Empreinte</th><th>Archive</th></tr></thead>
+          <tbody>
+            {[...s.versions].reverse().map((v) => (
+              <tr>
+                <td class="num">{date(v.collecteLe)}{s.actuelle?.sha256 === v.sha256 && <span class="badge" style="margin-left:8px">utilisée par le site</span>}</td>
+                <td class="num">{date(v.modified)}</td>
+                <td class="n">{entier(v.lignes)}</td>
+                <td class="num" title={v.sha256}>{v.sha256.slice(0, 12)}</td>
+                <td><a href={v.url}>donnée brute (Parquet)</a></td>
+              </tr>
+            ))}
+          </tbody>
+        </table></div></div>
+      )}
+    </section>
+  ))}
+  <section>
+    <h2>Collectes récentes</h2>
+    {executions.length === 0 ? <p class="mute">Journal de collecte non disponible pour cette génération du site.</p> : (
+      <ul class="upd">
+        {executions.map((e) => (
+          <li><span class="d">{date(e.date)}</span><span>{Object.entries(e.actions).map(([a, n]) => `${n} ${ACTIONS[a] ?? a}`).join(" · ")}
+            {e.details.filter((d) => d.motif && d.action !== "inchange").map((d) => <span class="mute" style="display:block;font-size:12px">{d.source} : {d.motif}</span>)}</span></li>
+        ))}
+      </ul>
+    )}
+  </section>
+</Base>

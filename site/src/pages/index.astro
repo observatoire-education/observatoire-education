@@ -1,0 +1,80 @@
+---
+// Accueil : titre neutre, grande recherche, bandeau national, territoires, mises à jour des sources, principes.
+import { date, entier, part } from "@obs/shared/format";
+import { academie, LIBELLES } from "@obs/shared/libelles";
+import Base from "../layouts/Base.astro";
+import { lireFrance, lireIndex, lireSources } from "../lib/donnees";
+
+const france = lireFrance();
+const sources = Object.values(lireSources())
+  .filter((s) => s.actuelle)
+  .sort((a, b) => b.actuelle!.collecteLe.localeCompare(a.actuelle!.collecteLe));
+const actifs = lireIndex().filter((e) => !e.x).length;
+const f = france.familles;
+const compte = (cles: (keyof typeof f)[]) => {
+  const pub = cles.reduce((a, k) => a + (f[k]?.compte.public ?? 0), 0);
+  const pri = cles.reduce((a, k) => a + (f[k]?.compte.prive ?? 0), 0);
+  return { pub, pri, total: pub + pri };
+};
+const eleves = (s: "public" | "prive") => Object.values(f).reduce((a, x) => a + (x?.eleves[s] ?? 0), 0);
+const elevesTotal = eleves("public") + eleves("prive");
+const colleges = compte(["college"]);
+const lycees = compte(["legt", "lpo", "lp"]);
+const erea = compte(["erea"]);
+const departements = france.academies.flatMap((a) => a.departements.map((d) => ({ d: d.dep, l: d.libelle, a: academie(a.libelle) })));
+const millions = (n: number) => (n >= 1e6 ? `${(n / 1e6).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} M` : entier(n));
+const derniereCollecte = sources[0]?.actuelle?.collecteLe;
+---
+<Base titre="Accueil" chemin="/" description="Les chiffres publics de chaque collège et lycée de France, public et privé sous contrat : sourcés, datés, sans classement.">
+  <div class="hero">
+    <h1>Les chiffres publics de chaque collège et lycée de France.</h1>
+    <p>Élèves, personnels et composition sociale des {entier(actifs)} établissements publics et privés sous contrat, situés par rapport aux moyennes de leur département, de leur académie et de la France. Chaque chiffre indique sa source et son millésime.</p>
+    <div class="bigsearch" role="search">
+      <label class="visuel-masque" for="q">Rechercher un établissement, une commune, un département ou une UAI</label>
+      <input class="search" id="q" placeholder="Nom d'établissement, commune, département ou UAI" autocomplete="off" />
+      <div class="res" id="res" aria-live="polite"></div>
+    </div>
+    <div class="hint">Par exemple : <button type="button">Jules-Verne Nantes</button> · <button type="button">Saint-Nazaire</button> · <button type="button">Loire-Atlantique</button></div>
+  </div>
+  <div class="kpis" style="margin-top:8px">
+    <div><div class="k">Collèges</div><div class="v">{entier(colleges.total)}</div><div class="c"><span class="p">{entier(colleges.pub)} publics</span> · <span class="q">{entier(colleges.pri)} privés</span></div></div>
+    <div><div class="k">Lycées</div><div class="v">{entier(lycees.total)}</div><div class="c"><span class="p">{entier(lycees.pub)} publics</span> · <span class="q">{entier(lycees.pri)} privés</span></div></div>
+    <div><div class="k">EREA</div><div class="v">{entier(erea.total)}</div><div class="c"><span class="p">{entier(erea.pub)} publics</span> · <span class="q">{entier(erea.pri)} privés</span></div></div>
+    <div><div class="k">Élèves du second degré · {france.rentree}</div><div class="v">{millions(elevesTotal)}</div>
+      <div class="c">dont {elevesTotal ? part((100 * eleves("prive")) / elevesTotal) : "—"} dans le privé s. c.</div></div>
+  </div>
+  <div class="src" style="border:0;margin-top:6px">
+    Sources : MEN, Annuaire de l'éducation{derniereCollecte && ` (collecté le ${date(derniereCollecte)})`} ; MEN-DEPP, effectifs {france.rentree}-{(france.rentree ?? 0) + 1}.
+    Privé hors contrat ({entier(france.horsContrat)} établissements) : {LIBELLES.nonCouvert}.
+  </div>
+
+  <section>
+    <h2>Parcourir par territoire</h2>
+    <div class="acad">
+      {france.academies.map((a) => (
+        <div><b>{a.libelle}</b>{a.departements.map((d) => <a href={`/departement/${d.dep}/`}>{d.dep} {d.libelle}</a>)}</div>
+      ))}
+    </div>
+  </section>
+
+  <div class="cols2">
+    <section style="margin-top:8px">
+      <h2>Dernières mises à jour des sources</h2>
+      <ul class="upd">
+        {sources.map((s) => <li><span class="d">{date(s.actuelle!.collecteLe)}</span><span>{s.titre}</span></li>)}
+      </ul>
+      <div class="src" style="border:0"><a href="/sources/">Toutes les sources et versions archivées</a> · collecte automatique chaque nuit</div>
+    </section>
+    <section style="margin-top:8px">
+      <h2>Principes</h2>
+      <div class="principles">
+        <div class="card"><b>Sourcé et daté</b>Chaque chiffre renvoie à sa source, son millésime et la donnée brute archivée.</div>
+        <div class="card"><b>Sans classement</b>On compare à des moyennes ; aucun établissement n'est noté.</div>
+        <div class="card"><b>Absences dites</b>« Non publié pour le privé » n'est jamais remplacé par un zéro.</div>
+        <div class="card"><b>Imprimable</b>Chaque fiche tient sur une page A4, avec ses sources.</div>
+      </div>
+    </section>
+  </div>
+  <script type="application/json" id="departements" set:html={JSON.stringify(departements)} />
+  <script is:inline src="/js/recherche.js" defer></script>
+</Base>

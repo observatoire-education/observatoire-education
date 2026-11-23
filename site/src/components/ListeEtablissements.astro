@@ -1,0 +1,65 @@
+---
+// Liste filtrable et triable (liste.js) : tri par nom par défaut, aucun rang, aucune mise en avant.
+import { entier, nombre, part } from "@obs/shared/format";
+import { FAMILLES_PLURIEL, LIBELLES } from "@obs/shared/libelles";
+import type { LigneListe } from "@obs/shared/donnees";
+import type { Famille } from "@obs/shared/types";
+import { valeurTri } from "../lib/territoire";
+import Cellule from "./Cellule.astro";
+
+interface Props { famille: Famille; liste: LigneListe[] }
+const { famille, liste } = Astro.props;
+const id = `liste-${famille}`;
+const nd = LIBELLES.nonDisponible;
+const aEp = liste.some((l) => l.ep);
+---
+<div class="filters" data-filtres={id}>
+  <div class="g"><span>Secteur</span>
+    <button class="chip on" type="button" data-filtre="s" data-valeur="">Tous</button>
+    <button class="chip" type="button" data-filtre="s" data-valeur="pub">Public</button>
+    <button class="chip" type="button" data-filtre="s" data-valeur="pri">Privé s. c.</button>
+  </div>
+  {aEp && (
+    <div class="g"><span>Éducation prioritaire</span>
+      <button class="chip on" type="button" data-filtre="ep" data-valeur="">Tous</button>
+      <button class="chip" type="button" data-filtre="ep" data-valeur="REP+">REP+</button>
+      <button class="chip" type="button" data-filtre="ep" data-valeur="REP">REP</button>
+      <button class="chip" type="button" data-filtre="ep" data-valeur="-">Hors EP</button>
+    </div>
+  )}
+  <div class="g" style="flex:1;min-width:200px">
+    <label class="visuel-masque" for={`${id}-q`}>Filtrer par nom ou commune</label>
+    <input class="search" id={`${id}-q`} data-filtre="q" placeholder="Filtrer par nom ou commune" autocomplete="off" />
+  </div>
+</div>
+<div class="count" data-compte={id}>{liste.length} {FAMILLES_PLURIEL[famille].toLowerCase()} · triés par nom</div>
+<div class="card" style="padding:4px 6px;margin-top:8px"><div class="table-wrap">
+  <table id={id} data-liste>
+    <thead><tr>
+      <th class="sort on" data-tri="texte" aria-sort="ascending">Établissement</th>
+      <th class="sort" data-tri="texte">Secteur</th>
+      <th class="sort" data-tri="texte">Commune</th>
+      <th class="sort" data-tri="texte">EP</th>
+      <th class="n sort" data-tri="nombre">Élèves</th>
+      <th class="n sort" data-tri="nombre">Élèves / ETP ens.</th>
+      <th class="n sort" data-tri="nombre">Élèves / ETP vie scolaire</th>
+      <th class="n sort" data-tri="nombre">Enseignantes</th>
+      <th class="n sort" data-tri="nombre">IPS</th>
+    </tr></thead>
+    <tbody>
+      {liste.map((l) => (
+        <tr data-s={l.secteur === "public" ? "pub" : "pri"} data-ep={l.ep ?? "-"} data-q={`${l.nom} ${l.commune}`}>
+          <td><a href={`/etablissement/${l.uai}/`}>{l.nom}</a></td>
+          <td><span class={`sect ${l.secteur === "public" ? "pub" : "pri"}`}>{l.secteur === "public" ? "Public" : "Privé s. c."}</span></td>
+          <td>{l.commune}</td>
+          <td>{l.ep ?? ""}</td>
+          <td class="n" data-v={valeurTri(l.eleves)}><Cellule texte={l.eleves === null ? nd : entier(l.eleves)} absent={l.eleves === null} /></td>
+          <td class="n" data-v={valeurTri(l.elevesParEtpEns)}><Cellule texte={l.elevesParEtpEns === null ? nd : nombre(l.elevesParEtpEns)} absent={l.elevesParEtpEns === null} /></td>
+          <td class="n" data-v={valeurTri(l.elevesParEtpVs)}><Cellule texte={l.elevesParEtpVs === null ? (l.statutVs === "non_publie_prive" ? LIBELLES.nonPubliePrive : nd) : nombre(l.elevesParEtpVs)} absent={l.elevesParEtpVs === null} /></td>
+          <td class="n" data-v={valeurTri(l.partEnseignantes)}><Cellule texte={l.partEnseignantes === null ? nd : part(l.partEnseignantes)} absent={l.partEnseignantes === null} /></td>
+          <td class="n" data-v={valeurTri(l.ips)}><Cellule texte={l.ips === null ? nd : nombre(l.ips)} absent={l.ips === null} /></td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div></div>

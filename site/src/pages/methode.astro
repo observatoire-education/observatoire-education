@@ -1,0 +1,61 @@
+---
+// Méthode : comment les chiffres sont choisis, calculés et affichés. Ton neutre, sans commentaire.
+import Base from "../layouts/Base.astro";
+---
+<Base titre="Méthode" chemin="/methode/" description="Méthode de l'observatoire : périmètre, moyennes, voisinage, absences, pages conservées.">
+  <div class="texte">
+    <h1>Méthode</h1>
+    <p class="mute">L'observatoire reproduit des données publiques. Il les croise par établissement, les situe par rapport à des moyennes et indique pour chaque chiffre sa source et son millésime. Il ne commente pas les chiffres et ne note aucun établissement.</p>
+
+    <h2 id="perimetre">Périmètre</h2>
+    <p>Une page par collège, lycée (général et technologique, polyvalent, professionnel) et établissement régional d'enseignement adapté (EREA), public ou privé sous contrat, en métropole et dans les départements d'outre-mer, tels que les recense l'Annuaire de l'éducation.</p>
+    <ul>
+      <li>Le <b>privé hors contrat</b> n'a pas de page : il est absent des statistiques publiques. Les pages de département en donnent le nombre, avec la mention « non couvert par les statistiques publiques ».</li>
+      <li>Les collectivités de Saint-Pierre-et-Miquelon, Saint-Barthélemy, Saint-Martin et du Pacifique ne sont pas couvertes, faute de statistiques comparables.</li>
+      <li>Les sections qui ont leur propre code UAI (sections d'enseignement général et professionnel adapté, sections d'enseignement professionnel) sont rattachées à leur établissement dans les statistiques et n'ont pas de page distincte.</li>
+      <li>La famille d'un lycée (général et technologique, polyvalent, professionnel) est celle que donne la DEPP dans les indices de position sociale, si elle existe ; sinon celle de l'Annuaire.</li>
+    </ul>
+
+    <h2 id="multi-sites">Établissements répartis sur plusieurs sites</h2>
+    <p>Certains établissements ont plusieurs adresses sous un même code UAI (annexe, voie générale et voie professionnelle, site d'enseignement supérieur). Les statistiques étant publiées par UAI, il n'y a aucun double compte. La fiche décrit un site principal et liste les autres. Le site principal est choisi ainsi : un site qui n'est pas une annexe, puis un site qui n'est pas d'enseignement supérieur, puis le nom le plus court, puis l'ordre alphabétique.</p>
+    <p class="mute">L'Annuaire de l'éducation peut présenter, d'une nuit à l'autre, de légères différences d'adresse ou d'écriture des noms pour quelques établissements. Les pages reprennent la version collectée la plus récente.</p>
+
+    <h2 id="moyennes">Moyennes et écarts</h2>
+    <ul>
+      <li>Chaque ratio et chaque part sont situés par rapport à la moyenne des établissements de <b>même famille</b> (collèges entre eux, lycées polyvalents entre eux, etc.), dans le département, l'académie et la France, séparément pour le public et pour le privé sous contrat.</li>
+      <li>Une moyenne est calculée comme la somme des numérateurs divisée par la somme des dénominateurs (Σ / Σ). Par exemple, le nombre moyen d'élèves par ETP enseignant est le total des élèves divisé par le total des ETP enseignants. Seuls comptent les établissements dont les deux valeurs sont publiées, avec un dénominateur supérieur à zéro.</li>
+      <li>Les moyennes de l'indice de position sociale (IPS) sont celles publiées par la DEPP ; elles ne sont pas recalculées.</li>
+      <li>Sur les pages web, une comparaison s'écrit « écart (moyenne) » : « −14,0 (106,4) » signifie 14,0 de moins que la moyenne, qui vaut 106,4. Sur la fiche imprimable, seules les moyennes figurent.</li>
+      <li>Les volumes (nombre d'élèves, ETP) ne sont pas comparés : ils dépendent de la taille de l'établissement.</li>
+      <li>Les effectifs publiés ne comprennent pas les étudiants post-bac (BTS, classes préparatoires), alors que les ETP enseignants comprennent tous les enseignants de l'établissement. Dans un lycée qui accueille beaucoup d'étudiants post-bac, le nombre d'élèves par ETP enseignant est donc plus bas.</li>
+    </ul>
+
+    <h2 id="filles">Filles et garçons</h2>
+    <p>La DEPP ne publie pas la répartition filles-garçons d'un niveau ou d'une voie lorsque l'un des deux sexes y est très peu représenté (secret statistique). La part de filles d'un établissement est alors calculée sur les seuls niveaux publiés, et la page indique la part des élèves sur laquelle elle porte. Si cette part est inférieure à 50 % des élèves, la part de filles est affichée « non disponible » et l'établissement n'entre pas dans les moyennes.</p>
+
+    <h2 id="voisinage">Établissements voisins</h2>
+    <p>Chaque fiche nomme les 6 établissements les plus proches à moins de 30 km, à vol d'oiseau, publics et privés sous contrat, triés par distance. Seuls sont retenus les établissements de familles comparables :</p>
+    <ul>
+      <li>collège : collèges ;</li>
+      <li>lycée général et technologique : lycées généraux et technologiques et lycées polyvalents ;</li>
+      <li>lycée polyvalent : lycées généraux et technologiques, polyvalents et professionnels ;</li>
+      <li>lycée professionnel : lycées professionnels et polyvalents ;</li>
+      <li>EREA : EREA.</li>
+    </ul>
+    <p>Les voisins sont affichés avec leurs valeurs brutes, sans écart calculé. Un établissement sans coordonnées géographiques n'a pas de voisins et n'apparaît chez aucun autre.</p>
+
+    <h2 id="absences">Absences</h2>
+    <p>Une donnée absente n'est jamais remplacée par un zéro. Elle est dite en toutes lettres :</p>
+    <ul>
+      <li>« non publié pour le privé » : la DEPP ne publie pas les ETP de vie scolaire (CPE, assistants d'éducation) des établissements privés sous contrat ;</li>
+      <li>« non disponible » : la source ne donne pas la valeur pour cet établissement, ou le calcul est impossible (dénominateur nul ou absent) ;</li>
+      <li>« pas de SEGPA » : l'établissement n'a pas de section d'enseignement général et professionnel adapté.</li>
+    </ul>
+
+    <h2 id="pages-conservees">Pages conservées</h2>
+    <p>L'adresse d'une page ne change jamais. Un établissement qui n'apparaît plus dans l'Annuaire de l'éducation (fermeture, fusion, sortie du périmètre) garde sa page, avec la date depuis laquelle il n'y figure plus et les dernières données publiées par les sources. Il n'est plus proposé comme voisin et n'entre plus dans les moyennes.</p>
+
+    <h2 id="millesimes">Millésimes et mises à jour</h2>
+    <p>Chaque indicateur porte la rentrée la plus récente pour laquelle la donnée existe. Les sources sont vérifiées chaque nuit ; le site est régénéré quand une source change. Les versions successives des sources sont archivées sur la page <a href="/sources/">Sources</a>.</p>
+  </div>
+</Base>

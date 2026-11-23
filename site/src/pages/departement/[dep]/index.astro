@@ -1,0 +1,146 @@
+---
+// Page département : un onglet (ancre) par famille d'établissement, car les moyennes n'ont de sens qu'à type égal.
+import { date, entier, nombre, part } from "@obs/shared/format";
+import { academie, type CodeIndicateur, FAMILLES_PLURIEL, INDICATEURS, LIBELLES } from "@obs/shared/libelles";
+import type { Comparaison, Niveau, Secteur } from "@obs/shared/types";
+import Absence from "../../../components/Absence.astro";
+import Cellule from "../../../components/Cellule.astro";
+import ListeEtablissements from "../../../components/ListeEtablissements.astro";
+import Base from "../../../layouts/Base.astro";
+import { anneeScolaire, formater } from "../../../lib/affichage";
+import { departementsDisponibles, lireDepartement, lireFrance, lireSources } from "../../../lib/donnees";
+import { domaine, svgDistribution, svgPoints } from "../../../lib/plot";
+import { famillesDe } from "../../../lib/territoire";
+
+export function getStaticPaths() {
+  return departementsDisponibles().map((dep) => ({ params: { dep } }));
+}
+
+const d = lireDepartement(Astro.params.dep!);
+const france = lireFrance();
+const sources = Object.values(lireSources()).filter((s) => s.actuelle);
+const familles = famillesDe(d);
+const total = familles.reduce((a, [, s]) => a + s.compte.public + s.compte.prive, 0);
+
+const NIVEAUX: Niveau[] = ["departement", "academie", "france"];
+const libelleNiveau = (n: Niveau) => (n === "departement" ? d.libelle : n === "academie" ? academie(d.acaLibelle) : "France");
+const ref = (c: Comparaison[], n: Niveau, s: Secteur) => {
+  const x = c.find((y) => y.niveau === n);
+  return x ? (s === "public" ? x.public : x.prive) : undefined;
+};
+const moyenneTexte = (code: CodeIndicateur, c: Comparaison[], n: Niveau, s: Secteur) => {
+  const m = ref(c, n, s);
+  if (!m || m.statut !== "ok" || m.valeur === null) {
+    return { t: m?.statut === "non_publie_prive" ? LIBELLES.nonPubliePrive : LIBELLES.nonDisponible, abs: true };
+  }
+  return { t: formater(code, m.valeur), abs: false };
+};
+const somme = (a: number | null, b: number | null) => (a === null && b === null ? null : (a ?? 0) + (b ?? 0));
+const partPrive = (e: { public: number | null; prive: number | null }) => {
+  const t = somme(e.public, e.prive);
+  return t && e.prive !== null ? (100 * e.prive) / t : null;
+};
+const communes = [...Map.groupBy(familles.flatMap(([, s]) => s.liste), (l) => l.commune)]
+  .map(([c, l]) => ({ c, n: l.length }))
+  .sort((a, b) => a.c.localeCompare(b.c, "fr"));
+---
+<Base titre={`${d.libelle} (${d.dep})`} chemin={`/departement/${d.dep}/`}
+  description={`Collèges et lycées publics et privés sous contrat du département ${d.libelle} : chiffres publics sourcés et datés.`}>
+  <nav class="crumb" aria-label="Fil d'Ariane"><span>France</span><span class="sep">›</span><span>{academie(d.acaLibelle)}</span></nav>
+  <h1>{d.libelle} <span class="mute num" style="font-weight:400">{d.dep}</span></h1>
+  <div class="badges"><span class="badge">{academie(d.acaLibelle)}</span><span class="badge">{entier(total)} établissements</span><span class="badge">{communes.length} communes avec un collège ou un lycée</span></div>
+  <div class="actions">
+    <button class="btn primary" type="button" id="imprimer">⎙ Imprimer / PDF</button>
+    <a class="btn" href={`/departement/${d.dep}/etablissements.csv`} download>⬇ Télécharger la liste (CSV)</a>
+  </div>
+  <div class="kpis">
+    {familles.map(([f, s]) => (
+      <div><div class="k">{FAMILLES_PLURIEL[f]}</div><div class="v">{entier(s.compte.public + s.compte.prive)}</div>
+        <div class="c"><span class="p">{entier(s.compte.public)} publics</span> · <span class="q">{entier(s.compte.prive)} privés s. c.</span></div></div>
+    ))}
+    <div><div class="k">Privé hors contrat</div><div class="v">{entier(d.horsContrat)} étab.</div><div class="c" style="font-family:var(--sans)">{LIBELLES.nonCouvert}</div></div>
+  </div>
+  <nav class="tabs" aria-label="Types d'établissement">
+    {familles.map(([f]) => <a href={`#${f}`}>{FAMILLES_PLURIEL[f]}</a>)}
+  </nav>
+
+  {familles.map(([f, s]) => {
+    const ips = s.moyennes.find((m) => m.code === "ips");
+    const vs = s.moyennes.find((m) => m.code === "eleves_par_etp_vs");
+    const vsPub = vs ? ref(vs.comparaisons, "departement", "public") : undefined;
+    const rangs = ips ? NIVEAUX.map((n) => {
+      const p = ref(ips.comparaisons, n, "public"); const q = ref(ips.comparaisons, n, "prive_sous_contrat");
+      return { libelle: libelleNiveau(n), public: p?.statut === "ok" ? p.valeur : null, prive: q?.statut === "ok" ? q.valeur : null };
+    }) : [];
+    const pf = france.familles[f];
+    return (
+      <section id={f}>
+        <h2>{FAMILLES_PLURIEL[f]}</h2>
+        <div class="kpis">
+          <div><div class="k">Élèves · {d.rentree}</div><div class="v">{s.eleves.public === null && s.eleves.prive === null ? "—" : entier(somme(s.eleves.public, s.eleves.prive))}</div>
+            <div class="c"><span class="p">{s.eleves.public === null ? LIBELLES.nonDisponible : entier(s.eleves.public)}</span> · <span class="q">{s.eleves.prive === null ? LIBELLES.nonDisponible : entier(s.eleves.prive)}</span></div></div>
+          <div><div class="k">Part des élèves dans le privé s. c.</div><div class="v">{partPrive(s.eleves) === null ? "—" : part(partPrive(s.eleves))}</div>
+            <div class="c">{pf && partPrive(pf.eleves) !== null && <>France : {part(partPrive(pf.eleves))}</>}</div></div>
+          <div><div class="k">IPS moyen</div>
+            <div class="v" style="font-size:20px;padding-top:6px"><span style="color:var(--pub-ink)">{nombre(s.ipsMoyen.public)}</span> · <span style="color:var(--pri-ink)">{nombre(s.ipsMoyen.prive)}</span></div>
+            <div class="c">public · privé s. c. (DEPP)</div></div>
+          <div><div class="k">Élèves par ETP de vie scolaire</div>
+            <div class="v">{vsPub?.statut === "ok" ? nombre(vsPub.valeur) : "—"}</div>
+            <div class="c">public · <span style="font-family:var(--sans)">privé : {LIBELLES.nonPubliePrive}</span></div></div>
+        </div>
+
+        <div class="cols2" style="margin-top:14px">
+          <div class="card">
+            <div class="lab"><span>Répartition selon l'IPS</span><span class="yr">{anneeScolaire(d.rentree)}</span></div>
+            <Fragment set:html={svgDistribution(s.distributionIps.public, s.distributionIps.prive, s.distributionIps.bornes)} />
+            <div class="legend"><span class="sect pub">publics (nombre)</span><span class="sect pri">privés sous contrat (nombre)</span></div>
+          </div>
+          <div class="card">
+            <div class="lab"><span>IPS moyen comparé</span><span class="yr">{anneeScolaire(d.rentree)}</span></div>
+            {rangs.length ? <Fragment set:html={svgPoints(rangs, null, domaine(rangs.flatMap((r) => [r.public, r.prive])))} /> : <Absence texte={LIBELLES.nonDisponible} />}
+            <div class="legend"><span class="sect pub">public</span><span class="sect pri">privé sous contrat</span></div>
+            <div class="src">Moyennes publiées par la DEPP (IPS des collèges et des lycées).</div>
+          </div>
+        </div>
+
+        <h3 class="sous-titre">Moyennes du département</h3>
+        <div class="card" style="padding:4px 6px"><div class="table-wrap">
+          <table class="cmp">
+            <thead><tr><th>Indicateur</th>
+              {NIVEAUX.flatMap((n) => [<th class="n">{n === "departement" ? "Dép." : n === "academie" ? "Académie" : "France"} public</th>, <th class="n">{n === "departement" ? "Dép." : n === "academie" ? "Académie" : "France"} privé</th>])}
+            </tr></thead>
+            <tbody>
+              {s.moyennes.map((m) => (
+                <tr>
+                  <td>{INDICATEURS[m.code].libelle}</td>
+                  {NIVEAUX.flatMap((n) => (["public", "prive_sous_contrat"] as Secteur[]).map((sec) => {
+                    const v = moyenneTexte(m.code, m.comparaisons, n, sec);
+                    return <td class={`n ${sec === "public" ? "pub" : "pri"}`}><Cellule texte={v.t} absent={v.abs} /></td>;
+                  }))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div></div>
+        <div class="src" style="border:0">Moyennes calculées (Σ / Σ) sur les établissements dont la donnée est publiée ; IPS : moyennes publiées par la DEPP. <a href="/methode/#moyennes">Méthode</a>.</div>
+
+        <h3 class="sous-titre">Les {entier(s.liste.length)} {FAMILLES_PLURIEL[f].toLowerCase()}</h3>
+        <ListeEtablissements famille={f} liste={s.liste} />
+      </section>
+    );
+  })}
+
+  <section>
+    <h2>Communes</h2>
+    <div class="chips">{communes.map(({ c, n }) => <span class="chip chip-texte">{c} · {n}</span>)}</div>
+  </section>
+
+  <section>
+    <h2>Sources</h2>
+    <div class="card" style="font-size:13px"><ul style="margin:0;padding-left:18px;line-height:1.9">
+      {sources.map((s) => <li>{s.producteur}, <a href={s.pageUrl}>{s.titre}</a> · collecté le {date(s.actuelle!.collecteLe)} · <a href={s.actuelle!.url}>donnée brute</a></li>)}
+    </ul></div>
+  </section>
+  <script is:inline src="/js/liste.js" defer></script>
+  <script is:inline src="/js/fiche.js" defer></script>
+</Base>

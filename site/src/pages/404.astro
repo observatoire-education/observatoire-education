@@ -1,0 +1,18 @@
+---
+// 404 : une adresse d'établissement en minuscules est redirigée vers sa forme en majuscules
+// (GitHub Pages distingue la casse) ; sinon, retour à l'accueil.
+import Base from "../layouts/Base.astro";
+---
+<Base titre="Page introuvable" chemin="/404.html">
+  <script is:inline>
+    (function () {
+      var m = location.pathname.match(/^\/etablissement\/([0-9A-Za-z]{8})\/?$/);
+      if (m && m[1] !== m[1].toUpperCase()) location.replace("/etablissement/" + m[1].toUpperCase() + "/" + location.search + location.hash);
+    })();
+  </script>
+  <div class="texte">
+    <h1>Page introuvable</h1>
+    <p>Cette adresse ne correspond à aucune page. Les pages d'établissement ont la forme <span class="num">/etablissement/0440001A/</span>, avec le code UAI en majuscules.</p>
+    <p><a class="btn primary" href="/">Rechercher un établissement depuis l'accueil</a></p>
+  </div>
+</Base>

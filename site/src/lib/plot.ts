@@ -92,3 +92,23 @@ export function domaine(valeurs: (number | null)[], marge = 4): [number, number]
   if (!v.length) return [0, 100];
   return [Math.floor((Math.min(...v) - marge) / 10) * 10, Math.ceil((Math.max(...v) + marge) / 10) * 10];
 }
+
+/** Distribution des IPS par classes de 5 points : public en barres pleines, privé en contour. */
+export function svgDistribution(publique: number[], privee: number[], bornes: number[]): string {
+  const classes = (comptes: number[], decalage: number, secteur: string) =>
+    comptes.map((n, i) => ({ x1: bornes[i]! + decalage, x2: bornes[i]! + decalage + 2.5, n, secteur }));
+  const pub = classes(publique, 0, "public");
+  const pri = classes(privee, 2.5, "privé sous contrat");
+  const max = Math.max(1, ...publique, ...privee);
+  const p = Plot.plot({
+    document, width: 640, height: 170, marginLeft: 28, marginRight: 8, marginTop: 10, style: STYLE,
+    x: { domain: [bornes[0]!, bornes.at(-1)!], ticks: bornes.filter((_, i) => i % 2 === 0), label: null, tickFormat: (d: number) => nombre(d, 0) },
+    y: { domain: [0, max], label: null, ticks: Math.min(4, max), grid: true, tickFormat: (d: number) => (Number.isInteger(d) ? nombre(d, 0) : "") },
+    marks: [
+      Plot.rectY(pub.filter((d) => d.n > 0), { x1: "x1", x2: "x2", y: "n", fill: "var(--pub)", insetRight: 0.5, rx: 2 }),
+      Plot.rectY(pri.filter((d) => d.n > 0), { x1: "x1", x2: "x2", y: "n", fill: "var(--pri-soft)", stroke: "var(--pri)", strokeWidth: 1.5, insetLeft: 0.5, rx: 2 }),
+    ],
+  });
+  const resume = (c: number[]) => c.reduce((a, b) => a + b, 0);
+  return svg(p, `Répartition des établissements selon leur IPS, par classes de 5 points : ${resume(publique)} publics, ${resume(privee)} privés sous contrat`);
+}
