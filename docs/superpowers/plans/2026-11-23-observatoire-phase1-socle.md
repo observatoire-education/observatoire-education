@@ -959,6 +959,11 @@ test("CNAME et noindex", () => { /* DOMAINE vide -> pas de CNAME ; INDEXABLE fal
   5. `actions/upload-pages-artifact` sur `dist`.
 - **Job `deployer` :** `actions/deploy-pages`.
 
+**Mise en œuvre (tâche 12, 2026-11-23) :**
+- Versions des actions vérifiées le jour même : `actions/checkout@v7`, `oven-sh/setup-bun@v2` (Bun épinglé à 1.4.5), `actions/cache@v6`, `actions/upload-pages-artifact@v5`, `actions/deploy-pages@v5`. `tests.yml` lance aussi le typecheck et la couverture.
+- `nightly.yml` : sans `archives/manifest.json` (dépôt neuf), aucune reconstruction ; la première collecte se lance à la main. Le changement de manifest se détecte avec `git status --porcelain` et non `git diff` (un manifest tout juste créé, non suivi, serait vu comme inchangé — vérifié). Le registre des pages, écrit par `data`, est commité après le build ; chaque push du bot est précédé d'un `git pull --rebase`. Les commits du bot (avec `GITHUB_TOKEN`) ne relancent pas de workflow.
+- `actionlint` 1.7.12 (installé sur la machine du porteur) : aucune remarque.
+
 - [ ] **Step 1 :** écrire les deux workflows, puis lancer `bunx actionlint`. Attendu : une sortie vide.
 - [ ] **Step 2 :** commit `ci: tests, collecte nocturne et déploiement Pages`.
 - [ ] **Step 3 : mise en ligne, par le porteur.** Ces étapes sont manuelles ; l'agent ne peut pas les faire.

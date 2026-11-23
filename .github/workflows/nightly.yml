@@ -1,0 +1,106 @@
+# Collecte nocturne, génération du site et déploiement sur GitHub Pages.
+# - La nuit : collecte des sources (archivées en GitHub Releases), commit du journal (une ligne par
+#   source et par nuit : le dépôt reste actif, la tâche planifiée n'est jamais suspendue).
+# - Si aucune source n'a changé la nuit, le site n'est pas reconstruit.
+# - Sur un push : pas de collecte, reconstruction et déploiement avec les archives existantes.
+name: nightly
+
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  collecter-construire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    outputs:
+      construit: ${{ steps.change.outputs.reconstruire }}
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.5"
+      - run: bun install --frozen-lockfile
+
+      - name: Identité du bot pour les commits de données
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+
+      - name: Collecte des sources
+        if: github.event_name != 'push'
+        run: bun run collect
+
+      - name: Une source a-t-elle changé ?
+        id: change
+        env:
+          EVENEMENT: ${{ github.event_name }}
+        run: |
+          if [ ! -f archives/manifest.json ]; then
+            echo "Aucune archive : lancer d'abord le workflow à la main (workflow_dispatch) pour une première collecte."
+            echo "reconstruire=false" >> "$GITHUB_OUTPUT"
+          # git status (et non git diff) : un manifest tout juste créé, encore non suivi, compte comme un changement
+          elif [ "$EVENEMENT" = "schedule" ] && [ -z "$(git status --porcelain -- archives/manifest.json)" ]; then
+            echo "reconstruire=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "reconstruire=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit du journal (aucune source modifiée)
+        if: github.event_name != 'push' && steps.change.outputs.reconstruire == 'false'
+        run: |
+          git add archives/
+          git diff --cached --quiet || git commit -m "data: collecte du $(date -u +%F)"
+          git pull --rebase --autostash && git push
+
+      - name: Cache des archives
+        if: steps.change.outputs.reconstruire == 'true'
+        uses: actions/cache@v6
+        with:
+          path: .cache/archives
+          key: archives-${{ hashFiles('archives/manifest.json') }}
+          restore-keys: archives-
+
+      - name: Données, site et garde-fous
+        if: steps.change.outputs.reconstruire == 'true'
+        run: bun run build
+
+      - name: Commit des archives (manifest, journal, registre des pages)
+        if: steps.change.outputs.reconstruire == 'true'
+        run: |
+          git add archives/
+          if ! git diff --cached --quiet; then
+            git commit -m "data: collecte du $(date -u +%F)"
+            git pull --rebase --autostash && git push
+          fi
+
+      - uses: actions/upload-pages-artifact@v5
+        if: steps.change.outputs.reconstruire == 'true'
+        with:
+          path: dist
+
+  deployer:
+    needs: collecter-construire
+    if: needs.collecter-construire.outputs.construit == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deploiement.outputs.page_url }}
+    steps:
+      - id: deploiement
+        uses: actions/deploy-pages@v5
