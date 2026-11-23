@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Palettes</title>
+<style>
+  * { box-sizing:border-box; }
+  body { margin:0; padding:24px 16px 60px; background:#e9ebef; color:#14161c;
+    font:15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; }
+  .wrap { max-width:1280px; margin:0 auto; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  .sub { color:#555b66; margin:0 0 20px; max-width:860px; }
+  .pal { border-radius:18px; overflow:hidden; margin-bottom:22px; cursor:pointer; outline:3px solid transparent; box-shadow:0 8px 24px rgba(0,0,0,.06); }
+  .pal.selected { outline-color:#14161c; }
+  .pal-h { background:#fff; padding:12px 18px; display:flex; gap:14px; align-items:center; flex-wrap:wrap; font-weight:600; }
+  .sw { display:inline-flex; align-items:center; gap:6px; font-weight:400; font-size:13px; color:#444; }
+  .sw i { width:16px; height:16px; border-radius:5px; display:inline-block; }
+  .duo { display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); }
+  .card { padding:20px 22px; }
+  .card h3 { margin:0 0 2px; font-size:19px; letter-spacing:-.01em; }
+  .meta { font-size:12px; opacity:.65; margin-bottom:12px; }
+  .lab { font-size:11px; text-transform:uppercase; letter-spacing:.07em; opacity:.65; }
+  .big { font:700 42px/1 ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace; letter-spacing:-.03em; margin:2px 0 4px; }
+  .strip { position:relative; height:44px; }
+  .axis { position:absolute; left:0; right:0; top:24px; height:2px; border-radius:2px; }
+  .mk { position:absolute; top:16px; transform:translateX(-50%); width:14px; height:14px; border-radius:50%; }
+  .mk.pri { background:transparent !important; border:3px solid; }
+  .mk span { position:absolute; top:-18px; left:50%; transform:translateX(-50%); font-size:11px; white-space:nowrap; }
+  .me { position:absolute; top:13px; width:20px; height:20px; border-radius:6px; transform:translateX(-50%) rotate(45deg); }
+  .hist { display:flex; align-items:flex-end; gap:3px; height:70px; margin-top:16px; }
+  .hist div { flex:1; display:flex; align-items:flex-end; gap:1px; height:100%; }
+  .hist b { flex:1; border-radius:3px 3px 0 0; }
+  .legend { display:flex; gap:16px; font-size:12px; margin-top:8px; opacity:.85; }
+  .legend span::before { content:""; display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:6px; vertical-align:-1px; background:var(--c); }
+  .num { font-family:ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace; font-variant-numeric:tabular-nums; }
+  table { width:100%; border-collapse:collapse; font-size:13px; margin-top:12px; }
+  td, th { padding:5px 2px; text-align:right; } td:first-child, th:first-child { text-align:left; }
+  th { font-weight:500; font-size:11px; text-transform:uppercase; letter-spacing:.05em; opacity:.6; }
+  .chip { font-size:11px; padding:2px 8px; border-radius:99px; font-weight:600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>2 · Couleurs public / privé (clair + sombre automatique)</h1>
+  <p class="sub">Polices système uniquement (San Francisco sur Mac/iPhone, Segoe sur Windows, Roboto sur Android ; chiffres en monospace système). Chaque palette est montrée en clair (A) et en sombre (B). Pour l'accessibilité, la couleur n'est jamais seule : <b>public = point plein</b>, <b>privé = anneau</b>, l'établissement = losange neutre. Clique sur une palette et dis-moi ce que tu en penses.</p>
+  <div id="root"></div>
+</div>
+<script>
+const P = [
+  { id:"violet-ambre", nom:"1 · Violet / Ambre",
+    light:{pub:"#6e56f8", pri:"#e0a020", bg:"#ffffff", ink:"#14161c", soft:"#f4f4f7", axis:"#e6e6ee", me:"#14161c"},
+    dark: {pub:"#9d8cff", pri:"#f5c04a", bg:"#0d0f17", ink:"#eceef6", soft:"#171a26", axis:"#262a3b", me:"#ffffff"} },
+  { id:"sarcelle-fuchsia", nom:"2 · Sarcelle / Fuchsia",
+    light:{pub:"#0e9f9a", pri:"#c8409b", bg:"#ffffff", ink:"#14161c", soft:"#f3f6f6", axis:"#e3e9e9", me:"#14161c"},
+    dark: {pub:"#2dd4bf", pri:"#f472b6", bg:"#0b1014", ink:"#e8f0f0", soft:"#131b20", axis:"#22303a", me:"#ffffff"} },
+  { id:"indigo-citron", nom:"3 · Indigo / Citron vert",
+    light:{pub:"#4f46e5", pri:"#8aa600", bg:"#ffffff", ink:"#14161c", soft:"#f4f5fa", axis:"#e4e6f0", me:"#14161c"},
+    dark: {pub:"#818cf8", pri:"#d4f04a", bg:"#0c0d14", ink:"#eceef8", soft:"#161827", axis:"#272a40", me:"#ffffff"} },
+];
+// distribution fictive IPS (classes de 70 à 140)
+const pubH=[2,5,11,18,24,22,15,9,4,2], priH=[0,1,2,4,8,13,19,22,17,10];
+const pos=v=>((v-70)/70*100).toFixed(1)+"%";
+function card(c, mode){
+  const hist = pubH.map((h,i)=>`<div><b style="height:${h*3}px;background:${c.pub}"></b><b style="height:${priH[i]*3}px;background:${c.pri}"></b></div>`).join("");
+  return `<div class="card" style="background:${c.bg};color:${c.ink}">
+    <div class="meta">${mode}</div>
+    <h3>Collège Jules-Verne</h3>
+    <div style="display:flex;gap:6px;margin:6px 0 14px">
+      <span class="chip" style="background:${c.pub}22;color:${c.pub}">Public</span>
+      <span class="chip" style="background:${c.pri}22;color:${c.pri}">Privé sous contrat (exemple)</span>
+    </div>
+    <div class="lab">IPS · 2025-2026</div>
+    <div class="big">92,4</div>
+    <div class="strip"><div class="axis" style="background:${c.axis}"></div>
+      <div class="mk" style="left:${pos(106.4)};background:${c.pub}"><span style="color:${c.pub}">dép. public 106,4</span></div>
+      <div class="mk pri" style="left:${pos(121.4)};border-color:${c.pri}"><span style="color:${c.pri};top:22px">dép. privé 121,4</span></div>
+      <div class="me" style="left:${pos(92.4)};background:${c.me}"></div>
+    </div>
+    <table class="num"><tr><th>Écart</th><th>public</th><th>privé s. c.</th></tr>
+      <tr><td style="font-family:system-ui">Loire-Atlantique</td><td style="color:${c.pub}">−14,0</td><td style="color:${c.pri}">−29,0</td></tr>
+      <tr><td style="font-family:system-ui">France</td><td style="color:${c.pub}">−7,5</td><td style="color:${c.pri}">−26,1</td></tr></table>
+    <div class="hist">${hist}</div>
+    <div class="legend"><span style="--c:${c.pub}">Collèges publics</span><span style="--c:${c.pri}">Collèges privés s. c.</span></div>
+  </div>`;
+}
+document.getElementById("root").innerHTML = P.map(p=>`
+  <div class="pal" data-choice="${p.id}" onclick="toggleSelect(this)">
+    <div class="pal-h">${p.nom}
+      <span class="sw"><i style="background:${p.light.pub}"></i>public</span>
+      <span class="sw"><i style="background:${p.light.pri}"></i>privé</span>
+      <span class="sw"><i style="background:${p.dark.pub}"></i><i style="background:${p.dark.pri}"></i>sombre</span></div>
+    <div class="duo">${card(p.light,"A · clair")}${card(p.dark,"B · sombre automatique")}</div>
+  </div>`).join("");
+</script>
+</body>
+</html>

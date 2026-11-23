@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loire-Atlantique — département</title>
+<link rel="stylesheet" href="obs.css">
+<style>
+  .tabs { display:flex; gap:4px; border-bottom:1px solid var(--line); margin-top:22px; overflow-x:auto; }
+  .tabs a { padding:10px 14px; text-decoration:none; color:var(--muted); border-bottom:2px solid transparent; white-space:nowrap; font-size:14px; }
+  .tabs a.on { color:var(--ink); border-bottom-color:var(--ink); font-weight:600; }
+  .filters { display:flex; flex-wrap:wrap; gap:14px 22px; align-items:center; margin-bottom:12px; }
+  .filters .g { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+  .filters .g > span { font-size:12px; color:var(--muted); margin-right:2px; }
+  .count { font-size:13px; color:var(--muted); }
+  .map svg { width:100%; height:auto; display:block; }
+</style>
+</head>
+<body>
+<header class="top"><div class="container">
+  <a class="brand" href="#"><i></i><span>Observatoire citoyen de l'éducation en France</span></a>
+  <div class="search"><input class="search" placeholder="Nom, commune ou UAI"></div>
+  <nav><a href="#">Territoires</a><a href="#">Sources</a><a href="#">Méthode</a></nav>
+  <button class="theme" title="Clair / sombre">◐</button>
+</div></header>
+
+<main class="container">
+  <div class="note">Maquette 6 · page département. Les onglets séparent les types d'établissement, parce que les moyennes n'ont de sens qu'à type égal. La liste est triée par nom ; on peut la trier sur toutes les colonnes, sans rang affiché. Chiffres et noms fictifs.</div>
+  <div class="crumb"><a href="#">France</a><span class="sep">›</span><a href="#">Académie de Nantes</a></div>
+  <h1>Loire-Atlantique <span class="mute num" style="font-weight:400">44</span></h1>
+  <div class="badges"><span class="badge">Académie de Nantes</span><span class="badge">Région Pays de la Loire</span><span class="badge">221 communes, dont 74 avec un collège ou un lycée</span></div>
+  <div class="actions">
+    <button class="btn primary" onclick="window.print()">⎙ Imprimer / PDF</button>
+    <button class="btn">⬇ Télécharger les données (CSV, Parquet)</button>
+    <button class="btn">⌗ Explorer les données</button>
+  </div>
+
+  <nav class="tabs"><a class="on" href="#">Collèges</a><a href="#">Lycées généraux et technologiques</a><a href="#">Lycées polyvalents</a><a href="#">Lycées professionnels</a><a href="#">EREA</a></nav>
+
+  <div class="kpis">
+    <div><div class="k">Collèges</div><div class="v">146</div><div class="c"><span class="p">82 publics</span> · <span class="q">64 privés s. c.</span></div></div>
+    <div><div class="k">Élèves en collège · 2025</div><div class="v">84 100</div><div class="c"><span class="p">52 300</span> · <span class="q">31 800</span></div></div>
+    <div><div class="k">Part des élèves dans le privé s. c.</div><div class="v">37,8 %</div><div class="c">France : 21,6 %</div></div>
+    <div><div class="k">IPS moyen</div><div class="v" style="font-size:20px;padding-top:6px"><span style="color:var(--pub-ink)">106,4</span> · <span style="color:var(--pri-ink)">121,4</span></div><div class="c">public · privé s. c.</div></div>
+    <div><div class="k">Élèves par ETP vie scolaire</div><div class="v">96,3</div><div class="c">public · <span style="font-family:var(--sans)">privé : non publié</span></div></div>
+    <div><div class="k">Hors contrat</div><div class="v" style="font-size:20px;padding-top:6px">6 étab.</div><div class="c" style="font-family:var(--sans)">non couvert par les statistiques publiques</div></div>
+  </div>
+
+  <section>
+    <h2>Composition sociale</h2>
+    <div class="cols2">
+      <div class="card">
+        <div class="lab"><span>Répartition des collèges selon leur IPS</span><span class="yr">2025-2026</span></div>
+        <div style="margin-top:10px" data-hist='{"from":70,"step":7,"pub":[2,5,9,14,17,15,10,6,3,1],"pri":[0,0,1,3,7,11,15,14,9,4]}'></div>
+        <div class="legend"><span class="sect pub">collèges publics (nombre)</span><span class="sect pri">collèges privés sous contrat (nombre)</span></div>
+      </div>
+      <div class="card">
+        <div class="lab"><span>IPS moyen comparé</span><span class="yr">2025-2026</span></div>
+        <div style="margin-top:10px" data-dot='{"domain":[95,125],"step":5,"me":null,"rows":[{"l":"Loire-Atlantique","pub":106.4,"pri":121.4},{"l":"Académie de Nantes","pub":104.0,"pri":120.0},{"l":"France","pub":99.9,"pri":118.5}]}'></div>
+        <div class="legend"><span class="sect pub">public</span><span class="sect pri">privé sous contrat</span></div>
+        <div class="soon" style="margin-top:14px;font-size:13px"><b>Indice de ségrégation sociale entre collèges</b> : — <span class="note" style="display:inline-block;margin:0 0 0 6px">phase 4</span></div>
+        <div class="src">Source : MEN-DEPP, IPS des collèges · moyennes publiées par la DEPP</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Carte et évolution</h2>
+    <div class="cols2">
+      <div class="card map">
+        <div class="lab"><span>Collèges du département</span><span class="yr">contours IGN simplifiés</span></div>
+        <div id="map"></div>
+        <div class="legend"><span class="sect pub">public</span><span class="sect pri">privé sous contrat</span><span>taille = nombre d'élèves</span></div>
+      </div>
+      <div class="card">
+        <div class="lab"><span>Élèves en collège, public et privé sous contrat</span><span class="yr">2016 → 2025</span></div>
+        <div data-line='[{"y":"16","pub":54.1,"pri":30.2},{"y":"17","pub":54.4,"pri":30.5},{"y":"18","pub":54.0,"pri":30.9},{"y":"19","pub":53.8,"pri":31.2},{"y":"20","pub":53.5,"pri":31.3},{"y":"21","pub":53.2,"pri":31.5},{"y":"22","pub":52.9,"pri":31.6},{"y":"23","pub":52.6,"pri":31.7},{"y":"24","pub":52.4,"pri":31.8},{"y":"25","pub":52.3,"pri":31.8}]'></div>
+        <div class="legend"><span class="sect pub">public (milliers)</span><span class="sect pri">privé s. c. (milliers)</span></div>
+        <div class="soon" style="margin-top:14px;font-size:13px"><b>Budget du Département pour les collèges, par élève</b> : — <span class="note" style="display:inline-block;margin:0 0 0 6px">phase 3</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Moyennes du département</h2>
+    <div class="card" style="padding:4px 6px"><div class="table-wrap">
+      <table class="cmp">
+        <thead><tr><th>Indicateur · collèges · 2025</th><th class="n">Public</th><th class="n">Privé s. c.</th><th class="n">Académie public</th><th class="n">Académie privé</th><th class="n">France public</th><th class="n">France privé</th></tr></thead>
+        <tbody>
+          <tr><td>Élèves par ETP enseignant</td><td class="n pub">14,1</td><td class="n pri">15,9</td><td class="n">14,3</td><td class="n">16,0</td><td class="n">14,0</td><td class="n">16,2</td></tr>
+          <tr><td>Élèves par ETP vie scolaire</td><td class="n pub">96,3</td><td class="n"><span class="mute" style="font-family:var(--sans);font-size:12px">non publié pour le privé</span></td><td class="n">98,1</td><td class="n mute">—</td><td class="n">101,4</td><td class="n mute">—</td></tr>
+          <tr><td>Enseignantes</td><td class="n pub">62 %</td><td class="n pri">66 %</td><td class="n">61 %</td><td class="n">66 %</td><td class="n">60 %</td><td class="n">65 %</td></tr>
+          <tr><td>Enseignants non titulaires</td><td class="n pub">7,2 %</td><td class="n pri">9,8 %</td><td class="n">6,9 %</td><td class="n">10,1 %</td><td class="n">8,4 %</td><td class="n">11,0 %</td></tr>
+          <tr><td>Arrivés depuis moins de 2 ans</td><td class="n pub">16,4 %</td><td class="n pri">12,1 %</td><td class="n">15,8 %</td><td class="n">12,9 %</td><td class="n">18,2 %</td><td class="n">13,4 %</td></tr>
+          <tr><td>Part de filles</td><td class="n pub">49,1 %</td><td class="n pri">50,4 %</td><td class="n">49,0 %</td><td class="n">50,6 %</td><td class="n">49,3 %</td><td class="n">50,8 %</td></tr>
+        </tbody>
+      </table></div></div>
+    <div class="src" style="border:0">Moyennes calculées (Σ / Σ) sur les collèges du département dont la donnée est publiée. <a href="#">Méthode</a>.</div>
+  </section>
+
+  <section>
+    <h2>Les 146 collèges</h2>
+    <div class="filters">
+      <div class="g"><span>Secteur</span><button class="chip on" data-f="all">Tous</button><button class="chip" data-f="pub">Public</button><button class="chip" data-f="pri">Privé s. c.</button></div>
+      <div class="g"><span>Éducation prioritaire</span><button class="chip on">Tous</button><button class="chip">REP+</button><button class="chip">REP</button><button class="chip">Hors EP</button></div>
+      <div class="g" style="flex:1;min-width:200px"><input class="search" placeholder="Filtrer par nom ou commune"></div>
+    </div>
+    <div class="count" id="count"></div>
+    <div class="card" style="padding:4px 6px;margin-top:8px"><div class="table-wrap">
+      <table data-sortable id="list">
+        <thead><tr><th class="sort on">Collège</th><th class="sort">Secteur</th><th class="sort">Commune</th><th class="sort">EP</th><th class="n sort">Élèves</th><th class="n sort">Élèves / ETP ens.</th><th class="n sort">Élèves / ETP VS</th><th class="n sort">Enseignantes</th><th class="n sort">IPS</th></tr></thead>
+        <tbody></tbody>
+      </table></div></div>
+    <div style="text-align:center;margin-top:12px"><button class="btn">Afficher les 146 collèges</button></div>
+  </section>
+
+  <section>
+    <h2>Communes</h2>
+    <div class="chips"><a class="chip" href="#" style="display:inline-flex;align-items:center;text-decoration:none">Ancenis-Saint-Géréon · 3</a><a class="chip" href="#" style="display:inline-flex;align-items:center;text-decoration:none">Châteaubriant · 4</a><a class="chip" href="#" style="display:inline-flex;align-items:center;text-decoration:none">Nantes · 38</a><a class="chip" href="#" style="display:inline-flex;align-items:center;text-decoration:none">Rezé · 6</a><a class="chip" href="#" style="display:inline-flex;align-items:center;text-decoration:none">Saint-Herblain · 7</a><a class="chip" href="#" style="display:inline-flex;align-items:center;text-decoration:none">Saint-Nazaire · 12</a><a class="chip" href="#" style="display:inline-flex;align-items:center;text-decoration:none">… 68 autres</a></div>
+  </section>
+
+  <section>
+    <h2>Sources</h2>
+    <div class="card" style="font-size:13px"><ul style="margin:0;padding-left:18px;line-height:1.9">
+      <li>MEN, Annuaire de l'éducation · version du 22/11/2026</li>
+      <li>MEN-DEPP, IPS des collèges · 2025-2026 · collecté le 22/11/2026</li>
+      <li>MEN-DEPP, Effectifs par niveau, sexe et langue des collèges · 2016 à 2025 · collecté le 03/10/2026</li>
+      <li>MEN-DEPP, Les personnels dans les établissements du second degré · 2025-2026 · collecté le 14/11/2026</li>
+    </ul></div>
+  </section>
+</main>
+<footer><div class="container">Observatoire citoyen de l'éducation en France · données publiques, sourcées et datées · ce site ne commente pas les chiffres</div></footer>
+
+<script>
+// liste fictive (en vrai : JSON précalculé du département)
+const R = [
+ ["Collège Albert-Camus","pub","Saint-Nazaire","REP",512,13.8,104.0,63,91.2],
+ ["Collège Anne-de-Bretagne","pri","Nantes","",690,16.3,null,68,128.9],
+ ["Collège Arthur-Rimbaud","pub","Saint-Herblain","REP+",402,12.1,82.4,59,78.5],
+ ["Collège de la Côte","pri","La Baule","",455,17.0,null,70,134.2],
+ ["Collège Jules-Verne","pub","Nantes","REP",590,14.8,118.0,64,92.4],
+ ["Collège La Fontaine","pub","Ancenis-Saint-Géréon","",610,14.9,101.6,61,104.7],
+ ["Collège Le Plateau","pub","Saint-Herblain","",688,14.6,97.5,60,97.2],
+ ["Collège Les Tilleuls","pub","Nantes","",512,13.9,92.8,62,101.3],
+ ["Collège Notre-Dame-du-Pont","pri","Nantes","",744,17.1,null,66,131.8],
+ ["Collège Rosa-Parks","pub","Rezé","REP",455,13.2,88.1,65,88.7],
+ ["Collège Saint-Exemple","pri","Nantes","",600,20.0,null,71,123.0],
+ ["Collège Sainte-Exemplaire","pri","Rezé","",530,16.4,null,67,118.4],
+];
+const f1=v=>v==null?'<span class="mute" style="font-family:var(--sans);font-size:12px">non publié pour le privé</span>':v.toLocaleString("fr-FR",{minimumFractionDigits:1,maximumFractionDigits:1});
+function draw(sel){
+  const rows=R.filter(r=>sel==="all"||r[1]===sel);
+  document.querySelector("#list tbody").innerHTML=rows.map(r=>`<tr><td><a href="#">${r[0]}</a></td><td><span class="sect ${r[1]}">${r[1]==="pub"?"Public":"Privé s. c."}</span></td><td>${r[2]}</td><td>${r[3]||'<span class="mute">—</span>'}</td><td class="n">${r[4]}</td><td class="n">${f1(r[5])}</td><td class="n" data-v="${r[6]??''}">${f1(r[6])}</td><td class="n">${r[7]} %</td><td class="n">${f1(r[8])}</td></tr>`).join("");
+  document.getElementById("count").textContent=`${rows.length} affichés sur 146 · tri par nom`;
+}
+draw("all");
+document.querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-f]").forEach(x=>x.classList.remove("on"));b.classList.add("on");draw(b.dataset.f);});
+
+// carte SVG fictive (en vrai : contours IGN + Plot au build)
+(function(){
+  const poly="M60,120 L120,60 L210,40 L300,30 L360,70 L380,140 L350,200 L300,230 L250,280 L170,290 L110,250 L70,200 Z";
+  let s=`<svg viewBox="0 0 420 320"><path d="${poly}" fill="var(--surface-2)" stroke="var(--line)" stroke-width="2"/>`;
+  s+=`<path d="M70,200 Q200,190 380,140" fill="none" stroke="var(--line)" stroke-width="3"/>`;
+  let seed=7; const rnd=()=>(seed=(seed*9301+49297)%233280)/233280;
+  for(let i=0;i<120;i++){ const cx=90+rnd()*260, cy=60+rnd()*210; const near=Math.hypot(cx-250,cy-190)<50;
+    const x=near?230+rnd()*45:cx, y=near?170+rnd()*40:cy; const pri=rnd()<0.42, r=2.5+rnd()*4;
+    s+= pri?`<circle cx="${x}" cy="${y}" r="${r}" fill="none" stroke="var(--pri)" stroke-width="1.8"/>`:`<circle cx="${x}" cy="${y}" r="${r}" fill="var(--pub)" fill-opacity=".8"/>`; }
+  s+=`<text x="262" y="215" font-size="11" fill="var(--muted)">Nantes</text><text x="72" y="190" font-size="11" fill="var(--muted)">Saint-Nazaire</text></svg>`;
+  document.getElementById("map").innerHTML=s;
+})();
+</script>
+<script src="obs.js"></script>
+</body>
+</html>

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fiche A4 — Collège Jules-Verne</title>
+<link rel="stylesheet" href="obs.css">
+<style>
+  @page { size:A4; margin:0; }
+  body { background:#d9dbe1; }
+  .intro { max-width:210mm; margin:20px auto 10px; }
+  .sheet { width:210mm; min-height:297mm; margin:0 auto 40px; background:#fff; color:#111; padding:11mm 12mm 9mm; box-shadow:0 10px 40px rgba(0,0,0,.18);
+    font:8.6pt/1.35 var(--sans); display:flex; flex-direction:column; gap:3.2mm; }
+  .sheet .num, .sheet td.n { font-family:var(--mono); font-variant-numeric:tabular-nums; }
+  .hd { display:grid; grid-template-columns:1fr auto; gap:6mm; align-items:start; border-bottom:1.2pt solid #111; padding-bottom:2.5mm; }
+  .hd .t { font-size:16pt; font-weight:700; letter-spacing:-.02em; line-height:1.1; }
+  .hd .m { margin-top:1.2mm; color:#333; }
+  .hd .m b { font-weight:600; }
+  .qr { width:19mm; height:19mm; background:
+      conic-gradient(from 90deg at 30% 30%, #111 25%, #fff 0) 0 0/4.75mm 4.75mm; border:1.5mm solid #fff; outline:.3mm solid #111; }
+  .qrw { display:flex; gap:2.5mm; align-items:center; font-size:7pt; color:#444; text-align:right; }
+  .sheet h3 { font-size:7.4pt; text-transform:uppercase; letter-spacing:.08em; margin:0 0 1.2mm; color:#444; font-weight:700; }
+  .sheet table { width:100%; border-collapse:collapse; font-size:8.2pt; }
+  .sheet th { font-size:7pt; color:#555; font-weight:600; padding:.9mm 1.2mm; border-bottom:.6pt solid #111; text-align:right; white-space:nowrap; }
+  .sheet th:first-child, .sheet td:first-child { text-align:left; }
+  .sheet td { padding:.8mm 1.2mm; border-bottom:.3pt solid #ccc; text-align:right; }
+  .sheet td.me { font-weight:700; background:#f2f2f2; }
+  .sheet .grp th { border-bottom:0; padding-bottom:0; text-align:center; }
+  .sheet sup { font-size:6pt; color:#555; }
+  .np { font-family:var(--sans) !important; font-size:7pt; color:#555; font-style:italic; }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:5mm; }
+  .sym { display:inline-block; width:2.2mm; height:2.2mm; margin-right:1mm; vertical-align:0; }
+  .sym.pub { background:#6e56f8; border-radius:50%; }
+  .sym.pri { border:.55mm solid #c48a10; border-radius:50%; width:1.3mm; height:1.3mm; }
+  .ft { margin-top:auto; border-top:.6pt solid #111; padding-top:2mm; font-size:7pt; color:#333; display:grid; gap:.8mm; }
+  .ft ol { margin:0; padding-left:4mm; }
+  .bar { display:flex; height:3mm; border:.3pt solid #111; }
+  .bar span { display:block; height:100%; border-right:.3pt solid #fff; }
+  @media print { body { background:#fff; } .intro { display:none; } .sheet { box-shadow:none; margin:0; } }
+</style>
+</head>
+<body>
+<div class="intro note">Maquette 5 · rendu imprimé de la fiche (le site produit ce rendu par une feuille de style d'impression sur la même page : pas d'URL ni de PDF séparés). Essaie ⌘P pour voir le vrai résultat. Chiffres fictifs.</div>
+
+<div class="sheet">
+  <div class="hd">
+    <div>
+      <div class="t">Collège Jules-Verne</div>
+      <div class="m"><b>Public</b> · Collège · REP · SEGPA · ULIS · UAI <span class="num">0440001A</span></div>
+      <div class="m">12 rue de l'Exemple, 44000 Nantes · Loire-Atlantique (44) · Académie de Nantes</div>
+    </div>
+    <div class="qrw"><div>Fiche éditée le 23/11/2026<br>observatoireeducation.fr/<br>etablissement/0440001A/</div><div class="qr" aria-label="QR code vers la page"></div></div>
+  </div>
+
+  <div>
+    <h3>Indicateurs, comparés aux moyennes des collèges</h3>
+    <table>
+      <thead>
+        <tr class="grp"><th></th><th></th><th colspan="2">Loire-Atlantique</th><th colspan="2">Académie de Nantes</th><th colspan="2">France</th></tr>
+        <tr><th>Indicateur · rentrée 2025</th><th>Établissement</th><th><span class="sym pub"></span>public</th><th><span class="sym pri"></span>privé s. c.</th><th><span class="sym pub"></span>public</th><th><span class="sym pri"></span>privé s. c.</th><th><span class="sym pub"></span>public</th><th><span class="sym pri"></span>privé s. c.</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Élèves <sup>[2]</sup></td><td class="n me">590</td><td class="n" colspan="6" style="text-align:left;color:#555;font-family:var(--sans)">2021 : 612 · 2022 : 604 · 2023 : 598 · 2024 : 600</td></tr>
+        <tr><td>Part de filles <sup>[2]</sup></td><td class="n me">49,2 %</td><td class="n">49,1 %</td><td class="n">50,4 %</td><td class="n">49,0 %</td><td class="n">50,6 %</td><td class="n">49,3 %</td><td class="n">50,8 %</td></tr>
+        <tr><td>IPS <sup>[3]</sup></td><td class="n me">92,4</td><td class="n">106,4</td><td class="n">121,4</td><td class="n">104,0</td><td class="n">120,0</td><td class="n">99,9</td><td class="n">118,5</td></tr>
+        <tr><td>Écart-type de l'IPS <sup>[3]</sup></td><td class="n me">25,1</td><td class="n" colspan="6"></td></tr>
+        <tr><td>Élèves par ETP enseignant <sup>[4]</sup></td><td class="n me">14,8</td><td class="n">14,1</td><td class="n">15,9</td><td class="n">14,3</td><td class="n">16,0</td><td class="n">14,0</td><td class="n">16,2</td></tr>
+        <tr><td>Élèves par ETP vie scolaire <sup>[4]</sup></td><td class="n me">118,0</td><td class="n">96,3</td><td class="n np">non publié</td><td class="n">98,1</td><td class="n np">non publié</td><td class="n">101,4</td><td class="n np">non publié</td></tr>
+        <tr><td>Enseignantes (part des ETP) <sup>[4]</sup></td><td class="n me">64 %</td><td class="n">62 %</td><td class="n">66 %</td><td class="n">61 %</td><td class="n">66 %</td><td class="n">60 %</td><td class="n">65 %</td></tr>
+        <tr><td>Enseignants non titulaires <sup>[4]</sup></td><td class="n me">10,0 %</td><td class="n">7,2 %</td><td class="n">9,8 %</td><td class="n">6,9 %</td><td class="n">10,1 %</td><td class="n">8,4 %</td><td class="n">11,0 %</td></tr>
+        <tr><td>Agrégés <sup>[4]</sup></td><td class="n me">8 %</td><td class="n">11 %</td><td class="n">6 %</td><td class="n">11 %</td><td class="n">6 %</td><td class="n">12 %</td><td class="n">7 %</td></tr>
+        <tr><td>Enseignants de moins de 35 ans <sup>[4]</sup></td><td class="n me">30 %</td><td class="n">22 %</td><td class="n">18 %</td><td class="n">21 %</td><td class="n">18 %</td><td class="n">21 %</td><td class="n">17 %</td></tr>
+        <tr><td>Enseignants de 50 ans ou plus <sup>[4]</sup></td><td class="n me">24 %</td><td class="n">30 %</td><td class="n">35 %</td><td class="n">31 %</td><td class="n">35 %</td><td class="n">32 %</td><td class="n">37 %</td></tr>
+        <tr><td>Arrivés depuis moins de 2 ans <sup>[4]</sup></td><td class="n me">20,0 %</td><td class="n">16,4 %</td><td class="n">12,1 %</td><td class="n">15,8 %</td><td class="n">12,9 %</td><td class="n">18,2 %</td><td class="n">13,4 %</td></tr>
+        <tr><td>Présents depuis 8 ans ou plus <sup>[4]</sup></td><td class="n me">28 %</td><td class="n">37 %</td><td class="n">45 %</td><td class="n">36 %</td><td class="n">44 %</td><td class="n">37 %</td><td class="n">45 %</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="two">
+    <div>
+      <h3>Élèves par niveau <sup>[2]</sup></h3>
+      <table>
+        <thead><tr><th>Niveau</th><th>Élèves</th><th>Filles</th><th>Garçons</th><th>dont SEGPA</th><th>dont ULIS</th></tr></thead>
+        <tbody>
+          <tr><td>6e</td><td class="n">150</td><td class="n">76</td><td class="n">74</td><td class="n">12</td><td class="n">3</td></tr>
+          <tr><td>5e</td><td class="n">148</td><td class="n">70</td><td class="n">78</td><td class="n">12</td><td class="n">3</td></tr>
+          <tr><td>4e</td><td class="n">146</td><td class="n">75</td><td class="n">71</td><td class="n">12</td><td class="n">3</td></tr>
+          <tr><td>3e</td><td class="n">146</td><td class="n">69</td><td class="n">77</td><td class="n">12</td><td class="n">3</td></tr>
+          <tr><td><b>Total</b></td><td class="n"><b>590</b></td><td class="n">290</td><td class="n">300</td><td class="n">48</td><td class="n">12</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <h3>Personnels <sup>[4]</sup></h3>
+      <table>
+        <tbody>
+          <tr><td>ETP total</td><td class="n">52,0</td></tr>
+          <tr><td>ETP enseignants</td><td class="n">40,0</td></tr>
+          <tr><td>ETP vie scolaire</td><td class="n">5,0</td></tr>
+          <tr><td>ETP enseignants non titulaires</td><td class="n">4,0</td></tr>
+          <tr><td>LV1 anglais / LV2 espagnol <sup>[2]</sup></td><td class="n">97 % / 71 %</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div>
+    <h3>Établissements voisins (6 plus proches à moins de 30 km, par distance) <sup>[1–4]</sup></h3>
+    <table>
+      <thead><tr><th>Établissement</th><th>Secteur</th><th>Commune</th><th>UAI</th><th>Distance</th><th>Élèves</th><th>Élèves / ETP ens.</th><th>IPS</th></tr></thead>
+      <tbody>
+        <tr><td>Collège Saint-Exemple</td><td style="text-align:left"><span class="sym pri"></span>privé s. c.</td><td style="text-align:left">Nantes</td><td class="n">0440002B</td><td class="n">0,8 km</td><td class="n">600</td><td class="n">20,0</td><td class="n">123,0</td></tr>
+        <tr><td>Collège Les Tilleuls</td><td style="text-align:left"><span class="sym pub"></span>public</td><td style="text-align:left">Nantes</td><td class="n">0440011K</td><td class="n">1,9 km</td><td class="n">512</td><td class="n">13,9</td><td class="n">101,3</td></tr>
+        <tr><td>Collège Notre-Dame-du-Pont</td><td style="text-align:left"><span class="sym pri"></span>privé s. c.</td><td style="text-align:left">Nantes</td><td class="n">0440012L</td><td class="n">2,4 km</td><td class="n">744</td><td class="n">17,1</td><td class="n">131,8</td></tr>
+        <tr><td>Collège Rosa-Parks</td><td style="text-align:left"><span class="sym pub"></span>public</td><td style="text-align:left">Rezé</td><td class="n">0440013M</td><td class="n">3,1 km</td><td class="n">455</td><td class="n">13,2</td><td class="n">88,7</td></tr>
+        <tr><td>Collège Le Plateau</td><td style="text-align:left"><span class="sym pub"></span>public</td><td style="text-align:left">Saint-Herblain</td><td class="n">0440014N</td><td class="n">4,6 km</td><td class="n">688</td><td class="n">14,6</td><td class="n">97,2</td></tr>
+        <tr><td>Collège Sainte-Exemplaire</td><td style="text-align:left"><span class="sym pri"></span>privé s. c.</td><td style="text-align:left">Rezé</td><td class="n">0440015P</td><td class="n">5,0 km</td><td class="n">530</td><td class="n">16,4</td><td class="n">118,4</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="ft">
+    <div><b>Sources</b> (Licence Ouverte Etalab ; versions archivées et téléchargeables sur la page « Sources ») :</div>
+    <ol>
+      <li>MEN, Annuaire de l'éducation · version du 22/11/2026.</li>
+      <li>MEN-DEPP, Effectifs d'élèves par niveau, sexe et langue des collèges · rentrée 2025-2026 · collecté le 03/10/2026.</li>
+      <li>MEN-DEPP, Indices de position sociale des collèges · rentrée 2025-2026 · collecté le 22/11/2026 · moyennes publiées par la DEPP.</li>
+      <li>MEN-DEPP, Les personnels dans les établissements du second degré · 2025-2026 · collecté le 14/11/2026 · moyennes calculées (Σ / Σ).</li>
+    </ol>
+    <div>« non publié » : la DEPP ne publie pas les ETP de vie scolaire des établissements privés sous contrat. Ce document ne contient aucun commentaire : il reproduit des données publiques. Méthode : observatoireeducation.fr/methode/</div>
+  </div>
+</div>
+</body>
+</html>
