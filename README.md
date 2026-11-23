@@ -69,6 +69,10 @@ Configuration dans `observatoire.config.json` :
 
 La collecte tourne ensuite chaque nuit à 2 h 17 UTC. Une nuit sans changement de source enregistre seulement le journal, sans reconstruire le site.
 
+## Contact
+
+contact@observatoireeducation.fr
+
 ## Licences
 
 - Code : AGPL-3.0 (`LICENSE`).
