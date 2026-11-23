@@ -3,10 +3,12 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { CodeIndicateur, CodeRepartition } from "@obs/shared/libelles";
-import type { Indicateur, Repartition, SourceId } from "@obs/shared/types";
+import type { Identite, Indicateur, Repartition, SourceId } from "@obs/shared/types";
+import { Manifest } from "../pipeline/src/archive.ts";
 import { type Db, ouvrir } from "../pipeline/src/db.ts";
 import { connexion, executer, ident, lignes, litteral } from "../pipeline/src/duck.ts";
 import { calculerIndicateurs, calculerRepartitions } from "../pipeline/src/indicateurs.ts";
+import type { Registre } from "../pipeline/src/registre.ts";
 import { SOURCES } from "../pipeline/src/sources.ts";
 
 export const FIXTURES = join(import.meta.dir, "fixtures");
@@ -61,4 +63,33 @@ export async function repart(uai: string, code: CodeRepartition): Promise<Repart
 export async function repartitionsDe(uai: string): Promise<Repartition[]> {
   repartitions ??= dbTest().then(calculerRepartitions);
   return (await repartitions).get(uai) ?? [];
+}
+
+// --- Manifest et registre de test (tâche 7) ---
+
+/** Manifest avec une version fictive par source, collectée le 22/11/2026. */
+export function manifestTest(dossier: string): Manifest {
+  const m = Manifest.lire(join(dossier, "manifest.json"));
+  for (const s of Object.values(SOURCES)) {
+    m.ajouter(s.id, {
+      sha256: `${s.id}`.padEnd(64, "0"), tag: `archives-${s.id}-2026`, fichier: `${s.id}.parquet`,
+      url: `https://github.com/org/depot/releases/download/archives-${s.id}-2026/${s.id}.parquet`,
+      modified: "2026-11-01T00:00:00Z", collecteLe: "2026-11-22T02:17:00Z", lignes: 10,
+    });
+  }
+  return m;
+}
+
+/** Identité minimale d'un collège public de Loire-Atlantique, pour peupler un registre de test. */
+export function identiteTest(nom: string, lat: number | null = 47.2, lon: number | null = -1.55): Identite {
+  return {
+    nom, famille: "college", secteur: "public", contrat: null, adresse: "1 rue Disparue", codePostal: "44000",
+    commune: "Nantes", codeCommune: "44109", dep: "44", depLibelle: "Loire-Atlantique", aca: "17", acaLibelle: "Nantes",
+    ep: null, segpa: false, ulis: false, internat: false, lat, lon, autresSites: [],
+  };
+}
+
+/** Base distincte de dbTest(), ouverte avec un registre. */
+export async function dbAvecRegistre(registre: Registre): Promise<Db> {
+  return ouvrir(await cheminsFixtures(await mkdtemp(join(tmpdir(), "obs-registre-"))), { registre });
 }

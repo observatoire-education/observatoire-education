@@ -28,7 +28,7 @@ function sexe(composantes: Composante[], cle: "filles" | "garcons"): string {
 
 const uai = (j: DefJeu) => `upper(trim(${ident(j.uai)}))`;
 const rentree = (j: DefJeu) => `rentree(${ident(j.rentree)})`;
-const perimetre = "where uai in (select uai from etablissements) and rentree is not null";
+const perimetre = "where uai in (select uai from fiches_etab) and rentree is not null";
 
 function selectNiveaux(j: DefJeu): string[] {
   return j.niveaux.map(

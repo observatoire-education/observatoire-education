@@ -162,7 +162,7 @@ select r.*, list_count(cats) = len(cats) and list_sum(cats) > 0
   and coalesce(couverture, 100) >= ${SEUIL_COUVERTURE} as valide
 from (
   ${DEF_REPARTITIONS.map((d) => `select ${litteral(d.code)} as code, * from (${d.sql})${
-    d.familles ? ` where uai in (select uai from etablissements where famille in (${d.familles.map(litteral).join(", ")}))` : ""
+    d.familles ? ` where uai in (select uai from fiches_etab where famille in (${d.familles.map(litteral).join(", ")}))` : ""
   }`).join("\n  union all\n  ")}
 ) r;
 
@@ -200,7 +200,7 @@ const absente = (statut: Mesure["statut"] = "non_disponible", rentree: number | 
 });
 
 async function etablissements(db: Db): Promise<Etab[]> {
-  return db.sql<Etab>("select uai, famille, secteur, dep, aca from etablissements order by uai");
+  return db.sql<Etab>("select uai, famille, secteur, dep, aca from fiches_etab order by uai");
 }
 
 /** Dernière rentrée disponible par code (pour situer un établissement sans donnée). */

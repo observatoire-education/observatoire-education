@@ -109,8 +109,8 @@ export interface SourceRef {
   brutUrl: string;
 }
 
-export interface Fiche {
-  uai: string;
+/** Identité d'un établissement (annuaire, site principal). Conservée au registre des pages. */
+export interface Identite {
   nom: string;
   famille: Famille;
   secteur: Secteur;
@@ -129,10 +129,14 @@ export interface Fiche {
   internat: boolean;
   lat: number | null;
   lon: number | null;
-  /** Date ISO de dernière présence dans l'annuaire si l'établissement a disparu. */
-  disparuLe: string | null;
-  /** Autres sites de la même UAI (le site principal est décrit par la fiche elle-même). */
+  /** Autres sites de la même UAI (le site principal est décrit par l'identité elle-même). */
   autresSites: Site[];
+}
+
+export interface Fiche extends Identite {
+  uai: string;
+  /** Date ISO de la première collecte où l'établissement n'apparaissait plus dans le périmètre. */
+  disparuLe: string | null;
   indicateurs: Indicateur[];
   repartitions: Repartition[];
   eleves: Eleves | null;

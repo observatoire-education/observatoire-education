@@ -673,6 +673,13 @@ test("part de filles", async () => { expect((await indic("0440001A", "part_fille
 - **`sources` d'une fiche :** les seules sources réellement utilisées. `brutUrl` reprend l'`url` de la `Version`.
 - **Distribution des IPS :** classes de 5 points, de 60 à 160.
 
+**Mise en œuvre et écarts (tâche 7, 2026-11-23) :**
+- **Registre des pages allégé.** Le plan stockait la fiche complète de chaque UAI dans `archives/registre-pages.json` (versionné) : environ 11 000 × 20 Ko, soit plus de 200 Mo dans un seul fichier, au-delà de la limite de 100 Mo de GitHub et contraire au principe d'un dépôt léger. Le registre ne garde donc que `{ premiere, identite, disparuLe? }` par UAI (type `Identite` de `shared/src/types.ts`, dont `Fiche` hérite) : 4,8 Mo, une ligne par UAI, stable d'une nuit à l'autre si rien ne change.
+- **Page conservée** : une UAI du registre absente du périmètre est chargée dans la table `disparus` (via `ouvrir(chemins, { registre })`) et entre dans la vue `fiches_etab`. Ses statistiques sont calculées à partir des sources, qui gardent l'historique (IPS depuis 2023, effectifs depuis 2019) ; son identité vient du registre. Elle n'a pas de voisins, n'est voisine de personne, n'entre ni dans les moyennes ni dans les références, ni dans les listes et comptes des départements ; elle reste dans `index.json` avec `x: 1`.
+- **`disparuLe`** = date de la première collecte où l'UAI est absente (cohérent avec « n'apparaît plus … depuis le … »). Les dates du registre sont celles des données (collecte de l'annuaire), pas celle du build.
+- `exporter(fiches, db, manifest, sortie)` prend le manifest (pour `sources.json`). Les formats des fichiers de `site/data/` sont typés dans `shared/src/donnees.ts` (`EntreeIndex`, `DonneesDepartement`, `DonneesFrance`, `DonneesSource`…). `DonneesDepartement.familles[f].moyennes` est une liste de `{ code, comparaisons }`.
+- Données réelles : 11 221 fiches en 3,2 s (collecte exclue) ; environ 20 Ko de JSON par fiche (4 Ko compressé), 235 Mo pour `site/data/fiches` (hors dépôt, `.gitignore`) ; `index.json` 1,2 Mo ; 101 départements.
+
 - [ ] **Step 1 : écrire les tests qui doivent échouer**
 
 ```ts

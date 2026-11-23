@@ -87,6 +87,17 @@ order by uai;
 create or replace table exclus as
 select uai, motif from classement where motif is not null order by uai;
 
+-- Pages conservées : UAI du registre absentes du périmètre actuel.
+create or replace table disparus as
+select * from registre where uai not in (select uai from etablissements) order by uai;
+
+-- Établissements qui ont une fiche : actifs et disparus. Les statistiques sont calculées pour eux tous ;
+-- les moyennes, les références et le voisinage ne portent que sur les actifs (table etablissements).
+create or replace view fiches_etab as
+select uai, famille, secteur, dep, aca, false as disparu from etablissements
+union all
+select uai, famille, secteur, dep, aca, true from disparus;
+
 -- IPS : collèges et lycées ; pour un lycée, les moyennes publiées de sa famille (LEGT, LPO ou LP).
 create or replace table ips as
 with brut as (
@@ -125,7 +136,7 @@ with brut as (
   from src_ips_lycees
 )
 select * from brut
-where rentree is not null and uai in (select uai from etablissements)
+where rentree is not null and uai in (select uai from fiches_etab)
 order by uai, rentree;
 
 -- Personnels : volumes en ETP ; une valeur vide reste null (jamais 0).
@@ -151,5 +162,5 @@ select
   nombre(etp_d_enseignants_ayant_une_anciennete_dans_l_etablissement_de_8_ans_ou_plus) as etp_anc_8_plus
 from src_personnels
 where rentree(annee_de_la_rentree_scolaire) is not null
-  and upper(trim(uai)) in (select uai from etablissements)
+  and upper(trim(uai)) in (select uai from fiches_etab)
 order by uai, rentree;

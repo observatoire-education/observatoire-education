@@ -2,22 +2,13 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import type { DuckDBConnection } from "@duckdb/node-api";
+import type { VersionSource } from "@obs/shared/donnees";
 import type { SourceId } from "@obs/shared/types";
 import { lignes, litteral } from "./duck.ts";
 import type { Source } from "./sources.ts";
 
 /** Une version d'une source, publiée comme fichier joint d'une GitHub Release. */
-export interface Version {
-  sha256: string;
-  tag: string;
-  fichier: string;
-  /** URL permanente de téléchargement (« donnée brute »). */
-  url: string;
-  /** Date de modification annoncée par le portail. */
-  modified: string;
-  collecteLe: string;
-  lignes: number;
-}
+export type Version = VersionSource;
 
 interface Contenu {
   versions: Partial<Record<SourceId, Version[]>>;

@@ -6,6 +6,7 @@ import { connexion, litteral } from "./duck.ts";
 import { sqlEleves } from "./eleves.ts";
 import { sqlIndicateurs } from "./indicateurs.ts";
 import { macrosSql } from "./normalise.ts";
+import type { Registre } from "./registre.ts";
 
 export interface Db {
   sql<T = Record<string, unknown>>(q: string, params?: unknown[]): Promise<T[]>;
@@ -30,13 +31,40 @@ async function executerScript(c: DuckDBConnection, sql: string): Promise<void> {
   for (let i = 0; i < instructions.count; i++) await (await instructions.prepare(i)).run();
 }
 
-export async function ouvrir(chemins: Record<SourceId, string>, etapes = ETAPES): Promise<Db> {
+export interface OptionsOuverture {
+  /** Registre des pages : ses UAI absentes du périmètre deviennent des pages « disparues ». */
+  registre?: Registre;
+  etapes?: Etape[];
+}
+
+/** Table `registre` (uai, famille, secteur, dep, aca, disparu_le), créée avant les étapes. */
+async function chargerRegistre(c: DuckDBConnection, registre: Registre): Promise<void> {
+  const lignes = Object.entries(registre).map(([uai, e]) => ({
+    uai, famille: e.identite.famille, secteur: e.identite.secteur, dep: e.identite.dep, aca: e.identite.aca,
+    disparu_le: e.disparuLe ?? null,
+  }));
+  await c.run(
+    `create or replace table registre as
+     select unnest(from_json($1::json,
+       '[{"uai":"VARCHAR","famille":"VARCHAR","secteur":"VARCHAR","dep":"VARCHAR","aca":"VARCHAR","disparu_le":"VARCHAR"}]'),
+       recursive := true)`,
+    [JSON.stringify(lignes)],
+  );
+  if (lignes.length === 0) {
+    await c.run(`create or replace table registre (uai varchar, famille varchar, secteur varchar, dep varchar,
+      aca varchar, disparu_le varchar)`);
+  }
+}
+
+export async function ouvrir(chemins: Record<SourceId, string>, opts: OptionsOuverture = {}): Promise<Db> {
+  const etapes = opts.etapes ?? ETAPES;
   const c = await connexion(null);
   const vues = Object.entries(chemins)
     .map(([id, chemin]) => `create or replace view src_${id} as select * from read_parquet(${litteral(chemin)});`)
     .join("\n");
   await executerScript(c, vues);
   await executerScript(c, macrosSql());
+  await chargerRegistre(c, opts.registre ?? {});
 
   const db: Db = {
     async sql<T>(q: string, params?: unknown[]) {
