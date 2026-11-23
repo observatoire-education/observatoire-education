@@ -925,6 +925,14 @@ test("CNAME et noindex", () => { /* DOMAINE vide -> pas de CNAME ; INDEXABLE fal
     - l'IPS d'un collège privé ;
     - le ratio élèves par ETP de vie scolaire d'un collège public, comparé au dépôt AED ;
     - la part de filles en 6e d'un collège.
+**Mise en œuvre et résultats (tâche 11, 2026-11-23) :**
+- `scripts/garde-fous.ts` exporte `verifierDist` et `ecrireFichiersHebergement` (CNAME si `DOMAINE`, `robots.txt` selon `INDEXABLE`) ; en ligne de commande, `bun scripts/garde-fous.ts [dist]` échoue au-delà des limites.
+- Le test anti-palmarès a révélé un trou : l'aide `texte()` collait le texte d'éléments voisins (« Sans classement » + « On compare » → « classementOn »), si bien que le mot n'était pas détecté. Corrigé (une espace sépare les éléments). **Écart à la maquette** : le principe « Sans classement » de l'accueil devient « Sans palmarès », pour respecter la règle « aucune page ne contient classement, rang, top… ».
+- Contrôles ajoutés : titre, `lang="fr"` et pied de page des licences sur chaque page ; aucune ressource tierce chargée par les pages.
+- Couverture : 97,5 % des lignes ; chaque fichier de `pipeline/src` et `shared/src` au-dessus de 83 %.
+- Build complet réel (données + site + garde-fous) : **52 s** ; `dist/` 518 Mo, 11 440 fichiers ; 11 221 fiches actives.
+- Quatre valeurs contrôlées à la source (API data.education.gouv.fr et dépôt AED) : IPS du collège public Aristide-Briand (0440049P) 106,2 et moyenne départementale publique 108,5 ; IPS du collège privé Blanche-de-Castille (0441932L) 146,7 ; ETP de vie scolaire d'Aristide-Briand 5,0 (identique au dépôt AED, rentrée 2024), d'où 94,8 élèves par ETP pour 474 élèves en 2025 ; 6e d'Aristide-Briand : 117 élèves, 51 filles, 66 garçons (43,6 % de filles). Toutes identiques.
+
 - [ ] **Step 6 :** commit `feat: contrôles transverses et build complet`.
 
 ---

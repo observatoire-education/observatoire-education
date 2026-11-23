@@ -25,7 +25,7 @@ const departements = france.academies.flatMap((a) => a.departements.map((d) => (
 const millions = (n: number) => (n >= 1e6 ? `${(n / 1e6).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} M` : entier(n));
 const derniereCollecte = sources[0]?.actuelle?.collecteLe;
 ---
-<Base titre="Accueil" chemin="/" description="Les chiffres publics de chaque collège et lycée de France, public et privé sous contrat : sourcés, datés, sans classement.">
+<Base titre="Accueil" chemin="/" description="Les chiffres publics de chaque collège et lycée de France, public et privé sous contrat : sourcés, datés, sans palmarès.">
   <div class="hero">
     <h1>Les chiffres publics de chaque collège et lycée de France.</h1>
     <p>Élèves, personnels et composition sociale des {entier(actifs)} établissements publics et privés sous contrat, situés par rapport aux moyennes de leur département, de leur académie et de la France. Chaque chiffre indique sa source et son millésime.</p>
@@ -69,7 +69,7 @@ const derniereCollecte = sources[0]?.actuelle?.collecteLe;
       <h2>Principes</h2>
       <div class="principles">
         <div class="card"><b>Sourcé et daté</b>Chaque chiffre renvoie à sa source, son millésime et la donnée brute archivée.</div>
-        <div class="card"><b>Sans classement</b>On compare à des moyennes ; aucun établissement n'est noté.</div>
+        <div class="card"><b>Sans palmarès</b>On compare à des moyennes ; aucun établissement n'est noté.</div>
         <div class="card"><b>Absences dites</b>« Non publié pour le privé » n'est jamais remplacé par un zéro.</div>
         <div class="card"><b>Imprimable</b>Chaque fiche tient sur une page A4, avec ses sources.</div>
       </div>

@@ -54,9 +54,13 @@ export const octets = (chemin: string): number => statSync(fichierDe(chemin)).si
 
 export const doc = (chemin: string) => parseHTML(page(chemin)).document;
 
-/** Texte visible d'une page (sans scripts ni styles), espaces normalisés. */
+/**
+ * Texte visible d'une page (sans scripts ni styles), espaces normalisés. Une espace sépare le texte
+ * de deux éléments voisins (« Sans classement » puis « On compare » ne doivent pas se coller).
+ */
 export function texte(chemin: string): string {
   const d = doc(chemin);
   for (const n of d.querySelectorAll("script, style")) n.remove();
-  return (d.body?.textContent ?? "").replace(/\s+/g, " ");
+  const espace = parseHTML(`<!doctype html><html><body>${(d.body?.innerHTML ?? "").replace(/</g, " <")}</body></html>`).document;
+  return (espace.body?.textContent ?? "").replace(/\s+/g, " ").trim();
 }

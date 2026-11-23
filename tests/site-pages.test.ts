@@ -58,7 +58,7 @@ describe("accueil et recherche", () => {
     expect(t).toContain("Les chiffres publics de chaque collège et lycée de France.");
     expect(t).toContain("Nantes");
     expect([...d.querySelectorAll(".acad b")].some((b) => b.textContent!.includes("Nantes") && !b.querySelector("a"))).toBe(true);
-    expect(t).toContain("Sans classement");
+    expect(t).toContain("Sans palmarès");
     expect(t).toContain("non couvert par les statistiques publiques");
   });
 

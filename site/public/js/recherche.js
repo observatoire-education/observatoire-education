@@ -39,7 +39,7 @@
     if (!termes.length) { res.classList.remove("open"); res.innerHTML = ""; return; }
     if (!index) { res.innerHTML = '<div class="grp">Chargement de l’index…</div>'; res.classList.add("open"); charger(); return; }
     var ok = function (k) { return termes.every(function (m) { return k.indexOf(m) >= 0; }); };
-    // Pertinence de la recherche (pas un classement des établissements) : d'abord les termes trouvés
+    // Pertinence de la recherche (pas un ordre de valeur des établissements) : d'abord les termes trouvés
     // en début de mot, puis l'ordre alphabétique.
     var debuts = termes.map(function (m) { return new RegExp("(^|[\\s\\-'’])" + m.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")); });
     var score = function (k) { return debuts.filter(function (r) { return r.test(k); }).length; };
