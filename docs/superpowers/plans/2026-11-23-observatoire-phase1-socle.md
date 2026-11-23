@@ -10,7 +10,7 @@
 - `site` (Astro, sortie statique) génère le HTML à partir de ces JSON. Les graphiques Observable Plot sont rendus en SVG au build.
 - GitHub Actions enchaîne le tout chaque nuit et déploie sur GitHub Pages.
 
-**Tech stack :** Bun ≥ 1.4 (testé avec 1.4.5), TypeScript, `@duckdb/node-api` 2.0.x, Astro 7.4.x, `@observablehq/plot` 0.6.x et `linkedom` (rendu SVG au build), `qrcode` 1.5.x, `maplibre-gl` 6.x (carte au clic), `bun test`.
+**Tech stack :** Bun ≥ 1.4 (testé avec 1.4.5), TypeScript, `@duckdb/node-api` 2.0.1-r.1 (version épinglée : le suffixe `-r.N` échappe à `^2.0.1`), Astro 7.4.x, `@observablehq/plot` 0.6.x et `linkedom` (rendu SVG au build), `qrcode` 1.5.x, `maplibre-gl` 6.x (carte au clic), `bun test`.
 
 **Spec :**
 - `docs/superpowers/specs/2026-11-23-observatoire-citoyen-education-design.md`, la spec produit ;
@@ -194,7 +194,7 @@ export interface Fiche { uai: string; nom: string; famille: Famille; secteur: Se
 - [ ] **Step 1 :** `bun --version` doit afficher ≥ 1.4.
   - Le dépôt git existe déjà (`git init` fait, aucun commit).
   - Créer les quatre `package.json`. La racine porte `"workspaces": ["shared","pipeline","site"]` et les scripts `collect`, `data`, `build` et `test` (`bun test`).
-  - Ajouter `@duckdb/node-api@^2.0.1` à `pipeline` ; `astro@^7.4`, `@observablehq/plot@^0.6.19`, `linkedom@^0.18`, `qrcode@^1.5` et `maplibre-gl@^6` à `site`.
+  - Ajouter `@duckdb/node-api@2.0.1-r.1` à `pipeline`, et `@obs/shared` (`workspace:*`) aux dépendances de la racine (Bun 1.4 isole les espaces de travail ; les tests vivent à la racine) ; `astro@^7.4`, `@observablehq/plot@^0.6.19`, `linkedom@^0.18`, `qrcode@^1.5` et `maplibre-gl@^6` à `site`.
   - Inclure `docs/` dans le premier commit.
 - [ ] **Step 2 : écrire les tests qui doivent échouer**
 
