@@ -1,0 +1,46 @@
+---
+// Barres empilées à 100 % en HTML/CSS : rampe de gris neutre (la couleur reste réservée au secteur),
+// une ligne pour l'établissement, puis les références ; hachures pour une absence.
+import { nombre } from "@obs/shared/format";
+import { LIBELLES } from "@obs/shared/libelles";
+import type { Repartition } from "@obs/shared/types";
+import { texteCouverture } from "../lib/affichage";
+
+interface Props { r: Repartition; titre?: string; france?: boolean }
+const { r, titre, france = true } = Astro.props;
+// Teintes en classes CSS (.t{n}-{i} dans obs.css) : pas de style répété dans chaque page.
+const n = r.categories.length;
+const teinte = (i: number) => `t${n}-${i}`;
+const largeur = (p: number) => `width:${Math.round(p * 100) / 100}%`;
+const ref = (niveau: "departement" | "france", secteur: "public" | "prive_sous_contrat") =>
+  r.references.find((x) => x.niveau === niveau && x.secteur === secteur)!;
+const lignes = [
+  { l: "Cet établissement", k: "me", parts: r.parts, na: r.statut === "ok" ? null : (texteCouverture(r) ?? LIBELLES.nonDisponible) },
+  { l: "Dép. public", k: "pub", parts: ref("departement", "public").parts, na: LIBELLES.nonDisponible },
+  { l: "Dép. privé s. c.", k: "pri", parts: ref("departement", "prive_sous_contrat").parts, na: LIBELLES.nonDisponible },
+  ...(france ? [
+    { l: "France public", k: "pub", parts: ref("france", "public").parts, na: LIBELLES.nonDisponible },
+    { l: "France privé s. c.", k: "pri", parts: ref("france", "prive_sous_contrat").parts, na: LIBELLES.nonDisponible },
+  ] : []),
+];
+const couverture = r.statut === "ok" ? texteCouverture(r) : null;
+---
+{titre && <div class="mute" style="font-size:13px;margin-top:10px">{titre}</div>}
+<div class="stk">
+  {lignes.map((ligne) => (
+    <div class={`stk-row${ligne.k === "me" ? " me" : ""}`}>
+      <div class="stk-l"><i class={`mk ${ligne.k}`}></i>{ligne.l}</div>
+      <div class="stk-bar">
+        {ligne.parts
+          ? ligne.parts.map((p, i) => (
+              <span class={teinte(i)} style={largeur(p)} title={`${r.categories[i]} : ${nombre(p, 0)} %`}>{p >= 9 ? nombre(p, 0) : ""}</span>
+            ))
+          : <span class="stk-na">{ligne.na}</span>}
+      </div>
+    </div>
+  ))}
+</div>
+<div class="stk-leg">
+  {r.categories.map((c, i) => <span><i class={teinte(i)}></i>{c}</span>)}
+</div>
+{couverture && <span class="couv">Établissement : {couverture}.</span>}

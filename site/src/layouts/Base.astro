@@ -1,0 +1,46 @@
+---
+// Gabarit commun : en-tête, pied de page, thème, référencement contrôlé par INDEXABLE.
+import { LIBELLES } from "@obs/shared/libelles";
+import { CONFIG, NOM_SITE } from "../lib/config";
+import "../styles/obs.css";
+
+interface Props {
+  titre: string;
+  description?: string;
+  /** Chemin de la page (« /etablissement/0440001A/ ») pour la balise canonical. */
+  chemin: string;
+}
+const { titre, description, chemin } = Astro.props;
+const canonical = CONFIG.SITE_URL ? `${CONFIG.SITE_URL}${chemin}` : null;
+---
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{titre} — {NOM_SITE}</title>
+    {description && <meta name="description" content={description} />}
+    {canonical && <link rel="canonical" href={canonical} />}
+    {!CONFIG.INDEXABLE && <meta name="robots" content="noindex" />}
+    <script is:inline src="/js/theme.js"></script>
+  </head>
+  <body>
+    <header class="top">
+      <div class="container">
+        <a class="brand" href="/"><i></i><span>{NOM_SITE}</span></a>
+        <form class="search" action="/" method="get" role="search">
+          <label class="visuel-masque" for="q-entete">Rechercher un établissement</label>
+          <input id="q-entete" class="search" name="q" placeholder="Nom, commune ou UAI" autocomplete="off" />
+        </form>
+        <nav aria-label="Navigation principale"><a href="/sources/">Sources</a><a href="/methode/">Méthode</a></nav>
+        <button class="theme" type="button" title="Thème clair ou sombre" aria-label="Basculer le thème clair ou sombre">◐</button>
+      </div>
+    </header>
+    <main class="container">
+      <slot />
+    </main>
+    <footer>
+      <div class="container">{NOM_SITE} · {LIBELLES.piedDePage}</div>
+    </footer>
+  </body>
+</html>

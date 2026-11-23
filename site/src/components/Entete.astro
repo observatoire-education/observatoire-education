@@ -1,0 +1,49 @@
+---
+// En-tête de fiche : fil d'Ariane (seuls les maillons dont la page existe sont des liens),
+// nom, pastilles, mention de disparition, sites multiples, actions.
+import { academie, CONTRATS, FAMILLES, LIBELLES, SECTEURS } from "@obs/shared/libelles";
+import type { Fiche } from "@obs/shared/types";
+import { lienPermanent } from "../lib/config";
+
+interface Props { f: Fiche }
+const { f } = Astro.props;
+const prive = f.secteur === "prive_sous_contrat";
+const contrat = f.contrat ? (CONTRATS[f.contrat] ?? f.contrat) : null;
+const url = lienPermanent(`/etablissement/${f.uai}/`);
+---
+<nav class="crumb" aria-label="Fil d'Ariane">
+  <span>France</span><span class="sep">›</span>
+  <span>{academie(f.acaLibelle)}</span><span class="sep">›</span>
+  <a href={`/departement/${f.dep}/`}>{f.depLibelle}</a><span class="sep">›</span>
+  <span>{f.commune}</span>
+</nav>
+<h1>{f.nom}</h1>
+<div class="badges">
+  <span class={`badge ${prive ? "pri" : "pub"}`}>{SECTEURS[f.secteur]}</span>
+  {contrat && <span class="badge">{contrat}</span>}
+  <span class="badge">{FAMILLES[f.famille]}</span>
+  {f.ep && <span class="badge">{f.ep}</span>}
+  {f.segpa && <span class="badge">SEGPA</span>}
+  {f.ulis && <span class="badge">ULIS</span>}
+  {f.internat && <span class="badge">Internat</span>}
+  <span class="badge num">UAI {f.uai}</span>
+  <span class="badge">{f.adresse}, {f.codePostal} {f.commune}</span>
+</div>
+{f.disparuLe && <p class="disparu">{LIBELLES.disparu(f.disparuLe)}</p>}
+{f.autresSites.length > 0 && (
+  <details class="sites">
+    <summary>{LIBELLES.multiSites(f.autresSites.length + 1)}</summary>
+    <ul>
+      <li>{f.nom} : {f.adresse}, {f.codePostal} {f.commune}</li>
+      {f.autresSites.map((s) => <li>{s.nom} : {s.adresse}, {s.codePostal} {s.commune}</li>)}
+    </ul>
+  </details>
+)}
+<div class="actions">
+  <button class="btn primary" type="button" id="imprimer">⎙ Imprimer / PDF</button>
+  {f.lat !== null && f.lon !== null && (
+    <button class="btn" type="button" id="afficher-carte" data-lat={f.lat} data-lon={f.lon} aria-controls="carte">◎ Afficher la carte</button>
+  )}
+  <button class="btn" type="button" id="copier" data-url={url}>⧉ Copier le lien</button>
+</div>
+<div id="carte" class="carte" hidden></div>

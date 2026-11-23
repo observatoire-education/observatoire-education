@@ -17,6 +17,7 @@
     "shared/src",
     "pipeline/src",
     "tests",
-    "scripts"
+    "scripts",
+    "site/src/lib"
   ]
 }

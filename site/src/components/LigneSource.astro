@@ -1,0 +1,9 @@
+---
+// « Source : {producteur}, {titre} · rentrée … · collecté le … », suivie du lien vers la donnée brute archivée.
+import { ligneSource } from "@obs/shared/format";
+import type { SourceRef } from "@obs/shared/types";
+
+interface Props { s: SourceRef | undefined; complement?: string }
+const { s, complement } = Astro.props;
+---
+{s && <div class="src">{ligneSource(s)} · <a href={s.brutUrl}>donnée brute</a>{complement && <> · {complement}</>}</div>}

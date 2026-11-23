@@ -1,0 +1,259 @@
+---
+// Fiche établissement : identité, chiffres clés situés, élèves, composition sociale, enseignants,
+// vie scolaire, voisins nommés, sources. Graphiques rendus en SVG au build.
+import { entier, nombre, part } from "@obs/shared/format";
+import { FAMILLES, LIBELLES, NIVEAUX_TERRITORIAUX } from "@obs/shared/libelles";
+import type { CodeIndicateur } from "@obs/shared/libelles";
+import type { Niveau, Secteur } from "@obs/shared/types";
+import Absence from "../../components/Absence.astro";
+import Bandeau from "../../components/Bandeau.astro";
+import Cellule from "../../components/Cellule.astro";
+import Empile from "../../components/Empile.astro";
+import Entete from "../../components/Entete.astro";
+import LigneSource from "../../components/LigneSource.astro";
+import Sources from "../../components/Sources.astro";
+import Voisins from "../../components/Voisins.astro";
+import Base from "../../layouts/Base.astro";
+import {
+  absente, anneeScolaire, comparaison, indicateur, reference, refAbsente, repartition, source, valeur,
+} from "../../lib/affichage";
+import { lireFiche, lireIndex } from "../../lib/donnees";
+import { domaine, svgBarres, svgCourbe, svgPoints } from "../../lib/plot";
+
+export function getStaticPaths() {
+  return lireIndex().map((e) => ({ params: { uai: e.u } }));
+}
+
+const f = lireFiche(Astro.params.uai!);
+const genereLe = new Date().toISOString();
+const prive = f.secteur === "prive_sous_contrat";
+const college = f.famille === "college" || f.famille === "erea";
+
+// Élèves
+const iEleves = indicateur(f, "eleves");
+const el = f.eleves;
+const niveaux = (el?.niveaux ?? []).filter((n) => n.eleves !== 0);
+const niveauxPublies = niveaux.some((n) => n.eleves !== null);
+const nd = LIBELLES.nonDisponible;
+const sourcesEffectifs = (el?.source ?? []).map((id) => source(f, id));
+const sexe = repartition(f, "sexe_eleves");
+const lv1 = repartition(f, "lv1");
+const lv2 = repartition(f, "lv2");
+const partFilles = indicateur(f, "part_filles");
+
+// Composition sociale
+const iIps = indicateur(f, "ips");
+const ecartType = indicateur(f, "ecart_type_ips");
+const NIVEAUX: Niveau[] = ["departement", "academie", "france"];
+const libelleNiveau = (n: Niveau) => (n === "departement" ? f.depLibelle : NIVEAUX_TERRITORIAUX[n]);
+const rangs = (code: CodeIndicateur, sansPrive = false) => {
+  const i = indicateur(f, code);
+  return NIVEAUX.map((n) => {
+    const pub = reference(i, n, "public");
+    const pri = reference(i, n, "prive_sous_contrat");
+    return {
+      libelle: libelleNiveau(n),
+      public: pub?.statut === "ok" ? pub.valeur : null,
+      prive: !sansPrive && pri?.statut === "ok" ? pri.valeur : null,
+    };
+  });
+};
+const points = (code: CodeIndicateur, sansPrive = false) => {
+  const r = rangs(code, sansPrive);
+  const v = indicateur(f, code).mesure;
+  const me = v.statut === "ok" ? v.valeur : null;
+  return svgPoints(r, me, domaine([me, ...r.flatMap((x) => [x.public, x.prive])]));
+};
+const sourceIps = iIps.mesure.source ? source(f, iIps.mesure.source) : f.sources.find((s) => s.id.startsWith("ips_"));
+
+// Enseignants
+const RATIOS: CodeIndicateur[] = [
+  "eleves_par_etp_ens", "part_enseignantes", "part_non_titulaires", "part_agreges",
+  "part_moins_35", "part_50_plus", "part_anciennete_moins_2", "part_anciennete_8_plus",
+];
+const COLONNES: [Niveau, Secteur, string][] = [
+  ["departement", "public", "Dép. public"], ["departement", "prive_sous_contrat", "Dép. privé"],
+  ["france", "public", "France public"], ["france", "prive_sous_contrat", "France privé"],
+];
+const sourcePersonnels = source(f, "personnels");
+const anneePersonnels = indicateur(f, "etp_enseignants").mesure.rentree;
+
+const LIBELLES_COURTS: Partial<Record<CodeIndicateur, string>> = {
+  eleves_par_etp_ens: "Élèves par ETP enseignant",
+  part_enseignantes: "Enseignantes",
+  part_non_titulaires: "Non titulaires",
+  part_agreges: "Agrégés",
+  part_moins_35: "Moins de 35 ans",
+  part_50_plus: "50 ans ou plus",
+  part_anciennete_moins_2: "Présents depuis moins de 2 ans",
+  part_anciennete_8_plus: "Présents depuis 8 ans ou plus",
+};
+
+// Vie scolaire
+const iVs = indicateur(f, "eleves_par_etp_vs");
+const etpVs = indicateur(f, "etp_vs");
+---
+<Base titre={`${f.nom} · ${f.commune}`} chemin={`/etablissement/${f.uai}/`}
+  description={`${FAMILLES[f.famille]} ${prive ? "privé sous contrat" : "public"} à ${f.commune} (UAI ${f.uai}) : chiffres publics sourcés et datés.`}>
+  <Entete f={f} />
+  <Bandeau f={f} />
+  <nav class="toc" aria-label="Sommaire">
+    <a href="#eleves">Élèves</a><a href="#social">Composition sociale</a><a href="#ens">Enseignants</a>
+    <a href="#vs">Vie scolaire</a><a href="#voisins">Voisins</a><a href="#sources">Sources</a>
+  </nav>
+
+  <section id="eleves">
+    <h2>Élèves</h2>
+    <div class="cols2">
+      <div class="card">
+        <div class="lab"><span>Effectif total</span><span class="yr">{iEleves.historique.length > 1 ? `${iEleves.historique[0]![0]} → ${iEleves.historique.at(-1)![0]}` : anneeScolaire(iEleves.mesure.rentree)}</span></div>
+        {iEleves.historique.length > 0 ? <Fragment set:html={svgBarres(iEleves.historique)} /> : <Absence texte={LIBELLES.nonDisponible} />}
+        {college && (
+          <table class="mini-t" style="margin-top:8px"><tbody>
+            <tr><td>SEGPA</td><td class="n">{f.segpa ? <Cellule texte={el?.segpa != null ? entier(el.segpa) : nd} absent={el?.segpa == null} /> : <Cellule texte={LIBELLES.pasDeSegpa} absent />}</td></tr>
+            <tr><td>ULIS</td><td class="n">{el?.ulis != null ? entier(el.ulis) : <Cellule texte={f.ulis ? nd : "pas d'ULIS"} absent />}</td></tr>
+          </tbody></table>
+        )}
+      </div>
+      <div class="card">
+        <div class="lab"><span>Par niveau et par sexe</span><span class="yr">{el ? anneeScolaire(el.rentree) : ""}</span></div>
+        {!niveauxPublies ? <Absence texte="détail par niveau non disponible" /> : (
+          <div class="table-wrap"><table class="mini-t">
+            <thead><tr><th>Niveau</th><th class="n">Élèves</th><th class="n">Filles</th><th class="n">Garçons</th><th class="n">Part de filles</th></tr></thead>
+            <tbody>
+              {niveaux.map((n) => (
+                <tr>
+                  <td>{n.libelle}</td>
+                  <td class="n"><Cellule texte={n.eleves === null ? nd : entier(n.eleves)} absent={n.eleves === null} /></td>
+                  <td class="n"><Cellule texte={n.filles === null ? nd : entier(n.filles)} absent={n.filles === null} /></td>
+                  <td class="n"><Cellule texte={n.garcons === null ? nd : entier(n.garcons)} absent={n.garcons === null} /></td>
+                  {n.filles !== null && n.garcons !== null && n.filles + n.garcons > 0
+                    ? <td class="n">{part((100 * n.filles) / (n.filles + n.garcons))}</td>
+                    : <td class="n"><Cellule texte={nd} absent /></td>}
+                </tr>
+              ))}
+            </tbody>
+          </table></div>
+        )}
+        {sexe && <Empile r={sexe} titre={`Filles et garçons${partFilles.mesure.statut === "ok" ? ` : ${valeur("part_filles", partFilles.mesure)} de filles` : ""}`} france={false} />}
+      </div>
+      {college && lv1 && lv2 && (
+        <div class="card">
+          <div class="lab"><span>Langues vivantes</span><span class="yr">{anneeScolaire(lv1.rentree)}</span></div>
+          <Empile r={lv1} titre="LV1" france={false} />
+          <Empile r={lv2} titre="LV2 (5e à 3e)" france={false} />
+        </div>
+      )}
+      <div class="card" style="align-self:start">
+        {sourcesEffectifs.map((s) => <LigneSource s={s} complement="moyennes calculées (Σ / Σ)" />)}
+        {sourcesEffectifs.length === 0 && <span class="mute">Aucune donnée d'effectifs publiée pour cet établissement.</span>}
+      </div>
+    </div>
+  </section>
+
+  <section id="social">
+    <h2>Composition sociale</h2>
+    <div class="cols2">
+      <div class="card">
+        <div class="lab"><span>Indice de position sociale</span><span class="yr">{anneeScolaire(iIps.mesure.rentree)}</span></div>
+        <div style="display:flex;gap:18px;align-items:baseline;margin:4px 0 8px">
+          {iIps.mesure.statut === "ok"
+            ? <span class="num" style="font-size:24px;font-weight:650">{valeur("ips", iIps.mesure)}</span>
+            : <Absence texte={valeur("ips", iIps.mesure)} />}
+          {ecartType.mesure.statut === "ok" && <span class="mute" style="font-size:13px">écart-type {nombre(ecartType.mesure.valeur)}</span>}
+        </div>
+        <Fragment set:html={points("ips")} />
+        <div class="legend"><span class="me">établissement</span><span class="sect pub">moy. public</span><span class="sect pri">moy. privé s. c.</span></div>
+      </div>
+      <div class="card">
+        <div class="lab"><span>Évolution de l'IPS</span><span class="yr">{iIps.historique.length ? `${iIps.historique[0]![0]} → ${iIps.historique.at(-1)![0]}` : ""}</span></div>
+        {iIps.historique.length > 1 && <Fragment set:html={svgCourbe(iIps.historique, [], [])} />}
+        <table class="cmp mini-t" style="margin-top:8px">
+          <thead><tr><th>Écart (moyenne)</th><th class="n">public</th><th class="n">privé s. c.</th></tr></thead>
+          <tbody>
+            {NIVEAUX.map((n) => (
+              <tr>
+                <td>{libelleNiveau(n)}</td>
+                <td class="n pub"><Cellule texte={comparaison("ips", reference(iIps, n, "public")!, iIps.mesure)} absent={refAbsente(reference(iIps, n, "public"))} /></td>
+                <td class="n pri"><Cellule texte={comparaison("ips", reference(iIps, n, "prive_sous_contrat")!, iIps.mesure)} absent={refAbsente(reference(iIps, n, "prive_sous_contrat"))} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <LigneSource s={sourceIps} complement="moyennes publiées par la DEPP" />
+      </div>
+    </div>
+  </section>
+
+  <section id="ens">
+    <h2>Enseignants</h2>
+    <div class="cols2">
+      <div class="card">
+        <div class="lab"><span>Moyens en personnels</span><span class="yr">{anneeScolaire(anneePersonnels)}</span></div>
+        <table class="mini-t"><tbody>
+          {(["etp_total", "etp_enseignants"] as const).map((code) => {
+            const m = indicateur(f, code).mesure;
+            return <tr><td>{code === "etp_total" ? "ETP total" : "ETP enseignants"}</td><td class="n"><Cellule texte={valeur(code, m)} absent={absente(m)} /></td></tr>;
+          })}
+        </tbody></table>
+        <div class="mute" style="font-size:12px;margin-top:6px">Les volumes (ETP) ne se comparent pas entre établissements de tailles différentes : seuls les ratios et les parts ont une moyenne.</div>
+      </div>
+      <div class="card wide" style="grid-column:1/-1">
+        <div class="lab"><span>Ratios et parts, écart à la moyenne (moyenne entre parenthèses)</span><span class="yr">{anneeScolaire(anneePersonnels)}</span></div>
+        <div class="table-wrap"><table class="mini-t cmp">
+          <thead><tr><th></th><th class="n">Établ.</th>{COLONNES.map(([, , l]) => <th class="n">{l}</th>)}</tr></thead>
+          <tbody>
+            {RATIOS.map((code) => {
+              const i = indicateur(f, code);
+              return (
+                <tr>
+                  <td>{LIBELLES_COURTS[code] ?? code}</td>
+                  <td class="n"><Cellule texte={valeur(code, i.mesure)} absent={absente(i.mesure)} gras /></td>
+                  {COLONNES.map(([n, s]) => (
+                    <td class={`n ${s === "public" ? "pub" : "pri"}`}>
+                      <Cellule texte={comparaison(code, reference(i, n, s)!, i.mesure)} absent={refAbsente(reference(i, n, s))} />
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table></div>
+      </div>
+      {repartition(f, "sexe_enseignants") && <div class="card"><div class="lab"><span>Femmes et hommes</span><span class="yr">part des ETP</span></div><Empile r={repartition(f, "sexe_enseignants")!} /></div>}
+      {repartition(f, "statuts") && <div class="card"><div class="lab"><span>Statuts</span><span class="yr">part des ETP</span></div><Empile r={repartition(f, "statuts")!} /></div>}
+      {repartition(f, "ages") && <div class="card"><div class="lab"><span>Âge</span><span class="yr">part des ETP</span></div><Empile r={repartition(f, "ages")!} /></div>}
+      {repartition(f, "anciennete") && <div class="card"><div class="lab"><span>Ancienneté dans l'établissement</span><span class="yr">part des ETP</span></div><Empile r={repartition(f, "anciennete")!} /></div>}
+    </div>
+    <LigneSource s={sourcePersonnels} complement="parts calculées sur les ETP ; moyennes Σ / Σ" />
+  </section>
+
+  <section id="vs">
+    <h2>Vie scolaire</h2>
+    <div class="cols2">
+      <div class="card">
+        <div class="lab"><span>Élèves par ETP de vie scolaire</span><span class="yr">{anneeScolaire(iVs.mesure.rentree ?? anneePersonnels)}</span></div>
+        {prive ? (
+          <>
+            <div style="margin:10px 0"><Absence texte={LIBELLES.nonPubliePrive} /></div>
+            <p class="mute" style="font-size:13px;margin:0 0 10px">La DEPP publie les ETP de vie scolaire (CPE, AED) pour les seuls établissements publics. Pour situer, voici les moyennes publiques :</p>
+          </>
+        ) : iVs.mesure.statut === "ok" ? (
+          <div class="val">{valeur("eleves_par_etp_vs", iVs.mesure)}<small>{valeur("etp_vs", etpVs.mesure)} ETP de vie scolaire</small></div>
+        ) : (
+          <div style="margin:10px 0"><Absence texte={valeur("eleves_par_etp_vs", iVs.mesure)} /></div>
+        )}
+        <Fragment set:html={points("eleves_par_etp_vs", true)} />
+        <div class="legend">
+          {!prive && <span class="me">établissement</span>}
+          <span class="sect pub">moy. public</span><span class="mute">privé : {LIBELLES.nonPubliePrive}</span>
+        </div>
+        <LigneSource s={sourcePersonnels} />
+      </div>
+    </div>
+  </section>
+
+  <Voisins f={f} />
+  <Sources f={f} genereLe={genereLe} />
+  <script is:inline src="/js/fiche.js" defer></script>
+</Base>

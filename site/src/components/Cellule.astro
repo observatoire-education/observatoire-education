@@ -1,0 +1,6 @@
+---
+// Contenu d'une cellule de tableau : la valeur, ou l'absence en toutes lettres (police normale, sans retour à la ligne).
+interface Props { texte: string; absent?: boolean; gras?: boolean }
+const { texte, absent = false, gras = false } = Astro.props;
+---
+{absent ? <span class="abs">{texte}</span> : gras ? <b>{texte}</b> : texte}

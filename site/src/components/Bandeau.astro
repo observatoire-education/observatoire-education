@@ -1,0 +1,44 @@
+---
+// Six chiffres clés au même niveau ; sous chacun, l'écart aux moyennes départementales public et privé.
+import { entier } from "@obs/shared/format";
+import type { CodeIndicateur } from "@obs/shared/libelles";
+import type { Fiche } from "@obs/shared/types";
+import { annee, comparaison, indicateur, reference, refAbsente, texteCouverture, valeur } from "../lib/affichage";
+import Absence from "./Absence.astro";
+
+interface Props { f: Fiche }
+const { f } = Astro.props;
+const CLES: [CodeIndicateur, string][] = [
+  ["eleves", "Élèves"],
+  ["eleves_par_etp_ens", "Élèves par ETP enseignant"],
+  ["eleves_par_etp_vs", "Élèves par ETP de vie scolaire"],
+  ["part_enseignantes", "Enseignantes"],
+  ["part_non_titulaires", "Non titulaires"],
+  ["ips", "IPS"],
+];
+const cases = CLES.map(([code, libelle]) => {
+  const i = indicateur(f, code);
+  const pub = reference(i, "departement", "public");
+  const pri = reference(i, "departement", "prive_sous_contrat");
+  const precedent = code === "eleves" && i.historique.length > 1 ? i.historique.at(-2)! : null;
+  return { code, libelle, i, pub, pri, precedent };
+});
+---
+<div class="kpis">
+  {cases.map(({ code, libelle, i, pub, pri, precedent }) => (
+    <div>
+      <div class="k">{libelle}{annee(i.mesure) && ` · ${annee(i.mesure)}`}</div>
+      {i.mesure.statut === "ok" ? <div class="v">{valeur(code, i.mesure)}</div> : <Absence texte={valeur(code, i.mesure)} />}
+      {code === "part_filles" && texteCouverture(i.mesure) && <span class="couv">{texteCouverture(i.mesure)}</span>}
+      <div class="c">
+        {precedent && <span>{precedent[0]} : {entier(precedent[1])}</span>}
+        {pub && <span>dép. public <span class={refAbsente(pub) ? "abs" : "p"}>{comparaison(code, pub, i.mesure)}</span></span>}
+        {pri && <span>dép. privé <span class={refAbsente(pri) ? "abs" : "q"}>{comparaison(code, pri, i.mesure)}</span></span>}
+      </div>
+    </div>
+  ))}
+</div>
+<div class="legend" style="margin-top:6px">
+  <span class="sect pub">écart à la moyenne départementale du public (moyenne entre parenthèses)</span>
+  <span class="sect pri">idem, privé sous contrat</span>
+</div>

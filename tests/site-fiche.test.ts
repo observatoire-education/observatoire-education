@@ -1,0 +1,86 @@
+import { beforeAll, describe, expect, test } from "bun:test";
+import { doc, octets, page, siteTest, texte } from "./site.ts";
+
+beforeAll(async () => {
+  await siteTest();
+}, 180_000);
+
+describe("fiche établissement", () => {
+  test("fiche publique : nom, écart (moyenne), voisin nommé, ligne de source", () => {
+    const t = texte("etablissement/0440001A");
+    expect(t).toContain("Collège Jules-Verne");
+    expect(t).toContain("−14,0 (106,4)");
+    expect(t).toContain("Saint-Exemple"); // voisin nommé
+    expect(t).toMatch(/Source : MEN-DEPP, Indices de position sociale des collèges · rentrée 2025-2026 · collecté le \d\d\/\d\d\/\d{4}/);
+  });
+
+  test("fil d'Ariane : seul le département est un lien", () => {
+    const liens = [...doc("etablissement/0440001A").querySelectorAll(".crumb a")].map((a) => a.getAttribute("href"));
+    expect(liens).toEqual(["/departement/44/"]);
+    expect(texte("etablissement/0440001A")).toContain("Académie de Nantes");
+  });
+
+  test("fiche privée : vie scolaire non publiée, jamais 0", () => {
+    const h = page("etablissement/0440002B");
+    expect(texte("etablissement/0440002B")).toContain("non publié pour le privé");
+    expect(h).not.toMatch(/ETP de vie scolaire[^<]*<[^>]*>\s*0[,<]/);
+    expect(texte("etablissement/0440002B")).toContain("Contrat d'association");
+  });
+
+  test("sans GPS : voisins non calculables, pas de bouton carte", () => {
+    expect(texte("etablissement/0440005E")).toContain("Voisins non calculables (coordonnées absentes)");
+    expect(doc("etablissement/0440005E").querySelector("#afficher-carte")).toBeNull();
+    expect(doc("etablissement/0440001A").querySelector("#afficher-carte")!.getAttribute("data-lat")).toBe("47.218");
+  });
+
+  test("pas de SEGPA", () => {
+    expect(texte("etablissement/0440002B")).toContain("pas de SEGPA");
+  });
+
+  test("SVG rendus au build, aucun script Plot", () => {
+    const h = page("etablissement/0440001A");
+    expect(h).toContain("<svg");
+    expect(h).toContain('role="img"');
+    expect(h).not.toContain("observablehq");
+    expect([...doc("etablissement/0440001A").querySelectorAll("script")].map((s) => s.getAttribute("src"))).toEqual([
+      "/js/theme.js", "/js/fiche.js",
+    ]);
+  });
+
+  test("poids d'une fiche complète", () => {
+    expect(octets("etablissement/0440001A")).toBeLessThanOrEqual(50_000);
+  });
+
+  test("part de filles partielle : couverture dite", () => {
+    expect(texte("etablissement/0440003C")).toContain("sur 67 % des élèves");
+    expect(texte("etablissement/0440006F")).toContain("filles et garçons publiés pour 10 % des élèves seulement");
+  });
+
+  test("établissement multi-sites : autres sites listés", () => {
+    const t = texte("etablissement/0440003C");
+    expect(t).toContain("Établissement réparti sur 3 sites");
+    expect(t).toContain("Annexe du lycée Guist'hau");
+  });
+
+  test("lycée : pas de bloc SEGPA ni de langues de collège", () => {
+    const t = texte("etablissement/0440003C");
+    expect(t).not.toContain("pas de SEGPA");
+    expect(t).not.toContain("LV2 (5e à 3e)");
+  });
+
+  test("page disparue : mention exacte, page générée", () => {
+    const t = texte("etablissement/0440099Z");
+    expect(t).toContain("Cet établissement n'apparaît plus dans l'Annuaire de l'éducation depuis le 01/10/2026.");
+    expect(t).toContain("Collège Disparu");
+  });
+
+  test("référencement : noindex tant que INDEXABLE vaut false ; pied de page des licences", () => {
+    expect(page("etablissement/0440001A")).toContain('<meta name="robots" content="noindex">');
+    expect(texte("etablissement/0440001A")).toContain("Données : Licence Ouverte 2.0. Code : AGPL-3.0. Ce site ne commente pas les chiffres.");
+    expect(doc("etablissement/0440001A").documentElement.getAttribute("lang")).toBe("fr");
+  });
+
+  test("MapLibre copié pour le chargement au clic", async () => {
+    expect(await Bun.file(".cache/dist-test/js/maplibre/maplibre-gl.mjs").exists()).toBe(true);
+  });
+});

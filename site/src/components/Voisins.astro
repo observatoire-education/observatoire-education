@@ -1,0 +1,46 @@
+---
+// Établissements voisins nommés : valeurs brutes, sans écart calculé, triés par distance.
+import { nombre } from "@obs/shared/format";
+import { FAMILLES_PLURIEL, LIBELLES, SECTEURS } from "@obs/shared/libelles";
+import type { Fiche } from "@obs/shared/types";
+import { absente, valeur } from "../lib/affichage";
+import Absence from "./Absence.astro";
+import Cellule from "./Cellule.astro";
+
+interface Props { f: Fiche }
+const { f } = Astro.props;
+const v = f.voisins;
+---
+<section id="voisins">
+  <h2>Établissements voisins</h2>
+  {v === null ? (
+    <div class="card"><Absence texte={f.disparuLe ? "Voisins non calculés pour une page conservée après disparition" : LIBELLES.voisinsNonCalculables} /></div>
+  ) : v.length === 0 ? (
+    <div class="card"><Absence texte="Aucun établissement comparable à moins de 30 km" /></div>
+  ) : (
+    <div class="card" style="padding:4px 6px">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Établissement</th><th>Secteur</th><th>Commune</th><th class="n">Distance</th><th class="n">Élèves</th><th class="n">Élèves / ETP ens.</th><th class="n">IPS</th></tr></thead>
+          <tbody>
+            {v.map((x) => (
+              <tr>
+                <td><a href={`/etablissement/${x.uai}/`}>{x.nom}</a></td>
+                <td><span class={`sect ${x.secteur === "public" ? "pub" : "pri"}`}>{x.secteur === "public" ? SECTEURS.public : "Privé s. c."}</span></td>
+                <td>{x.commune}</td>
+                <td class="n">{nombre(x.distanceKm)} km</td>
+                <td class="n"><Cellule texte={valeur("eleves", x.eleves)} absent={absente(x.eleves)} /></td>
+                <td class="n"><Cellule texte={valeur("eleves_par_etp_ens", x.elevesParEtpEns)} absent={absente(x.elevesParEtpEns)} /></td>
+                <td class="n"><Cellule texte={valeur("ips", x.ips)} absent={absente(x.ips)} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )}
+  <div class="src" style="border:0">
+    Les 6 établissements les plus proches à moins de 30 km ({FAMILLES_PLURIEL[f.famille].toLowerCase()} et familles comparables), publics et privés sous contrat,
+    triés par distance à vol d'oiseau. Valeurs brutes. <a href="/methode/#voisinage">Définition du voisinage</a>.
+  </div>
+</section>

@@ -769,6 +769,14 @@ test("SVG rendus au build, aucun script Plot", () => {
 test("poids d'une fiche complète", () => { expect(octets("etablissement/0440001A")).toBeLessThanOrEqual(50_000); });
 ```
 
+**Mise en œuvre et mesures (tâche 8, 2026-11-23) :**
+- Site d'essai : `tests/site.ts` exporte les données des fixtures (avec une page disparue) dans `.cache/data-test`, puis lance `astro build` avec `OBS_DATA` et `OBS_DIST=.cache/dist-test`. `page`, `octets`, `doc` et `texte` (texte visible, normalisé) y sont définies, plutôt que dans `aide.ts`.
+- `site/src/lib/config.ts` lit `observatoire.config.json` (ou `OBS_CONFIG`) ; `affichage.ts` met en forme valeurs, écarts et couverture ; `libelles.ts` gagne `CONTRATS` (libellés lisibles) et `academie()` (« Académie d'Orléans-Tours »).
+- Scripts : `theme.js` et `fiche.js` (imprimer, copier le lien, carte). MapLibre 6 est livré en modules ES : le build copie `maplibre-gl.mjs`, `-shared.mjs`, `-worker.mjs` et la CSS dans `dist/js/maplibre/`, chargés par `import()` au clic.
+- Absences dans les tableaux : composant `Cellule` (police normale, sans retour à la ligne) ; niveaux sans aucune donnée : une seule mention ; niveaux à 0 élève masqués (3e prépa-métiers des lycées pro).
+- Poids : teintes des barres empilées en classes CSS (`.t{n}-{i}`), largeurs arrondies, SVG de Plot allégés (sans libellés de groupes internes, coordonnées à deux décimales). Build réel : **11 222 pages en 37 s**, 700 Mo de mémoire ; page médiane **37,7 Ko**, maximale 40,7 Ko ; **410 Mo** de HTML au total.
+- Reste pour plus tard : la courbe de l'IPS ne trace que l'établissement (les moyennes par rentrée ne sont pas dans `Indicateur`).
+
 `page(chemin)` et `octets(chemin)` sont des aides de `tests/aide.ts`. Elles construisent le site de test une seule fois par session.
 
 - [ ] **Step 2 :** `bun test tests/site-fiche.test.ts`. Attendu : FAIL.

@@ -124,6 +124,22 @@ export const REPARTITIONS: Record<CodeRepartition, { libelle: string; categories
   lv2: { libelle: "Langue vivante 2", categories: ["Anglais", "Allemand", "Espagnol", "Italien", "Autres"] },
 };
 
+/** Libellés lisibles des contrats du privé (libellés de l'annuaire en majuscules → texte courant). */
+export const CONTRATS: Record<string, string> = {
+  "CONTRAT D'ASSOCIATION TOUTES CLASSES": "Contrat d'association",
+  "CONTRAT ASSOCIATION PARTIE DES CLASSES": "Contrat d'association (partie des classes)",
+  "CONTRAT SIMPLE TOUTES CLASSES": "Contrat simple",
+  "C0NTRAT SIMPLE POUR PARTIE DES CLASSES": "Contrat simple (partie des classes)",
+  "CONTRAT PARTIE DES CLASSES SIMPLE+ASSOC": "Contrat simple et d'association (partie des classes)",
+  "CONTRAT TTES CLASSES SIMPLE+ASSOCIATION": "Contrat simple et d'association",
+  "SOUS CONTRAT ETABLISSEMENT AGRICOLE": "Établissement agricole sous contrat",
+};
+
+/** « Académie de Nantes », « Académie d'Orléans-Tours ». */
+export function academie(libelle: string): string {
+  return /^[AEIOUYÉÈÊÀÂÎÏÔÛH]/i.test(libelle) ? `Académie d'${libelle}` : `Académie de ${libelle}`;
+}
+
 export const NIVEAUX_TERRITORIAUX = {
   departement: "Département",
   academie: "Académie",
