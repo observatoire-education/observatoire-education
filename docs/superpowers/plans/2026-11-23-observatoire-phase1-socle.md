@@ -619,7 +619,9 @@ test("part de filles", async () => { expect((await indic("0440001A", "part_fille
 - Chaque indicateur a un historique (toutes les rentrées où il est calculable). Un établissement sans donnée garde ses comparaisons, à la dernière rentrée disponible, pour être situé.
 - Données réelles 2025 (collèges, France) : 14,8 élèves par ETP enseignant dans le public, 17,2 dans le privé ; 74,1 élèves par ETP de vie scolaire (public) ; 64,3 % d'enseignantes dans le public, 68,8 % dans le privé ; 7,0 % de non-titulaires dans le public, 15,4 % dans le privé. Calcul complet : environ 2,2 s ; environ 10 Ko de JSON d'indicateurs par fiche.
 - Vie scolaire du privé : 3 108 fiches en `non_publie_prive`, comme attendu.
-- **Couverture de `part_filles`** : 2 004 établissements ont une couverture inférieure à 100 % (médiane 73 %, minimum 1,7 %). Un seuil minimal (par exemple 50 %) en dessous duquel la part serait `non_disponible` reste possible : à décider par le porteur avant la tâche 8.
+- **Couverture de `part_filles`** : 2 004 établissements ont une couverture inférieure à 100 % (médiane 73 %, minimum 1,7 %).
+  **Décision du porteur (2026-11-23) : seuil de 50 %** (`SEUIL_COUVERTURE` dans `indicateurs.ts`). En dessous, `part_filles` et `sexe_eleves` sont `non_disponible` (la `couverture` reste dans la mesure, pour que la fiche explique pourquoi : « filles et garçons publiés pour 10 % des élèves seulement ») ; l'établissement n'entre ni dans les moyennes ni dans les références, et le point est retiré de l'historique.
+  Effet réel : 689 fiches en `non_disponible` (575 sans seuil). Environ 330 établissements sous le seuil en 2025 affichent, selon la règle générale, la part de la dernière rentrée où elle est affichable (la rentrée est indiquée et les comparaisons portent sur cette même rentrée).
 
 `indic(uai, code)` et `repart(uai, code)` sont des aides de `tests/aide.ts`. Elles mettent le résultat en cache pour toute la session de tests.
 

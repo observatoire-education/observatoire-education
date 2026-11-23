@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { CODES_INDICATEURS } from "@obs/shared/libelles";
-import { calculerIndicateurs } from "../pipeline/src/indicateurs.ts";
+import { calculerIndicateurs, SEUIL_COUVERTURE } from "../pipeline/src/indicateurs.ts";
 import { dbTest, indic, repart, repartitionsDe } from "./aide.ts";
 
 describe("indicateurs situés", () => {
@@ -62,6 +62,16 @@ describe("indicateurs situés", () => {
     expect(i.comparaisons[0]!.public.valeur).toBe(50);
   });
 
+  test("part de filles sous le seuil de couverture : non disponible, couverture conservée", async () => {
+    // 0440006F : seule la seconde pro (40 F / 60 G) est publiée, soit 100 élèves sur 1 000
+    const i = await indic("0440006F", "part_filles");
+    expect(i.mesure).toMatchObject({ valeur: null, statut: "non_disponible", couverture: 10 });
+    expect(i.historique).toEqual([]);
+    // exclu des moyennes : aucun autre LPO public dans le département
+    expect(i.comparaisons[0]!.public.statut).toBe("non_disponible");
+    expect(SEUIL_COUVERTURE).toBe(50);
+  });
+
   test("volumes : historique, sans comparaison", async () => {
     const e = await indic("0440001A", "eleves");
     expect(e.mesure).toMatchObject({ valeur: 590, rentree: 2025, source: "effectifs_colleges" });
@@ -113,6 +123,10 @@ describe("répartitions", () => {
     const r = await repart("0440003C", "sexe_eleves");
     expect(r.parts).toEqual([50, 50]);
     expect(r.couverture).toBeCloseTo(66.67, 1);
+  });
+
+  test("filles et garçons sous le seuil : non disponible", async () => {
+    expect(await repart("0440006F", "sexe_eleves")).toMatchObject({ statut: "non_disponible", parts: null, couverture: 10 });
   });
 
   test("langues : collèges seulement", async () => {

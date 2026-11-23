@@ -49,6 +49,13 @@ export const MESURES: DefMesure[] = [
   },
 ];
 
+/**
+ * Couverture minimale (en % des élèves) pour afficher une part calculée sur les seuls niveaux publiés
+ * (décision du porteur, 2026-11-23). En dessous : « non disponible », et l'établissement n'entre pas
+ * dans les moyennes ni dans les références.
+ */
+export const SEUIL_COUVERTURE = 50;
+
 /** La DEPP ne publie pas les ETP de vie scolaire du privé. */
 const NON_PUBLIES_PRIVE = new Set<CodeIndicateur>(["etp_vs", "eleves_par_etp_vs"]);
 
@@ -125,7 +132,8 @@ full outer join personnels p on p.uai = e.uai and p.rentree = e.rentree;
 
 -- Une ligne par établissement, indicateur et rentrée. valeur = facteur × num / den (null si den nul ou absent).
 create or replace table mesures as
-select *, case when den is null and code not in (${MESURES.filter((d) => d.den).map((d) => litteral(d.code)).join(", ")})
+select *, case when couverture < ${SEUIL_COUVERTURE} then null
+               when den is null and code not in (${MESURES.filter((d) => d.den).map((d) => litteral(d.code)).join(", ")})
                then num when den > 0 then facteur * num / den end as valeur
 from (
   ${MESURES.map(selectMesure).join("\n  union all\n  ")}
@@ -140,7 +148,7 @@ create or replace table moyennes as
 with m as (
   select m.code, m.rentree, m.facteur, m.num, m.den, e.famille, e.secteur, e.dep, e.aca
   from mesures m join etablissements e using (uai)
-  where m.den > 0 and m.num is not null
+  where m.den > 0 and m.num is not null and coalesce(m.couverture, 100) >= ${SEUIL_COUVERTURE}
 )
 select * from (
   ${parTerritoire((n) => `select code, '${n}' as niveau, ${TERRITOIRE[n]} as territoire, famille, secteur, rentree,
@@ -150,7 +158,8 @@ select * from (
 
 -- Répartitions (barres empilées) : catégories en ETP ou en élèves, par établissement et rentrée.
 create or replace table repartitions as
-select r.*, list_count(cats) = len(cats) and list_sum(cats) > 0 as valide
+select r.*, list_count(cats) = len(cats) and list_sum(cats) > 0
+  and coalesce(couverture, 100) >= ${SEUIL_COUVERTURE} as valide
 from (
   ${DEF_REPARTITIONS.map((d) => `select ${litteral(d.code)} as code, * from (${d.sql})${
     d.familles ? ` where uai in (select uai from etablissements where famille in (${d.familles.map(litteral).join(", ")}))` : ""
@@ -203,8 +212,10 @@ async function dernieresRentrees(db: Db, table: "moyennes" | "references_reparti
 export async function calculerIndicateurs(db: Db): Promise<Map<string, Indicateur[]>> {
   const etabs = await etablissements(db);
   const lignes = await db.sql<{
-    uai: string; code: CodeIndicateur; rentree: number; source: SourceId; valeur: number; couverture: number | null;
-  }>("select uai, code, rentree, source, valeur, couverture from mesures where valeur is not null order by uai, code, rentree");
+    uai: string; code: CodeIndicateur; rentree: number; source: SourceId; couverture: number | null;
+    valeur: number | null;
+  }>(`select uai, code, rentree, source, valeur, couverture from mesures
+      where valeur is not null or couverture is not null order by uai, code, rentree`);
   const mesures = Map.groupBy(lignes, (l) => cle(l.uai, l.code));
 
   const moy = new Map(
@@ -233,7 +244,8 @@ export async function calculerIndicateurs(db: Db): Promise<Map<string, Indicateu
     const prive = e.secteur === "prive_sous_contrat";
     const liste: Indicateur[] = [];
     for (const code of CODES_INDICATEURS) {
-      const serie = mesures.get(cle(e.uai, code)) ?? [];
+      const brut = mesures.get(cle(e.uai, code)) ?? [];
+      const serie = brut.filter((l): l is typeof l & { valeur: number } => l.valeur !== null);
       const derniereLigne = serie.at(-1);
       let mesure: Mesure;
       let historique: [number, number][] = serie.map((l) => [l.rentree, l.valeur]);
@@ -245,6 +257,11 @@ export async function calculerIndicateurs(db: Db): Promise<Map<string, Indicateu
         if (derniereLigne.couverture !== null && derniereLigne.couverture < 100) mesure.couverture = derniereLigne.couverture;
       } else {
         mesure = absente();
+        // part sous le seuil de couverture : la couverture reste connue, pour l'expliquer
+        const c = brut.at(-1)?.couverture;
+        if (c !== null && c !== undefined && c < SEUIL_COUVERTURE) {
+          mesure = { ...absente("non_disponible", brut.at(-1)!.rentree), couverture: c };
+        }
       }
 
       let comparaisons: Comparaison[] = [];
@@ -322,9 +339,8 @@ export async function calculerRepartitions(db: Db): Promise<Map<string, Repartit
         source: valide?.source ?? d.source,
         rentree,
       };
-      if (valide?.couverture !== null && valide?.couverture !== undefined && valide.couverture < 100) {
-        r.couverture = valide.couverture;
-      }
+      const couverture = (valide ?? serie.at(-1))?.couverture;
+      if (couverture !== null && couverture !== undefined && couverture < 100) r.couverture = couverture;
       liste.push(r);
     }
     resultat.set(e.uai, liste);
