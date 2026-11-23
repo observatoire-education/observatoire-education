@@ -29,6 +29,9 @@ export class ErreurHttp extends Error {
   }
 }
 
+/** Fichier reçu mais inutilisable (tronqué, pas un Parquet) : la version est rejetée, pas en erreur. */
+export class ErreurParquetInvalide extends Error {}
+
 export class OdsClient {
   private readonly attendre: (ms: number) => Promise<void>;
   private readonly expirationMs: number;
@@ -64,7 +67,7 @@ export class OdsClient {
     const debut = await f.slice(0, 4).text();
     const fin = await f.slice(taille - 4, taille).text();
     if (taille < 8 || debut !== MAGIQUE_PARQUET || fin !== MAGIQUE_PARQUET) {
-      throw new Error(`fichier Parquet tronqué ou invalide pour ${s.datasetId} (${taille} octets)`);
+      throw new ErreurParquetInvalide(`fichier Parquet tronqué ou invalide pour ${s.datasetId} (${taille} octets)`);
     }
     return dest;
   }

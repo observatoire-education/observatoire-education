@@ -364,6 +364,10 @@ test("assurerCache vérifie l'empreinte", …);           // fichier corrompu da
     - `cheminsFixtures(dossier): Promise<Record<SourceId,string>>` convertit les CSV en Parquet ;
     - `dbTest(): Promise<Db>`.
 
+**Constats sur l'annuaire réel (essai de la tâche 3, 2026-11-23) :**
+- **L'UAI n'est pas unique** : sur 14 908 lignes réduites (collèges, lycées, EREA), seules 14 833 UAI sont distinctes. 69 UAI partagent 144 lignes : ce sont les sites d'un même établissement (annexe, voie GT / voie pro, pôle), avec des noms ou adresses différents. `etablissements` doit garder **une ligne par UAI**, choisie de façon déterministe : on préfère le site dont le nom ne commence pas par « Annexe », puis le nom le plus court, puis l'ordre alphabétique. Test à ajouter : `UAI multi-sites : une seule ligne`.
+- **Le portail alterne entre deux états** sous la même date `modified`, avec des écarts sur une soixantaine d'UAI (codes postaux, casse des noms, adresses). La collecte le gère : déduplication par empreinte sur toutes les versions, et suivi de la version actuelle (`actuelles` dans le manifest). Conséquence : le site peut changer légèrement d'une nuit à l'autre sans que les statistiques bougent.
+
 **Correspondances :**
 - **`famille`** (sur `libelle_nature` en majuscules) :
   - `college` : COLLEGE, COLLEGE SPECIALISE, COLLEGE CLIMATIQUE ;

@@ -1,0 +1,115 @@
+// Manifest des versions archivées, empreintes et validation des fichiers téléchargés.
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
+import type { DuckDBConnection } from "@duckdb/node-api";
+import type { SourceId } from "@obs/shared/types";
+import { lignes, litteral } from "./duck.ts";
+import type { Source } from "./sources.ts";
+
+/** Une version d'une source, publiée comme fichier joint d'une GitHub Release. */
+export interface Version {
+  sha256: string;
+  tag: string;
+  fichier: string;
+  /** URL permanente de téléchargement (« donnée brute »). */
+  url: string;
+  /** Date de modification annoncée par le portail. */
+  modified: string;
+  collecteLe: string;
+  lignes: number;
+}
+
+interface Contenu {
+  versions: Partial<Record<SourceId, Version[]>>;
+  /** Dernière date `modified` traitée sans rejet, même si le contenu était identique. */
+  vus: Partial<Record<SourceId, string>>;
+  /** Empreinte de la version actuelle : pas forcément la dernière ajoutée (un portail peut revenir à un état connu). */
+  actuelles: Partial<Record<SourceId, string>>;
+}
+
+export class Manifest {
+  private constructor(
+    readonly chemin: string,
+    private readonly contenu: Contenu,
+  ) {}
+
+  static lire(chemin: string): Manifest {
+    if (!existsSync(chemin)) return new Manifest(chemin, { versions: {}, vus: {}, actuelles: {} });
+    const c = JSON.parse(readFileSync(chemin, "utf8")) as Partial<Contenu>;
+    return new Manifest(chemin, { versions: c.versions ?? {}, vus: c.vus ?? {}, actuelles: c.actuelles ?? {} });
+  }
+
+  versions(id: SourceId): Version[] {
+    return this.contenu.versions[id] ?? [];
+  }
+
+  /** Version actuelle de la source (celle que reflète le site). */
+  derniere(id: SourceId): Version | undefined {
+    const sha = this.contenu.actuelles[id];
+    return this.versions(id).find((v) => v.sha256 === sha) ?? this.versions(id).at(-1);
+  }
+
+  connait(id: SourceId, sha256: string): boolean {
+    return this.versions(id).some((v) => v.sha256 === sha256);
+  }
+
+  /** Ajoute une version ; false si son empreinte est déjà connue. */
+  ajouter(id: SourceId, v: Version): boolean {
+    if (this.connait(id, v.sha256)) return false;
+    (this.contenu.versions[id] ??= []).push(v);
+    this.contenu.actuelles[id] = v.sha256;
+    return true;
+  }
+
+  /** Une version déjà archivée redevient l'actuelle. */
+  rendreActuelle(id: SourceId, sha256: string): void {
+    if (!this.connait(id, sha256)) throw new Error(`version inconnue pour ${id} : ${sha256}`);
+    this.contenu.actuelles[id] = sha256;
+  }
+
+  modifiedVu(id: SourceId): string | undefined {
+    return this.contenu.vus[id] ?? this.derniere(id)?.modified;
+  }
+
+  marquerVu(id: SourceId, modified: string): void {
+    this.contenu.vus[id] = modified;
+  }
+
+  /** Écriture atomique : fichier temporaire puis renommage. */
+  ecrire(): void {
+    const tmp = `${this.chemin}.tmp`;
+    mkdirSync(dirname(this.chemin), { recursive: true });
+    writeFileSync(tmp, `${JSON.stringify(this.contenu, null, 2)}\n`);
+    renameSync(tmp, this.chemin);
+  }
+}
+
+/** SHA-256 hexadécimal, lu en flux. */
+export async function empreinte(chemin: string): Promise<string> {
+  const h = new Bun.CryptoHasher("sha256");
+  for await (const morceau of Bun.file(chemin).stream()) h.update(morceau);
+  return h.digest("hex");
+}
+
+export interface Description {
+  colonnes: string[];
+  lignes: number;
+}
+
+export async function decrireParquet(c: DuckDBConnection, chemin: string): Promise<Description> {
+  const src = `read_parquet(${litteral(chemin)})`;
+  const cols = await lignes<{ column_name: string }>(c, `describe select * from ${src}`);
+  const [n] = await lignes<{ n: number }>(c, `select count(*)::int as n from ${src}`);
+  return { colonnes: cols.map((x) => x.column_name), lignes: n!.n };
+}
+
+/** Motif de rejet, ou null si la version est acceptable. */
+export function motifRejet(s: Source, d: Description, precedente?: Version): string | null {
+  const manquantes = s.colonnesRequises.filter((c) => !d.colonnes.includes(c));
+  if (manquantes.length > 0) return `colonne manquante : ${manquantes.join(", ")}`;
+  if (d.lignes === 0) return "aucune ligne";
+  if (precedente && d.lignes < 0.8 * precedente.lignes) {
+    return `${d.lignes} lignes < 80 % de ${precedente.lignes}`;
+  }
+  return null;
+}
