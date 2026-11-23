@@ -73,10 +73,14 @@ select * from (
 
 -- Un établissement présent dans plusieurs jeux (LPO : GT et pro) additionne ses élèves, sans double compte.
 create or replace table effectifs as
+-- filles / garcons : stricts (null si un niveau est inconnu) ;
+-- filles_pub / garcons_pub : sommes sur les niveaux publiés (décision « partielle + couverture »).
 with sexes as (
   select uai, rentree,
     case when bool_and(filles is not null) then sum(filles) end as filles,
-    case when bool_and(garcons is not null) then sum(garcons) end as garcons
+    case when bool_and(garcons is not null) then sum(garcons) end as garcons,
+    sum(filles) filter (where filles is not null and garcons is not null) as filles_pub,
+    sum(garcons) filter (where filles is not null and garcons is not null) as garcons_pub
   from effectifs_niveaux
   group by uai, rentree
 )
@@ -84,6 +88,8 @@ select j.uai, j.rentree,
   case when bool_and(j.eleves is not null) then sum(j.eleves) end as eleves,
   any_value(s.filles) as filles,
   any_value(s.garcons) as garcons,
+  any_value(s.filles_pub) as filles_pub,
+  any_value(s.garcons_pub) as garcons_pub,
   max(j.segpa) as segpa,
   max(j.ulis) as ulis,
   list(j.source order by j.ordre_source) as sources

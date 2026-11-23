@@ -93,6 +93,7 @@ with brut as (
   select
     upper(trim(uai)) as uai,
     rentree(rentree_scolaire) as rentree,
+    'ips_colleges' as source,
     nombre(ips) as ips,
     nombre(ecart_type_de_l_ips) as ecart_type,
     nombre(ips_departemental_public) as dep_public,
@@ -106,6 +107,7 @@ with brut as (
   select
     upper(trim(uai)) as uai,
     rentree(rentree_scolaire) as rentree,
+    'ips_lycees' as source,
     nombre(ips_etab) as ips,
     nombre(ecart_type_etablissement) as ecart_type,
     nombre(case upper(trim(type_de_lycee)) when 'LEGT' then ips_departemental_legt_public

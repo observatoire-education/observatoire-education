@@ -2,9 +2,11 @@
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { SourceId } from "@obs/shared/types";
+import type { CodeIndicateur, CodeRepartition } from "@obs/shared/libelles";
+import type { Indicateur, Repartition, SourceId } from "@obs/shared/types";
 import { type Db, ouvrir } from "../pipeline/src/db.ts";
 import { connexion, executer, ident, lignes, litteral } from "../pipeline/src/duck.ts";
+import { calculerIndicateurs, calculerRepartitions } from "../pipeline/src/indicateurs.ts";
 import { SOURCES } from "../pipeline/src/sources.ts";
 
 export const FIXTURES = join(import.meta.dir, "fixtures");
@@ -35,4 +37,28 @@ let base: Promise<Db> | undefined;
 export function dbTest(): Promise<Db> {
   base ??= (async () => ouvrir(await cheminsFixtures(await mkdtemp(join(tmpdir(), "obs-fixtures-")))))();
   return base;
+}
+
+// --- Indicateurs et répartitions, calculés une fois par session (tâche 6) ---
+
+let indicateurs: Promise<Map<string, Indicateur[]>> | undefined;
+let repartitions: Promise<Map<string, Repartition[]>> | undefined;
+
+export async function indic(uai: string, code: CodeIndicateur): Promise<Indicateur> {
+  indicateurs ??= dbTest().then(calculerIndicateurs);
+  const i = (await indicateurs).get(uai)?.find((x) => x.code === code);
+  if (!i) throw new Error(`indicateur ${code} absent pour ${uai}`);
+  return i;
+}
+
+export async function repart(uai: string, code: CodeRepartition): Promise<Repartition> {
+  repartitions ??= dbTest().then(calculerRepartitions);
+  const r = (await repartitions).get(uai)?.find((x) => x.code === code);
+  if (!r) throw new Error(`répartition ${code} absente pour ${uai}`);
+  return r;
+}
+
+export async function repartitionsDe(uai: string): Promise<Repartition[]> {
+  repartitions ??= dbTest().then(calculerRepartitions);
+  return (await repartitions).get(uai) ?? [];
 }

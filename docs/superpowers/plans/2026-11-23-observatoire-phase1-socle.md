@@ -160,12 +160,12 @@ export type Secteur = "public" | "prive_sous_contrat";
 export type Niveau = "departement" | "academie" | "france";
 export type SourceId = "annuaire" | "ips_colleges" | "ips_lycees" | "effectifs_colleges"
   | "effectifs_lycees_gt" | "effectifs_lycees_pro" | "personnels";
-export interface Mesure { valeur: number | null; statut: Statut; source: SourceId | null; rentree: number | null }
+export interface Mesure { valeur: number | null; statut: Statut; source: SourceId | null; rentree: number | null; couverture?: number }
 export interface Comparaison { niveau: Niveau; public: Mesure; prive: Mesure; calculee: boolean }
 export interface Indicateur { code: CodeIndicateur; mesure: Mesure; comparaisons: Comparaison[]; historique: [number, number][] }
 export interface PartsReference { niveau: Niveau; secteur: Secteur; parts: number[] | null; statut: Statut }
 export interface Repartition { code: CodeRepartition; categories: string[]; parts: number[] | null; statut: Statut;
-  references: PartsReference[]; source: SourceId; rentree: number | null }
+  references: PartsReference[]; source: SourceId; rentree: number | null; couverture?: number }
 export interface NiveauEleves { libelle: string; eleves: number | null; filles: number | null; garcons: number | null }
 export interface Eleves { rentree: number; total: number | null; niveaux: NiveauEleves[];
   segpa: number | null; ulis: number | null; source: SourceId[] }
@@ -508,7 +508,12 @@ test("personnels vides restent null", async () => { /* etp_vs de 0440002B est nu
 - **Secret statistique** : la source masque toujours filles *et* garçons ensemble quand l'un des sexes est très minoritaire (effectifs de 5 à 175 élèves). Rien ne permet de le déduire : le niveau reste `null`.
 - **3e prépa-métiers** : 741 lycées pro et 456 LPO figurent aussi dans le jeu des collèges (environ 25 élèves de 3e chacun) ; les EREA figurent dans les jeux collèges et pro. L'addition des jeux est donc correcte. Conséquences : à la tâche 8, ne pas afficher les niveaux à 0 élève d'un lycée (« 6e : 0 ») ; à la tâche 6, les répartitions `lv1`/`lv2` ne concernent que la famille `college`.
 - Données réelles 2025 : 10 642 établissements avec effectifs, 3,32 millions de collégiens, sept rentrées d'historique (2019-2025). Calcul complet (ouverture + normalisation + élèves) : 0,6 s.
-- **Question ouverte pour la tâche 6 (à trancher par le porteur)** : avec la règle « aucune somme partielle », `part_filles` de l'établissement est `non_disponible` pour 78 % des LPO, 61 % des LP, 27 % des LEGT et 1 % des collèges, à cause d'une seule voie masquée. Options : (a) garder la règle stricte ; (b) calculer la part sur les niveaux publiés et afficher la couverture (« sur 92 % des élèves »). La part par niveau reste exacte dans les deux cas.
+- **Part de filles d'un établissement : décision du porteur (2026-11-23), option « partielle + couverture ».** Avec la règle stricte, `part_filles` aurait été `non_disponible` pour 78 % des LPO, 61 % des LP, 27 % des LEGT et 1 % des collèges, à cause d'une seule voie masquée. On la calcule donc **sur les niveaux dont filles et garçons sont publiés**, et on affiche leur couverture :
+  - `effectifs` porte `filles_pub` et `garcons_pub` (sommes sur les niveaux publiés) ;
+  - `part_filles` = 100 × filles_pub / (filles_pub + garcons_pub) ; la répartition `sexe_eleves` utilise les mêmes sommes ;
+  - `couverture` = 100 × (filles_pub + garcons_pub) / élèves, plafonnée à 100, portée par `Mesure.couverture` et `Repartition.couverture` (champ optionnel, présent seulement s'il est inférieur à 100) ;
+  - affichage : « 47,2 % (sur 92 % des élèves) » ; les moyennes de comparaison sont des Σ/Σ sur les niveaux publiés ;
+  - si aucun niveau n'est publié, `non_disponible`. La part par niveau reste exacte.
 
 - [ ] **Step 1 : écrire les tests qui doivent échouer**
 
@@ -564,7 +569,7 @@ Chaque indicateur prend la rentrée la plus récente où l'établissement a la d
 | `part_agreges` | 100 × etp_agreges / etp_ens | Σ/Σ |
 | `part_moins_35`, `part_50_plus` | 100 × etp_x / etp_ens | Σ/Σ |
 | `part_anciennete_moins_2`, `part_anciennete_8_plus` | 100 × etp_x / etp_ens | Σ/Σ |
-| `part_filles` | 100 × filles / eleves | Σ/Σ |
+| `part_filles` | 100 × filles_pub / (filles_pub + garcons_pub), avec `couverture` (décision du 2026-11-23) | Σ/Σ |
 
 | répartition | catégories (dans l'ordre) | références |
 |---|---|---|
@@ -608,6 +613,13 @@ test("répartition des statuts", async () => {
 });
 test("part de filles", async () => { expect((await indic("0440001A", "part_filles")).mesure.valeur).toBeCloseTo(49.15, 1); });
 ```
+
+**Mise en œuvre et constats (tâche 6, 2026-11-23) :**
+- Le SQL est généré par `sqlIndicateurs()` (étape « 02 » de `ETAPES`, après les élèves) à partir des définitions `MESURES` et `DEF_REPARTITIONS` de `indicateurs.ts` : tables `base` (effectifs ⨝ personnels), `mesures`, `moyennes`, `repartitions`, `references_repartitions`. La table `ips` porte désormais sa `source` (`ips_colleges` ou `ips_lycees`).
+- Chaque indicateur a un historique (toutes les rentrées où il est calculable). Un établissement sans donnée garde ses comparaisons, à la dernière rentrée disponible, pour être situé.
+- Données réelles 2025 (collèges, France) : 14,8 élèves par ETP enseignant dans le public, 17,2 dans le privé ; 74,1 élèves par ETP de vie scolaire (public) ; 64,3 % d'enseignantes dans le public, 68,8 % dans le privé ; 7,0 % de non-titulaires dans le public, 15,4 % dans le privé. Calcul complet : environ 2,2 s ; environ 10 Ko de JSON d'indicateurs par fiche.
+- Vie scolaire du privé : 3 108 fiches en `non_publie_prive`, comme attendu.
+- **Couverture de `part_filles`** : 2 004 établissements ont une couverture inférieure à 100 % (médiane 73 %, minimum 1,7 %). Un seuil minimal (par exemple 50 %) en dessous duquel la part serait `non_disponible` reste possible : à décider par le porteur avant la tâche 8.
 
 `indic(uai, code)` et `repart(uai, code)` sont des aides de `tests/aide.ts`. Elles mettent le résultat en cache pour toute la session de tests.
 

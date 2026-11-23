@@ -23,6 +23,8 @@ export interface Mesure {
   statut: Statut;
   source: SourceId | null;
   rentree: number | null;
+  /** Part des élèves (en %) sur laquelle porte la valeur, si elle est inférieure à 100 (secret statistique). */
+  couverture?: number;
 }
 
 /** Moyennes public et privé d'un niveau territorial. `calculee` = false si publiée par la source. */
@@ -56,6 +58,8 @@ export interface Repartition {
   references: PartsReference[];
   source: SourceId;
   rentree: number | null;
+  /** Comme Mesure.couverture. */
+  couverture?: number;
 }
 
 export interface NiveauEleves {
