@@ -500,6 +500,16 @@ test("personnels vides restent null", async () => { /* etp_vs de 0440002B est nu
 - **Établissement présent dans les deux jeux de lycées** (cas typique des LPO) : on ajoute les deux niveaux et on additionne les totaux, filles et garçons. `source` liste les deux jeux.
 - **Valeurs absentes :** une valeur absente reste `null`, et un total est `null` dès qu'une de ses parties est `null`. On ne fait aucune somme partielle silencieuse.
 
+**Mise en œuvre et constats (tâche 5, 2026-11-23) :**
+- Les niveaux sont déclarés dans `pipeline/src/colonnes-eleves.ts`. Le SQL est généré par `sqlEleves()` (étape « 03 » de `ETAPES` dans `db.ts`) et **les colonnes requises des trois jeux d'effectifs sont dérivées de ces définitions** : toute colonne lue par le calcul est exigée à la collecte.
+- Lycées GT : « Seconde GT », « Première » et « Terminale » regroupent la voie générale et les voies technologiques (STI2D, STL, STMG, ST2S, STD2A, STHR, TMD, BT), par une liste explicite (le motif `1eres_*` capterait aussi les colonnes de langues). STHR, TMD et BT n'ont pas de répartition par sexe : si l'une a des élèves, filles et garçons du niveau sont `null`.
+- Lycées pro : un niveau « Autres formations » (CAP en 3 ans, CAP en 1 an, BMA, CS/MC, autres) complète les cinq niveaux du plan.
+- **Une voie à 0 élève compte 0 fille et 0 garçon**, même si la source laisse la case vide (fréquent). C'est une déduction certaine, pas un zéro inventé.
+- **Secret statistique** : la source masque toujours filles *et* garçons ensemble quand l'un des sexes est très minoritaire (effectifs de 5 à 175 élèves). Rien ne permet de le déduire : le niveau reste `null`.
+- **3e prépa-métiers** : 741 lycées pro et 456 LPO figurent aussi dans le jeu des collèges (environ 25 élèves de 3e chacun) ; les EREA figurent dans les jeux collèges et pro. L'addition des jeux est donc correcte. Conséquences : à la tâche 8, ne pas afficher les niveaux à 0 élève d'un lycée (« 6e : 0 ») ; à la tâche 6, les répartitions `lv1`/`lv2` ne concernent que la famille `college`.
+- Données réelles 2025 : 10 642 établissements avec effectifs, 3,32 millions de collégiens, sept rentrées d'historique (2019-2025). Calcul complet (ouverture + normalisation + élèves) : 0,6 s.
+- **Question ouverte pour la tâche 6 (à trancher par le porteur)** : avec la règle « aucune somme partielle », `part_filles` de l'établissement est `non_disponible` pour 78 % des LPO, 61 % des LP, 27 % des LEGT et 1 % des collèges, à cause d'une seule voie masquée. Options : (a) garder la règle stricte ; (b) calculer la part sur les niveaux publiés et afficher la couverture (« sur 92 % des élèves »). La part par niveau reste exacte dans les deux cas.
+
 - [ ] **Step 1 : écrire les tests qui doivent échouer**
 
 ```ts

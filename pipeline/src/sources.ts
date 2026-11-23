@@ -1,6 +1,7 @@
 // Registre des sources de la phase 1 (data.education.gouv.fr, API Opendatasoft v2.1).
 // Champs vérifiés sur l'API le 2026-11-23.
 import type { SourceId } from "@obs/shared/types";
+import { colonnesDe, JEUX_EFFECTIFS } from "./colonnes-eleves.ts";
 
 export interface Source {
   id: SourceId;
@@ -95,40 +96,24 @@ export const SOURCES: Record<SourceId, Source> = {
       "ips_{departemental,academique,national}_{legt,lpo,lp}_{public,prive}",
     ),
   ),
+  // Effectifs : les colonnes requises sont exactement celles que lit le calcul des élèves.
   effectifs_colleges: source(
     "effectifs_colleges",
     "fr-en-college-effectifs-niveau-sexe-lv",
     "Effectifs d'élèves par niveau, sexe et langue des collèges",
-    cols(
-      "rentree_scolaire",
-      "numero_college",
-      "nombre_eleves_total",
-      "nombre_d_eleves_total_segpa",
-      "nombre_d_eleves_total_ulis",
-      "nombre_total_de_{6,5,4,3}emes",
-      "{6,5,4,3}eme_filles",
-      "{6,5,4,3}emes_garcons",
-      "nombre_de_{6,5,4,3}emes_lv1_{allemand,anglais,espagnol,autres_langues}",
-      "nombre_de_{5,4,3}emes_lv2_{allemand,anglais,espagnol,italien,autres_langues}",
-    ),
+    colonnesDe(JEUX_EFFECTIFS[0]),
   ),
   effectifs_lycees_gt: source(
     "effectifs_lycees_gt",
     "fr-en-lycee_gt-effectifs-niveau-sexe-lv",
     "Effectifs d'élèves des lycées généraux et technologiques",
-    cols("rentree_scolaire", "numero_lycee", "nombre_d_eleves", "2ndes_gt", "2ndes_gt_filles", "2ndes_gt_garcons", "1eres_g", "terminales_g"),
+    colonnesDe(JEUX_EFFECTIFS[1]),
   ),
   effectifs_lycees_pro: source(
     "effectifs_lycees_pro",
     "fr-en-lycee_pro-effectifs-niveau-sexe-lv",
     "Effectifs d'élèves des lycées professionnels",
-    cols(
-      "rentree_scolaire",
-      "numero_lycee",
-      "nombre_d_eleves",
-      "{2ndes_pro,1eres_pro,terminales_pro,cap_1ere_annee,cap_2nde_annee}",
-      "{2ndes_pro,1eres_pro,terminales_pro,cap_1ere_annee,cap_2nde_annee}_{filles,garcons}",
-    ),
+    colonnesDe(JEUX_EFFECTIFS[2]),
   ),
   personnels: source(
     "personnels",
