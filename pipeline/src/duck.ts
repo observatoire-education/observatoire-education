@@ -1,9 +1,12 @@
 // Accès minimal à DuckDB (en mémoire) pour la collecte. La tâche 4 bâtit db.ts au-dessus.
 import { type DuckDBConnection, DuckDBInstance } from "@duckdb/node-api";
 
-/** Connexion en mémoire. Un seul fil par défaut : sorties Parquet déterministes (empreintes stables). */
-export async function connexion(threads = 1): Promise<DuckDBConnection> {
-  const instance = await DuckDBInstance.create(":memory:", { threads: String(threads) });
+/**
+ * Connexion en mémoire. Un seul fil par défaut : sorties Parquet déterministes (empreintes stables).
+ * `null` laisse DuckDB utiliser tous les cœurs (croisement).
+ */
+export async function connexion(threads: number | null = 1): Promise<DuckDBConnection> {
+  const instance = await DuckDBInstance.create(":memory:", threads === null ? {} : { threads: String(threads) });
   return instance.connect();
 }
 

@@ -74,6 +74,14 @@ export interface Eleves {
   source: SourceId[];
 }
 
+/** Un autre site d'un établissement réparti sur plusieurs adresses (même UAI). */
+export interface Site {
+  nom: string;
+  adresse: string;
+  codePostal: string;
+  commune: string;
+}
+
 export interface Voisin {
   uai: string;
   nom: string;
@@ -119,6 +127,8 @@ export interface Fiche {
   lon: number | null;
   /** Date ISO de dernière présence dans l'annuaire si l'établissement a disparu. */
   disparuLe: string | null;
+  /** Autres sites de la même UAI (le site principal est décrit par la fiche elle-même). */
+  autresSites: Site[];
   indicateurs: Indicateur[];
   repartitions: Repartition[];
   eleves: Eleves | null;

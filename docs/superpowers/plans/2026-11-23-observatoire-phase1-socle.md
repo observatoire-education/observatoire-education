@@ -169,6 +169,7 @@ export interface Repartition { code: CodeRepartition; categories: string[]; part
 export interface NiveauEleves { libelle: string; eleves: number | null; filles: number | null; garcons: number | null }
 export interface Eleves { rentree: number; total: number | null; niveaux: NiveauEleves[];
   segpa: number | null; ulis: number | null; source: SourceId[] }
+export interface Site { nom: string; adresse: string; codePostal: string; commune: string }
 export interface Voisin { uai: string; nom: string; famille: Famille; secteur: Secteur; commune: string;
   distanceKm: number; eleves: Mesure; elevesParEtpEns: Mesure; ips: Mesure }
 export interface SourceRef { id: SourceId; producteur: string; titre: string; pageUrl: string;
@@ -176,7 +177,7 @@ export interface SourceRef { id: SourceId; producteur: string; titre: string; pa
 export interface Fiche { uai: string; nom: string; famille: Famille; secteur: Secteur; contrat: string | null;
   adresse: string; codePostal: string; commune: string; codeCommune: string; dep: string; depLibelle: string;
   aca: string; acaLibelle: string; ep: "REP+" | "REP" | null; segpa: boolean; ulis: boolean; internat: boolean;
-  lat: number | null; lon: number | null; disparuLe: string | null;
+  lat: number | null; lon: number | null; disparuLe: string | null; autresSites: Site[];
   indicateurs: Indicateur[]; repartitions: Repartition[]; eleves: Eleves | null;
   voisins: Voisin[] | null; sources: SourceRef[] }
 ```
@@ -356,7 +357,8 @@ test("assurerCache vérifie l'empreinte", …);           // fichier corrompu da
     - `secteur(statut: string, contrat: string | null): Secteur | "prive_hors_contrat" | null` ;
     - `nombre(v: unknown): number | null`.
   - Tables :
-    - `etablissements(uai, nom, famille, secteur, contrat, adresse, code_postal, code_commune, commune, dep, dep_libelle, aca, aca_libelle, lat, lon, ep, segpa, ulis, internat)` ;
+    - `etablissements(uai, nom, famille, secteur, contrat, adresse, code_postal, code_commune, commune, dep, dep_libelle, aca, aca_libelle, lat, lon, ep, segpa, ulis, internat)` ; une ligne par UAI (site principal) ;
+    - `sites(uai, rang, nom, adresse, code_postal, commune, principal)` : tous les sites des UAI multi-sites ;
     - `ips(uai, rentree, ips, ecart_type, dep_public, dep_prive, aca_public, aca_prive, nat_public, nat_prive)` ;
     - `personnels(uai, rentree, etp_total, etp_vs, etp_ens, etp_femmes, etp_agreges, etp_certifies, etp_plp, etp_autres_tit, etp_non_tit, etp_moins_35, etp_35_49, etp_50_plus, etp_anc_moins_2, etp_anc_2_4, etp_anc_5_7, etp_anc_8_plus)` ;
     - `exclus(uai, motif)`.
@@ -365,8 +367,23 @@ test("assurerCache vérifie l'empreinte", …);           // fichier corrompu da
     - `dbTest(): Promise<Db>`.
 
 **Constats sur l'annuaire réel (essai de la tâche 3, 2026-11-23) :**
-- **L'UAI n'est pas unique** : sur 14 908 lignes réduites (collèges, lycées, EREA), seules 14 833 UAI sont distinctes. 69 UAI partagent 144 lignes : ce sont les sites d'un même établissement (annexe, voie GT / voie pro, pôle), avec des noms ou adresses différents. `etablissements` doit garder **une ligne par UAI**, choisie de façon déterministe : on préfère le site dont le nom ne commence pas par « Annexe », puis le nom le plus court, puis l'ordre alphabétique. Test à ajouter : `UAI multi-sites : une seule ligne`.
-- **Le portail alterne entre deux états** sous la même date `modified`, avec des écarts sur une soixantaine d'UAI (codes postaux, casse des noms, adresses). La collecte le gère : déduplication par empreinte sur toutes les versions, et suivi de la version actuelle (`actuelles` dans le manifest). Conséquence : le site peut changer légèrement d'une nuit à l'autre sans que les statistiques bougent.
+- **L'UAI n'est pas unique** : sur 14 908 lignes réduites (collèges, lycées, EREA), seules 14 833 UAI sont distinctes. 69 UAI partagent 144 lignes, toutes marquées `multi_uai = 1` : ce sont les sites d'un même établissement (annexe, voie GT / voie pro, pôle), avec des noms ou adresses différents. Les statistiques étant publiées par UAI, il n'y a aucun double compte.
+  **Décision du porteur (2026-11-23) : un site principal et la liste des autres sites.**
+  - `multi_uai` rejoint les colonnes requises de l'annuaire.
+  - La table `sites(uai, rang, nom, adresse, code_postal, commune, principal)` garde toutes les lignes. `etablissements` garde **une ligne par UAI**, celle du site principal, choisi de façon déterministe : d'abord un nom qui ne commence pas par « Annexe », puis un site qui n'est pas d'enseignement supérieur (nom contenant « sup », « supérieur », « prépa » ou « STS »), puis le nom le plus court, puis l'ordre alphabétique du nom et de l'adresse. Sur les données réelles, le critère « supérieur » évite de retenir « Notre-Dame (sup) » ou « Henri Bergson (enseignement supérieur) ».
+  - La fiche porte `autresSites` et affiche « Établissement réparti sur {n} sites » avec la liste. Les voisins se calculent depuis le site principal.
+  - La règle est publiée sur `/methode/`.
+  - Test : `UAI multi-sites : un site principal, les autres listés`.
+- **Le portail alterne entre deux états** sous la même date `modified`, avec des écarts sur une soixantaine d'UAI (codes postaux, casse des noms, adresses ; jamais de champ statistique). La collecte le gère : déduplication par empreinte sur toutes les versions, et suivi de la version actuelle (`actuelles` dans le manifest).
+  **Décision du porteur (2026-11-23) : accepter, documenter, surveiller.** Une fiche peut changer d'adresse ou de casse d'une nuit à l'autre ; `/methode/` le mentionne. Si l'alternance persiste, on envisagera une hystérésis (basculer après deux nuits identiques). Le porteur peut signaler l'anomalie au producteur.
+- **Autres valeurs réelles :**
+  - `etat` vaut toujours `OUVERT` : l'export ne contient pas les établissements fermés, les disparitions passent par le registre des pages (tâche 7) ;
+  - 1 477 lignes « SECTION ENSEIGNT GEN. ET PROF. ADAPTE » (des SEGPA ayant leur propre UAI) et 757 « SECTION D ENSEIGNEMENT PROFESSIONNEL » sont exclues par `famille_inconnue`, ce qui est voulu ;
+  - `segpa` est du texte « 0 »/« 1 », `ulis` et `hebergement` des entiers 0/1 : la normalisation compare des chaînes (`v::varchar`) pour rester insensible au type ;
+  - la rentrée des effectifs est une date `AAAA-01-01` qui désigne la rentrée de septembre AAAA (vérifié par l'IPS 2025-2026) ;
+  - 140 établissements n'ont pas de coordonnées (2 seulement dans le périmètre).
+- **Résultat sur les données réelles (essai de la tâche 4)** : 11 221 établissements dans le périmètre, 101 départements ; exclus : 2 319 `famille_inconnue`, 1 077 `prive_hors_contrat`, 207 `hors_perimetre_geographique`, 9 `secteur_inconnu`. 28 lycées changent de famille grâce au type de l'IPS.
+- **Lycées sans IPS** : 223 lycées professionnels privés « SOUS CONTRAT ETABLISSEMENT AGRICOLE » (ministère de l'Agriculture, hors du champ de l'IPS de la DEPP), plus environ 300 lycées publics. Ils affichent « non disponible » ; aucun traitement spécial en phase 1.
 
 **Correspondances :**
 - **`famille`** (sur `libelle_nature` en majuscules) :
@@ -680,6 +697,7 @@ test("sources d'une fiche", async () => { /* 0440003C -> ["annuaire","ips_lycees
 1. **En-tête :**
    - fil d'Ariane France › Académie › Département › Commune ; en phase 1, seul le maillon Département est un lien ;
    - nom et pastilles ;
+   - si `autresSites` est non vide : « Établissement réparti sur {n} sites », avec le nom et l'adresse de chacun ;
    - boutons « Imprimer / PDF », « Afficher la carte » et « Copier le lien ».
 2. **Bandeau des six chiffres clés**, chacun avec les moyennes départementales public et privé.
 3. **Sommaire.**
@@ -793,7 +811,7 @@ test("bloc A4 : moyennes seules, sources numérotées, QR", () => {
 - **Sources :**
   - pour chaque source : le titre, le producteur, le lien et chaque version (date de collecte, rentrée, empreinte courte, lien de téléchargement Release) ;
   - les dates des exécutions récentes tirées du journal.
-- **Méthode :** périmètre et exclusions, moyennes Σ/Σ et exclusion des dénominateurs nuls, moyennes de l'IPS publiées par la DEPP, voisinage (familles compatibles, 6 voisins, 30 km), absences, pages conservées après disparition.
+- **Méthode :** périmètre et exclusions, moyennes Σ/Σ et exclusion des dénominateurs nuls, moyennes de l'IPS publiées par la DEPP, voisinage (familles compatibles, 6 voisins, 30 km), absences, pages conservées après disparition. Établissements multi-sites (règle du site principal) et alternance possible des adresses dans l'annuaire (décisions du 2026-11-23).
 - **404 :** une adresse `/etablissement/[0-9a-z]{8}/` contenant des minuscules redirige (`location.replace`) vers sa forme en majuscules. Sinon, la page propose un lien vers l'accueil et la recherche.
 - **Sitemap :** toutes les pages, avec pour `<lastmod>` la date de collecte la plus récente.
 

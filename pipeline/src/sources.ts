@@ -72,6 +72,7 @@ export const SOURCES: Record<SourceId, Source> = {
       "ulis",
       "hebergement",
       "etat",
+      "multi_uai",
     ),
     true,
   ),

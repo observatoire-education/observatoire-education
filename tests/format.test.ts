@@ -66,6 +66,7 @@ describe("absences et libellés", () => {
     expect(LIBELLES.nonCouvert).toBe("non couvert par les statistiques publiques");
     expect(LIBELLES.pasDeSegpa).toBe("pas de SEGPA");
     expect(LIBELLES.voisinsNonCalculables).toBe("Voisins non calculables (coordonnées absentes)");
+    expect(LIBELLES.multiSites(3)).toBe("Établissement réparti sur 3 sites");
     expect(LIBELLES.disparu("2026-10-01")).toBe(
       "Cet établissement n'apparaît plus dans l'Annuaire de l'éducation depuis le 01/10/2026.",
     );

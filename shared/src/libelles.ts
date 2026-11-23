@@ -10,6 +10,7 @@ export const LIBELLES = {
   voisinsNonCalculables: "Voisins non calculables (coordonnées absentes)",
   aucunCommentaire: "Ce document ne contient aucun commentaire : il reproduit des données publiques.",
   piedDePage: "Données : Licence Ouverte 2.0. Code : AGPL-3.0. Ce site ne commente pas les chiffres.",
+  multiSites: (n: number): string => `Établissement réparti sur ${n} sites`,
   disparu: (isoDate: string): string => {
     const [a, m, j] = isoDate.slice(0, 10).split("-");
     return `Cet établissement n'apparaît plus dans l'Annuaire de l'éducation depuis le ${j}/${m}/${a}.`;
