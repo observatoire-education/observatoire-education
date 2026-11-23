@@ -1,6 +1,6 @@
 {
-  "SITE_URL": "",
-  "DOMAINE": "",
+  "SITE_URL": "https://observatoireeducation.fr",
+  "DOMAINE": "observatoireeducation.fr",
   "DEPOT": "observatoire-education/observatoire-education",
   "INDEXABLE": false
 }

@@ -71,11 +71,17 @@ describe("contrôles transverses du HTML", () => {
   });
 
   test("aucune ressource tierce chargée par les pages", () => {
+    // seulement ce que le navigateur télécharge : scripts, styles, images, icônes
+    // (la balise canonical déclare l'adresse de la page, sans rien charger)
     for (const p of toutesLesPages()) {
-      const h = page(p);
-      for (const m of h.matchAll(/<(?:script|link|img)[^>]+(?:src|href)="(https?:)?\/\/[^"]+"/g)) {
-        expect(m[0]).toBeUndefined();
-      }
+      const d = doc(p);
+      const charges = [
+        ...[...d.querySelectorAll("script[src], img[src], iframe[src]")].map((e) => e.getAttribute("src")!),
+        ...[...d.querySelectorAll("link[href]")]
+          .filter((l) => /stylesheet|icon|preload|modulepreload|manifest/.test(l.getAttribute("rel") ?? ""))
+          .map((l) => l.getAttribute("href")!),
+      ];
+      for (const url of charges) expect(`${p} : ${url}`).not.toMatch(/ : (https?:)?\/\//);
     }
   });
 });
