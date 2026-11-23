@@ -27,11 +27,9 @@ jobs:
     timeout-minutes: 60
     outputs:
       construit: ${{ steps.change.outputs.reconstruire }}
-    env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v7
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: "1.4.5"
       - run: bun install --frozen-lockfile
@@ -43,6 +41,8 @@ jobs:
 
       - name: Collecte des sources
         if: github.event_name != 'push'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # gh : publier les archives en Releases
         run: bun run collect
 
       - name: Une source a-t-elle changé ?
@@ -77,6 +77,8 @@ jobs:
 
       - name: Données, site et garde-fous
         if: steps.change.outputs.reconstruire == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # gh : récupérer les archives absentes du cache
         run: bun run build
 
       - name: Commit des archives (manifest, journal, registre des pages)

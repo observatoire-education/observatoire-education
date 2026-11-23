@@ -1,0 +1,7 @@
+# Met à jour les actions GitHub (y compris les SHA épinglés des actions tierces) une fois par semaine.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
