@@ -1,0 +1,14 @@
+{
+  "name": "@obs/site",
+  "private": true,
+  "type": "module",
+  "scripts": { "dev": "astro dev", "build": "astro build" },
+  "dependencies": {
+    "@obs/shared": "workspace:*",
+    "astro": "^7.4",
+    "@observablehq/plot": "^0.6.19",
+    "linkedom": "^0.18",
+    "qrcode": "^1.5",
+    "maplibre-gl": "^6"
+  }
+}

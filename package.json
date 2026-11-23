@@ -1,0 +1,23 @@
+{
+  "name": "observatoire-education",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "workspaces": [
+    "shared",
+    "pipeline",
+    "site"
+  ],
+  "scripts": {
+    "collect": "bun pipeline/src/cli.ts collect",
+    "data": "bun pipeline/src/cli.ts data",
+    "build": "bun run data && bun run --cwd site astro build && bun scripts/garde-fous.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@obs/shared": "workspace:*",
+    "@types/bun": "latest",
+    "typescript": "^5"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "@obs/pipeline",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@obs/shared": "workspace:*",
+    "@duckdb/node-api": "2.0.1-r.1"
+  }
+}
