@@ -15,10 +15,15 @@ const COLONNES_CSV = [
   "part_enseignantes", "ips",
 ] as const;
 
+/**
+ * Champ CSV. Un texte qui commence par =, +, -, @, tabulation ou retour chariot est préfixé d'une
+ * apostrophe, pour qu'aucun tableur ne l'interprète comme une formule ; les nombres sont laissés tels quels.
+ */
 const champ = (v: string | number | null): string => {
   if (v === null) return "";
-  const s = String(v);
-  return /[;"\n]/.test(s) ? `"${s.replaceAll('"', '""')}"` : s;
+  let s = String(v);
+  if (typeof v === "string" && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+  return /[;"\n\r]/.test(s) ? `"${s.replaceAll('"', '""')}"` : s;
 };
 
 /** CSV (séparateur « ; », point décimal) ; une absence est vide, ou porte son statut (« non_publie_prive »). */

@@ -60,6 +60,8 @@ group by 1;
 create or replace table classement as
 select *,
   case
+    -- l'UAI sert à nommer des fichiers et des URL : format strict, 7 chiffres et une lettre
+    when not regexp_matches(uai, '^[0-9]{7}[A-Z]$') then 'uai_invalide'
     when etat is distinct from 'OUVERT' then 'ferme'
     when dep in ('975', '977', '978') or dep like '98%' then 'hors_perimetre_geographique'
     when type_etablissement not in ('Collège', 'Lycée', 'EREA') then 'type_hors_perimetre'

@@ -8,7 +8,9 @@
   var familles = { college: "Collège", legt: "Lycée GT", lpo: "Lycée polyvalent", lp: "Lycée pro", erea: "EREA" };
   var index = null, chargement = null;
   var norm = function (s) { return String(s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase(); };
-  var echap = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); };
+  // Toute donnée insérée dans le HTML est échappée ; les chemins sont encodés.
+  var echap = function (s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
+  var chemin = function (s) { return encodeURIComponent(String(s)); };
 
   function charger() {
     chargement = chargement || fetch("/recherche.json").then(function (r) { return r.json(); }).then(function (x) {
@@ -18,10 +20,18 @@
     return chargement;
   }
 
+  // Plages repérées sur le texte brut (norm conserve la longueur d'un texte NFC), puis chaque morceau est échappé.
   function surligner(texte, termes) {
-    var t = echap(texte), n = norm(t);
-    termes.forEach(function (m) { var i = n.indexOf(m); if (i >= 0 && m) { t = t.slice(0, i) + "<mark>" + t.slice(i, i + m.length) + "</mark>" + t.slice(i + m.length); n = norm(t); } });
-    return t;
+    var brut = String(texte).normalize("NFC"), n = norm(brut), plages = [];
+    termes.forEach(function (m) { var i = n.indexOf(m); if (m && i >= 0) plages.push([i, i + m.length]); });
+    plages.sort(function (a, b) { return a[0] - b[0]; });
+    var h = "", pos = 0;
+    plages.forEach(function (p) {
+      if (p[0] < pos) return; // plages qui se chevauchent : la première suffit
+      h += echap(brut.slice(pos, p[0])) + "<mark>" + echap(brut.slice(p[0], p[1])) + "</mark>";
+      pos = p[1];
+    });
+    return h + echap(brut.slice(pos));
   }
 
   function lancer() {
@@ -42,14 +52,14 @@
     if (etabs.length) {
       h += '<div class="grp">Établissements' + (etabs.length > 20 ? " (20 premiers sur " + etabs.length + ", précisez la recherche)" : "") + "</div>";
       h += etabs.slice(0, 20).map(function (e) {
-        return '<a href="/etablissement/' + e.u + '/"><span>' + surligner(e.n, termes) + '</span><span class="u">' + e.u +
+        return '<a href="/etablissement/' + chemin(e.u) + '/"><span>' + surligner(e.n, termes) + '</span><span class="u">' + echap(e.u) +
           '</span><span class="s"><span class="sect ' + (e.s === "public" ? "pub" : "pri") + '">' + (e.s === "public" ? "Public" : "Privé s. c.") +
-          "</span> · " + familles[e.f] + " · " + surligner(e.c, termes) + (e.x ? " · page conservée" : "") + "</span></a>";
+          "</span> · " + echap(familles[e.f] || "") + " · " + surligner(e.c, termes) + (e.x ? " · page conservée" : "") + "</span></a>";
       }).join("");
     }
     if (trouves.length) {
       h += '<div class="grp">Départements</div>' + trouves.map(function (d) {
-        return '<a href="/departement/' + d.d + '/"><span>' + surligner(d.l, termes) + '</span><span></span><span class="s">' + d.d + " · " + echap(d.a) + "</span></a>";
+        return '<a href="/departement/' + chemin(d.d) + '/"><span>' + surligner(d.l, termes) + '</span><span></span><span class="s">' + echap(d.d) + " · " + echap(d.a) + "</span></a>";
       }).join("");
     }
     res.innerHTML = h || '<div class="grp">Aucun résultat</div><div class="vide">Vérifiez l’orthographe, ou cherchez par commune ou par UAI. Les établissements privés hors contrat ne figurent pas : ils ne sont pas couverts par les statistiques publiques.</div>';

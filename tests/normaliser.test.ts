@@ -90,6 +90,7 @@ describe("tables canoniques", () => {
       "0440008H": "secteur_inconnu",
       "0440009J": "famille_inconnue",
       "9770001G": "hors_perimetre_geographique",
+      "../X/0440010K": "uai_invalide", // l'UAI sert à nommer des fichiers et des URL : format strict
     });
   });
 
