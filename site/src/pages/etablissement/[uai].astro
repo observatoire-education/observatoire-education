@@ -10,6 +10,7 @@ import Bandeau from "../../components/Bandeau.astro";
 import Cellule from "../../components/Cellule.astro";
 import Empile from "../../components/Empile.astro";
 import Entete from "../../components/Entete.astro";
+import FicheA4 from "../../components/FicheA4.astro";
 import LigneSource from "../../components/LigneSource.astro";
 import Sources from "../../components/Sources.astro";
 import Voisins from "../../components/Voisins.astro";
@@ -255,5 +256,6 @@ const etpVs = indicateur(f, "etp_vs");
 
   <Voisins f={f} />
   <Sources f={f} genereLe={genereLe} />
+  <FicheA4 f={f} genereLe={genereLe} />
   <script is:inline src="/js/fiche.js" defer></script>
 </Base>

@@ -819,6 +819,13 @@ test("bloc A4 : moyennes seules, sources numérotées, QR", () => {
 
 - [ ] **Step 2 :** lancer le test. Attendu : FAIL.
 - [ ] **Step 3 :** implémenter.
+**Mise en œuvre et mesures (tâche 9, 2026-11-23) :**
+- `FicheA4.astro` est inclus dans la page de la fiche (`aria-hidden`) ; `obs.css` le masque à l'écran et, à l'impression, ne garde que lui (`@page { size:A4; margin:11mm 12mm }`). QR code SVG généré au build (`qrcode`).
+- Dans le tableau central, les absences sont abrégées (« non publié », « n. d. ») et définies en pied de page ; chaque ligne renvoie à sa source numérotée.
+- Hauteur mesurée (règles d'impression appliquées à 186 mm de large) : 209 mm pour un collège ; pire cas réel « Campus la Providence » (11 niveaux, 6 voisins) à 270 mm avant resserrement des espacements, **246 mm après**, pour 275 mm disponibles.
+- Poids : le bloc A4 ajoute environ 8 Ko par page ; build réel : page médiane 46 Ko, maximale 48,5 Ko, 500 Mo au total (sous la limite de 50 Ko et le garde-fou de 900 Mo, marge étroite).
+- Constat pour `/methode/` (tâche 10) : les effectifs n'incluent pas le post-bac (BTS, CPGE), alors que les ETP comptent tous les enseignants ; le ratio élèves par ETP enseignant est donc bas dans les lycées à forte offre post-bac (8,2 au Campus la Providence).
+
 - [ ] **Step 4 :** relancer, puis contrôler à la main l'aperçu avant impression (⌘P) sur la fiche du collège et sur celle d'un lycée polyvalent. Attendu : PASS, et une seule page A4 dans les deux cas.
 - [ ] **Step 5 :** commit `feat: fiche imprimable A4`.
 

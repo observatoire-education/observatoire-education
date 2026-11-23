@@ -1,0 +1,182 @@
+---
+// Fiche imprimable A4 : même page, masquée à l'écran, seule affichée à l'impression (window.print()).
+// Tableaux seulement (aucun graphique), moyennes seules, chaque ligne renvoie à sa source numérotée.
+import QRCode from "qrcode";
+import { date, entier, nombre } from "@obs/shared/format";
+import { academie, type CodeIndicateur, CONTRATS, FAMILLES, FAMILLES_PLURIEL, INDICATEURS, LIBELLES, SECTEURS } from "@obs/shared/libelles";
+import type { Fiche, Mesure, Niveau, Secteur, SourceId } from "@obs/shared/types";
+import { anneeScolaire, formater, indicateur, reference } from "../lib/affichage";
+import { CONFIG, lienPermanent } from "../lib/config";
+
+interface Props { f: Fiche; genereLe: string }
+const { f, genereLe } = Astro.props;
+const lien = lienPermanent(`/etablissement/${f.uai}/`);
+const qr = await QRCode.toString(lien, { type: "svg", margin: 0, errorCorrectionLevel: "M" });
+const prive = f.secteur === "prive_sous_contrat";
+
+// Numéro de chaque source dans le pied de page.
+const numero = new Map<SourceId, number>(f.sources.map((s, i) => [s.id, i + 1]));
+const renvoi = (id: SourceId | null | undefined) => (id && numero.has(id) ? `[${numero.get(id)}]` : "");
+
+/** Moyenne seule (sans écart) ; absences abrégées, définies en pied de page. */
+const moyenne = (code: CodeIndicateur, m: Mesure | undefined) =>
+  !m || m.statut === "non_disponible" || m.valeur === null
+    ? { t: m?.statut === "non_publie_prive" ? "non publié" : "n. d.", abs: true }
+    : { t: formater(code, m.valeur), abs: false };
+const etab = (code: CodeIndicateur, m: Mesure) =>
+  m.statut === "non_publie_prive" ? { t: "non publié", abs: true }
+  : m.statut !== "ok" || m.valeur === null ? { t: "n. d.", abs: true }
+  : { t: formater(code, m.valeur), abs: false };
+
+const LIGNES: [CodeIndicateur, string][] = [
+  ["part_filles", "Part de filles"],
+  ["ips", "IPS"],
+  ["eleves_par_etp_ens", "Élèves par ETP enseignant"],
+  ["eleves_par_etp_vs", "Élèves par ETP de vie scolaire"],
+  ["part_enseignantes", "Enseignantes (part des ETP)"],
+  ["part_non_titulaires", "Enseignants non titulaires"],
+  ["part_agreges", "Agrégés"],
+  ["part_moins_35", "Enseignants de moins de 35 ans"],
+  ["part_50_plus", "Enseignants de 50 ans ou plus"],
+  ["part_anciennete_moins_2", "Présents depuis moins de 2 ans"],
+  ["part_anciennete_8_plus", "Présents depuis 8 ans ou plus"],
+];
+const COLONNES: [Niveau, Secteur][] = [
+  ["departement", "public"], ["departement", "prive_sous_contrat"],
+  ["academie", "public"], ["academie", "prive_sous_contrat"],
+  ["france", "public"], ["france", "prive_sous_contrat"],
+];
+const lignes = LIGNES.map(([code, libelle]) => {
+  const i = indicateur(f, code);
+  const src = i.mesure.source ?? i.comparaisons.find((c) => c.public.source)?.public.source ?? null;
+  return { code, libelle, i, renvoi: renvoi(src) };
+});
+const iEleves = indicateur(f, "eleves");
+const ecartType = indicateur(f, "ecart_type_ips");
+const rentree = iEleves.mesure.rentree ?? indicateur(f, "ips").mesure.rentree;
+
+const el = f.eleves;
+const niveaux = (el?.niveaux ?? []).filter((n) => n.eleves !== 0 && n.eleves !== null);
+const renvoiEleves = renvoi(el?.source[0]);
+const etp = (code: CodeIndicateur) => etab(code, indicateur(f, code).mesure);
+const renvoiPersonnels = renvoi("personnels");
+const contrat = f.contrat ? (CONTRATS[f.contrat] ?? f.contrat) : null;
+const nd = (v: number | null) => (v === null ? "n. d." : entier(v));
+---
+<div class="a4" aria-hidden="true">
+  <div class="hd">
+    <div>
+      <div class="t">{f.nom}</div>
+      <div class="m">
+        <b>{SECTEURS[f.secteur]}</b>{contrat && ` · ${contrat}`} · {FAMILLES[f.famille]}{f.ep && ` · ${f.ep}`}{f.segpa && " · SEGPA"}{f.ulis && " · ULIS"} · UAI <span class="num">{f.uai}</span>
+      </div>
+      <div class="m">{f.adresse}, {f.codePostal} {f.commune} · {f.depLibelle} ({f.dep}) · {academie(f.acaLibelle)}</div>
+      {f.disparuLe && <div class="m"><b>{LIBELLES.disparu(f.disparuLe)}</b></div>}
+    </div>
+    <div class="qrw">
+      <div>Fiche éditée le {date(genereLe)}<br /><span class="num">{lien}</span></div>
+      <div class="qr" set:html={qr} />
+    </div>
+  </div>
+
+  <div class="centre">
+    <h3>Indicateurs, comparés aux moyennes des {FAMILLES_PLURIEL[f.famille].toLowerCase()} · rentrée {anneeScolaire(rentree)}</h3>
+    <table>
+      <thead>
+        <tr class="grp"><th></th><th></th><th colspan="2">{f.depLibelle}</th><th colspan="2">{academie(f.acaLibelle)}</th><th colspan="2">France</th></tr>
+        <tr>
+          <th>Indicateur</th><th>Établissement</th>
+          {COLONNES.map(([, s]) => <th><span class={`sym ${s === "public" ? "pub" : "pri"}`}></span>{s === "public" ? "public" : "privé s. c."}</th>)}
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Élèves <sup>{renvoiEleves}</sup></td>
+          <td class="n me">{iEleves.mesure.valeur !== null ? entier(iEleves.mesure.valeur) : "n. d."}</td>
+          <td class="hist" colspan="6">{iEleves.historique.slice(0, -1).slice(-4).map(([a, v]) => `${a} : ${entier(v)}`).join(" · ")}</td>
+        </tr>
+        {lignes.map(({ code, libelle, i, renvoi }) => {
+          const e = etab(code, i.mesure);
+          return (
+            <tr>
+              <td>{libelle} {renvoi && <sup>{renvoi}</sup>}</td>
+              <td class={`n me${e.abs ? " np" : ""}`}>{e.t}</td>
+              {COLONNES.map(([n, s]) => {
+                const m = moyenne(code, reference(i, n, s));
+                return <td class={`n${m.abs ? " np" : ""}`}>{m.t}</td>;
+              })}
+            </tr>
+          );
+        })}
+        <tr>
+          <td>Écart-type de l'IPS {renvoi(ecartType.mesure.source) && <sup>{renvoi(ecartType.mesure.source)}</sup>}</td>
+          <td class="n me">{ecartType.mesure.valeur !== null ? nombre(ecartType.mesure.valeur) : "n. d."}</td>
+          <td colspan="6"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="two">
+    <div>
+      <h3>Élèves par niveau {renvoiEleves && <sup>{renvoiEleves}</sup>}</h3>
+      <table>
+        <thead><tr><th>Niveau</th><th>Élèves</th><th>Filles</th><th>Garçons</th></tr></thead>
+        <tbody>
+          {niveaux.map((n) => <tr><td>{n.libelle}</td><td class="n">{nd(n.eleves)}</td><td class="n">{nd(n.filles)}</td><td class="n">{nd(n.garcons)}</td></tr>)}
+          <tr><td><b>Total</b></td><td class="n"><b>{nd(el?.total ?? null)}</b></td><td colspan="2"></td></tr>
+          {(f.famille === "college" || f.famille === "erea") && (
+            <tr><td>dont SEGPA / ULIS</td><td class="n" colspan="3">{f.segpa ? nd(el?.segpa ?? null) : LIBELLES.pasDeSegpa} / {nd(el?.ulis ?? null)}</td></tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <h3>Personnels {renvoiPersonnels && <sup>{renvoiPersonnels}</sup>}</h3>
+      <table>
+        <tbody>
+          <tr><td>ETP total</td><td class={`n${etp("etp_total").abs ? " np" : ""}`}>{etp("etp_total").t}</td></tr>
+          <tr><td>ETP enseignants</td><td class={`n${etp("etp_enseignants").abs ? " np" : ""}`}>{etp("etp_enseignants").t}</td></tr>
+          <tr><td>ETP de vie scolaire</td><td class={`n${etp("etp_vs").abs ? " np" : ""}`}>{etp("etp_vs").t}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {f.voisins && f.voisins.length > 0 && (
+    <div>
+      <h3>Établissements voisins ({f.voisins.length} plus proches à moins de 30 km, par distance)</h3>
+      <table>
+        <thead><tr><th>Établissement</th><th>Secteur</th><th>Commune</th><th>UAI</th><th>Distance</th><th>Élèves</th><th>Élèves / ETP ens.</th><th>IPS</th></tr></thead>
+        <tbody>
+          {f.voisins.map((v) => (
+            <tr>
+              <td>{v.nom}</td>
+              <td class="g"><span class={`sym ${v.secteur === "public" ? "pub" : "pri"}`}></span>{v.secteur === "public" ? "public" : "privé s. c."}</td>
+              <td class="g">{v.commune}</td>
+              <td class="n">{v.uai}</td>
+              <td class="n">{nombre(v.distanceKm)} km</td>
+              <td class="n">{etab("eleves", v.eleves).t}</td>
+              <td class="n">{etab("eleves_par_etp_ens", v.elevesParEtpEns).t}</td>
+              <td class="n">{etab("ips", v.ips).t}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+
+  <div class="ft">
+    <div><b>Sources</b> (Licence Ouverte 2.0 ; versions archivées et téléchargeables sur la page « Sources ») :</div>
+    <ol>
+      {f.sources.map((s) => (
+        <li>{s.producteur}, {s.titre}{s.rentree !== null && ` · rentrée ${anneeScolaire(s.rentree)}`} · collecté le {date(s.collecteLe)}{s.id.startsWith("ips_") ? " · moyennes publiées par la DEPP" : s.id === "annuaire" ? "" : " · moyennes calculées (Σ / Σ)"}.</li>
+      ))}
+    </ol>
+    <div>
+      « non publié » : {LIBELLES.nonPubliePrive} (la DEPP ne publie pas les ETP de vie scolaire des établissements privés sous contrat).
+      « n. d. » : {LIBELLES.nonDisponible}. {LIBELLES.aucunCommentaire}{" "}
+      Méthode : {CONFIG.SITE_URL}/methode/
+    </div>
+  </div>
+</div>
