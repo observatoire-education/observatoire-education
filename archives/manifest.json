@@ -1,0 +1,99 @@
+{
+  "versions": {
+    "annuaire": [
+      {
+        "sha256": "b80a47a168dc243a732b79ac4a26ceeaf1166fe81a706395a50efb978080632c",
+        "tag": "archives-annuaire-2026",
+        "fichier": "b80a47a168dc243a.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-annuaire-2026/b80a47a168dc243a.parquet",
+        "modified": "2026-11-23T06:01:25.300000+00:00",
+        "collecteLe": "2026-11-23T20:42:11.283Z",
+        "lignes": 14908
+      }
+    ],
+    "ips_colleges": [
+      {
+        "sha256": "7a4a1316bd2277c8a73ab77500a6e9f98dc2a1821ea27939badab7dfd8ef6e7c",
+        "tag": "archives-ips_colleges-2026",
+        "fichier": "7a4a1316bd2277c8.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-ips_colleges-2026/7a4a1316bd2277c8.parquet",
+        "modified": "2026-09-01T09:31:02.578000+00:00",
+        "collecteLe": "2026-11-23T20:42:11.283Z",
+        "lignes": 21061
+      }
+    ],
+    "ips_lycees": [
+      {
+        "sha256": "06dc158e506fefbb94f0655a5bb14ecf99a52f099b17f4e87cddbd2800490db8",
+        "tag": "archives-ips_lycees-2026",
+        "fichier": "06dc158e506fefbb.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-ips_lycees-2026/06dc158e506fefbb.parquet",
+        "modified": "2026-06-10T08:20:49.021000+00:00",
+        "collecteLe": "2026-11-23T20:42:11.283Z",
+        "lignes": 10905
+      }
+    ],
+    "effectifs_colleges": [
+      {
+        "sha256": "9071e44969f0046df5274895e4d13d8f2121fe6208fe3cfeaebb411e7c55f412",
+        "tag": "archives-effectifs_colleges-2026",
+        "fichier": "9071e44969f0046d.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-effectifs_colleges-2026/9071e44969f0046d.parquet",
+        "modified": "2026-07-27T10:24:40.709000+00:00",
+        "collecteLe": "2026-11-23T20:42:11.283Z",
+        "lignes": 58556
+      }
+    ],
+    "effectifs_lycees_gt": [
+      {
+        "sha256": "8a5870f31303333d8c7f981c5b3a4d8ebf7f88df3366a00c46fa960fc977ed95",
+        "tag": "archives-effectifs_lycees_gt-2026",
+        "fichier": "8a5870f31303333d.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-effectifs_lycees_gt-2026/8a5870f31303333d.parquet",
+        "modified": "2026-07-27T08:15:52.712000+00:00",
+        "collecteLe": "2026-11-23T20:42:11.283Z",
+        "lignes": 17674
+      }
+    ],
+    "effectifs_lycees_pro": [
+      {
+        "sha256": "85277a0c3b3f01bf70c31e9e6c0046c0992852b9b618797569b23b15fa9e3b8f",
+        "tag": "archives-effectifs_lycees_pro-2026",
+        "fichier": "85277a0c3b3f01bf.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-effectifs_lycees_pro-2026/85277a0c3b3f01bf.parquet",
+        "modified": "2026-07-27T10:21:28.880000+00:00",
+        "collecteLe": "2026-11-23T20:42:11.283Z",
+        "lignes": 15506
+      }
+    ],
+    "personnels": [
+      {
+        "sha256": "939f23f4cf35b1ac1731950a11fe788d927cb89de58976e8fc7a0d72dfd4b400",
+        "tag": "archives-personnels-2026",
+        "fichier": "939f23f4cf35b1ac.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-personnels-2026/939f23f4cf35b1ac.parquet",
+        "modified": "2026-10-26T12:56:29.896000+00:00",
+        "collecteLe": "2026-11-23T20:42:11.283Z",
+        "lignes": 21396
+      }
+    ]
+  },
+  "vus": {
+    "annuaire": "2026-11-23T06:01:25.300000+00:00",
+    "ips_colleges": "2026-09-01T09:31:02.578000+00:00",
+    "ips_lycees": "2026-06-10T08:20:49.021000+00:00",
+    "effectifs_colleges": "2026-07-27T10:24:40.709000+00:00",
+    "effectifs_lycees_gt": "2026-07-27T08:15:52.712000+00:00",
+    "effectifs_lycees_pro": "2026-07-27T10:21:28.880000+00:00",
+    "personnels": "2026-10-26T12:56:29.896000+00:00"
+  },
+  "actuelles": {
+    "annuaire": "b80a47a168dc243a732b79ac4a26ceeaf1166fe81a706395a50efb978080632c",
+    "ips_colleges": "7a4a1316bd2277c8a73ab77500a6e9f98dc2a1821ea27939badab7dfd8ef6e7c",
+    "ips_lycees": "06dc158e506fefbb94f0655a5bb14ecf99a52f099b17f4e87cddbd2800490db8",
+    "effectifs_colleges": "9071e44969f0046df5274895e4d13d8f2121fe6208fe3cfeaebb411e7c55f412",
+    "effectifs_lycees_gt": "8a5870f31303333d8c7f981c5b3a4d8ebf7f88df3366a00c46fa960fc977ed95",
+    "effectifs_lycees_pro": "85277a0c3b3f01bf70c31e9e6c0046c0992852b9b618797569b23b15fa9e3b8f",
+    "personnels": "939f23f4cf35b1ac1731950a11fe788d927cb89de58976e8fc7a0d72dfd4b400"
+  }
+}
