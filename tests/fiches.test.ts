@@ -96,7 +96,7 @@ describe("fiches", () => {
     expect(fiche("0440006F").sources.map((x) => x.id)).toContain("effectifs_lycees_pro");
   });
 
-  test("établissement sans aucune statistique : seule l'annuaire est citée", () => {
+  test("établissement sans aucune statistique : seul l'annuaire est cité", () => {
     expect(fiche("0440007G").sources.map((x) => x.id)).toEqual(["annuaire"]);
   });
 });
