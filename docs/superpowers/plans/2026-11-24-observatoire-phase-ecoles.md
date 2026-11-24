@@ -88,15 +88,15 @@
 | `tests/garde-fous.test.ts`, `ecoles.test.ts`, `secteurs.test.ts`, `pial.test.ts`, `communes.test.ts`, `site-ecoles.test.ts` (créés) ; tests existants (modifiés) | tests |
 
 **Fixtures des écoles** (département 44, réutilisées par toutes les tâches) :
-- `0440101A` « École maternelle Les Lilas », publique, Nantes (44109), 12 rue des Lilas, 4 classes ;
-- `0440102B` « École élémentaire Jules-Ferry », publique, Nantes, 3 bis rue Jules Ferry, 8 classes ;
-- `0440103C` « École primaire Sainte-Marie », privée sous contrat, Nantes, rue des Lilas sans numéro ;
+- `0440201A` « École maternelle Les Lilas », publique, Nantes (44109), 12 rue des Lilas, 4 classes ;
+- `0440202B` « École élémentaire Jules-Ferry », publique, Nantes, 3 bis rue Jules Ferry, 8 classes ;
+- `0440203C` « École primaire Sainte-Marie », privée sous contrat, Nantes, rue des Lilas sans numéro ;
 - `0440104D` « École primaire du Bourg », publique, Saint-Aubin (44150, commune entièrement rattachée au collège `0440001A`), 1 classe CP-CE1-CE2-CM1-CM2 ;
 - `0440105E` « École maternelle des Prés », publique, Saint-Aubin, sans coordonnées ;
 - `0440106F` « École élémentaire du Moulin », publique, fermée le 2016-07-05, commune déléguée `44999` rattachée à la commune nouvelle `44150` ;
 - fusion : `0440107G` « École maternelle des Tilleuls » et `0440109K` « École élémentaire des Tilleuls », publiques, Nantes, 5 rue des Tilleuls, fermées le 2019-07-04 ; `0440108H` « École primaire des Tilleuls », même adresse, ouverte le 2019-07-04 ;
 - une ligne d'effectifs pour l'UAI inconnue `0449999Z`.
-Le collège `0440001A` (fixture existante) est en tête du PIAL de `0440101A`, `0440102B` et `0440104D`. Nantes (44109) est découpée par rue dans `carte_scolaire.csv` : rue des Lilas, numéros pairs → `0440001A`, impairs → `0440002B` ; rue Jules Ferry, numéros 1 à 99, pairs et impairs → `0440002B`.
+Le collège `0440001A` (fixture existante) est en tête du PIAL de `0440201A`, `0440202B` et `0440104D`. Nantes (44109) est découpée par rue dans `carte_scolaire.csv` : rue des Lilas, numéros pairs → `0440001A`, impairs → `0440002B` ; rue Jules Ferry, numéros 1 à 99, pairs et impairs → `0440002B`.
 
 ---
 
@@ -155,7 +155,7 @@ Le collège `0440001A` (fixture existante) est en tête du PIAL de `0440101A`, `
 - [ ] **Step 1 :** relever les colonnes de chaque jeu avec `curl -s https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/<id> | jq '[.fields[].name]'`, et les reporter dans `colonnesRequises`. Pour `effectifs_ecoles` : `rentree_scolaire, numero_ecole, secteur, nombre_total_classes, nombre_total_eleves, nombre_eleves_preelementaire_hors_ulis, nombre_eleves_elementaire_hors_ulis, nombre_eleves_ulis, nombre_eleves_ueea, nombre_eleves_cp_hors_ulis, nombre_eleves_ce1_hors_ulis, nombre_eleves_ce2_hors_ulis, nombre_eleves_cm1_hors_ulis, nombre_eleves_cm2_hors_ulis`. Pour `personnels_ecoles` : `annee_de_la_rentree_scolaire, secteur, identifiant_de_l_etablissement, etp_d_enseignants_hommes_et_femmes, etp_de_femmes_enseignantes`, plus les trois colonnes d'âge et les quatre d'ancienneté. Pour `classes_ecoles` : `annee, uai, libelle_secteur, type_classe, nb_classes`. Pour `ecoles_ep` : `rs, uai, appartep, nbeleves, nbclasses`. L'Annuaire ajoute : `ecole_maternelle, ecole_elementaire, pial, code_circonscription, nom_circonscription, rpi_concentre, rpi_disperse`.
 - [ ] **Step 2 : test** dans `tests/collect.test.ts` : `SOURCES.effectifs_ecoles.millesime` vaut `{ colonne: "rentree_scolaire", cles: ["numero_ecole"] }` ; `FILTRE_FERMES` contient `nature_uai_libe like "ECOLE%"`.
 - [ ] **Step 3 :** FAIL, déclarer les sources (tableau des Global Constraints) et élargir `FILTRE_FERMES`, PASS.
-- [ ] **Step 4 :** écrire les fixtures des écoles décrites plus haut (effectifs 2019 à 2025 pour les écoles ouvertes, 2014 à la rentrée précédant la fermeture pour `0440106F`, `0440107G` et `0440109K` ; IPS 2016 à 2024 pour `0440102B` et `0440103C`, aucun IPS pour les maternelles ; personnels 2024 et 2025 ; classes 2025 dont une classe `CP-CE1-CE2-CM1-CM2` pour `0440104D` ; `ecoles_ep` 2011 à 2019 pour `0440102B`).
+- [ ] **Step 4 :** écrire les fixtures des écoles décrites plus haut (effectifs 2019 à 2025 pour les écoles ouvertes, 2014 à la rentrée précédant la fermeture pour `0440106F`, `0440107G` et `0440109K` ; IPS 2016 à 2024 pour `0440202B` et `0440203C`, aucun IPS pour les maternelles ; personnels 2024 et 2025 ; classes 2025 dont une classe `CP-CE1-CE2-CM1-CM2` pour `0440104D` ; `ecoles_ep` 2011 à 2019 pour `0440202B`).
 - [ ] **Step 5 :** `bun test` → PASS (les tests existants ne voient pas encore les écoles : le classement les exclut jusqu'à la tâche 5).
 - [ ] **Step 6 :** commit `feat: sources du premier degré`.
 
@@ -167,7 +167,7 @@ Le collège `0440001A` (fixture existante) est en tête du PIAL de `0440101A`, `
 **Interfaces:**
 - Produces: `Famille` élargi ; `FAMILLES_ECOLES`, `FAMILLES_SECOND_DEGRE`, `estEcole(f: Famille): boolean` (dans `libelles.ts`) ; `FAMILLES_COMPATIBLES_ECOLES: Record<"maternelle" | "elementaire" | "primaire", Famille[]>` (dans `fiches.ts`).
 
-- [ ] **Step 1 : tests** dans `tests/normaliser.test.ts` : `0440101A` est classée `maternelle`, `0440102B` `elementaire`, `0440103C` et `0440104D` `primaire` ; une école `ECOLE REGIONALE DU PREMIER DEGRE` a le motif `nature_ecole_hors_perimetre` ; une école privée hors contrat a le motif `prive_hors_contrat`.
+- [ ] **Step 1 : tests** dans `tests/normaliser.test.ts` : `0440201A` est classée `maternelle`, `0440202B` `elementaire`, `0440203C` et `0440104D` `primaire` ; une école `ECOLE REGIONALE DU PREMIER DEGRE` a le motif `nature_ecole_hors_perimetre` ; une école privée hors contrat a le motif `prive_hors_contrat`.
 - [ ] **Step 2 :** FAIL.
 - [ ] **Step 3 :** type `Ecole` admis au périmètre ; macro `famille_ecole(maternelle, elementaire)` appliquée quand `type_etablissement = 'Ecole'` ; libellés `FAMILLES` et `FAMILLES_PLURIEL`. Les écoles n'ont pas de voisins : `calculerVoisins` ne traite que `FAMILLES_SECOND_DEGRE` et renvoie `null` pour une école. `communesRetenues`, `exporterTerritoires`, `controlerPonderation` et `ORDRE_FAMILLES` filtrent sur `FAMILLES_SECOND_DEGRE`. `niveauDe` (budget) n'est appelé que pour le second degré.
 - [ ] **Step 4 :** `bun test` → PASS, et `site-territoires` inchangé (aucune école sur les territoires).
@@ -198,7 +198,7 @@ Le collège `0440001A` (fixture existante) est en tête du PIAL de `0440101A`, `
   `Eleves.ueea?: number | null`. `CodeIndicateur` gagne `eleves_par_classe`. `calculerClasses(db: Db): Promise<Map<string, Classes>>` dans `pipeline/src/ecoles.ts`. Table `ecoles_ignorees(source, n)`.
 
 - [ ] **Step 1 : tests** dans `tests/ecoles.test.ts` :
-  - `0440102B` : `classes.total = 8`, `historique` commence en 2011 (`ecoles_ep`) et finit en 2025, sans doublon pour 2019 (`effectifs_ecoles` l'emporte) ;
+  - `0440202B` : `classes.total = 8`, `historique` commence en 2011 (`ecoles_ep`) et finit en 2025, sans doublon pour 2019 (`effectifs_ecoles` l'emporte) ;
   - `0440104D` : indicateur `eleves_par_classe` = élèves (1 classe) ; `types` = `[{ libelle: "CP-CE1-CE2-CM1-CM2", niveaux: 5, classes: 1 }]` ;
   - une école à 0 classe : `eleves_par_classe.statut = "non_disponible"`, valeur `null` ;
   - `eleves.niveaux` d'une primaire = Préélémentaire, CP, CE1, CE2, CM1, CM2 (libellés exacts), `ulis` et `ueea` lus ;
@@ -214,10 +214,10 @@ Le collège `0440001A` (fixture existante) est en tête du PIAL de `0440101A`, `
 - Modify: `pipeline/sql/01_normaliser.sql` (table `ips`), `pipeline/sql/03_ips_personnels.sql`, `pipeline/src/indicateurs.ts`, `pipeline/src/ips-historique.ts`, `tests/ips-historique.test.ts`, `tests/indicateurs.test.ts`
 
 - [ ] **Step 1 : tests** :
-  - `0440102B` : indicateur `ips` à la rentrée 2024 avec un historique 2016 → 2024 et `sourcesHistorique` qui passe de `ips_ecoles_2016` à `ips_ecoles` en 2022 ;
-  - `0440101A` : `ips.statut = "non_disponible"` ;
+  - `0440202B` : indicateur `ips` à la rentrée 2024 avec un historique 2016 → 2024 et `sourcesHistorique` qui passe de `ips_ecoles_2016` à `ips_ecoles` en 2022 ;
+  - `0440201A` : `ips.statut = "non_disponible"` ;
   - comparaisons de l'IPS d'une école : moyennes publiées si le jeu en contient (colonnes relevées à la tâche 4), sinon `calculee: true`, pondérées par les élèves de la même rentrée, **calculées parmi les écoles seulement** ;
-  - `0440102B` : répartitions `sexe_enseignants`, `ages`, `anciennete` (catégories existantes) et indicateur ETP d'enseignants ; pas de `statuts`, pas de vie scolaire, pas de part d'agrégés (absents des indicateurs de l'école, et non affichés comme absences).
+  - `0440202B` : répartitions `sexe_enseignants`, `ages`, `anciennete` (catégories existantes) et indicateur ETP d'enseignants ; pas de `statuts`, pas de vie scolaire, pas de part d'agrégés (absents des indicateurs de l'école, et non affichés comme absences).
 - [ ] **Step 2 :** FAIL.
 - [ ] **Step 3 :** implémenter. Les moyennes d'IPS de territoire sont calculées par groupe de familles (`FAMILLES_ECOLES` d'un côté, chaque famille du second degré de l'autre) : une école n'entre jamais dans une moyenne de collèges.
 - [ ] **Step 4 :** `bun test` → PASS, y compris le contrôle de pondération du second degré inchangé.
@@ -250,10 +250,10 @@ Le collège `0440001A` (fixture existante) est en tête du PIAL de `0440101A`, `
 
 - [ ] **Step 1 : tests** dans `tests/site-ecoles.test.ts` (site d'essai) :
   - `/etablissement/0440104D/` contient « Rentrée 2025, dernière publiée », « Élèves par classe », « Classes à plusieurs niveaux » et `CP-CE1-CE2-CM1-CM2` ;
-  - `/etablissement/0440101A/` contient « IPS non publié pour cette école » et aucun « 0 » dans la cellule IPS ;
+  - `/etablissement/0440201A/` contient « IPS non publié pour cette école » et aucun « 0 » dans la cellule IPS ;
   - aucune fiche école ne contient « Rattachements », « Autour de l'école », « Budget », « Vie scolaire » ni « agrégés » (lots à venir, données sans objet) ;
   - `/etablissement/0440106F/` contient « Fermée le 05/07/2016 » (accord au féminin pour une école) ;
-  - le HTML de `/etablissement/0440102B/` fait 25 000 octets au plus ;
+  - le HTML de `/etablissement/0440202B/` fait 25 000 octets au plus ;
   - la fiche A4 d'une école porte le titre « Fiche pour le conseil d'école ».
 - [ ] **Step 2 :** FAIL.
 - [ ] **Step 3 :** `[uai].astro` garde l'en-tête commun et rend `<FicheEcole f={f} />` quand `estEcole(f.famille)`. Ordre des blocs de la spec, section 6.3, sans les blocs des lots 2 à 4. Pour tenir le budget de poids : une seule courbe (élèves et classes), répartitions en barres empilées HTML/CSS, aucun tableau de voisins.
@@ -265,7 +265,7 @@ Le collège `0440001A` (fixture existante) est en tête du PIAL de `0440101A`, `
 **Files:**
 - Modify: `site/public/js/recherche.js`, `site/src/pages/sources.astro`, `site/src/pages/methode.astro`, `tests/recherche.test.ts`, `scripts/garde-fous.ts`
 
-- [ ] **Step 1 : tests** : l'index de recherche du site d'essai contient `0440102B` avec `f: "elementaire"` ; la recherche affiche le libellé « École élémentaire » ; `/sources/` liste les six nouveaux jeux et la ligne « RASED : aucune donnée ouverte » ; `/methode/` a les ancres `#ecoles-sans-ips` et `#successeurs-ecoles` ; le garde-fou échoue si `recherche.json` dépasse **6 000 000 octets**.
+- [ ] **Step 1 : tests** : l'index de recherche du site d'essai contient `0440202B` avec `f: "elementaire"` ; la recherche affiche le libellé « École élémentaire » ; `/sources/` liste les six nouveaux jeux et la ligne « RASED : aucune donnée ouverte » ; `/methode/` a les ancres `#ecoles-sans-ips` et `#successeurs-ecoles` ; le garde-fou échoue si `recherche.json` dépasse **6 000 000 octets**.
 - [ ] **Step 2 :** FAIL, implémenter, PASS.
 - [ ] **Step 3 :** `bun run build` sur les vraies données : noter dans le commit le nombre de fichiers et le poids de `recherche.json` (attendu : environ 70 000 fichiers).
 - [ ] **Step 4 :** commit `feat: écoles dans la recherche, sources et méthode`. **Mise en ligne du lot 1.**
@@ -297,8 +297,8 @@ Le collège `0440001A` (fixture existante) est en tête du PIAL de `0440101A`, `
   - `normaliserAdresse("3 bis rue Jules Ferry")` → `{ numero: 3, indice: "B", voie: "RUE JULES FERRY" }` ; `normaliserAdresse("Lieu-dit Le Bourg")` → `numero: null` ; `normaliserAdresse("BP 12")` → `voie: null` ;
   - `normaliserVoie` retire accents, ponctuation et articles en double espace, et développe les abréviations `R` → `RUE`, `AV` → `AVENUE`, `BD` → `BOULEVARD`, `PL` → `PLACE`, `CHE` → `CHEMIN`, `IMP` → `IMPASSE`, `ALL` → `ALLEE` ;
   - `0440104D` (Saint-Aubin, commune entière) → `{ statut: "commune", colleges: [0440001A] }` ;
-  - `0440101A` (12 rue des Lilas, pair) → `voie`, `[0440001A]` ; une adresse au 13 → `[0440002B]` ;
-  - `0440103C` (rue des Lilas sans numéro) → `non_rapproche`, `colleges: []` (**adresse sans numéro dans une commune découpée : non rapprochée**) ;
+  - `0440201A` (12 rue des Lilas, pair) → `voie`, `[0440001A]` ; une adresse au 13 → `[0440002B]` ;
+  - `0440203C` (rue des Lilas sans numéro) → `non_rapproche`, `colleges: []` (**adresse sans numéro dans une commune découpée : non rapprochée**) ;
   - une école d'un département absent de la carte → `carte_non_publiee` ;
   - un secteur multi-collèges → les deux collèges, triés par nom.
 - [ ] **Step 2 :** FAIL.
@@ -322,7 +322,7 @@ Le collège `0440001A` (fixture existante) est en tête du PIAL de `0440101A`, `
   // Fiche : rattachements?: Rattachements (écoles) ; pial?: Pial | null et ecolesDuSecteur?: LigneEcole[] | null (second degré)
   export async function calculerPial(db: Db): Promise<Map<string, Pial>>; // clé : UAI de chaque membre et de la tête
   ```
-- [ ] **Step 1 : tests** : le PIAL de `0440101A` a pour tête `0440001A` et pour membres `0440101A`, `0440102B` et `0440104D` (la page n'affiche pas sa propre UAI dans la liste) ; `ecolesDuSecteur` de `0440001A` contient exactement `0440101A` et `0440104D` (`0440103C`, non rapprochée, n'y est pas ; `0440102B` relève de `0440002B`) ; un collège privé a `ecolesDuSecteur: null` ; un PIAL dont la tête n'a pas de fiche donne `pial: null` et est compté par `cli.ts`.
+- [ ] **Step 1 : tests** : le PIAL de `0440201A` a pour tête `0440001A` et pour membres `0440201A`, `0440202B` et `0440104D` (la page n'affiche pas sa propre UAI dans la liste) ; `ecolesDuSecteur` de `0440001A` contient exactement `0440201A` et `0440104D` (`0440203C`, non rapprochée, n'y est pas ; `0440202B` relève de `0440002B`) ; un collège privé a `ecolesDuSecteur: null` ; un PIAL dont la tête n'a pas de fiche donne `pial: null` et est compté par `cli.ts`.
 - [ ] **Step 2 :** FAIL, implémenter, PASS.
 - [ ] **Step 3 :** commit `feat: PIAL et écoles du secteur`.
 
@@ -333,8 +333,8 @@ Le collège `0440001A` (fixture existante) est en tête du PIAL de `0440101A`, `
 - Modify: `site/src/components/FicheEcole.astro`, `site/src/pages/etablissement/[uai].astro`, `site/src/pages/methode.astro`, `tests/site-ecoles.test.ts`
 
 - [ ] **Step 1 : tests** :
-  - `/etablissement/0440101A/` contient « Collège de secteur à l'adresse de l'école : » suivi d'un lien vers `/etablissement/0440001A/`, et la note exacte du secteur ;
-  - `/etablissement/0440103C/` (privée) : « Adresse de l'école non rapprochée de la carte scolaire » et la note du privé ; pour une privée rapprochée, « Située dans le secteur du collège public » ;
+  - `/etablissement/0440201A/` contient « Collège de secteur à l'adresse de l'école : » suivi d'un lien vers `/etablissement/0440001A/`, et la note exacte du secteur ;
+  - `/etablissement/0440203C/` (privée) : « Adresse de l'école non rapprochée de la carte scolaire » et la note du privé ; pour une privée rapprochée, « Située dans le secteur du collège public » ;
   - `/etablissement/0440001A/` contient « Écoles de son secteur », le décompte exact « 2 écoles publiques, 0 privée sous contrat » selon les fixtures, et « PIAL du collège … » ;
   - `/methode/` a les ancres `#secteur-ecole` et `#pial`.
 - [ ] **Step 2 :** FAIL, implémenter, PASS.
@@ -454,7 +454,7 @@ Le collège `0440001A` (fixture existante) est en tête du PIAL de `0440101A`, `
 - Modify: `pipeline/src/sources.ts` (filtre du budget), `pipeline/src/budget.ts`, `pipeline/src/budget-eleves.ts`, `shared/src/collectivites.ts`, `shared/src/types.ts` (`Fiche.budget.ecoles?`), `site/src/components/BlocBudget.astro`, `site/src/components/FicheEcole.astro`, `docs/budget-controles.md`, `tests/budget.test.ts`, `tests/budget-eleves.test.ts`, `tests/fixtures/budget_2023.csv`, `tests/fixtures/budget_2024.csv`
 
 - [ ] **Step 1 :** le filtre ODSQL du budget ajoute les catégories `Commune` et `SYND` sur les fonctions commençant par `21`. Les comptes et la formule suivent `docs/budget-controles.md` (même règle que les collèges, appliquée aux fonctions 21x). La section ajoutée à ce document dit comment sont traitées les dépenses scolaires portées par une intercommunalité ou un syndicat.
-- [ ] **Step 2 : tests** : une commune de plus de 3 500 habitants des fixtures a un montant en euros par élève des écoles **publiques** de la commune ; une commune de moins de 3 500 habitants a le statut qui produit « Budget non publié pour les communes de moins de 3 500 habitants » ; la fiche `0440102B` montre le bloc Budget, la fiche d'une école privée ne le montre pas ; les budgets des départements et des régions sont inchangés.
+- [ ] **Step 2 : tests** : une commune de plus de 3 500 habitants des fixtures a un montant en euros par élève des écoles **publiques** de la commune ; une commune de moins de 3 500 habitants a le statut qui produit « Budget non publié pour les communes de moins de 3 500 habitants » ; la fiche `0440202B` montre le bloc Budget, la fiche d'une école privée ne le montre pas ; les budgets des départements et des régions sont inchangés.
 - [ ] **Step 3 :** FAIL, implémenter, PASS. La première collecte archive une nouvelle version de chaque exercice (filtre élargi) : le noter dans le README, section Hébergement, pour la mise en ligne du lot.
 - [ ] **Step 4 :** commit `feat: dépenses des communes pour leurs écoles`.
 
