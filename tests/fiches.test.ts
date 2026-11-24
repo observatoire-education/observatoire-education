@@ -5,7 +5,7 @@ import { join } from "node:path";
 import type { DonneesFrance, DonneesSource, DonneesTerritoire, EntreeIndex } from "@obs/shared/donnees";
 import type { Fiche } from "@obs/shared/types";
 import { budgetDeFiche } from "../pipeline/src/budget-eleves.ts";
-import { assemblerFiches, calculerVoisins, distanceKm, exporter, millesimesAffiches } from "../pipeline/src/fiches.ts";
+import { assemblerFiches, calculerVoisins, distanceKm, attacherBudgets, exporter, millesimesAffiches } from "../pipeline/src/fiches.ts";
 import { exporterTerritoires } from "../pipeline/src/territoires.ts";
 import { ecrireRegistre, lireRegistre, mettreAJourRegistre, type Registre } from "../pipeline/src/registre.ts";
 import type { BudgetCollectivite } from "@obs/shared/donnees";
@@ -502,6 +502,62 @@ describe("budget des fiches et des territoires", () => {
       const m = await manifestCorrige();
       const toutes = await assemblerFiches(db, m, {}, maintenant, { corrections: [entree(2015, ["0440001A"])] });
       expect(toutes.flatMap((f) => f.sources).some((s) => s.corrections)).toBe(false);
+    });
+
+    const exercice = (n: number) => ({
+      exercice: n, rentree: n - 1, source: `budget_${n}`, eleves: { public: 10, prive: null }, citesScolaires: null,
+      public: {
+        horsPersonnel: { total: 100, parEleve: 10, statut: "ok" },
+        avecPersonnel: { total: null, parEleve: null, statut: "personnel_non_rattache" },
+        investissement: { total: null, parEleve: null, statut: "non_disponible" },
+      },
+      prive: {
+        fonctionnement: { total: null, parEleve: null, statut: "aucun_eleve_prive" },
+        investissement: { total: null, parEleve: null, statut: "aucun_eleve_prive" },
+      },
+    });
+    const budgetDep = (id: string, exercices: number[]) => ({
+      id, libelle: id, niveau: "colleges", mentions: [], exercices: exercices.map(exercice),
+    }) as unknown as BudgetCollectivite;
+    const versionAvant = (m: ReturnType<typeof manifestTest>, source: "budget_2023" | "budget_2024") =>
+      m.ajouter(source, {
+        sha256: "c".repeat(64), tag: "t", fichier: "avant.parquet", url: `https://exemple.org/${source}-avant.parquet`,
+        modified: "2025-11-01T00:00:00Z", collecteLe: "2025-11-22T02:17:00Z", lignes: 1,
+      }) && m.rendreActuelle(source, source.padEnd(64, "0"));
+    const budgetCorrige = (source: "budget_2023" | "budget_2024", cles: string[]) => ({
+      source, millesime: Number(source.slice(7)), cles, precedente: "c".repeat(64), corrigee: source.padEnd(64, "0"), le: "2026-11-22T02:17:00Z",
+    });
+
+    test("fiche : exercice de budget antérieur au dernier, corrigé et affiché : mention sur sa propre source", async () => {
+      const m = manifestTest(await temporaire());
+      versionAvant(m, "budget_2023");
+      const f = structuredClone(fiche("0440001A"));
+      const budgets = { collectivites: new Map([["colleges|dep-44", budgetDep("dep-44", [2023, 2024])]]), france: [] };
+      attacherBudgets([f], budgets, m, [budgetCorrige("budget_2023", ["DEPT|044|052|DEP LOIRE-ATLANTIQUE"])]);
+      expect(f.sources.find((x) => x.id === "budget_2024")?.corrections).toBeUndefined();
+      const s = f.sources.find((x) => x.id === "budget_2023")!;
+      expect(s.rentree).toBe(2022);
+      expect(s.corrections).toEqual([
+        { millesime: 2023, le: "2026-11-22T02:17:00Z", precedente: "https://exemple.org/budget_2023-avant.parquet", corrigee: s.brutUrl },
+      ]);
+      // Un exercice que le bloc n'affiche pas : aucune source ajoutée.
+      const g = structuredClone(fiche("0440001A"));
+      attacherBudgets([g], { collectivites: new Map([["colleges|dep-44", budgetDep("dep-44", [2024])]]), france: [] }, m,
+        [budgetCorrige("budget_2023", ["DEPT|044|052|DEP LOIRE-ATLANTIQUE"])]);
+      expect(g.sources.some((x) => x.id === "budget_2023")).toBe(false);
+    });
+
+    test("territoire : correction de budget d'un exercice affiché présente, d'un exercice non affiché absente", async () => {
+      const m = manifestTest(await temporaire());
+      versionAvant(m, "budget_2023");
+      versionAvant(m, "budget_2024");
+      const sortie = join(await temporaire(), "data");
+      const budgets = { collectivites: new Map([["colleges|dep-44", budgetDep("dep-44", [2024])]]), france: [] };
+      const actives = fiches.filter((f) => f.disparuLe === null);
+      const cles = ["DEPT|044|052|DEP LOIRE-ATLANTIQUE"];
+      await exporterTerritoires(actives, db, sortie, 2025, budgets, [budgetCorrige("budget_2023", cles), budgetCorrige("budget_2024", cles)], m);
+      const d44: DonneesTerritoire = await lire(sortie, "departements", "44.json");
+      expect(d44.corrections?.map((c) => `${c.source} ${c.millesime}`)).toEqual(["budget_2024 2024"]);
     });
 
     test("correction de ségrégation : page du département seulement", async () => {

@@ -54,7 +54,16 @@ export function siteTest(): Promise<string> {
       modified: "2025-11-01T00:00:00Z", collecteLe: "2025-11-22T02:17:00Z", lignes: 10,
     });
     manifest.rendreActuelle("ips_colleges", "ips_colleges".padEnd(64, "0"));
+    manifest.ajouter("budget_2023", {
+      sha256: "c".repeat(64), tag: "archives-budget_2023-2025", fichier: "budget_2023-avant.parquet",
+      url: "https://github.com/org/depot/releases/download/archives-budget_2023-2025/budget_2023-avant.parquet",
+      modified: "2025-11-01T00:00:00Z", collecteLe: "2025-11-22T02:17:00Z", lignes: 10,
+    });
+    manifest.rendreActuelle("budget_2023", "budget_2023".padEnd(64, "0"));
     const corrections: EntreeCorrection[] = [{
+      source: "budget_2023", millesime: 2023, cles: ["DEPT|044|052|DEP LOIRE-ATLANTIQUE"], precedente: "c".repeat(64),
+      corrigee: "budget_2023".padEnd(64, "0"), le: "2026-11-22T02:17:00Z",
+    }, {
       source: "ips_colleges", millesime: 2024, cles: ["0440001A"], precedente: "a".repeat(64),
       corrigee: "ips_colleges".padEnd(64, "0"), le: "2026-11-22T02:17:00Z",
     }];

@@ -226,6 +226,23 @@ describe("corrections de millésime", () => {
     expect(li.textContent).toContain("version précédente");
     expect(li.textContent).toContain("version corrigée");
     expect(li.querySelectorAll("a[href*='/releases/download/']")).toHaveLength(2);
-    expect(texte("etablissement/0440002B")).not.toContain("corrigé par le producteur");
+    expect(texte("etablissement/0440002B")).not.toContain("Millésime 2024-2025 corrigé"); // l'IPS d'une autre fiche
+  });
+
+  test("fiche : exercice de budget antérieur corrigé, sur sa propre ligne de source", () => {
+    const d = doc("etablissement/0440001A");
+    const div = [...d.querySelectorAll("#sources li div")].find((x) => x.textContent!.includes("Millésime 2023 corrigé"))!;
+    expect(div).toBeDefined();
+    expect(div.querySelectorAll("a[href*='/releases/download/']")).toHaveLength(2);
+  });
+
+  test("page département : section Sources, mention du budget corrigé et deux liens", () => {
+    const li = [...doc("departement/44").querySelectorAll("section li")].find((x) => x.textContent!.includes("Millésime 2023 corrigé"))!;
+    expect(li).toBeDefined();
+    expect(li.textContent).toContain("Millésime 2023 corrigé par le producteur le 22/11/2026");
+    expect(li.textContent).toContain("version précédente");
+    expect(li.textContent).toContain("version corrigée");
+    expect(li.querySelectorAll("a[href*='/releases/download/']")).toHaveLength(2);
+    expect(texte("departement/75")).not.toContain("corrigé par le producteur");
   });
 });

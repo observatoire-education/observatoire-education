@@ -316,11 +316,12 @@ export async function exporterTerritoires(
   /** Corrections de ségrégation (clé = département) et de budget (collectivité montrée par la page) d'un territoire. */
   const correctionsDe = (dep: string | null, collectivites: BudgetCollectivite[]): Pick<DonneesTerritoire, "corrections"> => {
     if (corrections.length && !manifest) throw new Error("exporterTerritoires : le manifeste est nécessaire pour résoudre les corrections");
-    const ids = new Set<string>(collectivites.map((c) => c.id));
+    // Exercices montrés par la page, par collectivité.
+    const exercices = new Map(collectivites.map((c) => [c.id as string, new Set(c.exercices.map((x) => x.exercice))]));
     const trouvees = corrections
       .filter((e) =>
         e.source === "segregation" ? dep !== null && e.cles.includes(dep)
-          : e.source.startsWith("budget_") && [...collectivitesCorrigees(e)].some((id) => ids.has(id)))
+          : e.source.startsWith("budget_") && [...collectivitesCorrigees(e)].some((id) => exercices.get(id)?.has(e.millesime)))
       .map((e) => ({ source: e.source, ...resoudreCorrection(manifest!, e) }))
       .sort((a, b) => a.source.localeCompare(b.source) || a.le.localeCompare(b.le) || a.millesime - b.millesime);
     return trouvees.length ? { corrections: trouvees } : {};

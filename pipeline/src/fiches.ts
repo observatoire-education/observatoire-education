@@ -201,9 +201,19 @@ const parDate = (a: { le: string; millesime: number }, b: { le: string; millesim
 
 /** Rattache à chaque source de chaque fiche les corrections d'un millésime que la fiche affiche. Idempotent. */
 export function attacherCorrections(fiches: Fiche[], corrections: EntreeCorrection[], manifest: Manifest): void {
+  const sourcesBudget = toutesSources(manifest);
   for (const f of fiches) {
-    const affiches = millesimesAffiches(f);
     const collectivite = (f.budget.colleges ?? f.budget.lycees)?.id;
+    // Un exercice corrigé et affiché porte sa propre source, même s'il n'est pas le dernier exercice du bloc budget.
+    for (const ex of (f.budget.colleges ?? f.budget.lycees)?.exercices ?? []) {
+      const touche = corrections.some((e) => e.source === ex.source && e.millesime === ex.exercice && !!collectivite && collectivitesCorrigees(e).has(collectivite));
+      const s = touche && sourcesBudget.find((x) => x.id === ex.source);
+      const v = s && manifest.derniere(s.id);
+      if (s && v && !f.sources.some((x) => x.id === s.id)) {
+        f.sources.push({ id: s.id, producteur: s.producteur, titre: s.titre, pageUrl: s.pageUrl, rentree: ex.rentree, collecteLe: v.collecteLe, brutUrl: v.url });
+      }
+    }
+    const affiches = millesimesAffiches(f);
     for (const s of f.sources) {
       const trouvees = corrections
         .filter((e) => {
