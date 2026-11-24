@@ -2,11 +2,12 @@
 import { readFileSync } from "node:fs";
 import { Manifest } from "./archive.ts";
 import { calculerBudgets, statutsDernierExercice } from "./budget-eleves.ts";
-import { assurerCache, collecter } from "./collect.ts";
+import { aiguiller, assurerCache, collecter } from "./collect.ts";
 import { lireCorrections } from "./corrections.ts";
 import { ouvrir } from "./db.ts";
 import { type Depot, DepotGithub, DepotLocal } from "./depot.ts";
 import { assemblerFiches, exporter, type RapportSuccesseurs } from "./fiches.ts";
+import { FichierClient } from "./fichier.ts";
 import { OdsClient } from "./ods.ts";
 import { ecrireRegistre, lireRegistre, mettreAJourRegistre } from "./registre.ts";
 import type { RapportPial } from "./pial.ts";
@@ -46,7 +47,7 @@ async function collect(): Promise<void> {
   const config = lireConfig();
   const journal = await collecter({
     manifest: Manifest.lire(CHEMINS.manifest),
-    client: new OdsClient(),
+    client: aiguiller(new OdsClient(), new FichierClient()),
     depot: choisirDepot(config),
     maintenant: new Date(),
     tmp: CHEMINS.tmp,

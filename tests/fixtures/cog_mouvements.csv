@@ -1,0 +1,10 @@
+mod,date_eff,typecom_av,com_av,libelle_av,typecom_ap,com_ap,libelle_ap
+32,2016-01-01,COM,44150,Saint-Aubin,COM,44150,Saint-Aubin
+32,2016-01-01,COM,44150,Saint-Aubin,COMD,44150,Saint-Aubin
+32,2016-01-01,COM,44999,Le Moulin,COM,44150,Saint-Aubin
+32,2016-01-01,COM,44999,Le Moulin,COMD,44999,Le Moulin
+31,2016-01-01,COM,44901,Les Landes,COM,44902,Erdre-et-Landes
+31,2016-01-01,COM,44902,La Rive,COM,44902,Erdre-et-Landes
+32,2019-01-01,COM,44902,Erdre-et-Landes,COM,44903,Val-de-l'Erdre
+32,2019-01-01,COM,44902,Erdre-et-Landes,COMD,44902,Erdre-et-Landes
+35,2022-01-01,COMD,44902,Erdre-et-Landes,COM,44903,Val-de-l'Erdre

@@ -90,23 +90,34 @@ export class OdsClient {
     return (corps.results ?? []).filter((r) => r.dataset_id && motif.test(r.title ?? "")).map((r) => r.dataset_id!);
   }
 
-  private async requete(url: string): Promise<Response> {
-    let derniere: unknown;
-    for (let essai = 0; essai <= ATTENTES_MS.length; essai++) {
-      if (essai > 0) await this.attendre(ATTENTES_MS[essai - 1]!);
-      try {
-        const r = await this.fetcher(url, {
-          headers: { "User-Agent": this.userAgent, "Accept-Encoding": "gzip" },
-          signal: AbortSignal.timeout(this.expirationMs),
-        });
-        if (r.ok) return r;
-        derniere = new ErreurHttp(r.status, url);
-        if (r.status < 500) throw derniere; // 4xx : inutile de réessayer
-      } catch (e) {
-        if (e instanceof ErreurHttp && e.statut < 500) throw e;
-        derniere = e;
-      }
-    }
-    throw derniere;
+  private requete(url: string): Promise<Response> {
+    return requeteAvecEssais(url, this.fetcher, this.userAgent, this.attendre, this.expirationMs);
   }
+}
+
+/** GET avec nouveaux essais sur les erreurs 5xx et réseau (partagé par les clients Opendatasoft et fichier). */
+export async function requeteAvecEssais(
+  url: string,
+  fetcher: typeof fetch,
+  userAgent: string,
+  attendre: (ms: number) => Promise<void>,
+  expirationMs: number,
+): Promise<Response> {
+  let derniere: unknown;
+  for (let essai = 0; essai <= ATTENTES_MS.length; essai++) {
+    if (essai > 0) await attendre(ATTENTES_MS[essai - 1]!);
+    try {
+      const r = await fetcher(url, {
+        headers: { "User-Agent": userAgent, "Accept-Encoding": "gzip" },
+        signal: AbortSignal.timeout(expirationMs),
+      });
+      if (r.ok) return r;
+      derniere = new ErreurHttp(r.status, url);
+      if (r.status < 500) throw derniere; // 4xx : inutile de réessayer
+    } catch (e) {
+      if (e instanceof ErreurHttp && e.statut < 500) throw e;
+      derniere = e;
+    }
+  }
+  throw derniere;
 }

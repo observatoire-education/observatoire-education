@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { SourceId } from "@obs/shared/types";
 import { empreinte, Manifest } from "../pipeline/src/archive.ts";
-import { assurerCache, collecter, type ClientSources } from "../pipeline/src/collect.ts";
+import { aiguiller, assurerCache, collecter, type ClientSources } from "../pipeline/src/collect.ts";
 import { DepotGithub, DepotLocal, type Lanceur } from "../pipeline/src/depot.ts";
 import { connexion, executer, lignes, litteral } from "../pipeline/src/duck.ts";
 import { ErreurParquetInvalide } from "../pipeline/src/ods.ts";
@@ -133,7 +133,7 @@ describe("collecte", () => {
     const n = f.telechargements.length;
     await collecter(opts(f.client));
     expect(f.telechargements.filter((s) => s === "ips_colleges").length).toBe(2);
-    expect(f.telechargements.length).toBe(n + 2); // seuls les référentiels (annuaire, carte scolaire) sont retéléchargés
+    expect(f.telechargements.length).toBe(n + 4); // seuls les référentiels (annuaire, carte scolaire, deux fichiers du COG) sont retéléchargés
   });
 
   test("retour à un contenu déjà archivé : il redevient la version actuelle", async () => {
@@ -233,7 +233,7 @@ describe("collecte", () => {
     await collecter(opts(fauxClient({}).client, { journal }));
     await collecter(opts(fauxClient({}).client, { journal }));
     const l = (await Bun.file(journal).text()).trim().split("\n").map((x) => JSON.parse(x));
-    expect(l).toHaveLength(62); // vingt-cinq sources et six exercices du budget, deux fois
+    expect(l).toHaveLength(66); // vingt-sept sources et six exercices du budget, deux fois
     expect(l[0]).toMatchObject({ date: "2026-11-23T02:17:00.000Z", source: "annuaire" });
   });
 
@@ -337,7 +337,7 @@ describe("budget : exercices et découverte", () => {
   test("aucun jeu : aucune ligne de journal pour l'exercice", async () => {
     const j = await collecter(opts(fauxClient({}).client));
     expect(j.filter((l) => l.source === "budget_2026")).toEqual([]);
-    expect(j).toHaveLength(31);
+    expect(j).toHaveLength(33);
   });
 
   test("un extrait budget sans la colonne fonction est rejeté", async () => {
@@ -345,6 +345,34 @@ describe("budget : exercices et découverte", () => {
     expect(ligne(j, "budget_2024")).toMatchObject({ action: "rejete", motif: "colonne manquante : fonction" });
     expect(manifest.versions("budget_2024")).toHaveLength(0);
     expect(ligne(j, "budget_2023").action).toBe("telecharge");
+  });
+
+  test("aiguillage : un fichier direct au client fichier, le reste au client Opendatasoft", async () => {
+    const appels: string[] = [];
+    const faux = (nom: string): ClientSources => ({
+      async metadata(s) {
+        appels.push(`${nom} metadata ${s.id}`);
+        return { modified: "M" };
+      },
+      async telechargerParquet(s, dest) {
+        appels.push(`${nom} parquet ${s.id}`);
+        return { chemin: dest, url: "u" };
+      },
+      async chercherJeu() {
+        appels.push(`${nom} catalogue`);
+        return [];
+      },
+    });
+    const c = aiguiller(faux("ods"), faux("fichier"));
+    await c.metadata(SOURCES.cog_mouvements);
+    await c.telechargerParquet(SOURCES.cog_communes, "d");
+    await c.metadata(SOURCES.annuaire);
+    await c.telechargerParquet(SOURCES.ips_colleges, "d");
+    await c.chercherJeu("api", "t");
+    expect(appels).toEqual([
+      "fichier metadata cog_mouvements", "fichier parquet cog_communes",
+      "ods metadata annuaire", "ods parquet ips_colleges", "ods catalogue",
+    ]);
   });
 
   test("sourceBudget : identifiant, titre et API", () => {
@@ -360,7 +388,7 @@ describe("cache local", () => {
     await collecter(opts(fauxClient({}).client));
     const cache = join(racine, "cache");
     const chemins = await assurerCache(manifest, depot, cache);
-    expect(Object.keys(chemins)).toHaveLength(31);
+    expect(Object.keys(chemins)).toHaveLength(33);
     await Bun.write(chemins.ips_lycees, "corrompu");
     const encore = await assurerCache(manifest, depot, cache);
     expect(await empreinte(encore.ips_lycees)).toBe(manifest.derniere("ips_lycees")!.sha256);

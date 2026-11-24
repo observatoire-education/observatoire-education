@@ -10,8 +10,12 @@ export interface Source {
   titre: string;
   producteur: string;
   pageUrl: string;
-  /** Base de l'API Opendatasoft qui héberge le jeu. */
+  /** Base de l'API Opendatasoft qui héberge le jeu, ou API_FICHIER : un fichier CSV à une URL directe (`url`). */
   api: string;
+  /** API_FICHIER : URL directe du fichier CSV. */
+  url?: string;
+  /** API_FICHIER : date du millésime, gardée comme date de modification (le serveur n'en annonce aucune). */
+  millesimeLe?: string;
   /** Clause `where` ODSQL : seul l'extrait filtré est téléchargé (budget). */
   filtre?: string;
   /** Colonnes dont l'absence fait rejeter une version téléchargée. */
@@ -26,6 +30,20 @@ export const PORTAIL = "https://data.education.gouv.fr";
 export const API = `${PORTAIL}/api/explore/v2.1/catalog/datasets`;
 export const PORTAIL_ECO = "https://data.economie.gouv.fr";
 export const API_ECO = `${PORTAIL_ECO}/api/explore/v2.1/catalog/datasets`;
+/** Pseudo-API des sources publiées comme un simple fichier CSV (Insee). */
+export const API_FICHIER = "fichier";
+
+/** Code officiel géographique au 1er janvier 2026 (Insee), page et fichiers vérifiés le 2026-11-24. */
+export const PAGE_COG = "https://www.insee.fr/fr/information/8740222";
+const FICHIERS_COG = "https://www.insee.fr/fr/statistiques/fichier/8740222";
+
+/** Fichier CSV du Code officiel géographique : référentiel retéléchargé chaque nuit, colonnes en minuscules. */
+function sourceCog(id: SourceId, fichier: string, titre: string, colonnesRequises: string[]): Source {
+  return {
+    id, datasetId: fichier, titre, producteur: "Insee", pageUrl: PAGE_COG, api: API_FICHIER,
+    url: `${FICHIERS_COG}/${fichier}.csv`, millesimeLe: "2026-01-01", colonnesRequises, referentiel: true,
+  };
+}
 
 /** Produit cartésien de motifs : developper("a_{x,y}_{1,2}") → a_x_1, a_x_2, a_y_1, a_y_2. */
 export function developper(motif: string): string[] {
@@ -358,6 +376,21 @@ export const SOURCES: Record<SourceId, Source> = {
     ),
     producteur: "MEN-DGESCO",
   },
+  // --- Code officiel géographique (Insee) : fichiers CSV UTF-8, séparateur virgule, sans BOM ---
+  // Mouvements depuis 1943 (fusions, communes nouvelles, rétablissements, changements de code) : chaînes de fusions.
+  cog_mouvements: sourceCog(
+    "cog_mouvements",
+    "v_mvt_commune_2026",
+    "Code officiel géographique : mouvements des communes",
+    noms("mod,date_eff,typecom_av,com_av,libelle_av,typecom_ap,com_ap,libelle_ap"),
+  ),
+  // Communes en vigueur, communes déléguées (COMD), associées (COMA) et arrondissements (ARM) avec leur commune parente.
+  cog_communes: sourceCog(
+    "cog_communes",
+    "v_commune_2026",
+    "Code officiel géographique : liste des communes",
+    noms("typecom,com,libelle,comparent"),
+  ),
 };
 
 // --- Budget des collectivités (DGFiP, data.economie.gouv.fr) : un jeu par exercice, extrait filtré ---

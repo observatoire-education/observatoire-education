@@ -37,6 +37,8 @@ export type SourceId =
   | "classes_ecoles"
   | "ecoles_ep"
   | "carte_scolaire"
+  | "cog_mouvements"
+  | "cog_communes"
   | `budget_${number}`;
 
 /** Une valeur, son statut et son origine (source et rentrée de septembre). */

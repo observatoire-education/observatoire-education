@@ -2,7 +2,9 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { OdsClient, USER_AGENT } from "../pipeline/src/ods.ts";
+import { connexion, lignes, litteral } from "../pipeline/src/duck.ts";
+import { FichierClient } from "../pipeline/src/fichier.ts";
+import { ErreurParquetInvalide, OdsClient, USER_AGENT } from "../pipeline/src/ods.ts";
 import { API_ECO, developper, EXERCICES_BUDGET, FILTRE_BUDGET, SOURCES, sourceBudget } from "../pipeline/src/sources.ts";
 
 type Appel = { url: string; headers: Headers };
@@ -32,11 +34,26 @@ afterAll(async () => {
 });
 
 describe("registre des sources", () => {
-  test("vingt-cinq sources, l'annuaire et la carte scolaire sont les référentiels", () => {
-    expect(Object.keys(SOURCES)).toHaveLength(25);
+  test("vingt-sept sources ; l'annuaire, la carte scolaire et le Code officiel géographique sont les référentiels", () => {
+    expect(Object.keys(SOURCES)).toHaveLength(27);
     expect(SOURCES.annuaire.referentiel).toBe(true);
     expect(SOURCES.carte_scolaire.referentiel).toBe(true);
-    expect(Object.values(SOURCES).filter((s) => s.referentiel)).toHaveLength(2);
+    expect(SOURCES.cog_communes.referentiel).toBe(true);
+    expect(SOURCES.cog_mouvements.referentiel).toBe(true);
+    expect(Object.values(SOURCES).filter((s) => s.referentiel)).toHaveLength(4);
+  });
+
+  test("Code officiel géographique : fichiers CSV de l'Insee, millésime 2026", () => {
+    const base = "https://www.insee.fr/fr/statistiques/fichier/8740222";
+    expect(SOURCES.cog_mouvements).toMatchObject({
+      api: "fichier", producteur: "Insee", url: `${base}/v_mvt_commune_2026.csv`,
+      pageUrl: "https://www.insee.fr/fr/information/8740222",
+    });
+    expect(SOURCES.cog_communes).toMatchObject({ api: "fichier", producteur: "Insee", url: `${base}/v_commune_2026.csv` });
+    expect(SOURCES.cog_mouvements.colonnesRequises).toEqual([
+      "mod", "date_eff", "typecom_av", "com_av", "libelle_av", "typecom_ap", "com_ap", "libelle_ap",
+    ]);
+    expect(SOURCES.cog_communes.colonnesRequises).toEqual(["typecom", "com", "libelle", "comparent"]);
   });
 
   test("producteurs et pages", () => {
@@ -182,5 +199,52 @@ describe("recherche d'un jeu au catalogue", () => {
   test("un titre plus long n'est pas accepté : « 20250 » n'est pas « 2025 »", async () => {
     const { f } = fauxFetch([catalogue("Balances nature-fonction 20250", "Balances nature-fonction 2025")]);
     expect(await new OdsClient(f, USER_AGENT, sansAttente).chercherJeu(API_ECO, titre)).toEqual(["jeu-1"]);
+  });
+});
+
+describe("client fichier (CSV à une URL directe)", () => {
+  const s = SOURCES.cog_communes;
+  const csv = (corps: string) => new Response(corps, { status: 200, headers: { "content-type": "text/csv" } });
+
+  test("métadonnées : la date du millésime déclarée, sans requête", async () => {
+    const { f, appels } = fauxFetch([]);
+    expect(await new FichierClient(f, USER_AGENT, sansAttente).metadata(s)).toEqual({ modified: "2026-01-01" });
+    expect(appels).toHaveLength(0);
+  });
+
+  test("un GET ; CSV UTF-8 avec BOM converti en Parquet : noms en minuscules, valeurs en texte", async () => {
+    const { f, appels } = fauxFetch([
+      csv('﻿"TYPECOM","COM","LIBELLE","COMPARENT"\n"COM","01001","L\'Abergement-Clémenciat",""\n"COMD","2A004","Ajaccio","2A004"\n'),
+    ]);
+    const dest = join(dossier, "cog.parquet");
+    const r = await new FichierClient(f, USER_AGENT, sansAttente).telechargerParquet(s, dest);
+    expect(r).toEqual({ chemin: dest, url: s.url! });
+    expect(appels).toHaveLength(1);
+    expect(appels[0]!.url).toBe(s.url!);
+    expect(appels[0]!.headers.get("user-agent")).toStartWith("observatoireeducation/");
+    const duck = await connexion();
+    const l = await lignes<Record<string, string | null>>(duck, `select * from read_parquet(${litteral(dest)}) order by com`);
+    duck.closeSync();
+    expect(l).toEqual([
+      { typecom: "COM", com: "01001", libelle: "L'Abergement-Clémenciat", comparent: null },
+      { typecom: "COMD", com: "2A004", libelle: "Ajaccio", comparent: "2A004" },
+    ]);
+    expect(await Bun.file(`${dest}.csv`).exists()).toBe(false);
+  });
+
+  test("fichier vide : version rejetée", async () => {
+    const { f } = fauxFetch([csv("")]);
+    const client = new FichierClient(f, USER_AGENT, sansAttente);
+    await expect(client.telechargerParquet(s, join(dossier, "vide.parquet"))).rejects.toBeInstanceOf(ErreurParquetInvalide);
+  });
+
+  test("nouvel essai sur 5xx, abandon sur 4xx", async () => {
+    const { f, appels } = fauxFetch([new Response("", { status: 503 }), csv("A,B\n1,2\n")]);
+    await new FichierClient(f, USER_AGENT, sansAttente).telechargerParquet(s, join(dossier, "r.parquet"));
+    expect(appels).toHaveLength(2);
+    const { f: g, appels: appels404 } = fauxFetch([new Response("", { status: 404 })]);
+    const client = new FichierClient(g, USER_AGENT, sansAttente);
+    await expect(client.telechargerParquet(s, join(dossier, "x.parquet"))).rejects.toThrow(/404/);
+    expect(appels404).toHaveLength(1);
   });
 });

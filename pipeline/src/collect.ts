@@ -10,9 +10,25 @@ import { ajouterCorrections, comparerVersions } from "./corrections.ts";
 import type { Depot } from "./depot.ts";
 import { connexion, executer, ident, litteral } from "./duck.ts";
 import { ErreurParquetInvalide, type OdsClient, urlExport } from "./ods.ts";
-import { API_ECO, type Source, sourceBudget, toutesSources } from "./sources.ts";
+import { API_ECO, API_FICHIER, type Source, sourceBudget, toutesSources } from "./sources.ts";
 
-export type ClientSources = Pick<OdsClient, "metadata" | "telechargerParquet" | "chercherJeu">;
+/** Ce que la collecte attend d'un client par source : satisfait par OdsClient et par FichierClient. */
+export interface ClientSource {
+  metadata(s: Source): Promise<{ modified: string; recordsCount?: number }>;
+  telechargerParquet(s: Source, dest: string): Promise<{ chemin: string; url: string }>;
+}
+
+export type ClientSources = ClientSource & Pick<OdsClient, "chercherJeu">;
+
+/** Un seul client pour la collecte : les sources API_FICHIER vont au client fichier, les autres à Opendatasoft. */
+export function aiguiller(ods: ClientSources, fichier: ClientSource): ClientSources {
+  const pour = (s: Source): ClientSource => (s.api === API_FICHIER ? fichier : ods);
+  return {
+    metadata: (s) => pour(s).metadata(s),
+    telechargerParquet: (s, dest) => pour(s).telechargerParquet(s, dest),
+    chercherJeu: (api, titre) => ods.chercherJeu(api, titre),
+  };
+}
 
 export type LigneJournal = {
   date: string;
