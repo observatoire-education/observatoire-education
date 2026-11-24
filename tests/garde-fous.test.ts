@@ -3,6 +3,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { echantillonUrls, normaliserCorps } from "../scripts/comparer-hebergements.ts";
 import { ecrireFichiersHebergement, LIMITES, verifierDist } from "../scripts/garde-fous.ts";
 
 async function dossierTemp<T>(f: (d: string) => Promise<T> | T): Promise<T> {
@@ -48,4 +49,21 @@ describe("garde-fous de dist/ (Cloudflare Workers)", () => {
       expect(existsSync(join(d, "CNAME"))).toBe(false);
       expect(existsSync(join(d, "robots.txt"))).toBe(true);
     }));
+
+  test("echantillonUrls prend le premier, le dernier et un pas régulier (chemins seulement)", () => {
+    const sitemap =
+      '<?xml version="1.0"?><urlset>' +
+      Array.from({ length: 10 }, (_, i) => `<url><loc>https://observatoireeducation.fr/p${i + 1}/</loc></url>`).join("") +
+      "</urlset>";
+    expect(echantillonUrls(sitemap, 4)).toEqual(["/p1/", "/p4/", "/p7/", "/p10/"]);
+    expect(echantillonUrls(sitemap, 50)).toHaveLength(10);
+    expect(echantillonUrls(sitemap, 1)).toEqual(["/p1/"]);
+  });
+
+  test("normaliserCorps retire le script Umami et les dates de génération", () => {
+    const html =
+      '<head><script is:inline defer src="https://u.example/s.js" data-website-id="x"></script></head>' +
+      '<div>Page générée le 24 novembre 2026. Lien</div><div>Fiche éditée le 24 novembre 2026<br></div>';
+    expect(normaliserCorps(html)).toBe(normaliserCorps(html.replace(/24 novembre/g, "25 novembre").replace(/<script.*?<\/script>/, "")));
+  });
 });
