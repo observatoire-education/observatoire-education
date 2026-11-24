@@ -21,6 +21,14 @@ describe("collectiviteDuBudget", () => {
     expect(collectiviteDuBudget(l("CTU", "102", "102", "CTU Guyane"))).toBe("ctu-guyane");
   });
 
+  test("codes DGFiP de l'outre-mer : 102 Guyane, 103 Martinique (pas dans l'ordre INSEE)", () => {
+    expect(collectiviteDuBudget(l("DEPT", "102", "102", "DEP X"))).toBe("dep-973");
+    expect(collectiviteDuBudget(l("DEPT", "103", "103", "DEP X"))).toBe("dep-972");
+    expect(collectiviteDuBudget(l("REG", "102", "102", "REG X"))).toBe("reg-03");
+    expect(collectiviteDuBudget(l("REG", "103", "103", "REG X"))).toBe("reg-02");
+    expect(collectiviteDuBudget(l("REG", "106", "106", "REG X"))).toBe("reg-06");
+  });
+
   test("collectivité inconnue : null", () => {
     expect(collectiviteDuBudget(l("CTU", "199", "199", "CTU ILE INCONNUE"))).toBeNull();
     expect(collectiviteDuBudget(l("REG", null, "999", "REG X"))).toBeNull();
@@ -63,6 +71,14 @@ describe("balances normalisées", () => {
     };
     expect(await postes("dep-44", 2023)).toEqual(attendu);
     expect(await postes("dep-44", 2024)).toEqual(attendu);
+  });
+
+  test("M57 655122 (dotations aux lycées privés) en fonction 221 : contribution aux collèges privés", async () => {
+    // Corrèze et Nièvre 2024 imputent leur forfait des collèges privés au compte des lycées privés.
+    expect(await postes("dep-19", 2024)).toEqual({
+      "colleges/prive/fonctionnement": 900_000,
+      "colleges/public/fonctionnement_hors_personnel": 3_000_000,
+    });
   });
 
   test("opérations d'ordre, amortissements et emprunts exclus", async () => {

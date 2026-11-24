@@ -10,23 +10,28 @@ export interface LigneBudget {
   lbudg: string;
 }
 
-/** Département : `044` → `44`, `02A` → `2A` ; outre-mer `101` → `971`. null si le code n'est pas reconnu. */
+/**
+ * Codes DGFiP de l'outre-mer (constatés dans les balances 2020-2025) : 101 Guadeloupe, 102 Guyane, 103 Martinique,
+ * 104 La Réunion, 106 Mayotte. Valeur : [département, région INSEE].
+ */
+const OUTRE_MER: Record<string, [string, string]> = {
+  "101": ["971", "01"], "102": ["973", "03"], "103": ["972", "02"], "104": ["974", "04"], "106": ["976", "06"],
+};
+
+/** Département : `044` → `44`, `02A` → `2A` ; outre-mer `101` → `971`, `102` → `973`. null si le code n'est pas reconnu. */
 function codeDepartement(ndept: string | null): string | null {
   const n = ndept?.trim();
   if (!n) return null;
-  if (/^10[1-6]$/.test(n)) return `97${n.slice(2)}`;
+  if (OUTRE_MER[n]) return OUTRE_MER[n][0];
   if (/^0\d\d$|^0\d[AB]$/.test(n)) return n.slice(1);
   return null;
 }
 
-/**
- * Région : le code DGFiP (`cregi`, 3 caractères) est le code INSEE précédé d'un 0, sauf outre-mer
- * (101 Guadeloupe → 01, 102 → 02, 103 → 03, 104 La Réunion → 04, 106 Mayotte → 06).
- */
+/** Région : le code DGFiP (`cregi`, 3 caractères) est le code INSEE précédé d'un 0, sauf outre-mer (`OUTRE_MER`). */
 function codeRegion(cregi: string | null): string | null {
   const c = cregi?.trim();
   if (!c || c.length !== 3) return null;
-  const insee = c.startsWith("10") ? `0${c[2]}` : c.startsWith("0") ? c.slice(1) : null;
+  const insee = OUTRE_MER[c] ? OUTRE_MER[c][1] : c.startsWith("0") ? c.slice(1) : null;
   return insee && REGIONS.some((r) => r.code === insee) ? insee : null;
 }
 
@@ -118,8 +123,12 @@ const JOINTURE = `join budget_collectivites m on b.categ is not distinct from m.
 
 const classe6 = "(compte like '6%' and compte not like '68%' and compte not like '675%' and compte not like '676%')";
 const investissement = "(compte like '20%' or compte like '21%' or compte like '23%')";
-/** Contribution aux collèges privés : un compte par nomenclature, correspondance exacte (`655112` commence par `65511`). */
-const comptePrive = "((nomen = 'M52' and compte = '65512') or (nomen = 'M57' and compte = '655112'))";
+/**
+ * Contribution aux collèges privés : correspondance exacte (`655112` commence par `65511`).
+ * M57 `655122` (dotations de fonctionnement des lycées privés) : en fonction 221, c'est le forfait des collèges privés
+ * imputé au compte voisin (Corrèze et Nièvre 2024-2025, Martinique 2020 ; voir docs/budget-controles.md).
+ */
+const comptePrive = "((nomen = 'M52' and compte = '65512') or (nomen = 'M57' and compte in ('655112', '655122')))";
 
 /**
  * Tables `budget_lignes`, `budget_postes`, `budget_non_detaille` et `budget_inconnus`
