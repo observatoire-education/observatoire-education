@@ -1,6 +1,6 @@
 // Classes des écoles : série des élèves et des classes, typologie de la dernière rentrée (tables de 08_ecoles.sql).
 // Écoles les plus proches (spec, section 6.6).
-import { FAMILLES_ECOLES, SEUILS_ISOLEMENT_KM } from "@obs/shared/libelles";
+import { FAMILLES_ECOLES, RAYON_ECOLES_PROCHES_KM, SEUILS_ISOLEMENT_KM } from "@obs/shared/libelles";
 import type { Classes, EcoleProche, EcolesProches, Famille, FamilleEcole, Secteur, SourceId, TypeClasses } from "@obs/shared/types";
 import type { Db } from "./db.ts";
 import { FAMILLES_COMPATIBLES_ECOLES, HAVERSINE_SQL } from "./fiches.ts";
@@ -63,13 +63,17 @@ export async function calculerClasses(db: Db): Promise<Map<string, Classes>> {
 
 /** Nombre d'écoles de la liste et rayon de recherche. */
 const NB_ECOLES_PROCHES = 6;
-const RAYON_ECOLES_PROCHES_KM = 50;
 /** Clé du résultat de calculerEcolesProches quand il est calculé depuis un point. */
 export const DEPUIS = "depuis";
 
-/** Plus grand seuil sous lequel il n'y a aucune école, d'après la distance de la plus proche (null : aucune dans le rayon). */
+/**
+ * Plus grand seuil sous lequel il n'y a aucune école, d'après la distance de la plus proche : null si elle est à moins
+ * de 2 km ; le rayon de recherche (50 km) s'il n'y en a aucune dans ce rayon (null en entrée), pour que la phrase
+ * reste vraie (« Aucune autre école à moins de 50 km »).
+ */
 export function seuilIsolement(plusProcheKm: number | null): number | null {
-  return SEUILS_ISOLEMENT_KM.filter((s) => plusProcheKm === null || plusProcheKm >= s).at(-1) ?? null;
+  if (plusProcheKm === null) return RAYON_ECOLES_PROCHES_KM;
+  return SEUILS_ISOLEMENT_KM.filter((s) => plusProcheKm >= s).at(-1) ?? null;
 }
 
 interface PointDepart { id: string; lat: number; lon: number; famille: FamilleEcole | null }
@@ -127,6 +131,14 @@ async function lignesProches(db: Db, points: PointDepart[], rayonKm: number): Pr
   return Map.groupBy(lignes, (l) => l.id);
 }
 
+/** Dernière rentrée des effectifs des écoles (source effectifs_ecoles) ; null si aucune. */
+export async function rentreeEffectifsEcoles(db: Db): Promise<number | null> {
+  const [{ r } = { r: null }] = await db.sql<{ r: number | null }>(
+    "select max(rentree) as r from classes_historique where source = 'effectifs_ecoles'",
+  );
+  return r;
+}
+
 /**
  * Écoles les plus proches, à vol d'oiseau (spec, section 6.6).
  *
@@ -138,8 +150,13 @@ async function lignesProches(db: Db, points: PointDepart[], rayonKm: number): Pr
  *
  * Avec `depuis` (centre d'une commune sans école) : une seule entrée, de clé DEPUIS, calculée sur toutes les écoles
  * ouvertes, sans compatibilité ni exclusion.
+ *
+ * Élèves et classes : ceux de `rentree` (effectifs des écoles) seulement, la rentrée que la page affiche en titre de
+ * colonne ; par défaut, la dernière rentrée des effectifs des écoles (rentreeEffectifsEcoles). null : aucun chiffre.
  */
-export async function calculerEcolesProches(db: Db, depuis?: { lat: number; lon: number }): Promise<Map<string, EcolesProches | null>> {
+export async function calculerEcolesProches(
+  db: Db, depuis?: { lat: number; lon: number }, rentree?: number | null,
+): Promise<Map<string, EcolesProches | null>> {
   const ecoles = depuis
     ? []
     : await db.sql<{ uai: string; famille: FamilleEcole; lat: number | null; lon: number | null }>(
@@ -149,10 +166,12 @@ export async function calculerEcolesProches(db: Db, depuis?: { lat: number; lon:
     ? [{ id: DEPUIS, lat: depuis.lat, lon: depuis.lon, famille: null }]
     : ecoles.filter((e) => e.lat !== null && e.lon !== null).map((e) => ({ id: e.uai, lat: e.lat!, lon: e.lon!, famille: e.famille }));
 
-  // Élèves et classes de la dernière rentrée publiée pour les écoles (une rentrée plus ancienne n'est pas montrée).
+  // Élèves et classes de la rentrée affichée seulement (une rentrée plus ancienne n'est pas montrée).
+  const r = rentree === undefined ? await rentreeEffectifsEcoles(db) : rentree;
   const chiffres = new Map(
-    (await db.sql<{ uai: string; eleves: number | null; classes: number | null }>(
-      "select uai, eleves, classes from classes_historique where rentree = (select max(rentree) from classes_historique)",
+    (r === null ? [] : await db.sql<{ uai: string; eleves: number | null; classes: number | null }>(
+      "select uai, eleves, classes from classes_historique where source = 'effectifs_ecoles' and rentree = $1",
+      [r],
     )).map((c) => [c.uai, c]),
   );
   const ecole = (l: LigneProche): EcoleProche => {
@@ -181,7 +200,8 @@ export async function calculerEcolesProches(db: Db, depuis?: { lat: number; lon:
   const proches = new Map<string, EcolesProches>();
   const premiere = await lignesProches(db, points, Math.max(...SEUILS_ISOLEMENT_KM));
   for (const p of points) proches.set(p.id, resume(premiere.get(p.id) ?? []));
-  const aReprendre = points.filter((p) => !complet(proches.get(p.id)!));  const seconde = await lignesProches(db, aReprendre, RAYON_ECOLES_PROCHES_KM);
+  const aReprendre = points.filter((p) => !complet(proches.get(p.id)!));
+  const seconde = await lignesProches(db, aReprendre, RAYON_ECOLES_PROCHES_KM);
   for (const p of aReprendre) proches.set(p.id, resume(seconde.get(p.id) ?? []));
 
   if (depuis) return new Map([[DEPUIS, proches.get(DEPUIS)!]]);

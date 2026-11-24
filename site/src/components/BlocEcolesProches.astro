@@ -1,7 +1,7 @@
 ---
 // Autour de l'école (spec, section 6.6) : écoles ouvertes compatibles les plus proches, à vol d'oiseau, triées par
-// distance ; maternelle ou primaire et élémentaire ou primaire les plus proches ; phrase « Aucune autre école à moins
-// de n km » quand elle s'applique. Sans coordonnées, l'absence est dite. Élèves et classes de la dernière rentrée
+// distance ; maternelle ou primaire et élémentaire ou primaire les plus proches (ou leur absence à moins de 50 km) ;
+// phrase « Aucune autre école à moins de n km » quand elle s'applique. Sans coordonnées, l'absence est dite. Élèves et classes de la dernière rentrée
 // publiée pour les écoles (rentrée dans le titre de la colonne, source citée dans la section « Sources »).
 import { entier, nombre } from "@obs/shared/format";
 import { FAMILLES, LIBELLES_ECOLES_PROCHES as LP, LIBELLES_RATTACHEMENTS as LR, SECTEURS } from "@obs/shared/libelles";
@@ -14,8 +14,9 @@ const { f, p } = Astro.props;
 const rentree = f.sources.find((s) => s.id === "effectifs_ecoles")?.rentree;
 const titre = (libelle: string) => (rentree ? `${libelle} ${rentree}` : libelle);
 const km = (e: EcoleProche) => `${nombre(e.distanceKm)} km`;
-const plusProches: [string, EcoleProche | null][] = p
-  ? [[LP.plusProcheMaternelle, p.plusProcheMaternelle], [LP.plusProcheElementaire, p.plusProcheElementaire]]
+// [libellé, école la plus proche, absence dite quand il n'y en a aucune dans le rayon]
+const plusProches: [string, EcoleProche | null, string][] = p
+  ? [[LP.plusProcheMaternelle, p.plusProcheMaternelle, LP.aucuneMaternelle], [LP.plusProcheElementaire, p.plusProcheElementaire, LP.aucuneElementaire]]
   : [];
 ---
 <section id="autour">
@@ -24,8 +25,8 @@ const plusProches: [string, EcoleProche | null][] = p
     {p === null ? <Absence texte={LP.sansCoordonnees} /> : (
       <>
         {p.aucuneAMoinsDe !== null && <p>{LP.aucuneAMoinsDe(p.aucuneAMoinsDe)}</p>}
-        {plusProches.filter(([, e]) => e !== null).map(([libelle, e]) => (
-          <p>{libelle} <a href={`/etablissement/${e!.uai}/`}>{e!.nom}</a>, {km(e!)}</p>
+        {plusProches.map(([libelle, e, aucune]) => (
+          e ? <p>{libelle} <a href={`/etablissement/${e.uai}/`}>{e.nom}</a>, {km(e)}</p> : <p><Absence texte={aucune} /></p>
         ))}
         {p.liste.length > 0 && (
           <div class="table-wrap">

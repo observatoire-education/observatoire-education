@@ -1,8 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { CODES_INDICATEURS, INDICATEURS } from "@obs/shared/libelles";
+import { CODES_INDICATEURS, INDICATEURS, LIBELLES_ECOLES_PROCHES as LP, RAYON_ECOLES_PROCHES_KM } from "@obs/shared/libelles";
+import type { Db } from "../pipeline/src/db.ts";
+import { connexion } from "../pipeline/src/duck.ts";
 import { calculerEleves } from "../pipeline/src/eleves.ts";
-import { calculerClasses, calculerEcolesProches, DEPUIS, SEUILS_ISOLEMENT_KM, seuilIsolement } from "../pipeline/src/ecoles.ts";
-import { distanceKm } from "../pipeline/src/fiches.ts";
+import {
+  calculerClasses, calculerEcolesProches, DEPUIS, rentreeEffectifsEcoles, SEUILS_ISOLEMENT_KM, seuilIsolement,
+} from "../pipeline/src/ecoles.ts";
+import { distanceKm, FAMILLES_COMPATIBLES_ECOLES } from "../pipeline/src/fiches.ts";
 import { calculerIndicateurs, calculerRepartitions } from "../pipeline/src/indicateurs.ts";
 import { dbTest, indic } from "./aide.ts";
 
@@ -22,7 +26,15 @@ const FERMEES = ["0440106F", "0440107G", "0440109K", "0440110M"];
 describe("écoles les plus proches", () => {
   test("seuils de la phrase « Aucune autre école à moins de n km »", () => {
     expect(SEUILS_ISOLEMENT_KM).toEqual([2, 5, 10]);
-    expect([1.99, 2, 4.99, 5, 9.99, 10, 42, null].map(seuilIsolement)).toEqual([null, 2, 2, 5, 5, 10, 10, 10]);
+    // aucune école dans le rayon (null) : la phrase dit le rayon, 50 km
+    expect([1.99, 2, 4.99, 5, 9.99, 10, 42, null].map(seuilIsolement)).toEqual([null, 2, 2, 5, 5, 10, 10, 50]);
+  });
+
+  test("libellés : phrase, plus proches et leurs absences à moins de 50 km", () => {
+    expect(RAYON_ECOLES_PROCHES_KM).toBe(50);
+    expect(LP.aucuneAMoinsDe(50)).toBe("Aucune autre école à moins de 50 km");
+    expect(LP.aucuneMaternelle).toBe("Aucune école maternelle ou primaire à moins de 50 km");
+    expect(LP.aucuneElementaire).toBe("Aucune école élémentaire ou primaire à moins de 50 km");
   });
 
   test("une entrée par école ouverte, aucune pour le second degré ni pour une école fermée", () => {
@@ -87,10 +99,90 @@ describe("écoles les plus proches", () => {
     // 3,3 km puis 6,7 km de l'école du Bourg
     expect((await calculerEcolesProches(db, { lat: 47.38, lon: -1.4 })).get(DEPUIS)!.aucuneAMoinsDe).toBe(2);
     expect((await calculerEcolesProches(db, { lat: 47.41, lon: -1.4 })).get(DEPUIS)!.aucuneAMoinsDe).toBe(5);
-    // au-delà de 50 km : liste vide
+    // au-delà de 50 km : liste vide, aucune école à moins de 50 km
     expect((await calculerEcolesProches(db, { lat: 45, lon: 2 })).get(DEPUIS)).toEqual({
-      liste: [], plusProcheMaternelle: null, plusProcheElementaire: null, aucuneAMoinsDe: 10,
+      liste: [], plusProcheMaternelle: null, plusProcheElementaire: null, aucuneAMoinsDe: 50,
     });
+  });
+
+  test("élèves et classes de la rentrée demandée seulement (celle du titre de colonne)", async () => {
+    const auBourg = async (rentree?: number | null) =>
+      (await calculerEcolesProches(db, { lat: 47.35, lon: -1.4 }, rentree)).get(DEPUIS)!.liste.find((e) => e.uai === "0440202B")!;
+    expect(await rentreeEffectifsEcoles(db)).toBe(2025);
+    expect(await auBourg()).toMatchObject({ eleves: 196, classes: 8 });
+    const [, e2020, c2020] = classes.get("0440202B")!.historique.find(([r]) => r === 2020)!;
+    expect(await auBourg(2020)).toMatchObject({ eleves: e2020, classes: c2020 });
+    expect(await auBourg(1990)).toMatchObject({ eleves: null, classes: null });
+    expect(await auBourg(null)).toMatchObject({ eleves: null, classes: null });
+  });
+});
+
+describe("écoles les plus proches : grille contre recherche exhaustive", () => {
+  test("200 points (bords de cases, latitudes d'outre-mer) : mêmes 6 plus proches, même phrase, mêmes plus proches par niveau", async () => {
+    // Générateur pseudo-aléatoire déterministe (mulberry32)
+    let graine = 20261124;
+    const alea = () => {
+      graine = (graine + 0x6d2b79f5) | 0;
+      let t = Math.imul(graine ^ (graine >>> 15), 1 | graine);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+    const FAMILLES = ["maternelle", "elementaire", "primaire"] as const;
+    const CENTRES: [number, number][] = [[-21.1, 55.5], [5, -52.5], [16.2, -61.5], [47, 2]];
+    const points: [number, number][] = [];
+    for (const [lat, lon] of CENTRES) {
+      for (let k = 0; k < 35; k++) points.push([lat + (alea() - 0.5) * 0.8, lon + (alea() - 0.5) * 0.8]);
+      // Bords des cases des deux passes (10 et 50 km), de part et d'autre
+      for (const r of [10, 50]) {
+        const pasLat = r / 111;
+        const pasLon = r / (111 * Math.cos((52 * Math.PI) / 180));
+        const cy = Math.round(lat / pasLat) * pasLat;
+        const cx = Math.round(lon / pasLon) * pasLon;
+        for (const e of [-1e-7, 1e-7]) {
+          points.push([cy + e, lon + (alea() - 0.5) * 0.2], [lat + (alea() - 0.5) * 0.2, cx + e]);
+        }
+      }
+    }
+    // Écoles isolées : aucune autre à moins de 50 km
+    points.push([-12.8, 45.1], [46.8, -56.2]);
+    // Métropole, plus étalée
+    for (let k = 0; k < 26; k++) points.push([47 + (alea() - 0.5) * 2, 2 + (alea() - 0.5) * 2]);
+    expect(points.length).toBe(200);
+    const ecoles = points.map(([lat, lon], k) => ({
+      uai: `${String(k).padStart(7, "0")}X`, nom: `École ${k}`, famille: FAMILLES[k % 3]!, secteur: "public", commune: "C", lat, lon,
+    }));
+
+    const c = await connexion(null);
+    await c.run(
+      `create table etablissements as select unnest(from_json($1::json, '[{"uai":"VARCHAR","nom":"VARCHAR","famille":"VARCHAR",
+        "secteur":"VARCHAR","commune":"VARCHAR","lat":"DOUBLE","lon":"DOUBLE"}]'), recursive := true)`,
+      [JSON.stringify(ecoles)],
+    );
+    await c.run("create table classes_historique (uai varchar, rentree integer, eleves integer, classes integer, source varchar)");
+    const synthetique = {
+      async sql<T>(q: string, p?: unknown[]) {
+        return (await c.runAndReadAll(q, p as never)).getRowObjectsJS() as T[];
+      },
+    } as Db;
+    const grille = await calculerEcolesProches(synthetique);
+
+    for (const a of ecoles) {
+      const autres = ecoles
+        .filter((b) => b.uai !== a.uai)
+        .map((b) => ({ ...b, d: distanceKm(a.lat, a.lon, b.lat, b.lon) }))
+        .filter((b) => b.d <= 50)
+        .sort((x, y) => x.d - y.d || x.uai.localeCompare(y.uai));
+      const liste = autres.filter((b) => FAMILLES_COMPATIBLES_ECOLES[a.famille].includes(b.famille)).slice(0, 6);
+      const g = grille.get(a.uai)!;
+      expect({ uai: a.uai, liste: g.liste.map((e) => e.uai), aucune: g.aucuneAMoinsDe }).toEqual({
+        uai: a.uai, liste: liste.map((b) => b.uai), aucune: seuilIsolement(liste[0]?.d ?? null),
+      });
+      expect(g.plusProcheMaternelle?.uai).toBe(autres.find((b) => b.famille !== "elementaire")?.uai);
+      expect(g.plusProcheElementaire?.uai).toBe(autres.find((b) => b.famille !== "maternelle")?.uai);
+    }
+    // le jeu exerce bien les cas : écoles isolées, listes complètes
+    expect([...grille.values()].filter((g) => g!.aucuneAMoinsDe === 50).length).toBeGreaterThan(1);
+    expect([...grille.values()].filter((g) => g!.liste.length === 6).length).toBeGreaterThan(50);
   });
 });
 

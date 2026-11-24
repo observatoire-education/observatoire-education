@@ -307,7 +307,7 @@ describe("méthode : secteur de collège d'une école et PIAL", () => {
 
   test("écoles les plus proches : vol d'oiseau, seuils, compatibilité, 50 km, temps de trajet à venir", () => {
     const t = propre(doc("methode").querySelector("#ecoles-proches")?.nextElementSibling?.textContent);
-    for (const s of ["vol d'oiseau", "6 écoles", "50 km", "2, 5 ou 10 km", "maternelles et primaires", "temps de trajet"]) expect(t).toContain(s);
+    for (const s of ["vol d'oiseau", "6 écoles", "50 km", "2, 5 ou 10 km", "maternelles et primaires", "temps de trajet", "Aucune autre école à moins de 50 km"]) expect(t).toContain(s);
   });
 });
 

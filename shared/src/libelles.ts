@@ -132,6 +132,8 @@ export const LIBELLES_RATTACHEMENTS = {
 
 /** Seuils de la phrase « Aucune autre école à moins de n km » (spec, section 6.6). */
 export const SEUILS_ISOLEMENT_KM = [2, 5, 10] as const;
+/** Rayon de recherche des écoles proches ; aussi le seuil de la phrase quand aucune école n'est dans ce rayon. */
+export const RAYON_ECOLES_PROCHES_KM = 50;
 
 /** Bloc « Autour de l'école » : écoles les plus proches (spec, section 6.6). */
 export const LIBELLES_ECOLES_PROCHES = {
@@ -139,6 +141,8 @@ export const LIBELLES_ECOLES_PROCHES = {
   aucuneAMoinsDe: (km: number): string => `Aucune autre école à moins de ${km} km`,
   plusProcheMaternelle: "École maternelle ou primaire la plus proche :",
   plusProcheElementaire: "École élémentaire ou primaire la plus proche :",
+  aucuneMaternelle: `Aucune école maternelle ou primaire à moins de ${RAYON_ECOLES_PROCHES_KM} km`,
+  aucuneElementaire: `Aucune école élémentaire ou primaire à moins de ${RAYON_ECOLES_PROCHES_KM} km`,
   note: "Distances à vol d'oiseau, sans tenir compte du relief ni des routes.",
   sansCoordonnees: "Coordonnées de l'école non publiées",
 } as const;

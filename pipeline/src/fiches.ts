@@ -11,7 +11,7 @@ import type { Manifest } from "./archive.ts";
 import type { Db } from "./db.ts";
 import { budgetDeFiche, calculerBudgets } from "./budget-eleves.ts";
 import { collectivitesCorrigees, correctionEnVigueur, type EntreeCorrection, resoudreCorrection } from "./corrections.ts";
-import { calculerClasses, calculerEcolesProches } from "./ecoles.ts";
+import { calculerClasses, calculerEcolesProches, rentreeEffectifsEcoles } from "./ecoles.ts";
 import { calculerEleves } from "./eleves.ts";
 import { calculerPial, type RapportPial } from "./pial.ts";
 import { calculerResultats, dernieresSessions, resume } from "./resultats.ts";
@@ -390,7 +390,9 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
   // Rattachements (écoles ouvertes) ; PIAL et écoles du secteur (second degré)
   const secteurs = await calculerSecteurs(db, opts.secteurs);
   const pial = await calculerPial(db, opts.pial);
-  const ecolesProches = await calculerEcolesProches(db);
+  // Écoles proches : élèves et classes de la rentrée des effectifs des écoles, citée dans les sources (titre de colonne).
+  const rentreeProches = await rentreeEffectifsEcoles(db);
+  const ecolesProches = await calculerEcolesProches(db, undefined, rentreeProches);
   const circonscriptions = new Map(
     (await db.sql<{ uai: string; circonscription: string | null }>("select uai, circonscription from etablissements")).map((l) => [l.uai, l.circonscription]),
   );
@@ -465,7 +467,7 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
       listes: [
         ...(f.ecolesDuSecteur?.length ? [rentreesListes.eleves, rentreesListes.ips] : []),
         // élèves et classes des écoles proches : dernière rentrée des effectifs des écoles
-        ...(f.ecolesProches?.liste.length ? [rentreesListes.eleves] : []),
+        ...(f.ecolesProches?.liste.length && rentreeProches !== null ? [{ rentree: rentreeProches, source: "effectifs_ecoles" as const }] : []),
       ].filter((l) => l !== null),
     });
   }
