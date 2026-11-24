@@ -3,7 +3,7 @@
 // moyennes Σ numérateurs / Σ dénominateurs par territoire, famille, secteur et rentrée.
 // TypeScript : assemblage en objets Indicateur / Repartition.
 import {
-  CODES_INDICATEURS, type CodeIndicateur, type CodeRepartition, estEcole, FAMILLES_SECOND_DEGRE, INDICATEURS, REPARTITIONS,
+  CODES_INDICATEURS, type CodeIndicateur, type CodeRepartition, estEcole, FAMILLES_ECOLES, FAMILLES_SECOND_DEGRE, INDICATEURS, REPARTITIONS,
 } from "@obs/shared/libelles";
 import type {
   Comparaison, Famille, Indicateur, Mesure, Niveau, PartsReference, Repartition, Secteur, SourceId,
@@ -256,6 +256,14 @@ export async function calculerIndicateurs(db: Db): Promise<Map<string, Indicateu
   const ipsHistorique = await calculerIpsHistorique(db);
   const derniere = await dernieresRentrees(db, "moyennes");
   const derniereIps = (await db.sql<{ r: number }>("select max(rentree) as r from ips"))[0]?.r ?? null;
+  // Écoles dont la dernière rentrée des effectifs a 0 classe ou un nombre de classes absent → cette rentrée.
+  const rentreeSansClasses = new Map(
+    (await db.sql<{ uai: string; rentree: number }>(`
+      select e.uai, e.rentree from effectifs e
+      where e.uai in (select uai from fiches_etab where famille in (${FAMILLES_ECOLES.map(litteral).join(", ")}))
+      qualify row_number() over (partition by e.uai order by e.rentree desc) = 1
+        and coalesce(e.classes, 0) = 0`)).map((r) => [r.uai, r.rentree]),
+  );
 
   const moyenne = (code: string, n: Niveau, e: Etab, secteur: Secteur, rentree: number, source: SourceId | null): Mesure => {
     const v = moy.get(cle(code, n, territoireDe(e, n), e.famille, secteur, rentree));
@@ -273,9 +281,13 @@ export async function calculerIndicateurs(db: Db): Promise<Map<string, Indicateu
       let mesure: Mesure;
       let historique: [number, number][] = serie.map((l) => [l.rentree, l.valeur]);
       let sourcesHistorique: SourceId[] | undefined;
+      const sansClasses = code === "eleves_par_classe" ? rentreeSansClasses.get(e.uai) : undefined;
       if (prive && NON_PUBLIES_PRIVE.has(code)) {
         mesure = absente("non_publie_prive");
         historique = [];
+      } else if (sansClasses !== undefined) {
+        // classes à 0 ou absentes à la dernière rentrée des effectifs : jamais la valeur d'une rentrée antérieure
+        mesure = absente("non_disponible", sansClasses);
       } else if (derniereLigne) {
         mesure = { valeur: derniereLigne.valeur, statut: "ok", source: derniereLigne.source, rentree: derniereLigne.rentree };
         if (derniereLigne.couverture !== null && derniereLigne.couverture < 100) mesure.couverture = derniereLigne.couverture;

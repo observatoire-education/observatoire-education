@@ -75,11 +75,12 @@ describe("élèves par classe", () => {
     expect((await indic("0440104D", "eleves")).mesure.valeur).toBe(10);
   });
 
-  test("0 classe : non disponible, jamais de valeur", async () => {
+  test("0 classe à la dernière rentrée : non disponible à cette rentrée, pas la valeur d'une rentrée antérieure", async () => {
+    // 0440105E : 2 classes de 2019 à 2024, 0 en 2025
     const i = await indic("0440105E", "eleves_par_classe");
-    expect(i.mesure.statut).toBe("non_disponible");
-    expect(i.mesure.valeur).toBeNull();
-    expect(i.historique).toEqual([]);
+    expect(i.mesure).toEqual({ valeur: null, statut: "non_disponible", source: null, rentree: 2025 });
+    expect(i.historique).toEqual([2019, 2020, 2021, 2022, 2023, 2024].map((r) => [r, 22.5]));
+    expect((await indic("0440105E", "eleves")).mesure).toMatchObject({ valeur: 45, rentree: 2025 });
   });
 
   test("moyennes Σ élèves / Σ classes parmi les écoles de la même famille", async () => {

@@ -26,8 +26,9 @@ from (
   select 'effectifs_ecoles' as source, uai, rentree from ecoles_effectifs_brut
   union all select 'classes_ecoles', uai, rentree from classes_types_brut
   union all select 'ecoles_ep', uai, rentree from ecoles_ep_brut
-)
-where uai not in (select uai from fiches_etab) and uai not in (select uai from fermes)
+) b
+where not exists (select 1 from fiches_etab f where f.uai = b.uai)
+  and not exists (select 1 from fermes x where x.uai = b.uai)
 group by source
 order by source;
 

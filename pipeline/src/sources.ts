@@ -290,7 +290,7 @@ export const SOURCES: Record<SourceId, Source> = {
     "fr-en-ecoles-effectifs-nb_classes",
     "Effectifs d’élèves par école",
     // les colonnes que lit le calcul des élèves et des classes (colonnes-eleves.ts)
-    colonnesDe(JEUX_EFFECTIFS[3]),
+    colonnesDe(JEUX_EFFECTIFS.find((j) => j.source === "effectifs_ecoles")!),
     false,
     parUai("rentree_scolaire", "numero_ecole"),
   ),
