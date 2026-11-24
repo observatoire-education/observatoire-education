@@ -64,14 +64,17 @@ export function collectiviteDuBudget(l: LigneBudget): IdCollectivite | null {
 
 /**
  * Fonction normalisée : 221, 222, 223 seuls ou précédés d'un chapitre 90 à 94 ;
- * 22 seul ou précédé d'un chapitre 90 à 94 (`9322`) devient « 22 » (non détaillée).
+ * 22 seul ou précédé d'un chapitre 90 à 94 (`9322`) devient « 22 » (non détaillée) ;
+ * 24 (cités scolaires), seul ou préfixé (`9324`), devient « 24 » ; `924` est ignoré.
  * `922`, `932`… (chapitre + fonction 2, tout l'enseignement) sont ignorés.
  */
 const RE_DETAILLEE = "^(9[0-4])?(221|222|223)$";
 const RE_NON_DETAILLEE = "^(9[0-4])?22$";
+const RE_CITES = "^(9[0-4])?24$";
 
-export function fonctionNormalisee(code: string): "221" | "222" | "223" | "22" | null {
+export function fonctionNormalisee(code: string): "221" | "222" | "223" | "22" | "24" | null {
   if (new RegExp(RE_DETAILLEE).test(code)) return code.slice(-3) as "221" | "222" | "223";
+  if (new RegExp(RE_CITES).test(code)) return "24";
   return new RegExp(RE_NON_DETAILLEE).test(code) ? "22" : null;
 }
 
@@ -82,7 +85,8 @@ export const depenseReelle = `((${num("obnetdeb")} - ${num("oobdeb")}) - (${num(
 
 const fonctionSql = (c: string) =>
   `case when regexp_matches(${c}, '${RE_DETAILLEE}') then right(${c}, 3)
-        when regexp_matches(${c}, '${RE_NON_DETAILLEE}') then '22' end`;
+        when regexp_matches(${c}, '${RE_NON_DETAILLEE}') then '22'
+        when regexp_matches(${c}, '${RE_CITES}') then '24' end`;
 
 const unionAll = (exercices: number[], select: (e: number) => string, vide: string, op = "union all") =>
   exercices.length ? exercices.map(select).join(`\n${op}\n`) : vide;
@@ -131,7 +135,7 @@ const investissement = "(compte like '20%' or compte like '21%' or compte like '
 const comptePrive = "((nomen = 'M52' and compte = '65512') or (nomen = 'M57' and compte in ('655112', '655122')))";
 
 /**
- * Tables `budget_lignes`, `budget_postes`, `budget_non_detaille` et `budget_inconnus`
+ * Tables `budget_lignes`, `budget_postes`, `budget_non_detaille`, `budget_cites` et `budget_inconnus`
  * (suppose `budget_collectivites` remplie).
  */
 export function sqlBudget(exercices: number[]): string {
@@ -189,5 +193,11 @@ where l.fonction = '22'
     select 1 from budget_lignes d
     where d.exercice = l.exercice and d.collectivite = l.collectivite
       and ((n.niveau = 'colleges' and d.fonction = '221') or (n.niveau = 'lycees' and d.fonction in ('222', '223'))));
+
+create or replace table budget_cites as
+select exercice, collectivite, sum(montant)::double as montant
+from budget_lignes
+where fonction = '24' and (${classe6} or ${investissement})
+group by exercice, collectivite;
 `;
 }

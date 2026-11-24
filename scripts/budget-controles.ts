@@ -135,12 +135,12 @@ async function controleCouverture(db: Db, exercices: number[]): Promise<void> {
       const enTrop = [...p].filter((x) => !att.has(x));
       console.log(`${e} ${niveau.padEnd(8)} : ${p.size} collectivités avec des lignes (attendues ${att.size})` +
         `${manquantes.length ? ` ; sans lignes : ${manquantes.join(", ")}` : ""}${enTrop.length ? ` ; sans élèves rattachés : ${enTrop.join(", ")}` : ""}`);
-      // Mayotte : le Département n'exerce pas la compétence (voir docs/budget-controles.md) ; seule absence expliquée.
-      ok &&= manquantes.every((x) => x === "dep-976");
+      // Mayotte n'a plus de collectivité de rattachement (décision du 2026-11-24) : plus aucune absence attendue.
+      ok &&= manquantes.length === 0;
     }
     console.log(`     budget_non_detaille : ${nd.length ? nd.map((x) => `${x.collectivite} (${x.niveau})`).join(", ") : "aucun"} ; budget_inconnus : ${inconnus.length ? inconnus.map((x) => x.lbudg).join(", ") : "aucun"}`);
   }
-  verdict(ok, "seule absence : Département de Mayotte, expliquée");
+  verdict(ok, "aucune absence : Mayotte n'a pas de collectivité de rattachement");
   const mayotte = await db.sql<{ exercice: number; fonction: string; compte: string; montant: number }>(
     `select exercice, fonction, compte, montant from budget_lignes where collectivite = 'dep-976' order by 1, 2, 3`,
   );

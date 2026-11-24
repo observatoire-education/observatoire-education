@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { COMMUNES_METROPOLE_LYON, REGIONS, collectiviteDe, libelleCollectivite, regionDe } from "@obs/shared/collectivites";
+import { COMMUNES_METROPOLE_LYON, REGIONS, collectiviteDe, libelleCollectivite, motifSansCollectivite, regionDe } from "@obs/shared/collectivites";
 import { cheminTerritoire } from "@obs/shared/territoires";
 
 describe("collectivités", () => {
@@ -20,14 +20,14 @@ describe("collectivités", () => {
     expect(collectiviteDe("colleges", "68", "68224")).toBe("cea");
     expect(collectiviteDe("colleges", "2B", "2B033")).toBe("ctu-corse");
     expect(collectiviteDe("colleges", "972", "97209")).toBe("ctu-martinique");
-    expect(collectiviteDe("colleges", "976", "97611")).toBe("dep-976");
+    expect(collectiviteDe("colleges", "976", "97611")).toBeNull();
     expect(collectiviteDe("colleges", "44", "44109")).toBe("dep-44");
   });
   test("lycées : région, collectivités uniques, Mayotte", () => {
     expect(collectiviteDe("lycees", "44", "44109")).toBe("reg-52");
     expect(collectiviteDe("lycees", "2A", "2A004")).toBe("ctu-corse");
     expect(collectiviteDe("lycees", "973", "97302")).toBe("ctu-guyane");
-    expect(collectiviteDe("lycees", "976", "97611")).toBe("dep-976");
+    expect(collectiviteDe("lycees", "976", "97611")).toBeNull();
   });
   test("Saint-Martin, Saint-Barthélemy, Saint-Pierre-et-Miquelon : non identifiés tant que la tâche 4 n'a rien trouvé", () => {
     expect(collectiviteDe("colleges", "971", "97801")).toBeNull();
@@ -51,5 +51,14 @@ describe("collectivités", () => {
   });
   test("chemin d'une page région", () => {
     expect(cheminTerritoire({ niveau: "region", code: "52", libelle: "Pays de la Loire" })).toBe("/region/52/");
+  });
+});
+
+describe("motifSansCollectivite", () => {
+  test("Mayotte : aucune collectivité ; les autres : non identifiée", () => {
+    expect(motifSansCollectivite("976", "97611")).toBe("aucune_collectivite");
+    expect(motifSansCollectivite("971", "97801")).toBe("collectivite_non_identifiee");
+    expect(motifSansCollectivite("971", "97701")).toBe("collectivite_non_identifiee");
+    expect(motifSansCollectivite("975", "97502")).toBe("collectivite_non_identifiee");
   });
 });

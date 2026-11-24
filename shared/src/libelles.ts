@@ -168,6 +168,8 @@ export const LIBELLES_BUDGET = {
     fonctionNonDetailleeLycees: "fonction lycées non détaillée dans les comptes de la collectivité",
     aucunElevePrive: "aucun élève du privé sous contrat",
     collectiviteNonIdentifiee: "collectivité non identifiée dans les balances de la DGFiP",
+    aucuneCollectivite: "aucune collectivité ne finance ces établissements dans les balances de la DGFiP",
+    aucuneContributionIdentifiee: "aucune contribution au privé identifiée dans les comptes de la collectivité pour cet exercice",
   },
   moyenne: {
     calculee: "moyenne calculée par l'observatoire",
@@ -177,6 +179,9 @@ export const LIBELLES_BUDGET = {
     `DGFiP, balances comptables, exercice ${exercice} · élèves à la rentrée ${exercice - 1} (DEPP)`,
   mentionAgricole:
     "Les dépenses de la région incluent l'enseignement agricole, dont les élèves ne sont pas comptés ici : le montant par élève en est surestimé, surtout pour le privé.",
+  /** Montant formaté par l'appelant (par exemple « 97,3 M€ »). */
+  citesScolairesHorsMontants: (montant: string) =>
+    `${montant} dépensés par la collectivité pour des cités scolaires (collège et lycée réunis) ne sont pas comptés ici : les comptes ne les répartissent pas entre collèges et lycées.`,
   mentionCitesScolaires: (pourcent: string) =>
     `Les comptes de la collectivité incluent des reversements entre collectivités pour des cités scolaires (environ ${pourcent} % des dépenses retenues).`,
 } as const;

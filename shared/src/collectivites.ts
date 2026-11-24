@@ -48,14 +48,15 @@ export const COMMUNES_METROPOLE_LYON: ReadonlySet<string> = new Set([
 
 /**
  * Collectivité qui porte les dépenses des collèges (départements) ou des lycées (régions) d'une commune.
- * null : collectivité non identifiée (Saint-Martin, Saint-Barthélemy, Saint-Pierre-et-Miquelon).
+ * null : aucune collectivité (Mayotte) ou collectivité non identifiée (Saint-Martin, Saint-Barthélemy,
+ * Saint-Pierre-et-Miquelon) ; `motifSansCollectivite` dit lequel.
  */
 export function collectiviteDe(niveau: NiveauBudget, dep: string, codeCommune: string): IdCollectivite | null {
   if (dep === "975" || codeCommune.startsWith("977") || codeCommune.startsWith("978")) return null;
   if (dep === "2A" || dep === "2B") return "ctu-corse";
   if (dep === "972") return "ctu-martinique";
   if (dep === "973") return "ctu-guyane";
-  if (dep === "976") return "dep-976";
+  if (dep === "976") return null; // Mayotte : le Département ne finance ni collèges ni lycées dans les balances
   if (niveau === "lycees") {
     const region = regionDe(dep);
     return region ? `reg-${region}` : null;
@@ -64,6 +65,11 @@ export function collectiviteDe(niveau: NiveauBudget, dep: string, codeCommune: s
   if (dep === "67" || dep === "68") return "cea";
   if (dep === "69" && COMMUNES_METROPOLE_LYON.has(codeCommune)) return "ml-lyon";
   return `dep-${dep}`;
+}
+
+/** Pourquoi `collectiviteDe` renvoie null : Mayotte n'a aucune collectivité de rattachement, les autres ne sont pas identifiées. */
+export function motifSansCollectivite(dep: string, _codeCommune: string): "aucune_collectivite" | "collectivite_non_identifiee" {
+  return dep === "976" ? "aucune_collectivite" : "collectivite_non_identifiee";
 }
 
 /** Complément du nom de chaque département (« de la Loire-Atlantique » → « Département de Loire-Atlantique »). */

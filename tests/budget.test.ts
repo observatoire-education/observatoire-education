@@ -43,6 +43,10 @@ describe("fonctionNormalisee", () => {
     expect(fonctionNormalisee("223")).toBe("223");
     expect(fonctionNormalisee("9322")).toBe("22");
     expect(fonctionNormalisee("22")).toBe("22");
+    expect(fonctionNormalisee("24")).toBe("24");
+    expect(fonctionNormalisee("9324")).toBe("24");
+    expect(fonctionNormalisee("9024")).toBe("24");
+    expect(fonctionNormalisee("924")).toBeNull();
     expect(fonctionNormalisee("922")).toBeNull();
     expect(fonctionNormalisee("932")).toBeNull();
     expect(fonctionNormalisee("2210")).toBeNull();
@@ -126,6 +130,17 @@ describe("balances normalisées", () => {
     expect(nd).toEqual([{ exercice: 2023, niveau: "colleges" }, { exercice: 2024, niveau: "colleges" }]);
     expect(await db.sql("select 1 from budget_postes where collectivite = 'dep-56'")).toEqual([]);
     expect(await db.sql("select 1 from budget_non_detaille where collectivite = 'dep-44'")).toEqual([]);
+  });
+
+  test("cités scolaires (fonction 24) : budget_cites additionne le retenu, budget_postes inchangé", async () => {
+    const db = await dbTest();
+    const c = await db.sql<{ exercice: number; collectivite: string; montant: number }>(
+      "select exercice::int as exercice, collectivite, montant from budget_cites order by 1, 2",
+    );
+    expect(c).toEqual([{ exercice: 2024, collectivite: "dep-44", montant: 500_000 }]); // 9324 fonctionnement + 9024 investissement, sans 6811
+    // budget_postes ne contient jamais la fonction 24 : les totaux de dep-44 2024 restent ceux du test M52 puis M57
+    const [t] = await db.sql<{ t: number }>("select sum(montant) as t from budget_postes where collectivite = 'dep-44' and exercice = 2024");
+    expect(t!.t).toBe(29_200_000);
   });
 
   test("budget sans libellé (lbudg nul) : ni perdu ni inconnu", async () => {

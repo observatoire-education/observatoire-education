@@ -152,9 +152,12 @@ export const EXERCICES_BUDGET: Record<number, string> = {
   2024: "balances-comptables-des-collectivites-et-des-etablissements-publics-locaux-avec-la-presentation-croisee-nature-fonction-2024",
 };
 
-/** Fonction collèges (221) et lycées (222, 223), seules ou précédées d'un chapitre 90 à 94 ; 22 et ses chapitres 90 à 94 (9322…) : non détaillée. */
+/**
+ * Fonction collèges (221) et lycées (222, 223), seules ou précédées d'un chapitre 90 à 94 ; 22 et ses chapitres
+ * 90 à 94 (9322…) : non détaillée ; 24 (cités scolaires, M57) et ses chapitres (9324…) : signalée, hors montants par élève.
+ */
 const FONCTIONS_BUDGET = [
-  ...["221", "222", "223", "22"].flatMap((f) => ["", "90", "91", "92", "93", "94"].map((p) => `${p}${f}`)),
+  ...["221", "222", "223", "22", "24"].flatMap((f) => ["", "90", "91", "92", "93", "94"].map((p) => `${p}${f}`)),
 ];
 const liste = (valeurs: string[]) => valeurs.map((v) => `"${v}"`).join(",");
 

@@ -26,7 +26,7 @@ L'ordre entre 4, 5, Écoles et Transport reste à fixer par le porteur. Les donn
 ## 3. Objectifs, non-objectifs, anti-objectifs
 
 **Objectifs**
-- Pour chaque collectivité qui finance des collèges ou des lycées, et chaque exercice comptable de **2020 à 2024** (section 6.4), des montants **en euros par élève, séparés public / privé** :
+- Pour chaque collectivité qui finance des collèges ou des lycées, et chaque exercice comptable de **2020 à 2025** (section 6.4), des montants **en euros par élève, séparés public / privé** :
   - **Public** : fonctionnement hors personnel ; fonctionnement personnel compris (seulement là où les comptes rattachent le personnel aux collèges ou lycées, section 6.3) ; investissement, à part.
   - **Privé sous contrat** : contribution de la collectivité (forfait d'externat et autres versements identifiables), par élève du privé ; investissement à part s'il existe.
 - Ces montants sur les fiches établissement, les pages département, académie, région et France (section 7).
@@ -77,8 +77,8 @@ L'ordre entre 4, 5, Écoles et Transport reste à fixer par le porteur. Les donn
   | 2023 | `balances-comptables-des-collectivites-et-des-epl-avec-fonction-2023` |
   | 2024 | `balances-comptables-des-collectivites-et-des-etablissements-publics-locaux-avec-la-presentation-croisee-nature-fonction-2024` |
 
-  Les identifiants sont tenus dans le registre des sources. Pour un exercice nouveau, la collecte cherche dans le catalogue un jeu dont le titre contient « nature-fonction <exercice> » ; si elle n'en trouve pas exactement un, elle le signale dans le journal et n'invente rien. 2025 n'est pas encore publié par la DGFiP (l'OFGL a déjà ses agrégats 2025).
-- **Filtre** : catégories `DEPT`, `REG`, `CTU`, `ML` (Métropole de Lyon), `PARIS`, budget principal de la collectivité (pas les budgets annexes) ; fonctions collèges (221) et lycées (222, 223) sous toutes leurs formes codées (section 6.2) ; toutes les natures (comptes) de ces fonctions.
+  Les identifiants sont tenus dans le registre des sources. Pour un exercice nouveau, la collecte cherche dans le catalogue un jeu dont le titre contient « nature-fonction <exercice> » ; si elle n'en trouve pas exactement un, elle le signale dans le journal et n'invente rien. L'exercice 2025 est publié par la DGFiP et utilisé.
+- **Filtre** : catégories `DEPT`, `REG`, `CTU`, `ML` (Métropole de Lyon), `PARIS`, budget principal de la collectivité (pas les budgets annexes) ; fonctions collèges (221), lycées (222, 223), non détaillée (22) et cités scolaires (24) sous toutes leurs formes codées (section 6.2) ; toutes les natures (comptes) de ces fonctions.
 - **Rythme** : la date de modification de chaque jeu est lue chaque nuit, l'extrait n'est retéléchargé que si elle change (comme les autres sources). Un exercice déjà publié qui change est une correction : les deux versions sont gardées (règle du socle).
 - **Validation** : colonnes requises, nombre de collectivités attendu par catégorie, présence des fonctions 221 / 222. Un extrait qui ne passe pas est rejeté et la version précédente reste en ligne.
 
@@ -104,6 +104,7 @@ En 2024, environ 56 collectivités sur 93 qui gèrent des collèges rattachent l
   - **Fonctionnement hors personnel** : comparable partout.
   - **Fonctionnement personnel compris** : seulement quand la collectivité rattache son personnel à la fonction. Sinon : « personnel non rattaché aux collèges dans les comptes de la collectivité ».
 - **Critère de rattachement** *(choix du builder, documenté dans `/methode/`)* : présence de comptes 64 dans la fonction pour un montant qui n'est pas résiduel (par exemple, au-delà d'un seuil par élève à fixer en regardant la distribution).
+- **Contribution au privé introuvable** : si la collectivité a des élèves du privé sous contrat mais aucune ligne privée pour l'exercice (La Réunion pour les collèges, la Martinique en 2024), l'absence s'affiche : « aucune contribution au privé identifiée dans les comptes de la collectivité pour cet exercice ». Jamais 0 €.
 - **Privé** : un seul montant de fonctionnement, la contribution totale. Le forfait d'externat couvre une part « matériel » et une part « personnel » que les comptes ne distinguent pas.
 - **Règle d'affichage** : le privé se place à côté du public **personnel compris**. Si celui-ci n'existe pas pour la collectivité, la page le dit et ne met pas le public hors personnel en face du privé.
 
@@ -112,7 +113,7 @@ En 2024, environ 56 collectivités sur 93 qui gèrent des collèges rattachent l
 - **Dénominateur** : élèves de la **rentrée de septembre N−1** pour l'exercice N (rentrée 2023 pour les comptes 2024), car elle couvre huit mois de l'année comptable. Effectifs déjà collectés (DEPP), par collectivité et par secteur :
   - collèges : élèves des collèges publics / privés sous contrat du territoire de la collectivité ;
   - lycées : élèves des lycées GT, professionnels et polyvalents publics / privés sous contrat de la région.
-- **Exercices 2020 à 2024** : les jeux d'effectifs collectés commencent à la rentrée 2019. Les comptes existent depuis 2012 ; aller plus loin exigerait une autre source d'effectifs (laissé au builder, section 10). L'exercice 2025 s'ajoutera seul quand la DGFiP le publiera.
+- **Exercices 2020 à 2025** : les jeux d'effectifs collectés commencent à la rentrée 2019. Les comptes existent depuis 2012 ; aller plus loin exigerait une autre source d'effectifs (laissé au builder, section 10). L'exercice 2025 est publié par la DGFiP et utilisé (élèves de la rentrée 2024).
 - **Moyenne France** : Σ dépenses ÷ Σ élèves sur toutes les collectivités (même principe Σ/Σ que les autres moyennes calculées). Pour le niveau « personnel compris », la moyenne ne porte que sur les collectivités qui rattachent leur personnel, et le dit (« moyenne de 56 départements »). C'est une moyenne calculée par l'observatoire, marquée comme telle (spec phase 2, 6.4).
 
 ### 6.5 Collectivités particulières
@@ -124,11 +125,11 @@ En 2024, environ 56 collectivités sur 93 qui gèrent des collèges rattachent l
 | Bas-Rhin, Haut-Rhin (67, 68) | Collectivité européenne d'Alsace | Région Grand Est |
 | Corse (2A, 2B) | Collectivité de Corse (`CTU`) | Collectivité de Corse |
 | Martinique, Guyane | collectivité unique (`CTU`) | collectivité unique |
-| Mayotte | Département de Mayotte (exerce les compétences régionales) | Département de Mayotte |
+| Mayotte | aucune collectivité : le Département ne finance ni collèges ni lycées dans les balances | aucune collectivité |
 | Guadeloupe (avec Saint-Barthélemy et Saint-Martin), La Réunion | département | région |
 | Saint-Pierre-et-Miquelon | à vérifier par le builder (collectivité territoriale ; présence dans les balances non examinée) | idem |
 
-- Une fiche d'établissement est rattachée à sa collectivité par sa commune : liste des communes de la Métropole de Lyon pour le Rhône ; Saint-Barthélemy et Saint-Martin ne sont pas des communes de la Guadeloupe depuis 2007 et ont leurs propres compétences : le builder vérifie qui finance leurs collèges et lycées, et à défaut d'une collectivité identifiable dans les balances, la fiche affiche l'absence avec son motif.
+- Une fiche d'établissement est rattachée à sa collectivité par sa commune : liste des communes de la Métropole de Lyon pour le Rhône ; Saint-Barthélemy et Saint-Martin ne sont pas des communes de la Guadeloupe depuis 2007 et ont leurs propres compétences : le builder vérifie qui finance leurs collèges et lycées, et à défaut d'une collectivité identifiable dans les balances, la fiche affiche l'absence avec son motif. Mayotte, où le Département ne finance rien dans les balances, affiche « aucune collectivité ne finance ces établissements dans les balances de la DGFiP » ; Saint-Martin, Saint-Barthélemy et Saint-Pierre-et-Miquelon affichent « collectivité non identifiée dans les balances de la DGFiP ».
 - La page département du Rhône montre deux collectivités (Département, Métropole) ; celles du Bas-Rhin et du Haut-Rhin montrent la Collectivité européenne d'Alsace.
 - Une collectivité sans données pour un exercice affiche l'absence avec son motif.
 - **L'unité est la collectivité, pas le département** *(choix de conception, pour rester un chiffre de source)* : les fichiers de données, les tableaux et les CSV ont une ligne par collectivité ; « moyenne de 56 collectivités ». Aucune valeur n'est fusionnée entre deux collectivités. Sur la carte de la page France, la Métropole de Lyon et le reste du Rhône sont dessinés et colorés séparément (contours communaux déjà disponibles) ; le Bas-Rhin et le Haut-Rhin portent la valeur de la Collectivité européenne d'Alsace, la Corse-du-Sud et la Haute-Corse celle de la Collectivité de Corse, avec une note sous la carte.
@@ -144,6 +145,8 @@ Les régions financent aussi les lycées agricoles : environ 232 publics et 600 
 ### 6.7 Cités scolaires et flux entre collectivités
 
 Dans une cité scolaire (collège et lycée réunis), une collectivité gère souvent l'ensemble et l'autre lui rembourse sa part : le même argent peut figurer dans la fonction 221 d'un département et dans la 222 d'une région. *(Choix de conception :)* on retient les **dépenses brutes** de chaque collectivité, sans neutraliser ces flux, et `/methode/` le dit. Le builder mesure, sur l'exercice 2024, le poids des reversements entre collectivités dans ces fonctions (comptes de subventions et participations versées aux départements et régions) ; si une collectivité est déplacée de plus de quelques pour cent, la fiche de cette collectivité le signale et le porteur est prévenu avant publication.
+
+**Fonction 24 « Cités scolaires » (M57), décision du porteur du 2026-11-24.** Ces dépenses (environ 223 M€ en 2024) restent hors des montants par élève, car les comptes ne les répartissent pas entre collèges et lycées. Elles sont collectées (fonction 24 et formes préfixées) et signalées sur la collectivité concernée : « {montant} dépensés par la collectivité pour des cités scolaires (collège et lycée réunis) ne sont pas comptés ici : les comptes ne les répartissent pas entre collèges et lycées. »
 
 ## 7. Affichage
 
@@ -162,7 +165,7 @@ Contribution aux collèges privés     xxx € par élève du privé (xxx €)
 - **Fiche privée** : la contribution au privé en premier, le public personnel compris à côté pour situer.
 - **Fiche lycée** : la même chose avec la région.
 - Règle d'affichage du socle : écart puis moyenne entre parenthèses sur la page web ; moyenne seule sur la fiche A4, où le bloc entre dans le tableau central.
-- **Évolution 2020-2024** : petit graphique (SVG Plot, au build) public / privé en euros courants, sur les pages de territoire. *(Choix de conception : euros courants, comme la source ; pas de correction de l'inflation, qui serait un calcul de l'observatoire.)*
+- **Évolution 2020-2025** : petit graphique (SVG Plot, au build) public / privé en euros courants, sur les pages de territoire. *(Choix de conception : euros courants, comme la source ; pas de correction de l'inflation, qui serait un calcul de l'observatoire.)*
 - **Page département** : le bloc pour les collèges (onglet collèges) et celui de la région pour les lycées (onglets lycées).
 - **Page académie** : tableau de ses départements (collèges) et rappel de la région (lycées).
 - **Page France** : carte des départements en euros par élève du public, hors personnel (échelle continue, sans extrêmes mis en avant) ; tableaux des départements et des régions, triés par nom, téléchargeables en CSV.
@@ -172,7 +175,7 @@ Contribution aux collèges privés     xxx € par élève du privé (xxx €)
 
 - **18 pages** `/region/<code>/` (code INSEE de région) : 13 régions de métropole (Corse comprise) et Guadeloupe, Martinique, Guyane, La Réunion, Mayotte. Saint-Pierre-et-Miquelon n'est pas une région : il garde ses pages académie et département.
 - **Fil d'Ariane** : France › Région › Académie › Département › Commune. Chaque académie appartient à une seule région académique, dont les limites sont celles de la région. Corse, Martinique et Guyane ont une page région et une page académie qui couvrent le même territoire : les deux existent, pour garder le fil régulier.
-- **Contenu** : le gabarit de territoire de la phase 2, comme la page académie : bandeau (établissements, élèves, part du privé, IPS moyens **calculés par l'observatoire et marqués comme tels**, la DEPP ne publiant pas de moyenne régionale), carte (départements de la région), liste de ses académies et départements avec leurs chiffres, téléchargement CSV ; plus le bloc **Moyens de la collectivité** : budget des lycées de la région (public, privé, niveaux, 2020-2024) et tableau du budget des collèges de chacun de ses départements.
+- **Contenu** : le gabarit de territoire de la phase 2, comme la page académie : bandeau (établissements, élèves, part du privé, IPS moyens **calculés par l'observatoire et marqués comme tels**, la DEPP ne publiant pas de moyenne régionale), carte (départements de la région), liste de ses académies et départements avec leurs chiffres, téléchargement CSV ; plus le bloc **Moyens de la collectivité** : budget des lycées de la région (public, privé, niveaux, 2020-2025) et tableau du budget des collèges de chacun de ses départements.
 - **Maillage** : la page France liste les régions ; l'accueil (« Parcourir par territoire ») les propose ; la recherche et le sitemap les incluent.
 - **Contour** : obtenu par fusion des contours départementaux déjà simplifiés, ou ADMIN EXPRESS régions (choix du builder).
 
@@ -206,7 +209,7 @@ Ces choix ne changent pas ce que voit le lecteur ; le builder les tranche et les
 - Requête exacte de filtre (clauses `where`, format d'export Parquet), stockage de la requête avec l'archive.
 - Rattachement commune → collectivité (Métropole de Lyon, Alsace, Saint-Barthélemy, Saint-Martin, Saint-Pierre-et-Miquelon).
 - Traitement des EREA (financés par les régions) : inclus dans les lycées publics si leurs effectifs sont disponibles, sinon exclus et dit dans `/methode/`.
-- Source d'effectifs plus ancienne pour remonter avant 2020, si elle existe et se raccorde proprement aux jeux actuels ; sinon, 2020-2024.
+- Source d'effectifs plus ancienne pour remonter avant 2020, si elle existe et se raccorde proprement aux jeux actuels ; sinon, 2020-2025.
 - Format des fichiers de données (`site/data/regions/`, champs budget dans les fichiers de territoire et de fiche), sur le modèle de la phase 2.
 - Contours des régions (section 8).
 - Mise en page exacte du bloc et du graphique d'évolution.

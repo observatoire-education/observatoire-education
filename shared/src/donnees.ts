@@ -155,6 +155,8 @@ export type StatutBudget =
   | "fonction_non_detaillee"
   | "aucun_eleve_prive"
   | "collectivite_non_identifiee"
+  | "aucune_collectivite"
+  | "aucune_contribution_identifiee"
   | "non_disponible";
 
 /** Un montant (€) et son montant par élève ; `null` jamais remplacé par zéro, le statut dit pourquoi. */
@@ -172,6 +174,8 @@ export interface ExerciceBudget {
   eleves: ParSecteur<number | null>;
   public: { horsPersonnel: MontantBudget; avecPersonnel: MontantBudget; investissement: MontantBudget };
   prive: { fonctionnement: MontantBudget; investissement: MontantBudget };
+  /** Dépenses des cités scolaires (fonction 24) de la collectivité pour l'exercice, en euros, hors montants par élève ; null si aucune ligne. */
+  citesScolaires: number | null;
 }
 
 export interface BudgetCollectivite {

@@ -92,6 +92,13 @@ describe("client Opendatasoft", () => {
     expect(appels[0]!.url).toBe(url); // sans filtre : URL inchangée
   });
 
+  test("filtre budget : fonctions 221, 222, 223, 22 et 24, seules ou préfixées", () => {
+    for (const f of ["221", "93222", "90223", "9322", "24", "9024", "9124", "9224", "9324", "9424"]) {
+      expect(FILTRE_BUDGET).toContain(`"${f}"`);
+    }
+    expect(FILTRE_BUDGET).not.toContain('"924"');
+  });
+
   test("téléchargement d'une source budget : filtre encodé, URL renvoyée", async () => {
     const { f, appels } = fauxFetch([parquet()]);
     const s = sourceBudget(2024, EXERCICES_BUDGET[2024]!);
