@@ -2,7 +2,7 @@
 
 Les chiffres publics de chaque école, collège et lycée de France, public et privé sous contrat : sourcés, datés, sans palmarès.
 
-Une page par établissement et par école, des pages par département, par académie, par région et par commune, une page France, le budget des collectivités en euros par élève, les résultats des examens et la valeur ajoutée, l'historique de l'IPS depuis 2016, les établissements fermés et leurs successeurs, une recherche, une fiche imprimable A4. Chaque chiffre est situé par rapport aux moyennes du département, de l'académie et de la France, et porte sa source, son millésime et un lien vers la donnée brute archivée. Le site ne commente pas les chiffres. Avec les écoles et les communes, le site compte environ 92 000 fichiers (estimation, à confirmer par le premier build réel ; le garde-fou s'arrête à 95 000).
+Une page par établissement du second degré et par école, des pages par département, par académie, par région et par commune, une page France, le budget des collectivités en euros par élève, les résultats des examens et la valeur ajoutée, l'historique de l'IPS depuis 2016, les établissements fermés et leurs successeurs, une recherche, une fiche imprimable A4. Chaque chiffre est situé par rapport aux moyennes du département, de l'académie et de la France, et porte sa source, son millésime et un lien vers la donnée brute archivée. Le site ne commente pas les chiffres. Avec les écoles et les communes, le site compte environ 92 000 fichiers (estimation, à confirmer par le premier build réel ; le garde-fou s'arrête à 95 000).
 
 ## Fonctionnement
 
@@ -10,8 +10,8 @@ Un site statique régénéré chaque nuit par GitHub Actions et publié sur Clou
 
 1. **Collecte** (`bun run collect`) : pour chaque source, lecture de la date de modification sur data.education.gouv.fr ; téléchargement en Parquet seulement si elle a changé (l'Annuaire de l'éducation est relu chaque nuit). Chaque version est validée (colonnes requises, nombre de lignes), puis archivée telle quelle comme fichier joint d'une GitHub Release, avec son empreinte : elle reste téléchargeable à une adresse permanente. Le dépôt ne garde que `archives/manifest.json` et le journal `archives/journal.jsonl`.
 2. **Croisement** (`bun run data`) : DuckDB lit les archives, normalise (`pipeline/sql/01_normaliser.sql`), calcule élèves, indicateurs, moyennes Σ / Σ et voisins, puis écrit les fichiers de données du site dans `site/data/` et met à jour le registre des pages (`archives/registre-pages.json`).
-3. **Site** (Astro, sortie statique) : une page par établissement et par département, graphiques Observable Plot rendus en SVG au build ; JavaScript seulement pour la recherche, le tri des listes, le thème et la carte (chargée au clic).
-4. **Garde-fous** : le build échoue si `dist/` dépasse 900 Mo ou 50 000 fichiers.
+3. **Site** (Astro, sortie statique) : une page par établissement et par école, par commune, par département, par académie et par région, une page France, graphiques Observable Plot rendus en SVG au build ; JavaScript seulement pour la recherche, le tri des listes, le thème et la carte (chargée au clic).
+4. **Garde-fous** : le build échoue si `dist/` dépasse 95 000 fichiers, si un fichier pèse plus de 25 Mio (pas de plafond sur le poids total) ou si `recherche.json` dépasse 10 000 000 octets.
 
 `bun run build` enchaîne les étapes 2 à 4.
 
