@@ -161,7 +161,7 @@ const REPARTITIONS = [["ages", "Âge"], ["anciennete", "Ancienneté dans l'écol
       </table>
     )}
     {iIps.historique.length > 1 && (
-      <p class="ecole-note">Évolution : {iIps.historique.map(([a, v]) => `${a} ${valeur("ips", { valeur: v, statut: "ok", source: null, rentree: a })}`).join(" · ")}</p>
+      <p class="ecole-note">Évolution : {iIps.historique.map(([a, v]) => `${a} ${valeur("ips", { valeur: v, statut: "ok", source: null, rentree: a })}`).join(", ")}</p>
     )}
     {ipsPublie && <LigneSource s={sourceIps} complement={ipsCalculee ? LIBELLES_BUDGET.moyenne.calculee : "moyennes publiées par la DEPP"} />}
   </div>
@@ -174,7 +174,7 @@ const REPARTITIONS = [["ages", "Âge"], ["anciennete", "Ancienneté dans l'écol
       <div class="card">
         <div class="lab"><span>ETP enseignants</span><span class="yr">{anneeScolaire(etpEns.rentree)}</span></div>
         {absente(etpEns) ? <Absence texte={valeur("etp_enseignants", etpEns)} /> : <div class="num ecole-v">{valeur("etp_enseignants", etpEns)}</div>}
-        <div class="ecole-note">Un volume d'ETP ne se compare pas entre écoles de tailles différentes : seuls les ratios et les parts ont une moyenne.</div>
+        <div class="ecole-note">Un volume d'ETP n'a pas de moyenne : seuls les ratios et les parts en ont une.</div>
       </div>
     )}
     {RATIOS.length > 0 && (
@@ -201,7 +201,7 @@ const REPARTITIONS = [["ages", "Âge"], ["anciennete", "Ancienneté dans l'écol
     )}
     {REPARTITIONS.map(([code, titre]) => {
       const r = repartition(f, code);
-      return r && <div class="card"><div class="lab"><span>{titre}</span><span class="yr">part des ETP</span></div><Empile r={r} libelle="Cette école" france={false} /></div>;
+      return r && <div class="card"><div class="lab"><span>{titre}</span><span class="yr">part des ETP</span></div><Empile r={r} libelle="Cette école" /></div>;
     })}
   </div>
   <LigneSource s={sourcePersonnels} complement="parts calculées sur les ETP ; moyennes Σ / Σ" />

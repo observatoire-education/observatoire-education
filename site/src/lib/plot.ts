@@ -306,15 +306,20 @@ export function svgElevesClasses(historique: Classes["historique"]): string {
       ticks: graduations, tickFormat: (a: number) => String(a), label: null, tickSize: 0,
     },
     y: { domain: [0, maxE * 1.1], axis: null },
+    // Une série sans aucune valeur n'a ni axe ni ligne (pas d'axe 0–1 inventé).
     marks: [
-      Plot.gridY({ ticks: 3 }),
-      Plot.axisY({ anchor: "left", ticks: 3, tickFormat: (d: number) => nombre(d, 0), label: null, tickSize: 0 }),
-      Plot.axisY(ticksClasses, { anchor: "right", tickFormat: (d: number) => nombre(d / k, 0), label: null, tickSize: 0 }),
-      // Plot sépare la ligne aux valeurs null : le trou n'est jamais comblé.
-      Plot.line(eleves, { x: "annee", y: "v", stroke: "var(--me)", strokeWidth: 2.5 }),
-      Plot.dot(ronds(eleves), { x: "annee", y: "v", r: 3, fill: "var(--me)" }),
-      Plot.line(classes, { x: "annee", y: "v", stroke: "var(--ink)", strokeWidth: 2, strokeDasharray: "4 3", curve: "step" }),
-      Plot.dot(ronds(classes), { x: "annee", y: "v", r: 2.5, fill: "var(--ink)" }),
+      ve.length > 0 ? Plot.gridY({ ticks: 3 }) : Plot.gridY(ticksClasses),
+      ...(ve.length > 0 ? [
+        Plot.axisY({ anchor: "left", ticks: 3, tickFormat: (d: number) => nombre(d, 0), label: null, tickSize: 0 }),
+        // Plot sépare la ligne aux valeurs null : le trou n'est jamais comblé.
+        Plot.line(eleves, { x: "annee", y: "v", stroke: "var(--me)", strokeWidth: 2.5 }),
+        Plot.dot(ronds(eleves), { x: "annee", y: "v", r: 3, fill: "var(--me)" }),
+      ] : []),
+      ...(vc.length > 0 ? [
+        Plot.axisY(ticksClasses, { anchor: "right", tickFormat: (d: number) => nombre(d / k, 0), label: null, tickSize: 0 }),
+        Plot.line(classes, { x: "annee", y: "v", stroke: "var(--ink)", strokeWidth: 2, strokeDasharray: "4 3", curve: "step" }),
+        Plot.dot(ronds(classes), { x: "annee", y: "v", r: 2.5, fill: "var(--ink)" }),
+      ] : []),
     ],
   });
   // Description : les élèves rentrée par rentrée, les classes par périodes de même nombre (« 8 de 2011 à 2018 »).

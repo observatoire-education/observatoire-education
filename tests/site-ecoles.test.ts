@@ -124,4 +124,17 @@ describe("svgElevesClasses", () => {
     expect(s).toContain('aria-label="Élèves : 2023 45, 2024 45, 2025 45. Classes : 2 de 2023 à 2024, non disponible en 2025"');
     expect(svgElevesClasses([[2025, null, null]])).toBe("");
   });
+
+  test("classes sans aucun nombre d'élèves : ni axe ni ligne des élèves (pas d'axe 0–1)", () => {
+    const s = svgElevesClasses([[2023, null, 2], [2024, null, 3]]);
+    expect(s).not.toContain('stroke="var(--me)"');
+    expect(s).not.toContain('fill="var(--me)"');
+    expect(s).not.toContain('text-anchor="end"'); // axe de gauche (élèves)
+    expect(s).toContain('stroke="var(--ink)"');
+    expect(s).toContain('text-anchor="start"'); // axe de droite (classes)
+    const e = svgElevesClasses([[2023, 40, null], [2024, 42, 0]]);
+    expect(e).toContain('stroke="var(--me)"');
+    expect(e).not.toContain('stroke="var(--ink)"');
+    expect(e).not.toContain('text-anchor="start"');
+  });
 });

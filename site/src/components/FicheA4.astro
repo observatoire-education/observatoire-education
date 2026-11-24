@@ -252,12 +252,16 @@ const nd = (v: number | null) => (v === null ? "n. d." : entier(v));
             }) : <tr><td>Typologie des classes</td><td class="n np">n. d.</td></tr>}
           </tbody>
         </table>
-        <h3>Personnels {renvoiPersonnels && <sup>{renvoiPersonnels}</sup>}</h3>
-        <table>
-          <tbody>
-            {present("etp_enseignants") && <tr><td>ETP enseignants</td><td class={`n${etp("etp_enseignants").abs ? " np" : ""}`}>{etp("etp_enseignants").t}</td></tr>}
-          </tbody>
-        </table>
+        {present("etp_enseignants") && (
+          <>
+            <h3>Personnels {renvoiPersonnels && <sup>{renvoiPersonnels}</sup>}</h3>
+            <table>
+              <tbody>
+                <tr><td>ETP enseignants</td><td class={`n${etp("etp_enseignants").abs ? " np" : ""}`}>{etp("etp_enseignants").t}</td></tr>
+              </tbody>
+            </table>
+          </>
+        )}
       </div>
     </div>
   )}
