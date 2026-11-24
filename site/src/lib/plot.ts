@@ -8,7 +8,7 @@ const { document } = parseHTML("<!doctype html><html><body></body></html>");
 
 const STYLE = { background: "transparent", color: "var(--muted)", fontFamily: "var(--mono)", fontSize: "11px", overflow: "visible" };
 
-function svg(p: SVGSVGElement | HTMLElement, aria: string): string {
+export function svg(p: SVGSVGElement | HTMLElement, aria: string): string {
   const el = p.tagName.toLowerCase() === "svg" ? p : p.querySelector("svg")!;
   el.setAttribute("role", "img");
   el.setAttribute("aria-label", aria);
