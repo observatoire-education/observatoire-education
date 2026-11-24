@@ -1,7 +1,7 @@
 // Lecture des fichiers produits par le pipeline (site/data/, ou OBS_DATA pour les tests).
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import type { DonneesFrance, DonneesSource, DonneesTerritoire, EntreeIndex } from "@obs/shared/donnees";
+import type { DonneesFrance, DonneesSource, DonneesTerritoire, EntreeIndex, RefTerritoire } from "@obs/shared/donnees";
 import type { Fiche } from "@obs/shared/types";
 
 const DOSSIER = process.env.OBS_DATA ?? resolve(process.cwd(), "data");
@@ -16,8 +16,20 @@ function lire<T>(chemin: string, garder = false): T {
 
 export const lireFiche = (uai: string): Fiche => lire<Fiche>(`fiches/${uai}.json`);
 export const lireIndex = (): EntreeIndex[] => lire<EntreeIndex[]>("index.json", true);
-export const lireDepartement = (dep: string): DonneesTerritoire => lire<DonneesTerritoire>(`departements/${dep}.json`, true);
 export const lireFrance = (): DonneesFrance => lire<DonneesFrance>("france.json", true);
 export const lireSources = (): Record<string, DonneesSource> => lire<Record<string, DonneesSource>>("sources.json", true);
-export const departementsDisponibles = (): string[] =>
-  readdirSync(join(DOSSIER, "departements")).map((f) => f.replace(/\.json$/, "")).sort();
+
+const DOSSIERS = { departement: "departements", academie: "academies", commune: "communes" } as const;
+const codes = (dossier: string): string[] =>
+  existsSync(join(DOSSIER, dossier)) ? readdirSync(join(DOSSIER, dossier)).map((f) => f.replace(/\.json$/, "")).sort() : [];
+
+/** Données d'un territoire ; celles des communes (un millier) ne sont pas gardées en mémoire. */
+export const lireTerritoire = (ref: Pick<RefTerritoire, "niveau" | "code">): DonneesTerritoire =>
+  ref.niveau === "france"
+    ? lireFrance()
+    : lire<DonneesTerritoire>(`${DOSSIERS[ref.niveau]}/${ref.code}.json`, ref.niveau !== "commune");
+export const departementsDisponibles = (): string[] => codes("departements");
+export const academiesDisponibles = (): string[] => codes("academies");
+let communes: Set<string> | undefined;
+/** Communes ayant une page (au moins SEUIL_COMMUNE établissements, décidé par le pipeline). */
+export const communesDisponibles = (): Set<string> => (communes ??= new Set(codes("communes")));

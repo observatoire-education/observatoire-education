@@ -1,5 +1,5 @@
-// Aides des pages de territoire (département) : synthèses, lignes de liste, CSV.
-import type { DonneesTerritoire, LigneListe, SyntheseFamille } from "@obs/shared/donnees";
+// Aides des pages de territoire (France, académie, département, commune) : synthèses, lignes de liste, CSV.
+import type { DonneesTerritoire, LigneListe, LigneTerritoire, SyntheseFamille } from "@obs/shared/donnees";
 import type { Famille } from "@obs/shared/types";
 
 export const ORDRE_FAMILLES: Famille[] = ["college", "legt", "lpo", "lp", "erea"];
@@ -26,16 +26,30 @@ const champ = (v: string | number | null): string => {
   return /[;"\n\r]/.test(s) ? `"${s.replaceAll('"', '""')}"` : s;
 };
 
-/** CSV (séparateur « ; », point décimal) ; une absence est vide, ou porte son statut (« non_publie_prive »). */
-export function csvDepartement(d: DonneesTerritoire): string {
-  const lignes = famillesDe(d).flatMap(([famille, s]) =>
-    s.liste.map((l: LigneListe) =>
-      [
-        l.uai, l.nom, famille, l.secteur, l.commune, l.ep, l.eleves, l.elevesParEtpEns,
-        l.elevesParEtpVs ?? (l.statutVs === "non_publie_prive" ? "non_publie_prive" : null),
-        l.partEnseignantes, l.ips,
-      ].map(champ).join(";"),
-    ),
-  );
-  return `${[COLONNES_CSV.join(";"), ...lignes].join("\n")}\n`;
+const COLONNES_CSV_ENFANTS = [
+  "code", "libelle", "etablissements_public", "etablissements_prive", "eleves_public", "eleves_prive", "part_prive",
+  "ecart_ips_colleges",
+] as const;
+
+const csv = (colonnes: readonly string[], lignes: (string | number | null)[][]): string =>
+  `${[colonnes.join(";"), ...lignes.map((l) => l.map(champ).join(";"))].join("\n")}\n`;
+
+/**
+ * CSV (séparateur « ; », point décimal) ; une absence est vide, ou porte son statut (« non_publie_prive »).
+ * Département et commune : un établissement par ligne ; académie et France : un territoire enfant par ligne.
+ */
+export function csvTerritoire(d: DonneesTerritoire): string {
+  if (d.ref.niveau === "academie" || d.ref.niveau === "france") {
+    return csv(COLONNES_CSV_ENFANTS, d.enfants.map((e: LigneTerritoire) => [
+      e.ref.code, e.ref.libelle, e.compte.public, e.compte.prive, e.eleves.public, e.eleves.prive, e.partPrive,
+      e.ecartIpsColleges,
+    ]));
+  }
+  return csv(COLONNES_CSV, famillesDe(d).flatMap(([famille, s]) =>
+    s.liste.map((l: LigneListe) => [
+      l.uai, l.nom, famille, l.secteur, l.commune, l.ep, l.eleves, l.elevesParEtpEns,
+      l.elevesParEtpVs ?? (l.statutVs === "non_publie_prive" ? "non_publie_prive" : null),
+      l.partEnseignantes, l.ips,
+    ]),
+  ));
 }

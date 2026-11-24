@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { DonneesTerritoire } from "@obs/shared/donnees";
-import { csvDepartement } from "../site/src/lib/territoire.ts";
+import { csvTerritoire } from "../site/src/lib/territoire.ts";
 
 const dep = (nom: string, commune = "Nantes"): DonneesTerritoire => ({
   ref: { niveau: "departement", code: "44", libelle: "Loire-Atlantique" },
@@ -16,19 +16,40 @@ const dep = (nom: string, commune = "Nantes"): DonneesTerritoire => ({
   },
 });
 
-describe("CSV des départements", () => {
+describe("CSV des territoires", () => {
   test("aucune cellule ne peut être lue comme une formule par un tableur", () => {
     for (const debut of ["=", "+", "-", "@", "\t", "\r"]) {
-      const ligne = csvDepartement(dep(`${debut}HYPERLINK("x")`)).trim().split("\n")[1]!;
+      const ligne = csvTerritoire(dep(`${debut}HYPERLINK("x")`)).trim().split("\n")[1]!;
       const nom = ligne.split(";")[1]!;
       expect(nom.replace(/^"/, "")).toStartWith("'");
     }
   });
 
   test("les nombres restent des nombres, même négatifs ; guillemets et retours échappés", () => {
-    const ligne = csvDepartement(dep('Collège "Les Pins"', "Saint-\rNazaire")).trim().split("\n")[1]!;
+    const ligne = csvTerritoire(dep('Collège "Les Pins"', "Saint-\rNazaire")).trim().split("\n")[1]!;
     expect(ligne).toContain(';"Collège ""Les Pins""";');
     expect(ligne).toContain('"Saint-\rNazaire"');
     expect(ligne).toContain(";-1.5;");
+  });
+
+  test("académie : une ligne par département, point décimal, écart vide si absent", () => {
+    const aca: DonneesTerritoire = {
+      ...dep("x"),
+      ref: { niveau: "academie", code: "17", libelle: "Nantes" },
+      parents: [{ niveau: "france", code: "FR", libelle: "France" }],
+      familles: {},
+      carte: { genre: "departements", valeurs: [] },
+      enfants: [
+        { ref: { niveau: "departement", code: "44", libelle: "Loire-Atlantique" }, compte: { public: 4, prive: 2 },
+          eleves: { public: 3090, prive: 600 }, partPrive: 16.3, ecartIpsColleges: null },
+        { ref: { niveau: "departement", code: "49", libelle: "=Maine-et-Loire" }, compte: { public: 1, prive: 0 },
+          eleves: { public: null, prive: null }, partPrive: null, ecartIpsColleges: -2.5 },
+      ],
+    };
+    const lignes = csvTerritoire(aca).trim().split("\n");
+    expect(lignes[0]).toBe("code;libelle;etablissements_public;etablissements_prive;eleves_public;eleves_prive;part_prive;ecart_ips_colleges");
+    expect(lignes[1]).toBe("44;Loire-Atlantique;4;2;3090;600;16.3;");
+    expect(lignes[2]).toBe("49;'=Maine-et-Loire;1;0;;;;-2.5");
+    expect(lignes).toHaveLength(3);
   });
 });

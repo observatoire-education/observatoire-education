@@ -47,6 +47,16 @@ describe("page département", () => {
     expect(page("departement/44")).not.toContain("0440099Z");
     expect(texte("departement/2A")).toContain("Collège Ajaccio");
   });
+
+  test("fil d'Ariane, carte des établissements, puces des communes", () => {
+    const d = doc("departement/44");
+    expect(d.querySelector(".crumb a[href='/france/']")).not.toBeNull();
+    expect(d.querySelector(".crumb a[href='/academie/17/']")).not.toBeNull();
+    expect(d.querySelector("#carte-territoire svg[role=img]")).not.toBeNull();
+    const nantes = d.querySelector(".chips a[href='/commune/44109/']");
+    expect(nantes).not.toBeNull();
+    expect(nantes!.textContent).toContain("Nantes");
+  });
 });
 
 describe("accueil et recherche", () => {

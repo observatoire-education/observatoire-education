@@ -1,0 +1,94 @@
+---
+// Carte d'un territoire, en SVG au build (aucun JavaScript) :
+// - France et académie : départements colorés, vue A (part du privé) ou B (écart d'IPS des collèges),
+//   au choix par deux boutons radio et du CSS ; les deux vues sont imprimées ;
+// - département et commune : un point par établissement (plein : public ; anneau : privé sous contrat).
+import type { CarteDonnees, RefTerritoire } from "@obs/shared/donnees";
+import { LIBELLES } from "@obs/shared/libelles";
+import { anneeScolaire } from "../lib/affichage";
+import { legendeCarte, svgCarteDepartements, svgCartePoints, type VueCarte } from "../lib/cartes";
+import { communesDuDepartement, contourCommune, contourDepartement } from "../lib/contours";
+import { lireFrance } from "../lib/donnees";
+import Absence from "./Absence.astro";
+
+interface Props { carte: CarteDonnees; ref: RefTerritoire; rentree?: number | null }
+const { carte, ref, rentree = null } = Astro.props;
+
+/** Domaines fixes des rampes (les mêmes que dans lib/cartes.ts), pour comparer les pages entre elles. */
+const DOMAINES: Record<VueCarte, [number, number]> = { prive: [0, 50], ecart_ips: [0, 40] };
+const VUES: { vue: VueCarte; id: string; libelle: string }[] = [
+  { vue: "prive", id: "vue-carte-prive", libelle: "Part des élèves dans le privé sous contrat" },
+  { vue: "ecart_ips", id: "vue-carte-ecart", libelle: "Écart d'IPS moyen privé − public des collèges" },
+];
+
+let points: { svg: string; absents: string[] } | null = null;
+let departements: { vue: VueCarte; id: string; libelle: string; metropole: string; encarts: { code: string; svg: string }[] }[] = [];
+let absents: string[] = [];
+const libellesDep = new Map(lireFrance().academies.flatMap((a) => a.departements.map((x) => [x.dep, x.libelle] as const)));
+
+if (carte.genre === "points") {
+  if (carte.points.length) {
+    const territoire = ref.niveau === "departement" ? contourDepartement(ref.code) : ref.niveau === "commune" ? contourCommune(ref.code) : null;
+    const communes = ref.niveau === "departement" ? communesDuDepartement(ref.code) : null;
+    points = svgCartePoints(carte.points, { territoire, mailles: communes?.features.length ? communes : null });
+    const noms = new Map(carte.points.map((p) => [p.uai, p.nom]));
+    absents = points.absents.map((uai) => noms.get(uai) ?? uai);
+  }
+} else if (carte.valeurs.length) {
+  departements = VUES.map((v) => {
+    const r = svgCarteDepartements(carte.valeurs, v.vue, { encartsDrom: ref.niveau === "france" });
+    absents = r.absents.map((dep) => libellesDep.get(dep) ?? dep);
+    // Avec encarts : le SVG de la métropole, puis un SVG par DROM (aria-label « … : département 971 »).
+    const [metropole = "", ...autres] = r.svg.split(/(?=<svg[\s>])/);
+    const encarts = autres.map((svg) => ({ code: /département (\w+)"/.exec(svg)?.[1] ?? "", svg }));
+    return { ...v, metropole, encarts };
+  });
+}
+const annee = rentree === null ? null : anneeScolaire(rentree);
+---
+<div id="carte-territoire" class="carte-territoire">
+  {carte.genre === "points" && (
+    points ? (
+      <div class="card">
+        <div class="lab"><span>Établissements</span>{annee && <span class="yr">{annee}</span>}</div>
+        <Fragment set:html={points.svg} />
+        <div class="legend"><span class="sect pub">public</span><span class="sect pri">privé sous contrat</span><span>taille selon le nombre d'élèves</span></div>
+        {absents.length > 0 && <p class="src">Établissements non représentés sur la carte (hors du contour du territoire) : {absents.join(", ")}</p>}
+      </div>
+    ) : <Absence texte={LIBELLES.nonDisponible} />
+  )}
+  {carte.genre === "departements" && (
+    departements.length ? (
+      <div class="card carte-vues">
+        {departements.map((v, i) => (
+          <>
+            <input class="vue-radio visuel-masque" type="radio" name="vue-carte" id={v.id} checked={i === 0} />
+            <label class="chip vue-choix" for={v.id}>{v.libelle}</label>
+          </>
+        ))}
+        {departements.map((v) => (
+          <figure class={`vue ${v.id}`}>
+            <Fragment set:html={v.metropole} />
+            {v.encarts.length > 0 && (
+              <div class="encarts">
+                {v.encarts.map((e) => (
+                  <figure class="encart"><Fragment set:html={e.svg} /><figcaption>{libellesDep.get(e.code) ?? e.code}</figcaption></figure>
+                ))}
+              </div>
+            )}
+            <figcaption>
+              <Fragment set:html={legendeCarte(v.vue, DOMAINES[v.vue])} />
+              <div class="src">
+                {v.vue === "prive"
+                  ? "Élèves des collèges et des lycées publics et privés sous contrat"
+                  : "Moyennes d'IPS des collèges publiées par la DEPP, par département"}
+                {annee && <> · rentrée {annee}</>}. Source : DEPP.
+              </div>
+            </figcaption>
+          </figure>
+        ))}
+        {absents.length > 0 && <p class="src">Territoires non représentés sur la carte (contour non disponible) : {absents.join(", ")}</p>}
+      </div>
+    ) : <Absence texte={LIBELLES.nonDisponible} />
+  )}
+</div>

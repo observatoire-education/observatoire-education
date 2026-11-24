@@ -1,0 +1,44 @@
+---
+// Liste des territoires enfants (académies de la France, départements d'une académie), triée par libellé.
+// Tri des colonnes par liste.js (attributs data-v) ; aucun rang affiché, aucune mise en avant.
+import { entier, nombre, part } from "@obs/shared/format";
+import { LIBELLES } from "@obs/shared/libelles";
+import type { LigneTerritoire } from "@obs/shared/donnees";
+import { cheminTerritoire } from "@obs/shared/territoires";
+import { valeurTri } from "../lib/territoire";
+import Cellule from "./Cellule.astro";
+
+interface Props { lignes: LigneTerritoire[] }
+const { lignes } = Astro.props;
+const tri = [...lignes].sort((a, b) => a.ref.libelle.localeCompare(b.ref.libelle, "fr"));
+const nd = LIBELLES.nonDisponible;
+const eleves = (l: LigneTerritoire) =>
+  l.eleves.public === null && l.eleves.prive === null ? null : (l.eleves.public ?? 0) + (l.eleves.prive ?? 0);
+---
+<div class="card" style="padding:4px 6px;margin-top:8px"><div class="table-wrap">
+  <table id="liste-territoires" data-liste>
+    <thead><tr>
+      <th class="sort on" data-tri="texte" aria-sort="ascending">Territoire</th>
+      <th class="n sort" data-tri="nombre">Établissements publics</th>
+      <th class="n sort" data-tri="nombre">Établissements privés s. c.</th>
+      <th class="n sort" data-tri="nombre">Élèves</th>
+      <th class="n sort" data-tri="nombre">Part du privé</th>
+      <th class="n sort" data-tri="nombre">Écart d'IPS des collèges, privé − public (points)</th>
+    </tr></thead>
+    <tbody>
+      {tri.map((l) => {
+        const e = eleves(l);
+        return (
+          <tr data-q={l.ref.libelle}>
+            <td><a href={cheminTerritoire(l.ref)}>{l.ref.libelle}</a></td>
+            <td class="n pub" data-v={valeurTri(l.compte.public)}>{entier(l.compte.public)}</td>
+            <td class="n pri" data-v={valeurTri(l.compte.prive)}>{entier(l.compte.prive)}</td>
+            <td class="n" data-v={valeurTri(e)}><Cellule texte={e === null ? nd : entier(e)} absent={e === null} /></td>
+            <td class="n" data-v={valeurTri(l.partPrive)}><Cellule texte={l.partPrive === null ? nd : part(l.partPrive)} absent={l.partPrive === null} /></td>
+            <td class="n" data-v={valeurTri(l.ecartIpsColleges)}><Cellule texte={l.ecartIpsColleges === null ? nd : nombre(l.ecartIpsColleges)} absent={l.ecartIpsColleges === null} /></td>
+          </tr>
+        );
+      })}
+    </tbody>
+  </table>
+</div></div>
