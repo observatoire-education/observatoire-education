@@ -100,16 +100,21 @@ jobs:
     needs: collecter-construire
     if: needs.collecter-construire.outputs.construit == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 60 # envoi de dizaines de milliers de fichiers statiques
     steps:
       - uses: actions/checkout@v7 # wrangler.jsonc
       - uses: actions/download-artifact@v4
         with:
           name: dist
           path: dist
-      - uses: cloudflare/wrangler-action@v3
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          wranglerVersion: "4"
-          command: deploy
+          bun-version: "1.4.5"
+      # bunx et non wrangler-action : l'action installe wrangler avec npm dans le dépôt, qui échoue sur les
+      # dépendances workspace:* (et bun n'y est pas). Aucune installation des dépendances du dépôt : wrangler lit
+      # wrangler.jsonc et sert ./dist (assets seuls, rien à compiler). Version exacte, publiée depuis plus de deux semaines.
+      - name: Déploiement sur Cloudflare Workers
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: bunx wrangler@4.159.0 deploy

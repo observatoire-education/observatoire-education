@@ -1,8 +1,9 @@
-/_astro/*
-  Cache-Control: public, max-age=31536000, immutable
-
-/js/*
-  Cache-Control: public, max-age=31536000, immutable
-
+# Cloudflare applique toutes les règles qui correspondent, dans l'ordre du fichier : la règle générale d'abord,
+# puis les règles particulières détachent (« ! Cache-Control ») l'en-tête générique avant de poser le leur.
+# /js/* garde la règle générale (une heure) : ses adresses ne sont pas versionnées.
 /*
   Cache-Control: public, max-age=3600
+
+/_astro/*
+  ! Cache-Control
+  Cache-Control: public, max-age=31536000, immutable
