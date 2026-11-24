@@ -3,6 +3,7 @@ import { join } from "node:path";
 import type { DuckDBConnection, DuckDBValue } from "@duckdb/node-api";
 import type { SourceId } from "@obs/shared/types";
 import { connexion, litteral } from "./duck.ts";
+import { etapeBudget } from "./budget.ts";
 import { sqlEleves } from "./eleves.ts";
 import { sqlIndicateurs } from "./indicateurs.ts";
 import { macrosSql } from "./normalise.ts";
@@ -23,8 +24,8 @@ export const DOSSIER_SQL = join(import.meta.dir, "..", "sql");
  * Étapes exécutées à l'ouverture, dans l'ordre : un fichier de pipeline/sql, ou un générateur de SQL
  * (quand les colonnes viennent de définitions TypeScript). Ordre du plan : 01, 03, 02, 04.
  */
-export type Etape = string | (() => string);
-export const ETAPES: Etape[] = ["01_normaliser.sql", sqlEleves, sqlIndicateurs];
+export type Etape = string | ((db: Db) => string | Promise<string>);
+export const ETAPES: Etape[] = ["01_normaliser.sql", sqlEleves, sqlIndicateurs, etapeBudget];
 
 async function executerScript(c: DuckDBConnection, sql: string): Promise<void> {
   const instructions = await c.extractStatements(sql);
@@ -81,6 +82,6 @@ export async function ouvrir(chemins: Record<SourceId, string>, opts: OptionsOuv
       c.closeSync();
     },
   };
-  for (const e of etapes) await (typeof e === "string" ? db.executerFichier(e) : db.executer(e()));
+  for (const e of etapes) await (typeof e === "string" ? db.executerFichier(e) : db.executer(await e(db)));
   return db;
 }

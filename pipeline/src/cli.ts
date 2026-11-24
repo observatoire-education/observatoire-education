@@ -84,6 +84,8 @@ async function data(): Promise<void> {
   for (const { motif, n } of await db.sql<{ motif: string; n: number }>(
     "select motif, count(*)::integer as n from exclus group by motif order by n desc",
   )) console.log(`  exclus ${motif.padEnd(28)} ${n}`);
+  const [{ n: inconnus } = { n: 0 }] = await db.sql<{ n: number }>("select count(*)::integer as n from budget_inconnus");
+  console.log(`  ${inconnus} budget(s) de collectivité non identifiée dans les balances`);
   console.log(`données écrites dans ${CHEMINS.donnees}/ en ${Math.round(performance.now() - debut)} ms`);
   db.fermer();
 }
