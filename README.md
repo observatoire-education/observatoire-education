@@ -6,7 +6,7 @@ Une page par établissement (environ 11 200), des pages par département, par ac
 
 ## Fonctionnement
 
-Un site statique régénéré chaque nuit par GitHub Actions et publié sur GitHub Pages :
+Un site statique régénéré chaque nuit par GitHub Actions et publié sur Cloudflare Workers (assets statiques) :
 
 1. **Collecte** (`bun run collect`) : pour chaque source, lecture de la date de modification sur data.education.gouv.fr ; téléchargement en Parquet seulement si elle a changé (l'Annuaire de l'éducation est relu chaque nuit). Chaque version est validée (colonnes requises, nombre de lignes), puis archivée telle quelle comme fichier joint d'une GitHub Release, avec son empreinte : elle reste téléchargeable à une adresse permanente. Le dépôt ne garde que `archives/manifest.json` et le journal `archives/journal.jsonl`.
 2. **Croisement** (`bun run data`) : DuckDB lit les archives, normalise (`pipeline/sql/01_normaliser.sql`), calcule élèves, indicateurs, moyennes Σ / Σ et voisins, puis écrit les fichiers de données du site dans `site/data/` et met à jour le registre des pages (`archives/registre-pages.json`).
@@ -22,7 +22,7 @@ Un site statique régénéré chaque nuit par GitHub Actions et publié sur GitH
 | `shared/` | types communs, formatage à la française, libellés exacts, formats des fichiers de données |
 | `pipeline/` | collecte, archives, normalisation et calculs (DuckDB), export des données du site |
 | `site/` | site Astro |
-| `scripts/` | garde-fous de fin de build (volume, CNAME, robots.txt) |
+| `scripts/` | garde-fous de fin de build (volume, robots.txt) |
 | `tests/` | tests `bun test` (pipeline, SQL et HTML généré) et jeux d'essai |
 | `archives/` | manifest des versions archivées, journal de collecte, registre des pages (créés par la collecte) |
 | `docs/superpowers/` | spécification, socle technique, maquettes et plan de la phase 1 |
@@ -63,23 +63,36 @@ Jeux publiés par le ministère de l'Éducation nationale (MEN) et sa direction 
 
 L'ordre de 5, Écoles et Transport scolaire reste à fixer. Le détail est dans `docs/superpowers/specs/`.
 
-## Mise en ligne
+## Hébergement
 
 Configuration dans `observatoire.config.json` :
 
 | Clé | Rôle |
 |---|---|
 | `DEPOT` | `organisation/dépôt` GitHub : les liens « donnée brute » pointent vers ses Releases |
-| `DOMAINE` | domaine du site ; écrit dans `CNAME` s'il est renseigné |
+| `DOMAINE` | domaine du site |
 | `SITE_URL` | adresse complète (`https://…`) pour les liens permanents, le sitemap et les QR codes |
 | `INDEXABLE` | `false` : aperçu non référencé (`noindex`, `robots.txt` Disallow) ; `true` : site public, robots d'entraînement d'IA exclus dans `robots.txt` (liste `ROBOTS_ENTRAINEMENT` de `scripts/garde-fous.ts`) |
 
-Étapes, à faire par le porteur du projet :
+Le site est servi par Cloudflare Workers (assets statiques, `wrangler.jsonc`), déployé par le job `deployer` du workflow `nightly` ; les adresses restent celles de `observatoireeducation.fr`.
 
-1. Créer l'organisation GitHub dédiée et le dépôt public, puis renseigner `DEPOT`.
-2. Pousser le dépôt. Dans *Settings → Pages*, choisir la source « GitHub Actions ».
-3. Lancer le workflow `nightly` à la main (*Actions → nightly → Run workflow*) : première collecte, archives, premier déploiement. Tant que `INDEXABLE` vaut `false`, le site est un aperçu non référencé.
-4. Une fois le domaine `observatoireeducation.fr` acheté : enregistrements DNS vers GitHub Pages (A/AAAA à l'apex, `www` en CNAME vers `<organisation>.github.io`) ; renseigner `DOMAINE` et `SITE_URL`, passer `INDEXABLE` à `true`, puis activer « Enforce HTTPS ».
+Préalables, à faire par le porteur du projet, dans l'ordre :
+
+1. Souscrire l'offre Workers payante sur le compte Cloudflare professionnel.
+2. Créer un jeton d'API avec le modèle « Edit Cloudflare Workers », limité à ce compte.
+3. Enregistrer les secrets `CLOUDFLARE_API_TOKEN` (le jeton) et `CLOUDFLARE_ACCOUNT_ID` (identifiant du compte) dans *Settings → Secrets and variables → Actions* du dépôt.
+4. Ajouter la zone `observatoireeducation.fr` à Cloudflare.
+
+Avant de changer les serveurs DNS chez OVH, vérifier dans la zone importée :
+
+- les MX : `mx1.mail.ovh.net` (priorité 1), `mx2.mail.ovh.net` (5), `mx3.mail.ovh.net` (100) ;
+- le TXT SPF ;
+- les enregistrements DKIM d'OVH ;
+- supprimer les quatre A `185.199.108.153` à `185.199.111.153` de GitHub Pages.
+
+Le changement des serveurs DNS chez OVH n'a lieu qu'après la recette décrite plus loin (procédure de bascule).
+
+Ensuite, lancer le workflow `nightly` à la main (*Actions → nightly → Run workflow*) : première collecte, archives, premier déploiement. Tant que `INDEXABLE` vaut `false`, le site est un aperçu non référencé ; le passer à `true` à la bascule.
 
 Après l'ajout d'une source (par exemple un nouvel exercice du budget), lancer `nightly` à la main (*Actions → nightly → Run workflow*) : tant qu'aucune version de cette source n'est archivée, le build sur push échoue et le site reste sur la version précédente.
 
@@ -90,7 +103,7 @@ La phase 4 ajoute 11 sources (établissements fermés, IPS 2016-2021 et 2022, IV
 1. Merger la branche dans `main`.
 2. Lancer le workflow `nightly` à la main (*Actions → nightly → Run workflow*, `workflow_dispatch`) : première collecte des 11 nouvelles sources, publiées sur les GitHub Releases.
 3. Lancer `bun scripts/rattraper-corrections.ts` sur le dépôt réel (manifeste à jour, accès aux Releases), puis commiter `archives/corrections.json`. Une paire de versions en échec est signalée dans la sortie sans arrêter les autres.
-4. Le déploiement suit : le push de `archives/corrections.json` reconstruit le site et le redéploie avec les mentions de correction.
+4. Le déploiement sur Cloudflare Workers suit : le push de `archives/corrections.json` reconstruit le site et le redéploie avec les mentions de correction.
 
 Avant l'étape 2, un build sur `main` échoue proprement (« aucune version archivée pour fermes ») sans rien publier de faux : le site reste sur la version précédente.
 

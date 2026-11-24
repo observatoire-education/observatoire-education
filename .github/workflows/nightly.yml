@@ -1,4 +1,4 @@
-# Collecte nocturne, génération du site et déploiement sur GitHub Pages.
+# Collecte nocturne, génération du site et déploiement sur Cloudflare Workers (assets statiques).
 # - La nuit : collecte des sources (archivées en GitHub Releases), commit du journal (une ligne par
 #   source et par nuit : le dépôt reste actif, la tâche planifiée n'est jamais suspendue).
 # - Si aucune source n'a changé la nuit, le site n'est pas reconstruit.
@@ -14,11 +14,9 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
+  group: deploiement
   cancel-in-progress: false
 
 jobs:
@@ -90,19 +88,28 @@ jobs:
             git pull --rebase --autostash && git push
           fi
 
-      - uses: actions/upload-pages-artifact@v5
+      - uses: actions/upload-artifact@v4
         if: steps.change.outputs.reconstruire == 'true'
         with:
+          name: dist
           path: dist
+          include-hidden-files: true
+          retention-days: 1
 
   deployer:
     needs: collecter-construire
     if: needs.collecter-construire.outputs.construit == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    environment:
-      name: github-pages
-      url: ${{ steps.deploiement.outputs.page_url }}
     steps:
-      - id: deploiement
-        uses: actions/deploy-pages@v5
+      - uses: actions/checkout@v7 # wrangler.jsonc
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4"
+          command: deploy
