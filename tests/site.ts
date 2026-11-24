@@ -13,6 +13,8 @@ export const DIST_TEST = join(RACINE, ".cache", "dist-test");
 const DONNEES_TEST = join(RACINE, ".cache", "data-test");
 /** Configuration du site d'essai, indépendante de celle de production (noindex, Umami fictif). */
 const CONFIG_TEST = join(RACINE, "tests", "fixtures", "observatoire.config.json");
+/** Contours de test (carrés), à la place des contours IGN. */
+const CONTOURS_TEST = join(RACINE, "tests", "fixtures", "contours");
 export const UMAMI_TEST = JSON.parse(readFileSync(CONFIG_TEST, "utf8")).UMAMI as { SCRIPT: string; ID: string };
 
 /** Une page disparue figure dans le site d'essai. */
@@ -32,7 +34,7 @@ export function siteTest(): Promise<string> {
     await exporter(fiches, db, manifest, DONNEES_TEST);
     const p = Bun.spawn(["bun", "run", "astro", "build"], {
       cwd: join(RACINE, "site"),
-      env: { ...process.env, OBS_DATA: DONNEES_TEST, OBS_DIST: DIST_TEST, OBS_CONFIG: CONFIG_TEST },
+      env: { ...process.env, OBS_DATA: DONNEES_TEST, OBS_DIST: DIST_TEST, OBS_CONFIG: CONFIG_TEST, OBS_CONTOURS: CONTOURS_TEST },
       stdout: "pipe",
       stderr: "pipe",
     });

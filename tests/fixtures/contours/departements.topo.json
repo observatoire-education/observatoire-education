@@ -1,0 +1,1 @@
+{"type": "Topology", "objects": {"departements": {"type": "GeometryCollection", "geometries": [{"type": "Polygon", "arcs": [[0]], "properties": {"code": "44"}}, {"type": "Polygon", "arcs": [[1]], "properties": {"code": "2A"}}]}}, "arcs": [[[-2, 47], [-1, 47], [-1, 48], [-2, 48], [-2, 47]], [[8, 41], [9, 41], [9, 42], [8, 42], [8, 41]]]}

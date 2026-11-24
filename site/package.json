@@ -2,13 +2,22 @@
   "name": "@obs/site",
   "private": true,
   "type": "module",
-  "scripts": { "dev": "astro dev", "build": "astro build" },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build"
+  },
   "dependencies": {
     "@obs/shared": "workspace:*",
-    "astro": "^7.4",
     "@observablehq/plot": "^0.6.19",
+    "@types/topojson-client": "^3.1.5",
+    "astro": "^7.4",
     "linkedom": "^0.18",
+    "maplibre-gl": "^6",
     "qrcode": "^1.5",
-    "maplibre-gl": "^6"
+    "topojson-client": "^3.1.0"
+  },
+  "devDependencies": {
+    "@types/geojson": "^7946.0.16",
+    "@types/topojson-specification": "^1.0.5"
   }
 }

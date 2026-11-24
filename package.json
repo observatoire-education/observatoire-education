@@ -19,6 +19,7 @@
     "@obs/shared": "workspace:*",
     "@types/bun": "latest",
     "linkedom": "^0.18",
+    "mapshaper": "^0.8.9",
     "typescript": "^5"
   }
 }
