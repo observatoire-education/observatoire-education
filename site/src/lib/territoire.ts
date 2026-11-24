@@ -1,10 +1,10 @@
 // Aides des pages de territoire (département) : synthèses, lignes de liste, CSV.
-import type { DonneesDepartement, LigneListe, SyntheseFamille } from "@obs/shared/donnees";
+import type { DonneesTerritoire, LigneListe, SyntheseFamille } from "@obs/shared/donnees";
 import type { Famille } from "@obs/shared/types";
 
 export const ORDRE_FAMILLES: Famille[] = ["college", "legt", "lpo", "lp", "erea"];
 
-export const famillesDe = (d: DonneesDepartement): [Famille, SyntheseFamille][] =>
+export const famillesDe = (d: DonneesTerritoire): [Famille, SyntheseFamille][] =>
   ORDRE_FAMILLES.flatMap((f) => (d.familles[f] ? [[f, d.familles[f]!] as [Famille, SyntheseFamille]] : []));
 
 /** Valeur de tri d'une cellule numérique (vide si absente : triée en dernier). */
@@ -27,7 +27,7 @@ const champ = (v: string | number | null): string => {
 };
 
 /** CSV (séparateur « ; », point décimal) ; une absence est vide, ou porte son statut (« non_publie_prive »). */
-export function csvDepartement(d: DonneesDepartement): string {
+export function csvDepartement(d: DonneesTerritoire): string {
   const lignes = famillesDe(d).flatMap(([famille, s]) =>
     s.liste.map((l: LigneListe) =>
       [

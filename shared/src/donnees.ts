@@ -41,31 +41,12 @@ export interface MoyenneTerritoire {
 export interface SyntheseFamille {
   compte: ParSecteur<number>;
   eleves: ParSecteur<number | null>;
-  ipsMoyen: ParSecteur<number | null>;
+  ipsMoyen: IpsMoyens;
   /** Nombre d'établissements par classe de 5 points d'IPS ; `bornes` a une case de plus que les comptes. */
   distributionIps: { public: number[]; prive: number[]; bornes: number[] };
   moyennes: MoyenneTerritoire[];
   /** Triée par nom. */
   liste: LigneListe[];
-}
-
-export interface DonneesDepartement {
-  dep: string;
-  libelle: string;
-  aca: string;
-  acaLibelle: string;
-  /** Rentrée de référence (dernière rentrée des effectifs). */
-  rentree: number | null;
-  familles: Partial<Record<Famille, SyntheseFamille>>;
-  /** Établissements privés hors contrat de l'annuaire (non couverts par les statistiques publiques). */
-  horsContrat: number;
-}
-
-export interface DonneesFrance {
-  rentree: number | null;
-  familles: Partial<Record<Famille, Pick<SyntheseFamille, "compte" | "eleves" | "ipsMoyen">>>;
-  horsContrat: number;
-  academies: { aca: string; libelle: string; departements: { dep: string; libelle: string }[] }[];
 }
 
 export type NiveauTerritoire = "france" | "academie" | "departement" | "commune";
@@ -128,8 +109,8 @@ export interface DonneesTerritoire {
   carte: CarteDonnees;
 }
 
-/** Données de la France pour la phase 2 (le type `DonneesFrance` ci-dessus est conservé pour l'instant). */
-export interface DonneesFranceTerritoire extends DonneesTerritoire {
+/** Données de la France : celles d'un territoire, plus la liste des académies et de leurs départements. */
+export interface DonneesFrance extends DonneesTerritoire {
   academies: { aca: string; libelle: string; departements: { dep: string; libelle: string }[] }[];
 }
 

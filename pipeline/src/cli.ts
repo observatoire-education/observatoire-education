@@ -7,6 +7,7 @@ import { type Depot, DepotGithub, DepotLocal } from "./depot.ts";
 import { assemblerFiches, exporter } from "./fiches.ts";
 import { OdsClient } from "./ods.ts";
 import { ecrireRegistre, lireRegistre, mettreAJourRegistre } from "./registre.ts";
+import { controlerPonderation, ipsMoyens, SEUILS_PONDERATION } from "./territoires.ts";
 
 interface Config {
   SITE_URL: string;
@@ -62,6 +63,15 @@ async function data(): Promise<void> {
   // Les dates du registre sont celles des données (collecte de l'annuaire), pas celle du build.
   const dateDonnees = new Date(manifest.derniere("annuaire")!.collecteLe);
   const fiches = await assemblerFiches(db, manifest, registre, dateDonnees);
+  // Contrôle de la moyenne pondérée (pages communes) : appliquée aux départements, elle doit retrouver la DEPP.
+  // En cas d'échec, rien n'est écrit ni publié.
+  const ponderation = controlerPonderation(fiches.filter((f) => f.disparuLe === null), await ipsMoyens(db, "dep"));
+  const chiffres = `${ponderation.n} groupes, écart médian ${ponderation.mediane}, 90e centile ${ponderation.p90}`;
+  if (ponderation.mediane > SEUILS_PONDERATION.mediane || ponderation.p90 > SEUILS_PONDERATION.p90) {
+    db.fermer();
+    throw new Error(`moyenne pondérée trop éloignée des moyennes de la DEPP : ${chiffres}`);
+  }
+  console.log(`pondération des IPS : ${chiffres}`);
   ecrireRegistre(CHEMINS.registre, mettreAJourRegistre(registre, fiches, dateDonnees.toISOString().slice(0, 10)));
   await exporter(fiches, db, manifest, CHEMINS.donnees);
 

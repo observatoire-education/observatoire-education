@@ -1,10 +1,7 @@
 // Voisinage, assemblage des fiches et export des fichiers de données du site (site/data/).
 import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
-import type {
-  DonneesDepartement, DonneesFrance, DonneesSource, EntreeIndex, LigneListe, MoyenneTerritoire, SyntheseFamille,
-} from "@obs/shared/donnees";
-import { CODES_INDICATEURS, INDICATEURS } from "@obs/shared/libelles";
+import type { DonneesSource, EntreeIndex } from "@obs/shared/donnees";
 import type {
   Famille, Fiche, Identite, Indicateur, Mesure, Repartition, Secteur, Site, SourceId, SourceRef, Voisin,
 } from "@obs/shared/types";
@@ -14,6 +11,7 @@ import { calculerEleves } from "./eleves.ts";
 import { calculerIndicateurs, calculerRepartitions } from "./indicateurs.ts";
 import type { Registre } from "./registre.ts";
 import { SOURCES } from "./sources.ts";
+import { ecrireJson, exporterTerritoires } from "./territoires.ts";
 
 // --- Voisinage ---
 
@@ -187,68 +185,9 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
 
 // --- Export ---
 
-const BORNES_IPS = Array.from({ length: 21 }, (_, i) => 60 + 5 * i);
-
-function distribution(valeurs: number[]): number[] {
-  const comptes = new Array<number>(BORNES_IPS.length - 1).fill(0);
-  for (const v of valeurs) {
-    const i = Math.min(comptes.length - 1, Math.max(0, Math.floor((v - 60) / 5)));
-    comptes[i]!++;
-  }
-  return comptes;
-}
-
-const valeur = (f: Fiche, code: string): Mesure | undefined => f.indicateurs.find((i) => i.code === code)?.mesure;
-const ok = (m: Mesure | undefined): number | null => (m?.statut === "ok" ? m.valeur : null);
-const parNom = (a: { nom: string }, b: { nom: string }) => a.nom.localeCompare(b.nom, "fr");
-
-function ligneListe(f: Fiche): LigneListe {
-  const vs = valeur(f, "eleves_par_etp_vs");
-  return {
-    uai: f.uai, nom: f.nom, secteur: f.secteur, commune: f.commune, ep: f.ep,
-    eleves: ok(valeur(f, "eleves")),
-    elevesParEtpEns: ok(valeur(f, "eleves_par_etp_ens")),
-    elevesParEtpVs: ok(vs),
-    statutVs: vs?.statut ?? "non_disponible",
-    partEnseignantes: ok(valeur(f, "part_enseignantes")),
-    ips: ok(valeur(f, "ips")),
-  };
-}
-
-/** Moyennes du territoire : les comparaisons de la fiche du groupe dont la rentrée est la plus récente. */
-function moyennesTerritoire(groupe: Fiche[]): MoyenneTerritoire[] {
-  return CODES_INDICATEURS.filter((c) => INDICATEURS[c].genre !== "volume").flatMap((code) => {
-    let meilleure: Indicateur | undefined;
-    for (const f of groupe) {
-      const i = f.indicateurs.find((x) => x.code === code);
-      const r = i?.comparaisons[0]?.public.rentree ?? i?.comparaisons[0]?.prive.rentree ?? null;
-      const rm = meilleure?.comparaisons[0]?.public.rentree ?? meilleure?.comparaisons[0]?.prive.rentree ?? null;
-      if (i && i.comparaisons.length && (meilleure === undefined || (r ?? 0) > (rm ?? 0))) meilleure = i;
-    }
-    return meilleure ? [{ code, comparaisons: meilleure.comparaisons }] : [];
-  });
-}
-
-type IpsMoyen = { famille: Famille; territoire: string; pub: number | null; priv: number | null };
-
-async function ipsMoyens(db: Db, niveau: "dep" | "nat"): Promise<Map<string, IpsMoyen>> {
-  const lignes = await db.sql<IpsMoyen>(`
-    select e.famille, ${niveau === "dep" ? "e.dep" : "'FR'"} as territoire,
-      any_value(i.${niveau}_public) as pub, any_value(i.${niveau}_prive) as priv
-    from ips i join etablissements e using (uai)
-    where i.rentree = (select max(rentree) from ips)
-    group by all`);
-  return new Map(lignes.map((l) => [`${l.famille}|${l.territoire}`, l]));
-}
-
-async function ecrireJson(chemin: string, donnees: unknown): Promise<void> {
-  await Bun.write(chemin, JSON.stringify(donnees));
-}
-
 export async function exporter(fiches: Fiche[], db: Db, manifest: Manifest, sortie = "site/data"): Promise<void> {
   await rm(sortie, { recursive: true, force: true });
   await mkdir(join(sortie, "fiches"), { recursive: true });
-  await mkdir(join(sortie, "departements"), { recursive: true });
 
   for (const f of fiches) await ecrireJson(join(sortie, "fiches", `${f.uai}.json`), f);
 
@@ -259,80 +198,7 @@ export async function exporter(fiches: Fiche[], db: Db, manifest: Manifest, sort
 
   const actives = fiches.filter((f) => f.disparuLe === null);
   const [{ r: rentree } = { r: null }] = await db.sql<{ r: number | null }>("select max(rentree) as r from effectifs");
-  const horsContrat = new Map(
-    (await db.sql<{ dep: string; n: number }>(
-      "select dep, count(*)::integer as n from classement where motif = 'prive_hors_contrat' group by dep",
-    )).map((l) => [l.dep, l.n]),
-  );
-  const ipsDep = await ipsMoyens(db, "dep");
-  const ipsNat = await ipsMoyens(db, "nat");
-
-  const eleves = (groupe: Fiche[], secteur: Secteur) => {
-    const v = groupe
-      .filter((f) => f.secteur === secteur)
-      .map((f) => valeur(f, "eleves"))
-      .filter((m) => m?.statut === "ok" && m.rentree === rentree)
-      .map((m) => m!.valeur!);
-    return v.length ? v.reduce((a, b) => a + b, 0) : null;
-  };
-  const compte = (groupe: Fiche[]) => ({
-    public: groupe.filter((f) => f.secteur === "public").length,
-    prive: groupe.filter((f) => f.secteur === "prive_sous_contrat").length,
-  });
-
-  for (const [dep, groupeDep] of Map.groupBy(actives, (f) => f.dep)) {
-    const premier = groupeDep[0]!;
-    const familles: DonneesDepartement["familles"] = {};
-    for (const [famille, groupe] of Map.groupBy(groupeDep, (f) => f.famille)) {
-      const ips = (secteur: Secteur) =>
-        groupe
-          .filter((f) => f.secteur === secteur)
-          .map((f) => valeur(f, "ips"))
-          .filter((m) => m?.statut === "ok" && m.valeur !== null)
-          .map((m) => m!.valeur!);
-      const moyen = ipsDep.get(`${famille}|${dep}`);
-      const synthese: SyntheseFamille = {
-        compte: compte(groupe),
-        eleves: { public: eleves(groupe, "public"), prive: eleves(groupe, "prive_sous_contrat") },
-        ipsMoyen: { public: moyen?.pub ?? null, prive: moyen?.priv ?? null },
-        distributionIps: { public: distribution(ips("public")), prive: distribution(ips("prive_sous_contrat")), bornes: BORNES_IPS },
-        moyennes: moyennesTerritoire(groupe),
-        liste: groupe.map(ligneListe).sort(parNom),
-      };
-      familles[famille] = synthese;
-    }
-    const donnees: DonneesDepartement = {
-      dep, libelle: premier.depLibelle, aca: premier.aca, acaLibelle: premier.acaLibelle, rentree,
-      familles, horsContrat: horsContrat.get(dep) ?? 0,
-    };
-    await ecrireJson(join(sortie, "departements", `${dep}.json`), donnees);
-  }
-
-  const academies = [...Map.groupBy(actives, (f) => f.aca)]
-    .map(([aca, groupe]) => ({
-      aca,
-      libelle: groupe[0]!.acaLibelle,
-      departements: [...new Map(groupe.map((f) => [f.dep, f.depLibelle]))]
-        .map(([d, libelle]) => ({ dep: d, libelle }))
-        .sort((a, b) => a.libelle.localeCompare(b.libelle, "fr")),
-    }))
-    .sort((a, b) => a.libelle.localeCompare(b.libelle, "fr"));
-  const france: DonneesFrance = {
-    rentree,
-    familles: Object.fromEntries(
-      [...Map.groupBy(actives, (f) => f.famille)].map(([famille, groupe]) => {
-        const moyen = ipsNat.get(`${famille}|FR`);
-        return [famille, {
-          compte: compte(groupe),
-          eleves: { public: eleves(groupe, "public"), prive: eleves(groupe, "prive_sous_contrat") },
-          ipsMoyen: { public: moyen?.pub ?? null, prive: moyen?.priv ?? null },
-        }];
-      }),
-    ),
-    horsContrat: [...horsContrat.values()].reduce((a, b) => a + b, 0),
-    academies,
-  };
-  await ecrireJson(join(sortie, "france.json"), france);
+  await exporterTerritoires(actives, db, sortie, rentree);
 
   const sources: Record<string, DonneesSource> = Object.fromEntries(
     Object.values(SOURCES).map((s) => [s.id, {

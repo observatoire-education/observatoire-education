@@ -1,12 +1,14 @@
 import { describe, expect, test } from "bun:test";
-import type { DonneesDepartement } from "@obs/shared/donnees";
+import type { DonneesTerritoire } from "@obs/shared/donnees";
 import { csvDepartement } from "../site/src/lib/territoire.ts";
 
-const dep = (nom: string, commune = "Nantes"): DonneesDepartement => ({
-  dep: "44", libelle: "Loire-Atlantique", aca: "17", acaLibelle: "Nantes", rentree: 2025, horsContrat: 0,
+const dep = (nom: string, commune = "Nantes"): DonneesTerritoire => ({
+  ref: { niveau: "departement", code: "44", libelle: "Loire-Atlantique" },
+  parents: [{ niveau: "france", code: "FR", libelle: "France" }, { niveau: "academie", code: "17", libelle: "Nantes" }],
+  rentree: 2025, horsContrat: 0, enfants: [], communes: [], carte: { genre: "points", points: [] },
   familles: {
     college: {
-      compte: { public: 1, prive: 0 }, eleves: { public: 10, prive: null }, ipsMoyen: { public: 100, prive: null },
+      compte: { public: 1, prive: 0 }, eleves: { public: 10, prive: null }, ipsMoyen: { public: 100, prive: null, calculee: false },
       distributionIps: { public: [], prive: [], bornes: [] }, moyennes: [],
       liste: [{ uai: "0440001A", nom, secteur: "public", commune, ep: null, eleves: 10, elevesParEtpEns: -1.5,
         elevesParEtpVs: null, statutVs: "non_disponible", partEnseignantes: null, ips: 100 }],

@@ -17,13 +17,14 @@ export function getStaticPaths() {
 }
 
 const d = lireDepartement(Astro.params.dep!);
+const aca = d.parents.find((p) => p.niveau === "academie")!;
 const france = lireFrance();
 const sources = Object.values(lireSources()).filter((s) => s.actuelle);
 const familles = famillesDe(d);
 const total = familles.reduce((a, [, s]) => a + s.compte.public + s.compte.prive, 0);
 
 const NIVEAUX: Niveau[] = ["departement", "academie", "france"];
-const libelleNiveau = (n: Niveau) => (n === "departement" ? d.libelle : n === "academie" ? academie(d.acaLibelle) : "France");
+const libelleNiveau = (n: Niveau) => (n === "departement" ? d.ref.libelle : n === "academie" ? academie(aca.libelle) : "France");
 const ref = (c: Comparaison[], n: Niveau, s: Secteur) => {
   const x = c.find((y) => y.niveau === n);
   return x ? (s === "public" ? x.public : x.prive) : undefined;
@@ -44,14 +45,14 @@ const communes = [...Map.groupBy(familles.flatMap(([, s]) => s.liste), (l) => l.
   .map(([c, l]) => ({ c, n: l.length }))
   .sort((a, b) => a.c.localeCompare(b.c, "fr"));
 ---
-<Base titre={`${d.libelle} (${d.dep})`} chemin={`/departement/${d.dep}/`}
-  description={`Collèges et lycées publics et privés sous contrat du département ${d.libelle} : chiffres publics sourcés et datés.`}>
-  <nav class="crumb" aria-label="Fil d'Ariane"><span>France</span><span class="sep">›</span><span>{academie(d.acaLibelle)}</span></nav>
-  <h1>{d.libelle} <span class="mute num" style="font-weight:400">{d.dep}</span></h1>
-  <div class="badges"><span class="badge">{academie(d.acaLibelle)}</span><span class="badge">{entier(total)} établissements</span><span class="badge">{communes.length} communes avec un collège ou un lycée</span></div>
+<Base titre={`${d.ref.libelle} (${d.ref.code})`} chemin={`/departement/${d.ref.code}/`}
+  description={`Collèges et lycées publics et privés sous contrat du département ${d.ref.libelle} : chiffres publics sourcés et datés.`}>
+  <nav class="crumb" aria-label="Fil d'Ariane"><span>France</span><span class="sep">›</span><span>{academie(aca.libelle)}</span></nav>
+  <h1>{d.ref.libelle} <span class="mute num" style="font-weight:400">{d.ref.code}</span></h1>
+  <div class="badges"><span class="badge">{academie(aca.libelle)}</span><span class="badge">{entier(total)} établissements</span><span class="badge">{communes.length} communes avec un collège ou un lycée</span></div>
   <div class="actions">
     <button class="btn primary" type="button" id="imprimer">⎙ Imprimer / PDF</button>
-    <a class="btn" href={`/departement/${d.dep}/etablissements.csv`} download>⬇ Télécharger la liste (CSV)</a>
+    <a class="btn" href={`/departement/${d.ref.code}/etablissements.csv`} download>⬇ Télécharger la liste (CSV)</a>
   </div>
   <div class="kpis">
     {familles.map(([f, s]) => (
