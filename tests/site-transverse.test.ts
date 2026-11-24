@@ -4,7 +4,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { ecrireFichiersHebergement, verifierDist } from "../scripts/garde-fous.ts";
-import { DIST_TEST, doc, page, siteTest, texte, UMAMI_TEST } from "./site.ts";
+import { DIST_TEST, doc, octets, page, siteTest, texte, UMAMI_TEST } from "./site.ts";
 
 beforeAll(async () => {
   await siteTest();
@@ -176,5 +176,18 @@ describe("méthode et sources de la phase 4", () => {
     expect(doc("etablissement/0440020P").body.textContent).not.toContain("rupture de série dès la rentrée 2022");
     expect(doc("etablissement/0440001A").body.textContent).toContain("rupture de série dès la rentrée 2022");
     expect(doc("departement/44").body.textContent).toContain("rupture de série dès la rentrée 2022");
+  });
+});
+
+describe("logo", () => {
+  test("favicon SVG et icône iOS déclarés et publiés", () => {
+    const d = doc("sources");
+    expect(d.querySelector('link[rel="icon"][type="image/svg+xml"]')?.getAttribute("href")).toBe("/favicon.svg");
+    expect(d.querySelector('link[rel="apple-touch-icon"]')?.getAttribute("href")).toBe("/apple-touch-icon.png");
+    const svg = page("favicon.svg");
+    expect(svg).toContain('viewBox="0 0 64 64"');
+    expect(svg).not.toMatch(/\bid=/);
+    expect(octets("apple-touch-icon.png")).toBeGreaterThan(500);
+    expect(octets("logo.svg")).toBeGreaterThan(200);
   });
 });
