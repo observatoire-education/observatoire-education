@@ -72,7 +72,7 @@ Configuration dans `observatoire.config.json` :
 | `DEPOT` | `organisation/dépôt` GitHub : les liens « donnée brute » pointent vers ses Releases |
 | `DOMAINE` | domaine du site ; écrit dans `CNAME` s'il est renseigné |
 | `SITE_URL` | adresse complète (`https://…`) pour les liens permanents, le sitemap et les QR codes |
-| `INDEXABLE` | `false` : aperçu non référencé (`noindex`, `robots.txt` Disallow) ; `true` : site public |
+| `INDEXABLE` | `false` : aperçu non référencé (`noindex`, `robots.txt` Disallow) ; `true` : site public, robots d'entraînement d'IA exclus dans `robots.txt` (liste `ROBOTS_ENTRAINEMENT` de `scripts/garde-fous.ts`) |
 
 Étapes, à faire par le porteur du projet :
 

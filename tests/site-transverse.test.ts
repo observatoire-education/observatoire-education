@@ -116,8 +116,15 @@ describe("garde-fous du build", () => {
         SITE_URL: "https://observatoireeducation.fr", DOMAINE: "observatoireeducation.fr", DEPOT: "org/depot", INDEXABLE: true,
       });
       expect(await Bun.file(join(d, "CNAME")).text()).toBe("observatoireeducation.fr\n");
-      expect(await Bun.file(join(d, "robots.txt")).text()).toBe(
-        "User-agent: *\nAllow: /\nSitemap: https://observatoireeducation.fr/sitemap.xml\n",
+      const robots = await Bun.file(join(d, "robots.txt")).text();
+      expect(robots).toStartWith("User-agent: __usage_ai-training\nUser-agent: AI2Bot\n");
+      for (const r of ["GPTBot", "ClaudeBot", "CCBot", "Google-Extended", "Applebot-Extended", "Meta-ExternalAgent", "MistralAI-Training"]) {
+        expect(robots).toContain(`User-agent: ${r}\n`);
+      }
+      expect(robots).not.toContain("OAI-SearchBot");
+      expect(robots).not.toContain("ExaSearchBot");
+      expect(robots).toEndWith(
+        "Disallow: /\n\nUser-agent: *\nAllow: /\nSitemap: https://observatoireeducation.fr/sitemap.xml\n",
       );
     } finally {
       await rm(d, { recursive: true, force: true });
