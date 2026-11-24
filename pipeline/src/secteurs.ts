@@ -136,15 +136,27 @@ interface VoieTroncon {
 }
 
 /**
- * Collèges d'une adresse dans une commune découpée par voie, ou null si elle n'est pas rapprochée : sans numéro
- * ou sans voie, voie absente, numéro hors des tronçons, tronçon indéterminé, ou ambiguïté. Il y a ambiguïté quand
- * les tronçons retenus viennent de voies distinctes de la carte (même libellé dans plusieurs lieux-dits d'une
- * commune nouvelle, ou libellés que seuls les articles séparent) et mènent à des collèges différents. Plusieurs
- * collèges sur un même tronçon forment un secteur multi-collèges : tous sont retenus.
+ * Collèges d'une adresse dans une commune découpée par voie, ou null si elle n'est pas rapprochée : sans voie,
+ * voie absente, numéro hors des tronçons, tronçon indéterminé, ou ambiguïté. Il y a ambiguïté quand les tronçons
+ * retenus viennent de voies distinctes de la carte (même libellé dans plusieurs lieux-dits d'une commune nouvelle,
+ * ou libellés que seuls les articles séparent) et mènent à des collèges différents. Plusieurs collèges sur un même
+ * tronçon forment un secteur multi-collèges : tous sont retenus.
+ *
+ * Sans numéro, l'adresse n'est rapprochée que si c'est certain : tous les tronçons de la voie (toutes plages,
+ * toutes parités, tous lieux-dits) mènent au même ensemble de collèges.
  */
 function parVoie(adresse: AdresseNormalisee, troncons: Troncon[], voies: Map<Troncon, VoieTroncon>): string[] | null {
   const { numero, indice, voie } = adresse;
-  if (numero === null || voie === null) return null;
+  if (voie === null) return null;
+  if (numero === null) {
+    const deLaVoie = troncons.filter((t) => voies.get(t)?.cle === voie);
+    // une zone : mêmes lieu-dit, libellé, bornes et parité ; plusieurs collèges dans une zone = multi-collèges
+    const zones = Map.groupBy(deLaVoie, (t) =>
+      [t.lieu_dit, voies.get(t)!.libelle, t.debut, t.indice_debut, t.fin, t.indice_fin, t.parite].join("|"),
+    );
+    const ensembles = new Set([...zones.values()].map((ts) => [...new Set(ts.map((t) => t.rne))].sort().join(",")));
+    return ensembles.size === 1 ? [...new Set(deLaVoie.map((t) => t.rne))] : null;
+  }
   const retenus: Troncon[] = [];
   for (const t of troncons) {
     if (voies.get(t)?.cle !== voie) continue;

@@ -35,9 +35,10 @@ async function fabriquer(s: Source, r: Reglage, dest: string): Promise<void> {
   };
   let select = `select ${colonnes.map((c) => `${expr(c)} as "${c}"`).join(", ")} from range(${r.lignes}) t(i)`;
   if (id === "annuaire") {
-    // colonne non requise + lignes hors périmètre (écoles), qui doivent disparaître à la réduction
+    // colonne non requise + deux écoles, gardées, et une ligne hors périmètre (service administratif), retirée
+    const type = `case when i < 2 then 'Ecole' else 'Service Administratif' end`;
     select = `select *, ${litteral(r.bruit ?? "a")} as fax from (${select}
-      union all select ${colonnes.map((c) => (c === "type_etablissement" ? `'Ecole'` : `'E' || i::varchar`) + ` as "${c}"`).join(", ")} from range(3) t(i))
+      union all select ${colonnes.map((c) => (c === "type_etablissement" ? type : `'E' || i::varchar`) + ` as "${c}"`).join(", ")} from range(3) t(i))
       order by 1 ${r.inverse ? "desc" : "asc"}`;
   } else if (id === "carte_scolaire") {
     // colonne non requise (libellé de la commune), ordre des lignes variable
@@ -142,7 +143,7 @@ describe("collecte", () => {
     const a = manifest.derniere("annuaire")!.sha256;
     f.reglages.annuaire = { lignes: 9 };
     await collecter(opts(f.client));
-    expect(manifest.derniere("annuaire")!.lignes).toBe(9);
+    expect(manifest.derniere("annuaire")!.lignes).toBe(11); // 9 lignes et 2 écoles
     f.reglages.annuaire = { lignes: 10 };
     const j = await collecter(opts(f.client));
     expect(ligne(j, "annuaire")).toMatchObject({ action: "inchange", motif: "contenu identique" });
@@ -205,7 +206,7 @@ describe("collecte", () => {
   test("annuaire réduit puis dédupliqué", async () => {
     const f = fauxClient({ annuaire: { modified: "A1" } });
     const j1 = await collecter(opts(f.client));
-    expect(ligne(j1, "annuaire")).toMatchObject({ action: "telecharge", lignes: 10 }); // écoles retirées
+    expect(ligne(j1, "annuaire")).toMatchObject({ action: "telecharge", lignes: 12 }); // écoles gardées, service administratif retiré
     f.reglages.annuaire = { modified: "A2", inverse: true, bruit: "b" };
     const j2 = await collecter(opts(f.client));
     expect(ligne(j2, "annuaire").action).toBe("inchange");

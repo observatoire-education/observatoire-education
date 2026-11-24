@@ -142,4 +142,25 @@ describe("collège de secteur à l'adresse de l'école", () => {
     expect(s.get("0440105E")).toEqual({ statut: "non_rapproche", colleges: [] });
     expect(s.get("0440108H")).toEqual({ statut: "non_rapproche", colleges: [] });
   });
+
+  test("adresse sans numéro : rapprochée quand tous les tronçons de la voie mènent aux mêmes collèges", async () => {
+    const db = await dbModifiee(
+      {
+        "0440203C": { adresse_1: "rue Jules Ferry" }, // un seul tronçon, 1 à 99
+        "0440108H": { adresse_1: "rue des Tilleuls" }, // secteur multi-collèges sur toute la voie
+        "0440105E": { adresse_1: "rue des Écoles", code_commune: "44109" }, // deux lieux-dits, deux collèges
+      },
+      [
+        "044,LOIRE-ATLANTIQUE,44109,NANTES,CHANTENAY,RUE DES ECOLES,1.0,,99.0,,PI,0440001A,N",
+        "044,LOIRE-ATLANTIQUE,44109,NANTES,DOULON,RUE DES ECOLES,1.0,,99.0,,PI,0440002B,N",
+      ],
+    );
+    const s = await calculerSecteurs(db);
+    db.fermer();
+    expect(s.get("0440203C")).toEqual({ statut: "voie", colleges: [SAINT_EXEMPLE] });
+    expect(s.get("0440108H")).toEqual({ statut: "voie", colleges: [SAINT_EXEMPLE, SANS_GPS] });
+    expect(s.get("0440105E")).toEqual({ statut: "non_rapproche", colleges: [] });
+    // rue des Lilas, découpée par parité entre deux collèges : toujours non rapprochée (base des fixtures)
+    expect(secteurs.get("0440203C")).toEqual({ statut: "non_rapproche", colleges: [] });
+  });
 });

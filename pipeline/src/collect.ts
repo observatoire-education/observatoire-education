@@ -37,7 +37,7 @@ export interface OptionsCollecte {
   corrections?: string;
 }
 
-const TYPES_RETENUS = ["Collège", "Lycée", "EREA"];
+const TYPES_RETENUS = ["Collège", "Lycée", "EREA", "Ecole"];
 
 type Resultat = Omit<LigneJournal, "date" | "source"> & { suite?: Omit<LigneJournal, "date" | "source"> };
 
