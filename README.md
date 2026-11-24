@@ -132,14 +132,16 @@ La collecte tourne ensuite chaque nuit à 2 h 17 UTC. Une nuit sans changement d
 
 ### Mise en ligne de la phase Écoles
 
-La phase Écoles ajoute 9 sources (6 sources d'écoles : `effectifs_ecoles`, `ips_ecoles_2016`, `ips_ecoles`, `personnels_ecoles`, `classes_ecoles`, `ecoles_ep` ; la carte scolaire des collèges ; deux fichiers COG de l'Insee) et élargit les extraits du budget (voir plus bas). Ordre à suivre :
+La phase Écoles ajoute 9 sources (6 sources d'écoles : `effectifs_ecoles`, `ips_ecoles_2016`, `ips_ecoles`, `personnels_ecoles`, `classes_ecoles`, `ecoles_ep` ; la carte scolaire des collèges ; deux fichiers COG de l'Insee) et élargit les extraits du budget (voir plus bas). Elle se met en ligne en deux temps : d'abord le changement d'hébergement seul (lot 0), puis le reste de la branche. La recette compare le site en ligne (GitHub Pages) au déploiement sur Workers et doit conclure à zéro écart : elle n'a de sens que si les deux hébergements servent le même site, donc avant l'arrivée des écoles. Ordre à suivre :
 
-1. Faire d'abord la bascule d'hébergement (lot 0) : voir la section Hébergement et la procédure de recette et de bascule ci-dessus. Le nombre de fichiers du site dépasse ce que GitHub Pages peut servir : le site doit déjà être sur Cloudflare Workers.
-2. Merger la branche dans `main`.
+1. Lot 0 seul. Créer une branche au commit `c028e7a` de `phase-ecoles` (il ne contient que le lot 0 et les documents), y reprendre le correctif du déploiement (`git cherry-pick 4d0473f` : déploiement par `bunx wrangler` et cache des scripts, sans lequel le job `deployer` échoue), la fusionner dans `main`, puis suivre la procédure de recette et de bascule ci-dessus. Attendre une nuit de collecte et de déploiement réussie après la bascule. Le nombre de fichiers du site avec les écoles dépasse ce que GitHub Pages peut servir : le site doit déjà être sur Cloudflare Workers.
+2. Fusionner le reste de la branche `phase-ecoles` dans `main`.
 3. Lancer le workflow `nightly` à la main (`workflow_dispatch`) : première collecte des 9 nouvelles sources, et nouvelle version archivée de chaque exercice du budget.
-4. Vérifier le journal de la collecte et du build : taux de rapprochement des adresses avec la carte scolaire, têtes de PIAL sans fiche, alerte « COG périmé » (à partir du 15 février, changer alors le millésime dans `pipeline/src/sources.ts`), nombre de fichiers affiché par le garde-fou (sous 95 000).
+4. Vérifier le journal de la collecte et du build : taux de rapprochement des adresses avec la carte scolaire, têtes de PIAL sans fiche, alerte « COG périmé » (à partir du 15 février, changer alors le millésime dans `pipeline/src/sources.ts`), nombre de fichiers affiché par le garde-fou (sous 95 000), poids des fiches et des pages commune (médiane, 95e centile, maximum ; plafond de 150 000 octets par page).
 
 Avant l'étape 3, un build sur `main` échoue proprement (aucune version archivée pour les nouvelles sources) sans rien publier de faux.
+
+Si le téléchargement d'un fichier du COG (`cog_communes`, `cog_mouvements`) échoue lors de cette première collecte, aucune version n'en est archivée et chaque build reste bloqué sur cette absence, sans rien publier : le site reste sur la version précédente jusqu'à une collecte réussie. Relancer alors le workflow `nightly` à la main (`workflow_dispatch`) ; la collecte suivante retente le téléchargement.
 
 ### Mise en ligne du lot 4 de la phase Écoles (budget des communes)
 

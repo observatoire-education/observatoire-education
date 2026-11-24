@@ -212,7 +212,7 @@ Même exigence que les phases précédentes : chaque règle de calcul a ses test
 3. **Préélémentaire** publié en un seul total (pas de PS, MS, GS).
 4. **Famille** primaire / élémentaire tirée des drapeaux `ecole_maternelle` et `ecole_elementaire` de l'Annuaire.
 5. Comparaisons de la fiche école : département, académie, France (pas la commune ; les moyennes communales sont sur la page commune).
-6. **Hébergement** : la collecte de l'Annuaire écartait le type « Ecole » (`TYPES_RETENUS`) ; corrigé.
+6. **Collecte de l'Annuaire** : la collecte de l'Annuaire écartait le type « Ecole » (`TYPES_RETENUS`) ; corrigé.
 7. **Collège de secteur** : une adresse sans numéro n'est rattachée que si toute la voie (1 à 9999, chaque parité, chaque lieu-dit) mène au même ensemble de collèges ; une voie présente dans plusieurs lieux-dits doit concorder partout ; un collège sans fiche dans l'ensemble rend l'adresse « non rapprochée ». Taux réels (données 2026-11) : commune 56,6 %, voie 28,0 %, non rapprochée 5,8 %, carte non publiée 9,5 %.
 8. **Écoles du secteur** : publiques et privées sous contrat ; collèges publics seulement ; note « seules les écoles rapprochées sont listées ».
 9. **Écoles fermées** citées aussi par l'éducation prioritaire et la typologie des classes (6.3) ; les fermetures sont comptées par école (une fusion de deux écoles = deux fermetures).
@@ -221,9 +221,12 @@ Même exigence que les phases précédentes : chaque règle de calcul a ses test
 12. **COG** : deux sources Insee (mouvements et communes) en fichiers directs ; année codée en dur, alerte « COG périmé » dans le journal à partir du 15 février de l'année suivante ; à changer chaque janvier.
 13. **Classes** : 0 classe = non publié ; commune : une école sans classes publiées rend le total de la rentrée inconnu ; territoires : total sur les écoles qui publient, avec la note « {n} école(s) sans nombre de classes publié, non comptée(s) ».
 14. **Budget communal** : libellé « Budget par fonction non publié pour cette commune (seules les communes de 3 500 habitants et plus le publient) » (aucune source de population) ; Ville de Paris (catégorie PARIS) traitée comme la commune 75056 ; dépenses des syndicats et intercommunalités non attribuées ; exercice antérieur à une fusion : « Commune fusionnée après cet exercice : montant par élève non calculé » ; fonctions 21x (211 maternelles, 212 élémentaires, 213 classes regroupées).
-15. **Index de recherche** : plafond de 10 000 000 octets (estimation 7,7 Mo) ; repli : découpage par département.
+15. **Index de recherche** : plafond de 10 000 000 octets (estimation 7,7 Mo) pour `recherche.json` et `recherche-communes.json` réunis, chargés ensemble au premier focus ; repli : découpage par département. Les communes de la recherche sont toutes celles qui ont une page (second degré ou écoles), dans `recherche-communes.json` et non plus dans l'accueil.
 16. **Poids** : la fiche école d'essai la plus lourde pèse environ 30 Ko (le budget de 20 à 25 Ko visés est dépassé avec les blocs des lots 2 à 4) ; une fiche collège avec les écoles du secteur, environ 63 Ko.
 17. **Hébergement Cloudflare** : `workers_dev: false` et `preview_urls: false` au commit de bascule ; `INDEXABLE` est déjà vrai.
+18. **Version imprimable de la fiche école** : sans le budget de la commune, pour tenir le poids de la fiche (le budget reste sur la page web).
+19. **Garde-fou du poids des pages** : à chaque build, médiane, 95e centile et maximum (avec le fichier) des fiches et des pages commune ; le build échoue au-delà de 150 000 octets pour une fiche ou une page commune.
+20. **RPI** : l'en-tête de la fiche d'une école ouverte indique « Regroupement pédagogique intercommunal dispersé » ou « … concentré » d'après l'Annuaire (`rpi_disperse`, `rpi_concentre`) ; les autres écoles du regroupement ne sont pas nommées (l'Annuaire ne les relie pas).
 
 ## 9. Laissé au builder
 
