@@ -1,7 +1,9 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import type { EntreeIndex } from "@obs/shared/donnees";
 import { estEcole, LIBELLES_BUDGET } from "@obs/shared/libelles";
-import { doc, page, siteTest, texte } from "./site.ts";
+import { readdirSync } from "node:fs";
+import { join } from "node:path";
+import { DIST_TEST, doc, page, siteTest, texte } from "./site.ts";
 
 beforeAll(async () => {
   await siteTest();
@@ -85,12 +87,20 @@ describe("accueil et recherche", () => {
     expect([...d.querySelectorAll("script[src]")].map((s) => s.getAttribute("src"))).toContain("/js/recherche.js");
   });
 
-  test("accueil : communes avec page intégrées pour la recherche", () => {
-    const d = doc("index.html");
-    const json = d.querySelector("script#communes")!.textContent!;
+  test("recherche-communes.json : toutes les communes qui ont une page (second degré ou écoles), et elles seules", () => {
+    const json = page("recherche-communes.json");
     const communes = JSON.parse(json) as { i: string; l: string; d: string }[];
     expect(communes).toContainEqual({ i: "44109", l: "Nantes", d: "44" });
+    // communes des écoles seulement : une école ouverte (Saint-Aubin), des écoles fermées (Les Sables, Val-de-l'Erdre)
+    expect(communes).toContainEqual({ i: "44150", l: "Saint-Aubin", d: "44" });
+    expect(communes).toContainEqual(expect.objectContaining({ i: "44888", d: "44" }));
+    expect(communes).toContainEqual({ i: "44903", l: "Val-de-l'Erdre", d: "44" });
+    expect(communes.map((c) => c.i).sort()).toEqual(readdirSync(join(DIST_TEST, "commune")).sort());
     expect(json).not.toContain("2A004");
+  });
+
+  test("accueil : la liste des communes n'est plus intégrée à la page (chargée avec l'index)", () => {
+    expect(doc("index.html").querySelector("script#communes")).toBeNull();
   });
 
   test("recherche.json : clés courtes", () => {

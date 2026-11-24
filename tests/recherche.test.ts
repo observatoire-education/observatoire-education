@@ -3,13 +3,16 @@ import { parseHTML } from "linkedom";
 
 const SCRIPT = await Bun.file(new URL("../site/public/js/recherche.js", import.meta.url)).text();
 
-/** Exécute le vrai recherche.js dans un document linkedom, avec un index fourni. */
+/** Exécute le vrai recherche.js dans un document linkedom, avec un index et une liste de communes servis par `fetch`. */
 async function rechercher(index: unknown[], saisie: string, deps: unknown[] = [], communes: unknown[] = []) {
   const { document } = parseHTML(`<!doctype html><html><body>
     <input id="q"><div id="res"></div>
-    <script type="application/json" id="departements">${JSON.stringify(deps)}</script>
-    <script type="application/json" id="communes">${JSON.stringify(communes)}</script></body></html>`);
-  const fetchFaux = async () => ({ json: async () => structuredClone(index) });
+    <script type="application/json" id="departements">${JSON.stringify(deps)}</script></body></html>`);
+  const servis: Record<string, unknown[]> = { "/recherche.json": index, "/recherche-communes.json": communes };
+  const fetchFaux = async (url: string) => {
+    if (!(url in servis)) throw new Error(`adresse inattendue : ${url}`);
+    return { json: async () => structuredClone(servis[url]) };
+  };
   new Function("document", "location", "fetch", "URLSearchParams", SCRIPT)(
     document, { search: "", href: "" }, fetchFaux, URLSearchParams,
   );

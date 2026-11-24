@@ -1,11 +1,11 @@
-// Recherche de l'accueil : index chargé au premier focus (/recherche.json), insensible aux accents et à la casse,
-// sur le nom, la commune, l'UAI et le département. Établissements (au plus 20), communes (au plus 20) et départements.
+// Recherche de l'accueil : index et communes chargés au premier focus (/recherche.json, /recherche-communes.json),
+// insensibles aux accents et à la casse, sur le nom, la commune, l'UAI et le département. Établissements (au plus 20), communes (au plus 20) et départements.
 (function () {
   var q = document.getElementById("q"), res = document.getElementById("res");
   if (!q || !res) return;
   var deps = JSON.parse((document.getElementById("departements") || {}).textContent || "[]");
   var regions = JSON.parse((document.getElementById("regions") || {}).textContent || "[]");
-  var communes = JSON.parse((document.getElementById("communes") || {}).textContent || "[]");
+  var communes = [];
   var nomDep = {}; deps.forEach(function (d) { nomDep[d.d] = d.l; });
   var familles = { college: "Collège", legt: "Lycée GT", lpo: "Lycée polyvalent", lp: "Lycée pro", erea: "EREA", maternelle: "École maternelle", elementaire: "École élémentaire", primaire: "École primaire" };
   var index = null, chargement = null;
@@ -15,8 +15,11 @@
   var chemin = function (s) { return encodeURIComponent(String(s)); };
 
   function charger() {
-    chargement = chargement || fetch("/recherche.json").then(function (r) { return r.json(); }).then(function (x) {
-      index = x.map(function (e) { e.k = norm(e.n + " " + e.c + " " + e.u + " " + e.d + " " + (nomDep[e.d] || "")); return e; });
+    var json = function (url) { return fetch(url).then(function (r) { return r.json(); }); };
+    // Communes qui ont une page (second degré ou écoles), hors de l'accueil pour ne pas l'alourdir.
+    chargement = chargement || Promise.all([json("/recherche.json"), json("/recherche-communes.json")]).then(function (x) {
+      communes = x[1];
+      index = x[0].map(function (e) { e.k = norm(e.n + " " + e.c + " " + e.u + " " + e.d + " " + (nomDep[e.d] || "")); return e; });
       lancer();
     });
     return chargement;

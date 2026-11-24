@@ -14,8 +14,12 @@ export interface Limites {
  */
 export const LIMITES: Limites = { fichiers: 95_000, octetsParFichier: 25 * 1024 * 1024 };
 
-/** Poids maximal (brut) de recherche.json, chargé au premier focus de la recherche (Cloudflare le sert compressé). Au-delà : découper l'index par département. */
+/**
+ * Poids maximal (brut) de recherche.json et recherche-communes.json réunis, chargés ensemble au premier focus de la
+ * recherche (Cloudflare les sert compressés). Au-delà : découper l'index par département.
+ */
 export const OCTETS_RECHERCHE_MAX = 10_000_000;
+const FICHIERS_RECHERCHE = ["recherche.json", "recherche-communes.json"];
 
 /** Poids maximal (brut) d'une fiche (`etablissement/*\/index.html`) ou d'une page commune (`commune/*\/index.html`). */
 export const OCTETS_PAGE_MAX = 150_000;
@@ -85,13 +89,14 @@ export function verifierDist(dossier: string, limites: Limites = LIMITES): { oct
         octets += s.size;
         fichiers++;
         if (s.size > limites.octetsParFichier) tropGros.push(`${p} (${s.size} octets)`);
-        if (p === join(dossier, "recherche.json") && s.size > OCTETS_RECHERCHE_MAX) {
-          throw new Error(`${p} pèse ${s.size} octets, au-delà de ${OCTETS_RECHERCHE_MAX} octets : l'index de recherche est trop lourd pour être chargé par la recherche`);
-        }
       }
     }
   };
   parcourir(dossier);
+  const recherche = FICHIERS_RECHERCHE.map((f) => join(dossier, f)).filter((p) => existsSync(p)).reduce((a, p) => a + statSync(p).size, 0);
+  if (recherche > OCTETS_RECHERCHE_MAX) {
+    throw new Error(`${FICHIERS_RECHERCHE.join(" et ")} pèsent ${recherche} octets, au-delà de ${OCTETS_RECHERCHE_MAX} octets : l'index de recherche est trop lourd pour être chargé par la recherche`);
+  }
   if (tropGros.length > 0) {
     throw new Error(
       `dist/ contient des fichiers de plus de ${limites.octetsParFichier} octets : ${tropGros.join(", ")} (voir la marge R2, spec phase Écoles 6.9)`,

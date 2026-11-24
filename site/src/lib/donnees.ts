@@ -34,6 +34,21 @@ export const academiesDisponibles = (): string[] => codes("academies");
 let communes: Set<string> | undefined;
 /** Communes ayant une page (au moins SEUIL_COMMUNE collèges et lycées, ou une école depuis 2012 ; décidé par le pipeline). */
 export const communesDisponibles = (): Set<string> => (communes ??= new Set(codes("communes")));
+/**
+ * Communes de la recherche : toutes celles qui ont une page, second degré (`communes` du département) ou écoles
+ * (`communesEcoles`), triées par code. `i` code, `l` nom, `d` département.
+ */
+export function communesRecherche(): { i: string; l: string; d: string }[] {
+  const r = new Map<string, { i: string; l: string; d: string }>();
+  for (const dep of departementsDisponibles()) {
+    const t = lireTerritoire({ niveau: "departement", code: dep });
+    for (const c of [...t.communes, ...(t.communesEcoles ?? [])]) {
+      if (communesDisponibles().has(c.code) && !r.has(c.code)) r.set(c.code, { i: c.code, l: c.libelle, d: dep });
+    }
+  }
+  return [...r.values()].sort((a, b) => a.i.localeCompare(b.i));
+}
+
 let avecCsv: Set<string> | undefined;
 /**
  * Communes qui ont leur `etablissements.csv` : celles retenues pour le second degré (au moins SEUIL_COMMUNE collèges
