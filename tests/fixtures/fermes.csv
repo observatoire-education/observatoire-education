@@ -1,1 +1,5 @@
 numero_uai,appellation_officielle,secteur_public_prive_libe,date_ouverture,date_fermeture,adresse_uai,code_postal_uai,code_commune,libelle_commune,code_departement,libelle_departement,code_academie,libelle_academie,nature_uai_libe,latitude,longitude
+0440020P,Collège Ancien Port,Public,1965-09-01,2019-08-31,3 quai du Port,44000,44109,Nantes,044,Loire-Atlantique,17,Nantes,COLLEGE,47.21,-1.56
+0440021R,Lycée professionnel des Chantiers,Public,1950-09-01,2014-08-31,5 rue des Chantiers,44000,44109,Nantes,044,Loire-Atlantique,17,Nantes,LYCEE PROFESSIONNEL,47.2,-1.57
+0440022S,Collège Oublié,Public,1970-09-01,2018-08-31,7 rue Oubliée,44000,44109,Nantes,044,Loire-Atlantique,17,Nantes,COLLEGE,47.22,-1.58
+0440099Z,Lycée Disparu,Public,1960-09-01,2020-08-31,1 rue Disparue,44000,44109,Nantes,044,Loire-Atlantique,17,Nantes,LYCEE D ENSEIGNEMENT GENERAL,47.2,-1.55

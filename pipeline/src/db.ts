@@ -25,7 +25,7 @@ export const DOSSIER_SQL = join(import.meta.dir, "..", "sql");
  * (quand les colonnes viennent de définitions TypeScript). Ordre du plan : 01, 03, 02, 04.
  */
 export type Etape = string | ((db: Db) => string | Promise<string>);
-export const ETAPES: Etape[] = ["01_normaliser.sql", sqlEleves, sqlIndicateurs, etapeBudget];
+export const ETAPES: Etape[] = ["01_normaliser.sql", "05_fermes.sql", "03_ips_personnels.sql", sqlEleves, sqlIndicateurs, etapeBudget];
 
 async function executerScript(c: DuckDBConnection, sql: string): Promise<void> {
   const instructions = await c.extractStatements(sql);

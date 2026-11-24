@@ -124,6 +124,27 @@ async function identitesActives(db: Db): Promise<Map<string, Identite>> {
   );
 }
 
+/** Fiches historiques : établissements fermés cités par une source ; l'identité vient de la liste des fermés. */
+async function identitesHistoriques(db: Db): Promise<Map<string, { identite: Identite; fermeLe: string }>> {
+  const lignes = await db.sql<LigneIdentite & { ferme: string }>(
+    "select h.*, date_fermeture::varchar as ferme from historiques h order by uai",
+  );
+  return new Map(
+    lignes.map((l) => [
+      l.uai,
+      {
+        fermeLe: l.ferme,
+        identite: {
+          nom: l.nom, famille: l.famille, secteur: l.secteur, contrat: null, adresse: l.adresse,
+          codePostal: l.code_postal, commune: l.commune, codeCommune: l.code_commune, dep: l.dep, depLibelle: l.dep_libelle,
+          aca: l.aca, acaLibelle: l.aca_libelle, ep: null, segpa: false, ulis: false, internat: false,
+          lat: l.lat, lon: l.lon, autresSites: [],
+        },
+      },
+    ]),
+  );
+}
+
 /** Les sources effectivement utilisées par la fiche, dans l'ordre du registre, avec le millésime le plus récent. */
 function sourcesUtilisees(
   manifest: Manifest, indicateurs: Indicateur[], repartitions: Repartition[], eleves: Fiche["eleves"],
@@ -179,6 +200,10 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
   const voisins = await calculerVoisins(db, 6, 30, indicateurs);
   const actives = await identitesActives(db);
   const disparus = await db.sql<{ uai: string }>("select uai from disparus order by uai");
+  const historiques = await identitesHistoriques(db);
+  const fermetures = new Map(
+    (await db.sql<{ uai: string; ferme: string }>("select uai, date_fermeture::varchar as ferme from fermes")).map((r) => [r.uai, r.ferme]),
+  );
   const aujourdhui = maintenant.toISOString().slice(0, 10);
 
   const fiche = (uai: string, identite: Identite, disparuLe: string | null): Fiche => {
@@ -186,7 +211,7 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
     const rep = repartitions.get(uai) ?? [];
     const el = eleves.get(uai) ?? null;
     return {
-      uai, ...identite, disparuLe,
+      uai, ...identite, disparuLe, fermeLe: fermetures.get(uai) ?? null,
       indicateurs: ind, repartitions: rep, eleves: el,
       budget: { france: [] }, // remplacé plus bas, quand toutes les fiches (disparues comprises) sont connues
       voisins: disparuLe === null ? (voisins.get(uai) ?? null) : null,
@@ -196,6 +221,11 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
 
   const fiches = [...actives].map(([uai, identite]) => fiche(uai, identite, null));
   for (const { uai } of disparus) {
+    const historique = historiques.get(uai);
+    if (historique) {
+      fiches.push(fiche(uai, historique.identite, historique.fermeLe));
+      continue;
+    }
     const entree = registre[uai];
     if (!entree) continue;
     fiches.push(fiche(uai, entree.identite, entree.disparuLe ?? aujourdhui));

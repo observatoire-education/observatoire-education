@@ -198,6 +198,6 @@ describe("tables canoniques", () => {
   });
 
   test("hors périmètre absent des tables statistiques", async () => {
-    expect(await db.sql("select count(*)::int as n from ips where uai not in (select uai from etablissements)")).toEqual([{ n: 0 }]);
+    expect(await db.sql("select count(*)::int as n from ips where uai not in (select uai from fiches_etab)")).toEqual([{ n: 0 }]);
   });
 });

@@ -67,8 +67,8 @@ describe("voisinage", () => {
 describe("fiches", () => {
   test("une fiche par établissement du périmètre, triées par UAI", () => {
     expect(fiches.map((f) => f.uai)).toEqual([
-      "0440001A", "0440002B", "0440003C", "0440005E", "0440006F", "0440007G", "0750701C", "0751501A", "0751502B",
-      "6200001F", "9711023K", "9750001C", "9770001G",
+      "0440001A", "0440002B", "0440003C", "0440005E", "0440006F", "0440007G", "0440020P", "0440021R", "0440099Z",
+      "0750701C", "0751501A", "0751502B", "6200001F", "9711023K", "9750001C", "9770001G",
     ]);
   });
 
@@ -106,6 +106,52 @@ describe("fiches", () => {
   });
 });
 
+describe("établissements fermés", () => {
+  test("fermé cité par une source historique : une fiche, disparuLe = fermeLe = date officielle", () => {
+    expect(fiche("0440020P")).toMatchObject({
+      nom: "Collège Ancien Port", famille: "college", secteur: "public", contrat: null, ep: null, segpa: false,
+      ulis: false, internat: false, autresSites: [], dep: "44", depLibelle: "Loire-Atlantique", aca: "17",
+      fermeLe: "2019-08-31", disparuLe: "2019-08-31", voisins: null,
+    });
+  });
+
+  test("fermé que rien ne cite : pas de fiche", () => {
+    expect(fiches.some((f) => f.uai === "0440022S")).toBe(false);
+  });
+
+  test("LP fermé en 2014 cité par l'IVAL seul : une fiche", () => {
+    expect(fiche("0440021R")).toMatchObject({ famille: "lp", fermeLe: "2014-08-31", disparuLe: "2014-08-31" });
+  });
+
+  test("fermé déjà au registre : fermeLe = date officielle, identité du registre gardée", async () => {
+    const registre: Registre = {
+      "0440099Z": { premiere: "2026-01-01", identite: identiteTest("Collège Disparu"), disparuLe: "2026-10-01" },
+    };
+    const toutes = await assemblerFiches(await dbAvecRegistre(registre), manifest, registre, maintenant);
+    expect(toutes.filter((f) => f.uai === "0440099Z")).toHaveLength(1);
+    expect(toutes.find((f) => f.uai === "0440099Z")).toMatchObject({
+      nom: "Collège Disparu", fermeLe: "2020-08-31", disparuLe: "2026-10-01",
+    });
+  });
+
+  test("fiche active : fermeLe null", () => {
+    expect(fiche("0440001A").fermeLe).toBeNull();
+  });
+
+  test("les fiches historiques entrent au registre", () => {
+    const r = mettreAJourRegistre({}, fiches, "2026-11-23");
+    expect(r["0440020P"]).toMatchObject({ premiere: "2026-11-23", disparuLe: "2019-08-31", identite: { nom: "Collège Ancien Port" } });
+    expect(r["0440021R"]!.disparuLe).toBe("2014-08-31");
+    expect(r["0440022S"]).toBeUndefined();
+  });
+
+  test("les historiques ne sont ni voisins ni comptés dans les établissements actifs", async () => {
+    const tous = await calculerVoisins(db);
+    expect(tous.has("0440020P")).toBe(false);
+    for (const liste of tous.values()) expect(liste?.map((x) => x.uai) ?? []).not.toContain("0440020P");
+  });
+});
+
 describe("registre des pages", () => {
   test("page conservée après disparition, avec ses dernières données", async () => {
     const registre: Registre = {
@@ -140,7 +186,7 @@ describe("registre des pages", () => {
     expect(apres["0440001A"]).toEqual({ premiere: "2026-01-01", identite: expect.objectContaining({ nom: "Collège Jules-Verne" }) });
     expect(apres["0440002B"]!.premiere).toBe("2026-11-23");
     expect(apres["0440099Z"]).toMatchObject({ disparuLe: "2026-11-23", identite: { nom: "Collège Disparu" } });
-    expect(Object.keys(apres)).toHaveLength(14);
+    expect(Object.keys(apres)).toHaveLength(16); // + 2 fiches historiques
   });
 
   test("lecture et écriture : une ligne par UAI, triée", async () => {
@@ -149,7 +195,7 @@ describe("registre des pages", () => {
     const r = mettreAJourRegistre({}, fiches, "2026-11-23");
     ecrireRegistre(chemin, r);
     const texte = await Bun.file(chemin).text();
-    expect(texte.split("\n")).toHaveLength(13 + 3); // accolades, 13 entrées, fin de fichier
+    expect(texte.split("\n")).toHaveLength(16 + 3); // accolades, 16 entrées, fin de fichier
     expect(texte.indexOf("0440001A")).toBeLessThan(texte.indexOf("6200001F"));
     expect(lireRegistre(chemin)).toEqual(r);
   });
@@ -164,7 +210,7 @@ describe("export des données du site", () => {
     expect(f.nom).toBe("Collège Jules-Verne");
 
     const index: EntreeIndex[] = await Bun.file(join(sortie, "index.json")).json();
-    expect(index).toHaveLength(13);
+    expect(index).toHaveLength(16);
     expect(index[0]).toEqual({ u: "0440001A", n: "Collège Jules-Verne", c: "Nantes", d: "44", f: "college", s: "public" });
 
     const dep: DonneesTerritoire = await Bun.file(join(sortie, "departements", "44.json")).json();

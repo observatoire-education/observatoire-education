@@ -30,7 +30,7 @@ function fiche(uai: string, o: {
 }): Fiche {
   return {
     ...identiteTest(uai), uai, dep: o.dep ?? "44", codeCommune: o.codeCommune ?? "44109", famille: o.famille ?? "college",
-    secteur: o.secteur ?? "public", disparuLe: o.disparuLe ?? null,
+    secteur: o.secteur ?? "public", disparuLe: o.disparuLe ?? null, fermeLe: null,
     indicateurs: [{ code: "eleves", mesure: { valeur: null, statut: "ok", source: null, rentree: null }, comparaisons: [], historique: o.eleves }],
     repartitions: [], eleves: null, voisins: null, sources: [], budget: { france: [] },
   } as unknown as Fiche;

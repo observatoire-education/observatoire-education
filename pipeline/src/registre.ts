@@ -54,6 +54,9 @@ export function mettreAJourRegistre(avant: Registre, fiches: Fiche[], date: stri
       apres[f.uai] = { premiere: precedent?.premiere ?? date, identite: identiteDe(f) };
     } else if (precedent) {
       apres[f.uai] = { ...precedent, disparuLe: f.disparuLe };
+    } else {
+      // fiche historique (établissement fermé cité par une source) : son URL devient permanente
+      apres[f.uai] = { premiere: date, identite: identiteDe(f), disparuLe: f.disparuLe };
     }
   }
   return apres;

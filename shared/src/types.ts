@@ -150,6 +150,8 @@ export interface Fiche extends Identite {
   uai: string;
   /** Date ISO de la première collecte où l'établissement n'apparaissait plus dans le périmètre. */
   disparuLe: string | null;
+  /** Date ISO de fermeture officielle (établissements fermés des sources DEPP), null si l'UAI n'y figure pas. */
+  fermeLe: string | null;
   indicateurs: Indicateur[];
   repartitions: Repartition[];
   eleves: Eleves | null;
