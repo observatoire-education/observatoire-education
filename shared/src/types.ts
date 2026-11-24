@@ -111,6 +111,15 @@ export interface Voisin {
   ips: Mesure;
 }
 
+/** Correction d'un millésime par le producteur : URL des deux versions archivées. */
+export interface Correction {
+  millesime: number;
+  /** Date ISO de collecte de la version corrigée. */
+  le: string;
+  precedente: string;
+  corrigee: string;
+}
+
 export interface SourceRef {
   id: SourceId;
   producteur: string;
@@ -120,6 +129,8 @@ export interface SourceRef {
   /** Horodatage ISO 8601 de la collecte. */
   collecteLe: string;
   brutUrl: string;
+  /** Corrections de millésimes affichés par la page, de la plus ancienne à la plus récente. */
+  corrections?: Correction[];
 }
 
 /** Identité d'un établissement (annuaire, site principal). Conservée au registre des pages. */

@@ -1,7 +1,7 @@
 // Formatage à la française : virgule décimale, espace fine insécable (U+202F)
 // pour les milliers et avant « % », signe moins typographique (U+2212).
 import { LIBELLES_STATUT } from "./libelles.ts";
-import type { SourceRef, Statut } from "./types.ts";
+import type { SourceId, SourceRef, Statut } from "./types.ts";
 
 const FINE = " ";
 const MOINS = "−";
@@ -79,4 +79,10 @@ export function ligneSource(s: SourceRef): string {
 export function absence(statut: Statut): string {
   if (statut === "ok") throw new Error("absence() appelée sur une mesure présente");
   return LIBELLES_STATUT[statut];
+}
+
+/** Millésime tel que la source l'affiche : rentrée « 2024-2025 », session « 2025 », exercice ou année « 2024 ». */
+export function libelleMillesime(source: SourceId, m: number): string {
+  if (source === "ivac" || source.startsWith("ival_") || source.startsWith("budget_") || source === "segregation") return String(m);
+  return `${m}-${m + 1}`;
 }

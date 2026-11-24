@@ -3,7 +3,7 @@
 // d'établissement, car les moyennes n'ont de sens qu'à type égal. Les blocs affichés dépendent du niveau
 // (tableau 6.1 de la spécification de la phase 2).
 import type { DonneesTerritoire, IpsMoyens, NiveauTerritoire } from "@obs/shared/donnees";
-import { date, entier, nombre, part } from "@obs/shared/format";
+import { date, entier, libelleMillesime, nombre, part } from "@obs/shared/format";
 import { academie, type CodeIndicateur, FAMILLES_PLURIEL, INDICATEURS, LIBELLES, LIBELLES_BUDGET } from "@obs/shared/libelles";
 import { cheminTerritoire, communeDeRattachement, LIBELLES_PLM } from "@obs/shared/territoires";
 import type { Comparaison, Famille, Niveau, Secteur } from "@obs/shared/types";
@@ -294,6 +294,9 @@ const badges = [
     <h2>Sources</h2>
     <div class="card" style="font-size:13px"><ul style="margin:0;padding-left:18px;line-height:1.9">
       {sources.map((s) => <li>{s.producteur}, <a href={s.pageUrl}>{s.titre}</a> · collecté le {date(s.actuelle!.collecteLe)} · <a href={s.actuelle!.url}>donnée brute</a></li>)}
+      {(d.corrections ?? []).map((c) => (
+        <li>{lireSources()[c.source]?.titre} · {LIBELLES.correction(libelleMillesime(c.source, c.millesime), c.le)} : <a href={c.precedente}>{LIBELLES.versionPrecedente}</a> · <a href={c.corrigee}>{LIBELLES.versionCorrigee}</a></li>
+      ))}
     </ul></div>
   </section>
   <script is:inline src="/js/liste.js" defer></script>

@@ -1,6 +1,7 @@
 ---
 // Sources de la page : producteur, titre, millésime, date de collecte, lien vers la donnée brute archivée.
-import { date } from "@obs/shared/format";
+import { date, libelleMillesime } from "@obs/shared/format";
+import { LIBELLES } from "@obs/shared/libelles";
 import type { Fiche } from "@obs/shared/types";
 import { anneeScolaire } from "../lib/affichage";
 import { lienPermanent } from "../lib/config";
@@ -18,6 +19,9 @@ const lien = lienPermanent(`/etablissement/${f.uai}/`);
           {s.producteur}, <a href={s.pageUrl}>{s.titre}</a>
           {s.rentree !== null && <> · rentrée {anneeScolaire(s.rentree)}</>}
           {" · "}collecté le {date(s.collecteLe)} · <a href={s.brutUrl}>donnée brute</a>
+          {s.corrections?.map((c) => (
+            <div>{LIBELLES.correction(libelleMillesime(s.id, c.millesime), c.le)} : <a href={c.precedente}>{LIBELLES.versionPrecedente}</a> · <a href={c.corrigee}>{LIBELLES.versionCorrigee}</a></div>
+          ))}
         </li>
       ))}
     </ul>

@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { Manifest } from "./archive.ts";
 import { calculerBudgets, statutsDernierExercice } from "./budget-eleves.ts";
 import { assurerCache, collecter } from "./collect.ts";
+import { lireCorrections } from "./corrections.ts";
 import { ouvrir } from "./db.ts";
 import { type Depot, DepotGithub, DepotLocal } from "./depot.ts";
 import { assemblerFiches, exporter, type RapportSuccesseurs } from "./fiches.ts";
@@ -66,7 +67,8 @@ async function data(): Promise<void> {
   // Les dates du registre sont celles des données (collecte de l'annuaire), pas celle du build.
   const dateDonnees = new Date(manifest.derniere("annuaire")!.collecteLe);
   const successeurs: RapportSuccesseurs = { regle1: 0, regle2: 0, manuels: 0, ambigus: 0, sansFiche: 0 };
-  const fiches = await assemblerFiches(db, manifest, registre, dateDonnees, { rapport: successeurs });
+  const corrections = lireCorrections(CHEMINS.corrections);
+  const fiches = await assemblerFiches(db, manifest, registre, dateDonnees, { rapport: successeurs, corrections });
   // Contrôle de la moyenne pondérée (pages communes) : appliquée aux départements, elle doit retrouver la DEPP.
   // En cas d'échec, rien n'est écrit ni publié.
   // n = 0 (jointure IPS cassée, table vide) est aussi un échec.
@@ -81,7 +83,7 @@ async function data(): Promise<void> {
   }
   console.log(`pondération des IPS : ${chiffres}`);
   ecrireRegistre(CHEMINS.registre, mettreAJourRegistre(registre, fiches, dateDonnees.toISOString().slice(0, 10)));
-  await exporter(fiches, db, manifest, CHEMINS.donnees);
+  await exporter(fiches, db, manifest, CHEMINS.donnees, corrections);
 
   const disparues = fiches.filter((f) => f.disparuLe !== null).length;
   console.log(`${fiches.length - disparues} fiches actives, ${disparues} page(s) conservée(s) après disparition`);

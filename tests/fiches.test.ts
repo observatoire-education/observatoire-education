@@ -5,7 +5,7 @@ import { join } from "node:path";
 import type { DonneesFrance, DonneesSource, DonneesTerritoire, EntreeIndex } from "@obs/shared/donnees";
 import type { Fiche } from "@obs/shared/types";
 import { budgetDeFiche } from "../pipeline/src/budget-eleves.ts";
-import { assemblerFiches, calculerVoisins, distanceKm, exporter } from "../pipeline/src/fiches.ts";
+import { assemblerFiches, calculerVoisins, distanceKm, exporter, millesimesAffiches } from "../pipeline/src/fiches.ts";
 import { exporterTerritoires } from "../pipeline/src/territoires.ts";
 import { ecrireRegistre, lireRegistre, mettreAJourRegistre, type Registre } from "../pipeline/src/registre.ts";
 import type { BudgetCollectivite } from "@obs/shared/donnees";
@@ -464,4 +464,64 @@ describe("budget des fiches et des territoires", () => {
     ]);
   });
 
+
+  describe("corrections de millésime", () => {
+    const lire = async <T>(sortie: string, ...chemin: string[]): Promise<T> => Bun.file(join(sortie, ...chemin)).json();
+    const urlPrec = "https://github.com/org/depot/releases/download/archives-ips_colleges-2025/ips_colleges.parquet";
+    const manifestCorrige = async () => {
+      const m = manifestTest(await temporaire());
+      m.ajouter("ips_colleges", {
+        sha256: "a".repeat(64), tag: "archives-ips_colleges-2025", fichier: "ips_colleges.parquet", url: urlPrec,
+        modified: "2025-11-01T00:00:00Z", collecteLe: "2025-11-22T02:17:00Z", lignes: 10,
+      });
+      m.rendreActuelle("ips_colleges", "ips_colleges".padEnd(64, "0"));
+      return m;
+    };
+    const entree = (millesime: number, cles: string[]) => ({
+      source: "ips_colleges" as const, millesime, cles, precedente: "a".repeat(64), corrigee: "ips_colleges".padEnd(64, "0"),
+      le: "2026-11-22T02:17:00Z",
+    });
+
+    test("millesimesAffiches : rentrées des séries, répartitions, élèves et exercices", () => {
+      const f = fiche("0440001A");
+      const m = millesimesAffiches(f);
+      expect(m.get("ips_colleges")?.has(f.indicateurs.find((i) => i.code === "ips")!.mesure.rentree!)).toBe(true);
+    });
+
+    test("correction de l'IPS 2024 d'un collège : sur sa fiche seulement", async () => {
+      const m = await manifestCorrige();
+      const toutes = await assemblerFiches(db, m, {}, maintenant, { corrections: [entree(2024, ["0440001A"])] });
+      const sur = toutes.find((f) => f.uai === "0440001A")!.sources.find((s) => s.id === "ips_colleges")!;
+      expect(sur.corrections).toEqual([
+        { millesime: 2024, le: "2026-11-22T02:17:00Z", precedente: urlPrec, corrigee: sur.brutUrl },
+      ]);
+      expect(toutes.filter((f) => f.uai !== "0440001A").flatMap((f) => f.sources).some((s) => s.corrections)).toBe(false);
+    });
+
+    test("correction d'un millésime que la fiche n'affiche pas : absente", async () => {
+      const m = await manifestCorrige();
+      const toutes = await assemblerFiches(db, m, {}, maintenant, { corrections: [entree(2015, ["0440001A"])] });
+      expect(toutes.flatMap((f) => f.sources).some((s) => s.corrections)).toBe(false);
+    });
+
+    test("correction de ségrégation : page du département seulement", async () => {
+      const m = await manifestCorrige();
+      m.ajouter("segregation", {
+        sha256: "b".repeat(64), tag: "t", fichier: "segregation.parquet", url: "https://exemple.org/seg-avant.parquet",
+        modified: "2025-11-01T00:00:00Z", collecteLe: "2025-11-22T02:17:00Z", lignes: 1,
+      });
+      m.rendreActuelle("segregation", "segregation".padEnd(64, "0"));
+      const sortie = join(await temporaire(), "data");
+      const e = { source: "segregation" as const, millesime: 2024, cles: ["44"], precedente: "b".repeat(64), corrigee: "segregation".padEnd(64, "0"), le: "2026-11-22T02:17:00Z" };
+      const actives = fiches.filter((f) => f.disparuLe === null);
+      await exporterTerritoires(actives, db, sortie, 2025, undefined, [e], m);
+      const d44: DonneesTerritoire = await lire(sortie, "departements", "44.json");
+      expect(d44.corrections).toEqual([
+        { source: "segregation", millesime: 2024, le: e.le, precedente: "https://exemple.org/seg-avant.parquet", corrigee: expect.stringContaining("segregation.parquet") },
+      ]);
+      const d75: DonneesTerritoire = await lire(sortie, "departements", "75.json");
+      expect(d75.corrections).toBeUndefined();
+      expect(((await lire(sortie, "france.json")) as DonneesFrance).corrections).toBeUndefined();
+    });
+  });
 });

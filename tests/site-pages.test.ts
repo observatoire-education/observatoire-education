@@ -216,3 +216,16 @@ describe("sources, méthode, 404, sitemap", () => {
     expect(s).toContain("<lastmod>2026-11-22</lastmod>");
   });
 });
+
+describe("corrections de millésime", () => {
+  test("bloc Sources : « Millésime 2024-2025 corrigé par le producteur le … », deux liens", () => {
+    const d = doc("etablissement/0440001A");
+    const li = [...d.querySelectorAll("#sources li div")].find((x) => x.textContent!.includes("Millésime 2024-2025 corrigé"))!;
+    expect(li).toBeDefined();
+    expect(li.textContent).toContain("corrigé par le producteur le 22/11/2026");
+    expect(li.textContent).toContain("version précédente");
+    expect(li.textContent).toContain("version corrigée");
+    expect(li.querySelectorAll("a[href*='/releases/download/']")).toHaveLength(2);
+    expect(texte("etablissement/0440002B")).not.toContain("corrigé par le producteur");
+  });
+});

@@ -21,6 +21,9 @@ export const LIBELLES = {
     return `Cet établissement n'apparaît plus dans l'Annuaire de l'éducation depuis le ${j}/${m}/${a}.`;
   },
   ferme: (isoDate: string): string => `Fermé le ${jjmmaaaa(isoDate)}`,
+  correction: (millesime: string, isoDate: string): string => `Millésime ${millesime} corrigé par le producteur le ${jjmmaaaa(isoDate)}`,
+  versionPrecedente: "version précédente",
+  versionCorrigee: "version corrigée",
   successeur: "Successeur : ",
   succedeA: (nom: string, uai: string, isoDate: string | null): string =>
     `Succède à ${nom} (${uai})${isoDate ? `, fermé le ${jjmmaaaa(isoDate)}` : ""}`,

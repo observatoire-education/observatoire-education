@@ -1,7 +1,7 @@
 // Format des fichiers de données produits par le pipeline (site/data/) et lus par le site.
 import type { IdCollectivite, NiveauBudget } from "./collectivites.ts";
 import type { CodeIndicateur } from "./libelles.ts";
-import type { Comparaison, Famille, Secteur, SourceId, Statut } from "./types.ts";
+import type { Comparaison, Correction, Famille, Secteur, SourceId, Statut } from "./types.ts";
 
 /** Une entrée de `index.json` (et de la recherche) : clés courtes. */
 export interface EntreeIndex {
@@ -116,6 +116,8 @@ export interface DonneesTerritoire {
   budget: BudgetTerritoire;
   /** Page région : académies de la région ; sinon absent. */
   academies?: RefTerritoire[];
+  /** Corrections de millésime des données affichées sur la page (ségrégation du département, budgets) ; absent si aucune. */
+  corrections?: (Correction & { source: SourceId })[];
 }
 
 /** Données de la France : celles d'un territoire, plus les académies et leurs départements, les régions et la carte du budget. */

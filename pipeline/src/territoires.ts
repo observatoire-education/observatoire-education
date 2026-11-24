@@ -9,7 +9,9 @@ import { collectiviteDe, type NiveauBudget, REGIONS, regionDe } from "@obs/share
 import { CODES_INDICATEURS, INDICATEURS } from "@obs/shared/libelles";
 import { communeDeRattachement, LIBELLES_PLM, SEUIL_COMMUNE } from "@obs/shared/territoires";
 import type { Famille, Fiche, Indicateur, Mesure, Niveau, Secteur } from "@obs/shared/types";
+import type { Manifest } from "./archive.ts";
 import type { Budgets } from "./budget-eleves.ts";
+import { collectivitesCorrigees, type EntreeCorrection, resoudreCorrection } from "./corrections.ts";
 import type { Db } from "./db.ts";
 
 // --- Aides partagées avec fiches.ts ---
@@ -218,6 +220,7 @@ const BUDGETS_VIDES: Budgets = { collectivites: new Map(), france: [] };
  */
 export async function exporterTerritoires(
   actives: Fiche[], db: Db, sortie: string, rentree: number | null, budgets: Budgets = BUDGETS_VIDES,
+  corrections: EntreeCorrection[] = [], manifest?: Manifest,
 ): Promise<void> {
   for (const d of ["regions", "departements", "academies", "communes"]) await mkdir(join(sortie, d), { recursive: true });
   const ips = { dep: await ipsMoyens(db, "dep"), aca: await ipsMoyens(db, "aca"), nat: await ipsMoyens(db, "nat") };
@@ -310,6 +313,18 @@ export async function exporterTerritoires(
   const collectivitesTriees = (cles: Iterable<string>): BudgetCollectivite[] =>
     [...cles].sort((a, b) => (a.startsWith("colleges") === b.startsWith("colleges") ? a.localeCompare(b) : a.startsWith("colleges") ? -1 : 1))
       .map((c) => budgets.collectivites.get(c)!);
+  /** Corrections de ségrégation (clé = département) et de budget (collectivité montrée par la page) d'un territoire. */
+  const correctionsDe = (dep: string | null, collectivites: BudgetCollectivite[]): Pick<DonneesTerritoire, "corrections"> => {
+    if (corrections.length && !manifest) throw new Error("exporterTerritoires : le manifeste est nécessaire pour résoudre les corrections");
+    const ids = new Set<string>(collectivites.map((c) => c.id));
+    const trouvees = corrections
+      .filter((e) =>
+        e.source === "segregation" ? dep !== null && e.cles.includes(dep)
+          : e.source.startsWith("budget_") && [...collectivitesCorrigees(e)].some((id) => ids.has(id)))
+      .map((e) => ({ source: e.source, ...resoudreCorrection(manifest!, e) }))
+      .sort((a, b) => a.source.localeCompare(b.source) || a.le.localeCompare(b.le) || a.millesime - b.millesime);
+    return trouvees.length ? { corrections: trouvees } : {};
+  };
   const regionParent = (groupe: Fiche[]): RefTerritoire[] => {
     const r = regionDuGroupe(groupe);
     return r ? [refRegion(r)] : [];
@@ -338,6 +353,7 @@ export async function exporterTerritoires(
     const premier = groupe[0]!;
     const donnees: DonneesTerritoire = {
       budget: budgetDe(groupe, [dep]),
+      ...correctionsDe(dep, budgetDe(groupe, [dep]).collectivites),
       ref: refDepartement(premier), parents: [FRANCE, ...regionParent(groupe), refAcademie(premier)], rentree,
       familles: familles(groupe, (famille) => depp(ips.dep.get(`${famille}|${dep}`)), {
         liste: true, niveaux: ["departement", "academie", "france"],
@@ -353,6 +369,7 @@ export async function exporterTerritoires(
   for (const [aca, groupe] of parAcademie) {
     const donnees: DonneesTerritoire = {
       budget: budgetDe(groupe, depsDe(groupe)),
+      ...correctionsDe(null, budgetDe(groupe, depsDe(groupe)).collectivites),
       ref: refAcademie(groupe[0]!), parents: [FRANCE, ...regionParent(groupe)], rentree,
       familles: familles(groupe, (famille) => depp(ips.aca.get(`${famille}|${aca}`)), { liste: false, niveaux: ["academie", "france"] }),
       horsContrat: horsContrat((l) => l.aca === aca),
@@ -373,6 +390,7 @@ export async function exporterTerritoires(
     regions.push(ref);
     const donnees: DonneesTerritoire = {
       budget: budgetDe(groupe, region.deps),
+      ...correctionsDe(null, budgetDe(groupe, region.deps).collectivites),
       ref, parents: [FRANCE], rentree,
       familles: familles(groupe, (_, g) => calculee(g), { liste: false, niveaux: ["france"] }),
       horsContrat: horsContrat((l) => region.deps.includes(l.dep)),
@@ -410,6 +428,7 @@ export async function exporterTerritoires(
   };
   const france: DonneesFrance = {
     budget: { collectivites: collectivitesTriees(budgets.collectivites.keys()), france: budgets.france },
+    ...correctionsDe(null, collectivitesTriees(budgets.collectivites.keys())),
     ref: FRANCE, parents: [], rentree,
     familles: familles(actives, (famille) => depp(ips.nat.get(`${famille}|FR`)), { liste: false, niveaux: ["france"] }),
     horsContrat: horsContratLignes.length,

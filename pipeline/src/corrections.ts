@@ -3,7 +3,9 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import type { DuckDBConnection } from "@duckdb/node-api";
-import type { SourceId } from "@obs/shared/types";
+import type { Correction, SourceId } from "@obs/shared/types";
+import type { Manifest } from "./archive.ts";
+import { collectiviteDuBudget } from "./budget.ts";
 import { ident, lignes, litteral } from "./duck.ts";
 import type { Source } from "./sources.ts";
 
@@ -73,4 +75,30 @@ export function ajouterCorrections(chemin: string, e: EntreeCorrection[]): void 
   const tmp = `${chemin}.tmp`;
   writeFileSync(tmp, `${JSON.stringify([...toutes.values()].sort(comparer), null, 2)}\n`);
   renameSync(tmp, chemin);
+}
+
+/** URL permanente d'une version archivée, par empreinte. Une empreinte inconnue est une erreur : le manifeste est incohérent. */
+export function urlVersion(manifest: Manifest, source: SourceId, sha256: string): string {
+  const v = manifest.versions(source).find((x) => x.sha256 === sha256);
+  if (!v) throw new Error(`version archivée inconnue pour ${source} : ${sha256}`);
+  return v.url;
+}
+
+/** Une correction résolue en URL, pour l'affichage. */
+export function resoudreCorrection(manifest: Manifest, e: EntreeCorrection): Correction {
+  return {
+    millesime: e.millesime, le: e.le,
+    precedente: urlVersion(manifest, e.source, e.precedente), corrigee: urlVersion(manifest, e.source, e.corrigee),
+  };
+}
+
+/** Collectivités (id) touchées par une correction de budget : clés `categ|ndept|cregi|lbudg`. */
+export function collectivitesCorrigees(e: EntreeCorrection): Set<string> {
+  const ids = new Set<string>();
+  for (const cle of e.cles) {
+    const [categ = "", ndept = "", cregi = "", ...reste] = cle.split("|");
+    const id = collectiviteDuBudget({ categ, ndept: ndept || null, cregi: cregi || null, lbudg: reste.join("|") });
+    if (id) ids.add(id);
+  }
+  return ids;
 }

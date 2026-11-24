@@ -8,6 +8,7 @@ import type {
 import type { Manifest } from "./archive.ts";
 import type { Db } from "./db.ts";
 import { budgetDeFiche, calculerBudgets } from "./budget-eleves.ts";
+import { collectivitesCorrigees, type EntreeCorrection, resoudreCorrection } from "./corrections.ts";
 import { calculerEleves } from "./eleves.ts";
 import { calculerIndicateurs, calculerRepartitions } from "./indicateurs.ts";
 import type { Registre } from "./registre.ts";
@@ -172,8 +173,55 @@ function sourcesUtilisees(
     });
 }
 
+// --- Corrections de millésime ---
+
+/**
+ * Millésimes que la fiche affiche, par source : rentrées des séries et des mesures d'indicateurs, des répartitions
+ * et des élèves, exercices du budget. Seul endroit à étendre quand la fiche affiche un nouveau millésime.
+ */
+export function millesimesAffiches(f: Fiche): Map<SourceId, Set<number>> {
+  const affiches = new Map<SourceId, Set<number>>();
+  const noter = (source: SourceId | null, m: number | null) => {
+    if (!source || m === null) return;
+    const ens = affiches.get(source) ?? new Set<number>();
+    ens.add(m);
+    affiches.set(source, ens);
+  };
+  for (const i of f.indicateurs) {
+    if (i.mesure.statut === "ok") noter(i.mesure.source, i.mesure.rentree);
+    for (const [rentree] of i.historique) noter(i.mesure.source, rentree);
+  }
+  for (const r of f.repartitions) if (r.statut === "ok") noter(r.source, r.rentree);
+  for (const s of f.eleves?.source ?? []) noter(s, f.eleves!.rentree);
+  for (const ex of (f.budget.colleges ?? f.budget.lycees)?.exercices ?? []) noter(ex.source, ex.exercice);
+  return affiches;
+}
+
+const parDate = (a: { le: string; millesime: number }, b: { le: string; millesime: number }) => a.le.localeCompare(b.le) || a.millesime - b.millesime;
+
+/** Rattache à chaque source de chaque fiche les corrections d'un millésime que la fiche affiche. Idempotent. */
+export function attacherCorrections(fiches: Fiche[], corrections: EntreeCorrection[], manifest: Manifest): void {
+  for (const f of fiches) {
+    const affiches = millesimesAffiches(f);
+    const collectivite = (f.budget.colleges ?? f.budget.lycees)?.id;
+    for (const s of f.sources) {
+      const trouvees = corrections
+        .filter((e) => {
+          if (e.source !== s.id || !affiches.get(e.source)?.has(e.millesime)) return false;
+          return e.source.startsWith("budget_") ? !!collectivite && collectivitesCorrigees(e).has(collectivite) : e.cles.includes(f.uai);
+        })
+        .map((e) => resoudreCorrection(manifest, e))
+        .sort(parDate);
+      if (trouvees.length) s.corrections = trouvees;
+      else delete s.corrections;
+    }
+  }
+}
+
 /** Budget de la collectivité de chaque fiche, et source (dernier exercice affiché) parmi les sources de la fiche. */
-export function attacherBudgets(fiches: Fiche[], budgets: Parameters<typeof budgetDeFiche>[1], manifest: Manifest): void {
+export function attacherBudgets(
+  fiches: Fiche[], budgets: Parameters<typeof budgetDeFiche>[1], manifest: Manifest, corrections: EntreeCorrection[] = [],
+): void {
   const sourcesBudget = toutesSources(manifest);
   for (const f of fiches) {
     f.budget = budgetDeFiche(f, budgets);
@@ -188,6 +236,7 @@ export function attacherBudgets(fiches: Fiche[], budgets: Parameters<typeof budg
       });
     }
   }
+  attacherCorrections(fiches, corrections, manifest);
 }
 
 /** Chiffres du journal des successeurs, remplis par assemblerFiches. */
@@ -199,6 +248,8 @@ export interface OptionsAssemblage {
   rapport?: RapportSuccesseurs;
   /** Fichier manuel des successeurs (par défaut pipeline/successeurs-manuels.json). */
   manuels?: Manuels;
+  /** Corrections de millésime détectées (archives/corrections.json), lues par l'appelant. */
+  corrections?: EntreeCorrection[];
 }
 
 /**
@@ -259,13 +310,15 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
   }
   // Les dénominateurs comptent aussi les établissements fermés : toutes les fiches, actives et disparues.
   const budgets = await calculerBudgets(db, fiches);
-  attacherBudgets(fiches, budgets, manifest);
+  attacherBudgets(fiches, budgets, manifest, opts.corrections);
   return fiches.sort((a, b) => a.uai.localeCompare(b.uai));
 }
 
 // --- Export ---
 
-export async function exporter(fiches: Fiche[], db: Db, manifest: Manifest, sortie = "site/data"): Promise<void> {
+export async function exporter(
+  fiches: Fiche[], db: Db, manifest: Manifest, sortie = "site/data", corrections: EntreeCorrection[] = [],
+): Promise<void> {
   await rm(sortie, { recursive: true, force: true });
   await mkdir(join(sortie, "fiches"), { recursive: true });
 
@@ -278,7 +331,7 @@ export async function exporter(fiches: Fiche[], db: Db, manifest: Manifest, sort
 
   const actives = fiches.filter((f) => f.disparuLe === null);
   const [{ r: rentree } = { r: null }] = await db.sql<{ r: number | null }>("select max(rentree) as r from effectifs");
-  await exporterTerritoires(actives, db, sortie, rentree, await calculerBudgets(db, fiches));
+  await exporterTerritoires(actives, db, sortie, rentree, await calculerBudgets(db, fiches), corrections, manifest);
 
   const sources: Record<string, DonneesSource> = Object.fromEntries(
     toutesSources(manifest).map((s) => [s.id, {

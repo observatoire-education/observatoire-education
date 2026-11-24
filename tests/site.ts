@@ -6,6 +6,7 @@ import { join, resolve } from "node:path";
 import { parseHTML } from "linkedom";
 import { calculerBudgets } from "../pipeline/src/budget-eleves.ts";
 import { assemblerFiches, attacherBudgets, exporter } from "../pipeline/src/fiches.ts";
+import type { EntreeCorrection } from "../pipeline/src/corrections.ts";
 import type { Registre } from "../pipeline/src/registre.ts";
 import { sourceBudget } from "../pipeline/src/sources.ts";
 import { dbAvecRegistre, identiteTest, manifestTest, requeteTest } from "./aide.ts";
@@ -46,14 +47,25 @@ export function siteTest(): Promise<string> {
     await mkdir(join(RACINE, ".cache"), { recursive: true });
     const db = await dbAvecRegistre(REGISTRE_TEST);
     const manifest = manifestTest(await mkdir(join(RACINE, ".cache", "manifest-test"), { recursive: true }).then(() => join(RACINE, ".cache", "manifest-test")));
-    const fiches = await assemblerFiches(db, manifest, REGISTRE_TEST, new Date("2026-11-23T02:17:00Z"));
+    // Une version antérieure de l'IPS des collèges, corrigée depuis : le millésime 2024 de la fiche 0440001A.
+    manifest.ajouter("ips_colleges", {
+      sha256: "a".repeat(64), tag: "archives-ips_colleges-2025", fichier: "ips_colleges-avant.parquet",
+      url: "https://github.com/org/depot/releases/download/archives-ips_colleges-2025/ips_colleges-avant.parquet",
+      modified: "2025-11-01T00:00:00Z", collecteLe: "2025-11-22T02:17:00Z", lignes: 10,
+    });
+    manifest.rendreActuelle("ips_colleges", "ips_colleges".padEnd(64, "0"));
+    const corrections: EntreeCorrection[] = [{
+      source: "ips_colleges", millesime: 2024, cles: ["0440001A"], precedente: "a".repeat(64),
+      corrigee: "ips_colleges".padEnd(64, "0"), le: "2026-11-22T02:17:00Z",
+    }];
+    const fiches = await assemblerFiches(db, manifest, REGISTRE_TEST, new Date("2026-11-23T02:17:00Z"), { corrections });
     for (const f of fiches) {
       const h = ELEVES_HISTORIQUES[f.uai];
       const i = f.indicateurs.find((x) => x.code === "eleves");
       if (h && i) i.historique = [...h, ...i.historique.filter(([a]) => !h.some(([b]) => a === b))].sort((a, b) => a[0] - b[0]);
     }
     const budgets = await calculerBudgets(db, fiches);
-    attacherBudgets(fiches, budgets, manifest);
+    attacherBudgets(fiches, budgets, manifest, corrections);
     // Exercices sans fixture de données : présents seulement dans les sources, pour la page /sources/.
     for (const e of [2020, 2021, 2022, 2025]) {
       const s = sourceBudget(e, `jeu-${e}`);
@@ -63,7 +75,7 @@ export function siteTest(): Promise<string> {
         modified: "2026-11-01T00:00:00Z", collecteLe: "2026-11-22T02:17:00Z", lignes: 10, requete: requeteTest(s.id, s.datasetId),
       });
     }
-    await exporter(fiches, db, manifest, DONNEES_TEST);
+    await exporter(fiches, db, manifest, DONNEES_TEST, corrections);
     const p = Bun.spawn(["bun", "run", "astro", "build"], {
       cwd: join(RACINE, "site"),
       env: { ...process.env, OBS_DATA: DONNEES_TEST, OBS_DIST: DIST_TEST, OBS_CONFIG: CONFIG_TEST, OBS_CONTOURS: CONTOURS_TEST },
