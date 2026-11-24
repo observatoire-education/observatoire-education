@@ -211,11 +211,28 @@ td .abs, .kpis .c .abs { font:500 12px/1.3 var(--sans); color:var(--na); white-s
 .res .u { font:12px var(--mono); color:var(--muted); grid-row:span 2; align-self:center; }
 .res mark { background:var(--pub-soft); color:inherit; border-radius:3px; }
 .res .vide { padding:6px 16px 14px; font-size:14px; color:var(--muted); }
-.acad { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:10px 24px; }
-.acad > div { padding:10px 0; border-bottom:1px solid var(--line); }
-.acad b { display:block; font-size:14px; margin-bottom:4px; }
-.acad b a { font-size:inherit; color:inherit; margin:0; white-space:normal; }
-.acad div a { font-size:13px; color:var(--muted); margin-right:10px; white-space:nowrap; display:inline-block; }
+/* Accueil : la France en blocs région › académie › départements. Teintes t1–t6 hors violet (public) et ambre (privé). */
+:root { --t1:#0e8a8a; --t2:#c2447a; --t3:#2a6bd1; --t4:#3a8a3c; --t5:#c0532e; --t6:#56708a; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --t1:#4cc9c4; --t2:#f07fab; --t3:#7aa7ff; --t4:#7fcf7a; --t5:#f08f68; --t6:#9db3c9; } }
+:root[data-theme="dark"] { --t1:#4cc9c4; --t2:#f07fab; --t3:#7aa7ff; --t4:#7fcf7a; --t5:#f08f68; --t6:#9db3c9; }
+.france-bloc { background:var(--surface); border:1px solid var(--line); border-radius:20px; padding:20px; }
+.france-tete { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; margin-bottom:18px; }
+.france-titre { font-size:24px; font-weight:700; letter-spacing:-.01em; line-height:1.2; }
+.france-meta { font-size:13px; color:var(--muted); }
+.regions { columns:290px; column-gap:14px; }
+.reg { --t:var(--t1); break-inside:avoid; margin:0 0 14px; padding:14px 16px 12px; border-radius:14px; border:1px solid color-mix(in srgb, var(--t) 22%, var(--line));
+  border-top:4px solid var(--t); background:color-mix(in srgb, var(--t) 6%, var(--surface)); }
+.reg.t2 { --t:var(--t2); } .reg.t3 { --t:var(--t3); } .reg.t4 { --t:var(--t4); } .reg.t5 { --t:var(--t5); } .reg.t6 { --t:var(--t6); }
+.reg h3 { margin:0 0 8px; font-size:17px; line-height:1.25; color:var(--t); }
+.reg h3 a { color:inherit; text-decoration:none; } .reg h3 a:hover { text-decoration:underline; }
+.reg .aca + .aca { margin-top:10px; padding-top:10px; border-top:1px dashed color-mix(in srgb, var(--t) 30%, var(--line)); }
+.aca-nom { display:inline-block; font-size:13px; font-weight:600; color:var(--ink); text-decoration:none; margin-bottom:6px; }
+.aca-nom:hover { text-decoration:underline; }
+.deps { display:flex; flex-wrap:wrap; gap:5px; }
+.deps a { display:inline-flex; align-items:baseline; gap:6px; font-size:13px; padding:3px 9px; border-radius:99px; background:var(--surface); border:1px solid var(--line); color:var(--ink); text-decoration:none; }
+.deps a:hover { border-color:var(--t, var(--muted)); }
+.deps .num { font-size:11px; color:var(--muted); }
+@media (max-width:560px) { .france-bloc { padding:14px; border-radius:16px; } }
 .upd { list-style:none; margin:0; padding:0; }
 .upd li { display:grid; grid-template-columns:110px 1fr; gap:12px; padding:8px 0; border-bottom:1px solid var(--line); font-size:14px; }
 .upd .d { font-family:var(--mono); font-size:13px; color:var(--muted); }

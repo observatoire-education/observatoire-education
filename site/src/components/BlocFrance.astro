@@ -1,0 +1,60 @@
+---
+// Accueil : la France en blocs emboîtés — régions, leurs académies, leurs départements.
+// Blocs colorés (couleurs hors violet et ambre, réservés au public et au privé), métropole et outre-mer à égalité.
+import type { DonneesFrance } from "@obs/shared/donnees";
+import { REGIONS, regionDe } from "@obs/shared/collectivites";
+import { academie } from "@obs/shared/libelles";
+
+interface Props { france: DonneesFrance }
+const { france } = Astro.props;
+
+const avecPage = new Set(france.regions.map((r) => r.code));
+const fr = (a: string, b: string) => a.localeCompare(b, "fr");
+const academies = france.academiesEtDepartements.map((a) => ({
+  ...a,
+  departements: [...a.departements].sort((x, y) => x.dep.localeCompare(y.dep)),
+  region: regionDe(a.departements[0]?.dep ?? ""),
+}));
+const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? "s" : ""}`;
+
+// Une seule liste alphabétique : régions de métropole et d'outre-mer traitées à l'identique.
+// Saint-Pierre-et-Miquelon (académie sans région) a son bloc, sans lien de région.
+const blocs = [
+  ...REGIONS.map((r) => ({
+    code: r.code as string | null,
+    libelle: r.libelle,
+    lien: avecPage.has(r.code),
+    academies: academies.filter((a) => a.region === r.code).sort((x, y) => fr(x.libelle, y.libelle)),
+  })),
+  ...academies.filter((a) => a.region === null).map((a) => ({ code: null, libelle: a.libelle, lien: false, academies: [a] })),
+].filter((b) => b.academies.length > 0).sort((x, y) => fr(x.libelle, y.libelle));
+
+const nbDeps = academies.reduce((n, a) => n + a.departements.length, 0);
+const nbRegions = blocs.filter((b) => b.code !== null).length;
+---
+<div class="france-bloc">
+  <div class="france-tete">
+    <div>
+      <div class="france-titre">France</div>
+      <div class="france-meta">{pluriel(nbRegions, "région")} · {pluriel(academies.length, "académie")} · {pluriel(nbDeps, "département")}</div>
+    </div>
+    <a class="btn" href="/france/">France entière →</a>
+  </div>
+
+  <div class="regions">
+    {blocs.map((r, i) => (
+      <article class={`reg t${(i % 6) + 1}`}>
+        <h3>{r.lien && r.code ? <a href={`/region/${r.code}/`}>{r.libelle}</a> : r.libelle}</h3>
+        {r.academies.map((a) => (
+          <div class="aca">
+            <a class="aca-nom" href={`/academie/${a.aca}/`}>{academie(a.libelle)}</a>
+            <div class="deps">
+              {a.departements.map((d) => <a href={`/departement/${d.dep}/`}><span class="num">{d.dep}</span>{d.libelle}</a>)}
+            </div>
+          </div>
+        ))}
+      </article>
+    ))}
+  </div>
+
+</div>

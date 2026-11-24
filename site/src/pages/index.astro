@@ -2,6 +2,7 @@
 // Accueil : titre neutre, grande recherche, bandeau national, territoires, mises à jour des sources, principes.
 import { date, entier, part } from "@obs/shared/format";
 import { academie, LIBELLES } from "@obs/shared/libelles";
+import BlocFrance from "../components/BlocFrance.astro";
 import Base from "../layouts/Base.astro";
 import { communesDisponibles, lireFrance, lireIndex, lireSources, lireTerritoire } from "../lib/donnees";
 
@@ -56,13 +57,7 @@ const derniereCollecte = sources[0]?.actuelle?.collecteLe;
 
   <section>
     <h2>Parcourir par territoire</h2>
-    <p style="margin:0 0 10px"><a href="/france/">France entière</a></p>
-    <p style="margin:0 0 10px"><b>Régions</b> : {regions.map((r, i) => <>{i > 0 && " · "}<a href={`/region/${r.r}/`}>{r.l}</a></>)}</p>
-    <div class="acad">
-      {france.academiesEtDepartements.map((a) => (
-        <div><b><a href={`/academie/${a.aca}/`}>{a.libelle}</a></b>{a.departements.map((d) => <a href={`/departement/${d.dep}/`}>{d.dep} {d.libelle}</a>)}</div>
-      ))}
-    </div>
+    <BlocFrance france={france} />
   </section>
 
   <div class="cols2">
