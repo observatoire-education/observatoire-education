@@ -1,8 +1,21 @@
 import { describe, expect, test } from "bun:test";
 import { cheminTerritoire, communeDeRattachement } from "@obs/shared/territoires";
 import type { Fiche, Identite, Indicateur } from "@obs/shared/types";
-import { communesRetenues, controlerPonderation, moyennePonderee, verifierPonderation } from "../pipeline/src/territoires.ts";
+import { communesRetenues, libelleListe, controlerPonderation, moyennePonderee, verifierPonderation } from "../pipeline/src/territoires.ts";
+import { partPrive } from "../site/src/lib/territoire.ts";
 import { identiteTest } from "./aide.ts";
+
+describe("libellé de commune", () => {
+  const fiche = (codeCommune: string, commune: string) =>
+    ({ codeCommune, commune } as unknown as Fiche);
+  test("arrondissement dérivé du code, commune ordinaire inchangée", () => {
+    expect(libelleListe(fiche("75115", "Paris"))).toBe("Paris 15e arrondissement");
+    expect(libelleListe(fiche("69381", "Lyon"))).toBe("Lyon 1er arrondissement");
+    expect(libelleListe(fiche("69389", "Lyon 9e  Arrondissement"))).toBe("Lyon 9e arrondissement");
+    expect(libelleListe(fiche("13201", "Marseille"))).toBe("Marseille 1er arrondissement");
+    expect(libelleListe(fiche("44109", "Nantes"))).toBe("Nantes");
+  });
+});
 
 describe("rattachement des communes", () => {
   test("un arrondissement est rattaché à sa commune de Paris, Lyon ou Marseille", () => {
@@ -97,5 +110,14 @@ describe("synthèses de territoire", () => {
     expect(() => verifierPonderation({ n: 10, mediane: 0.3, p90: 0.5 })).toThrow(/10 groupes, écart médian 0.3, 90e centile 0.5/);
     expect(() => verifierPonderation({ n: 10, mediane: 0.1, p90: 1.2 })).toThrow();
     expect(verifierPonderation({ n: 746, mediane: 0.06, p90: 0.52 })).toBe("746 groupes, écart médian 0.06, 90e centile 0.52");
+  });
+});
+
+describe("part du privé d'un territoire", () => {
+  test("zéro sans établissement privé, tiret si élèves inconnus", () => {
+    expect(partPrive({ public: 500, prive: null }, true)).toBe(0);
+    expect(partPrive({ public: 500, prive: null }, false)).toBeNull();
+    expect(partPrive({ public: null, prive: null }, true)).toBeNull();
+    expect(partPrive({ public: 300, prive: 100 })).toBe(25);
   });
 });

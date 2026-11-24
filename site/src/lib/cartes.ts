@@ -58,6 +58,12 @@ function boite(objets: Array<Feature | Geometry>): Boite | null {
 
 const multiPoint = (pts: Array<[number, number]>): Geometry => ({ type: "MultiPoint", coordinates: pts });
 
+/** Conique de la métropole, sauf si tous les départements dessinés sont d'outre-mer (97x) : Mercator. */
+export function projectionPour(codes: string[]): { type: string; parallels?: number[]; rotate?: number[] } {
+  if (codes.length && codes.every((c) => c.startsWith("97"))) return { type: "mercator" };
+  return { type: "conic-conformal", parallels: [44, 49], rotate: [-3, 0] };
+}
+
 export function svgCarteDepartements(
   valeurs: ValeurCarte[],
   vue: VueCarte,
@@ -88,7 +94,7 @@ export function svgCarteDepartements(
   const aria = `Carte par département : ${TITRE[vue]}`;
   const conique = { type: "conic-conformal", parallels: [44, 49], rotate: [-3, 0] };
   if (!opts.encartsDrom) {
-    const svg = dessiner(presents, conique, 560, 560, aria);
+    const svg = dessiner(presents, projectionPour(presents.map((f) => f.properties.code)), 560, 560, aria);
     return { svg, absents, metropole: svg, encarts: [] };
   }
   const metropole = dessiner(presents.filter((f) => !f.properties.code.startsWith("97")), conique, 560, 560, aria);
@@ -146,10 +152,13 @@ export function svgCartePoints(
 export function legendeCarte(vue: VueCarte, domaine: [number, number]): string {
   const [clair, fonce] = TEINTE[vue];
   const fmt = (n: number) => String(n).replace(".", ",");
+  // Les valeurs hors du domaine sont ramenées aux bornes : la légende le dit.
+  const bas = vue === "ecart_ips" ? `${fmt(domaine[0])} ou moins` : `${fmt(domaine[0])}${UNITE[vue]}`;
+  const haut = `${fmt(domaine[1])}${UNITE[vue]} et plus`;
   return (
     `<div class="legende-carte"><p class="legende-titre">${TITRE[vue]}</p>` +
-    `<div class="legende-rampe" role="img" aria-label="De ${fmt(domaine[0])}${UNITE[vue]} à ${fmt(domaine[1])}${UNITE[vue]}" style="height:10px;background:linear-gradient(to right, ${clair}, ${fonce})"></div>` +
-    `<div class="legende-bornes" style="display:flex;justify-content:space-between"><span>${fmt(domaine[0])}${UNITE[vue]}</span><span>${fmt(domaine[1])}${UNITE[vue]}</span></div>` +
+    `<div class="legende-rampe" role="img" aria-label="De ${bas} à ${haut}" style="height:10px;background:linear-gradient(to right, ${clair}, ${fonce})"></div>` +
+    `<div class="legende-bornes" style="display:flex;justify-content:space-between"><span>${bas}</span><span>${haut}</span></div>` +
     `<p class="legende-nd"><span class="legende-case" style="display:inline-block;width:12px;height:12px;background:var(--line)"></span> non disponible</p></div>`
   );
 }

@@ -123,6 +123,8 @@ describe("sources, méthode, 404, sitemap", () => {
     const d = doc("methode");
     const t = texte("methode");
     for (const id of ["cartes", "moyennes-calculees", "communes"]) expect(d.getElementById(id)).not.toBeNull();
+    expect(t).toContain("France et des académies portent une carte des départements à deux vues");
+    expect(t).toContain("un point par établissement");
     // Vue A : élèves connus seulement, sans zéro.
     expect(t).toContain("Σ élèves privés / Σ élèves (public + privé)");
     expect(t).toContain("établissements sans élèves publiés ne sont pas comptés");

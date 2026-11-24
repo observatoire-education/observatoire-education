@@ -27,10 +27,19 @@ export const valeur = (f: Fiche, code: string): Mesure | undefined => f.indicate
 export const ok = (m: Mesure | undefined): number | null => (m?.statut === "ok" ? m.valeur : null);
 export const parNom = (a: { nom: string }, b: { nom: string }) => a.nom.localeCompare(b.nom, "fr");
 
+/** Nom de commune affiché : pour un arrondissement, « Paris 15e arrondissement » dérivé du code. */
+export function libelleListe(f: Fiche): string {
+  const ville = communeDeRattachement(f.codeCommune);
+  if (ville === f.codeCommune) return f.commune;
+  const base = { "75056": 75100, "69123": 69380, "13055": 13200 }[ville as "75056" | "69123" | "13055"];
+  const n = Number(f.codeCommune) - base;
+  return `${LIBELLES_PLM[ville as keyof typeof LIBELLES_PLM]} ${n === 1 ? "1er" : `${n}e`} arrondissement`;
+}
+
 export function ligneListe(f: Fiche): LigneListe {
   const vs = valeur(f, "eleves_par_etp_vs");
   return {
-    uai: f.uai, nom: f.nom, secteur: f.secteur, commune: f.commune, codeCommune: f.codeCommune, ep: f.ep,
+    uai: f.uai, nom: f.nom, secteur: f.secteur, commune: libelleListe(f), codeCommune: f.codeCommune, ep: f.ep,
     eleves: ok(valeur(f, "eleves")),
     elevesParEtpEns: ok(valeur(f, "eleves_par_etp_ens")),
     elevesParEtpVs: ok(vs),

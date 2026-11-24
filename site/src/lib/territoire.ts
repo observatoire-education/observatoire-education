@@ -67,3 +67,13 @@ export function csvTerritoire(d: DonneesTerritoire): string {
     ]),
   ));
 }
+
+/**
+ * Part des élèves du privé (%) : null si les élèves sont inconnus ; 0 quand le territoire n'a aucun
+ * établissement privé (`aucunPrive`) et que les élèves du public sont connus.
+ */
+export function partPrive(e: { public: number | null; prive: number | null }, aucunPrive = false): number | null {
+  if (aucunPrive && e.prive === null && e.public) return 0;
+  const t = e.public === null && e.prive === null ? null : (e.public ?? 0) + (e.prive ?? 0);
+  return t && e.prive !== null ? (100 * e.prive) / t : null;
+}

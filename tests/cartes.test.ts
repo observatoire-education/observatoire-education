@@ -29,7 +29,7 @@ describe("contours", () => {
   });
 });
 
-const { DOMAINE, svgCarteDepartements, svgCartePoints, legendeCarte } = await import("../site/src/lib/cartes.ts");
+const { DOMAINE, svgCarteDepartements, svgCartePoints, legendeCarte, projectionPour } = await import("../site/src/lib/cartes.ts");
 const INTERDIT = /\b(rang|classement|top|meilleur|meilleure|meilleurs|meilleures|pire|pires)\b|<script/i;
 const valeurs = [
   { dep: "44", partPrive: 41.2, ecartIpsColleges: 15 },
@@ -114,6 +114,16 @@ describe("cartes", () => {
     expect(h).toContain("Écart d'IPS moyen privé − public des collèges");
     expect(h).toContain("non disponible");
     expect(legendeCarte("prive", [0, 50])).toContain("Part des élèves dans le privé sous contrat");
+    expect(h).toContain("40 points et plus");
+    expect(h).toContain("0 ou moins");
+    expect(legendeCarte("prive", [0, 50])).toContain("50 % et plus");
     expect(h).not.toMatch(INTERDIT);
+  });
+
+  test("projection : Mercator si tous les départements sont d'outre-mer, conique sinon", () => {
+    expect(projectionPour(["971", "972", "973"]).type).toBe("mercator");
+    expect(projectionPour(["976"]).type).toBe("mercator");
+    expect(projectionPour(["44", "49"]).type).toBe("conic-conformal");
+    expect(projectionPour(["44", "971"]).type).toBe("conic-conformal");
   });
 });

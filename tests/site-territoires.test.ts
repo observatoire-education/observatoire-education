@@ -103,7 +103,7 @@ describe("page commune", () => {
     const lien = crumb.querySelector("a[href='/commune/75056/']");
     expect(lien).not.toBeNull();
     expect(lien!.textContent!.trim()).toBe("Paris");
-    expect(texte("commune/75056")).toContain("Paris 15e Arrondissement");
+    expect(texte("commune/75056")).toContain("Paris 15e arrondissement");
   });
 });
 

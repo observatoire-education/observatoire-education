@@ -11,7 +11,7 @@ import Base from "../layouts/Base.astro";
 import { anneeScolaire, formater } from "../lib/affichage";
 import { communesDisponibles, lireFrance, lireSources, lireTerritoire } from "../lib/donnees";
 import { domaine, svgDistribution, svgPoints } from "../lib/plot";
-import { famillesDe, nomFamille } from "../lib/territoire";
+import { famillesDe, nomFamille, partPrive } from "../lib/territoire";
 import Absence from "./Absence.astro";
 import Ariane from "./Ariane.astro";
 import CarteTerritoire from "./CarteTerritoire.astro";
@@ -64,10 +64,6 @@ const moyenneTexte = (code: CodeIndicateur, c: Comparaison[], n: Niveau, s: Sect
   return { t: formater(code, m.valeur), abs: false };
 };
 const somme = (a: number | null, b: number | null) => (a === null && b === null ? null : (a ?? 0) + (b ?? 0));
-const partPrive = (e: { public: number | null; prive: number | null }) => {
-  const t = somme(e.public, e.prive);
-  return t && e.prive !== null ? (100 * e.prive) / t : null;
-};
 /**
  * IPS moyen calculé par l'observatoire (commune) : valeur, ou absence dite (« Aucun collège privé dans la
  * commune » s'il n'y en a aucun ; « non disponible » si ceux qui existent n'ont pas d'IPS publié).
@@ -144,7 +140,7 @@ const badges = [
         <div class="kpis">
           <div><div class="k">Élèves · {d.rentree}</div><div class="v">{s.eleves.public === null && s.eleves.prive === null ? "—" : entier(somme(s.eleves.public, s.eleves.prive))}</div>
             <div class="c"><span class="p">{s.eleves.public === null ? LIBELLES.nonDisponible : entier(s.eleves.public)}</span> · <span class="q">{s.eleves.prive === null ? LIBELLES.nonDisponible : entier(s.eleves.prive)}</span></div></div>
-          <div><div class="k">Part des élèves dans le privé s. c.</div><div class="v">{partPrive(s.eleves) === null ? "—" : part(partPrive(s.eleves))}</div>
+          <div><div class="k">Part des élèves dans le privé s. c.</div><div class="v">{partPrive(s.eleves, s.compte.prive === 0) === null ? "—" : part(partPrive(s.eleves, s.compte.prive === 0))}</div>
             <div class="c">{pf && partPrive(pf.eleves) !== null && <>France : {part(partPrive(pf.eleves))}</>}</div></div>
           {s.ipsMoyen.calculee ? (
             <div class="ips-calcule"><div class="k">IPS moyen</div>
