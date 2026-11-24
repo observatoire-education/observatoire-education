@@ -40,6 +40,16 @@ describe("fonctions de normalisation (TypeScript et SQL identiques)", () => {
     expect(await enSql((x) => `rentree(${x})`, cas)).toEqual(attendu);
   });
 
+  test("sessions", async () => {
+    const cas = ["2025-01-01T00:00:00+00:00", "2025", "", null];
+    const attendu = [2025, 2025, null, null];
+    expect(await enSql((x) => `session(${x})`, cas)).toEqual(attendu);
+  });
+
+  test("adresse normalisée", async () => {
+    expect(await enSql((x) => `adresse_normalisee(${x})`, ["12, Rue de l'Église ", null])).toEqual(["12 rue de l eglise", null]);
+  });
+
   test("nombre NA", async () => {
     const cas = ["NA", "", null, "98,2", "98.2", " 12 ", "abc", "nan", "inf", "-3.5"];
     const attendu = [null, null, null, 98.2, 98.2, 12, null, null, null, -3.5];

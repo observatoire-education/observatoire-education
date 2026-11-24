@@ -32,8 +32,8 @@ afterAll(async () => {
 });
 
 describe("registre des sources", () => {
-  test("sept sources, l'annuaire est le référentiel", () => {
-    expect(Object.keys(SOURCES)).toHaveLength(7);
+  test("dix-huit sources, l'annuaire est le référentiel", () => {
+    expect(Object.keys(SOURCES)).toHaveLength(18);
     expect(SOURCES.annuaire.referentiel).toBe(true);
     expect(Object.values(SOURCES).filter((s) => s.referentiel)).toHaveLength(1);
   });
@@ -107,6 +107,18 @@ describe("client Opendatasoft", () => {
     const r = await new OdsClient(f, USER_AGENT, sansAttente).telechargerParquet(s, dest);
     expect(r).toEqual({ chemin: dest, url: attendue });
     expect(appels[0]!.url).toBe(attendue);
+  });
+
+  test("téléchargement de fermes : filtre des établissements fermés encodé", async () => {
+    const { f, appels } = fauxFetch([parquet()]);
+    const s = SOURCES.fermes;
+    await new OdsClient(f, USER_AGENT, sansAttente).telechargerParquet(s, join(dossier, "f.parquet"));
+    expect(appels[0]!.url).toBe(
+      `https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-etablissements-fermes/exports/parquet?where=${encodeURIComponent(s.filtre!)}`,
+    );
+    expect(s.filtre).toBe(
+      `date_fermeture >= date'2012-01-01' and (nature_uai_libe like "COLLEGE%" or nature_uai_libe like "LYCEE%" or nature_uai_libe like "ETAB REGIONAL%")`,
+    );
   });
 
   test("métadonnées d'une source budget : API data.economie.gouv.fr", async () => {

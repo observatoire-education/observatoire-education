@@ -17,6 +17,17 @@ export type SourceId =
   | "effectifs_lycees_gt"
   | "effectifs_lycees_pro"
   | "personnels"
+  | "fermes"
+  | "ips_colleges_2016"
+  | "ips_colleges_2022"
+  | "ips_lycees_2016"
+  | "ips_lycees_2022"
+  | "ips_erea_2016"
+  | "ips_erea"
+  | "ivac"
+  | "ival_gt"
+  | "ival_pro"
+  | "segregation"
   | `budget_${number}`;
 
 /** Une valeur, son statut et son origine (source et rentrée de septembre). */

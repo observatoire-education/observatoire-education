@@ -119,6 +119,12 @@ ${Object.entries(LIBELLES_TERRITOIRE).map(([k, v]) => `    when ${litteral(k)} t
 create or replace macro rentree(v) as (
   case when regexp_matches(trim(v::varchar), '^[0-9]{4}') then left(trim(v::varchar), 4)::integer end);
 
+create or replace macro session(v) as (
+  case when regexp_matches(trim(v::varchar), '^[0-9]{4}') then left(trim(v::varchar), 4)::integer end);
+
+create or replace macro adresse_normalisee(a) as (
+  nullif(trim(regexp_replace(regexp_replace(strip_accents(lower(a::varchar)), '[^a-z0-9]+', ' ', 'g'), ' +', ' ', 'g')), ''));
+
 create or replace macro nombre(v) as (case when isfinite(${nb}) then ${nb} end);
 
 create or replace macro vrai(v) as (coalesce(trim(v::varchar) in (${liste(VRAIS)}), false));

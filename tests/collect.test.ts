@@ -156,6 +156,24 @@ describe("collecte", () => {
     expect(manifest.versions("ips_colleges")).toHaveLength(0);
   });
 
+  test("une version de ivac sans la colonne va_du_taux_de_reussite_g est rejetée", async () => {
+    const f = fauxClient({ ivac: { sansColonne: "va_du_taux_de_reussite_g" } });
+    const j = await collecter(opts(f.client));
+    expect(ligne(j, "ivac").action).toBe("rejete");
+    expect(ligne(j, "ivac").motif).toBe("colonne manquante : va_du_taux_de_reussite_g");
+  });
+
+  test("chaque source millésimée déclare une colonne de millésime présente dans ses colonnes requises", () => {
+    const millesimees = [...Object.values(SOURCES), sourceBudget(2024, "x")].filter((s) => s.millesime);
+    expect(millesimees.length).toBeGreaterThanOrEqual(17);
+    for (const s of millesimees) {
+      expect(s.colonnesRequises).toContain(s.millesime!.colonne);
+      for (const c of s.millesime!.cles) expect(s.colonnesRequises).toContain(c);
+    }
+    expect(SOURCES.fermes.millesime).toBeUndefined();
+    expect(SOURCES.annuaire.millesime).toBeUndefined();
+  });
+
   test("baisse de lignes rejetée, version précédente conservée", async () => {
     const f = fauxClient({ ips_colleges: { lignes: 100 } });
     await collecter(opts(f.client));
@@ -199,7 +217,7 @@ describe("collecte", () => {
     await collecter(opts(fauxClient({}).client, { journal }));
     await collecter(opts(fauxClient({}).client, { journal }));
     const l = (await Bun.file(journal).text()).trim().split("\n").map((x) => JSON.parse(x));
-    expect(l).toHaveLength(26); // sept sources et six exercices du budget, deux fois
+    expect(l).toHaveLength(48); // dix-huit sources et six exercices du budget, deux fois
     expect(l[0]).toMatchObject({ date: "2026-11-23T02:17:00.000Z", source: "annuaire" });
   });
 
@@ -303,7 +321,7 @@ describe("budget : exercices et découverte", () => {
   test("aucun jeu : aucune ligne de journal pour l'exercice", async () => {
     const j = await collecter(opts(fauxClient({}).client));
     expect(j.filter((l) => l.source === "budget_2026")).toEqual([]);
-    expect(j).toHaveLength(13);
+    expect(j).toHaveLength(24);
   });
 
   test("un extrait budget sans la colonne fonction est rejeté", async () => {
@@ -326,7 +344,7 @@ describe("cache local", () => {
     await collecter(opts(fauxClient({}).client));
     const cache = join(racine, "cache");
     const chemins = await assurerCache(manifest, depot, cache);
-    expect(Object.keys(chemins)).toHaveLength(13);
+    expect(Object.keys(chemins)).toHaveLength(24);
     await Bun.write(chemins.ips_lycees, "corrompu");
     const encore = await assurerCache(manifest, depot, cache);
     expect(await empreinte(encore.ips_lycees)).toBe(manifest.derniere("ips_lycees")!.sha256);
