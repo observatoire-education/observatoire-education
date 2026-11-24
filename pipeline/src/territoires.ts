@@ -14,6 +14,7 @@ import type { Budgets } from "./budget-eleves.ts";
 import { collectivitesCorrigees, type EntreeCorrection, resoudreCorrection } from "./corrections.ts";
 import type { Db } from "./db.ts";
 import { dernieresSessions, type DernieresSessions, type IpsRentree, nuages, resume, VOIES_NUAGE } from "./resultats.ts";
+import { calculerSegregation } from "./segregation.ts";
 import { calculerIpsHistorique, derniereRentreeIps, ipsCourant, type NiveauIps } from "./ips-historique.ts";
 
 // --- Aides partagées avec fiches.ts ---
@@ -230,6 +231,7 @@ export async function exporterTerritoires(
   const ipsHistorique = await calculerIpsHistorique(db);
   const rentreeIps = await derniereRentreeIps(db);
   const sessions = await dernieresSessions(db);
+  const segregation = await calculerSegregation(db);
   // Nuages IPS × réussite (départements et académies) : IPS de la rentrée de chaque dernière session moins un.
   const rentreesNuages = [...new Set(Object.values(sessions).map((x) => x! - 1))].sort();
   const ipsNuages = new Map<number, Map<string, IpsRentree>>();
@@ -383,6 +385,7 @@ export async function exporterTerritoires(
       horsContrat: horsContrat((l) => l.dep === dep),
       enfants: [], communes: (communesParDep.get(dep) ?? []).sort(parLibelle), carte: points(groupe),
       ...nuagesDe(groupe),
+      ...(segregation.has(dep) ? { segregation: segregation.get(dep)! } : {}),
     };
     await ecrireJson(join(sortie, "departements", `${dep}.json`), donnees);
   }

@@ -2,10 +2,10 @@
 // Couleurs en variables CSS : le thème sombre s'applique sans recalcul.
 import * as Plot from "@observablehq/plot";
 import { parseHTML } from "linkedom";
-import type { ExerciceBudget, Nuage, PointNuage } from "@obs/shared/donnees";
+import type { AnneeSegregation, ExerciceBudget, Nuage, PointNuage } from "@obs/shared/donnees";
 import type { PointIps } from "@obs/shared/types";
 import { FINE, nombre } from "@obs/shared/format";
-import { LIBELLES_BUDGET, LIBELLES_NUAGES, SECTEURS } from "@obs/shared/libelles";
+import { LIBELLES_BUDGET, LIBELLES_NUAGES, LIBELLES_SEGREGATION, SECTEURS } from "@obs/shared/libelles";
 import { vaSignee } from "./resultats";
 
 const { document } = parseHTML("<!doctype html><html><body></body></html>");
@@ -238,4 +238,32 @@ export function optionsNuage(n: Nuage): Plot.PlotOptions {
 export function svgNuage(n: Nuage): string {
   const p = Plot.plot({ document, ...optionsNuage(n) });
   return svg(p, `${LIBELLES_NUAGES.titres[n.voie]} : ${n.points.length} établissements`, 1);
+}
+
+/**
+ * Évolution de l'indice d'entropie d'un département : « Ensemble des collèges » (trait plein) et « Entre public et privé »
+ * (pointillé). Une valeur absente fait un trou dans la ligne, jamais un zéro ; l'axe part de 0.
+ */
+export function svgSegregation(annees: AnneeSegregation[]): string {
+  const pts = (cle: "ensemble" | "publicPrive") => annees.map((a) => ({ annee: a.annee, v: a.entropie[cle] }));
+  const ensemble = pts("ensemble");
+  const publicPrive = pts("publicPrive");
+  const definis = [...ensemble, ...publicPrive].filter((x) => x.v !== null);
+  if (definis.length === 0) return "";
+  const xs = annees.map((a) => a.annee);
+  const graduations = xs.length > 6 ? xs.filter((_, i) => (xs.length - 1 - i) % 2 === 0) : xs;
+  const p = Plot.plot({
+    document, width: 320, height: 130, marginLeft: 38, marginRight: 12, marginTop: 10, style: STYLE,
+    x: { domain: [Math.min(...xs), Math.max(...xs)], ticks: graduations, tickFormat: (a: number) => String(a), label: null },
+    y: { domain: [0, Math.max(...definis.map((x) => x.v!)) * 1.1], label: null, ticks: 4, grid: true, tickFormat: (d: number) => nombre(d, 2) },
+    marks: [
+      // Plot sépare la ligne aux valeurs null : le trou n'est jamais comblé.
+      Plot.line(ensemble, { x: "annee", y: "v", stroke: "var(--me)", strokeWidth: 2.5 }),
+      Plot.line(publicPrive, { x: "annee", y: "v", stroke: "var(--ink)", strokeWidth: 2, strokeDasharray: "4 3" }),
+      Plot.dot(ensemble.filter((d) => d.v !== null), { x: "annee", y: "v", r: 3, fill: "var(--me)" }),
+      Plot.dot(publicPrive.filter((d) => d.v !== null), { x: "annee", y: "v", r: 2.5, fill: "var(--ink)" }),
+    ],
+  });
+  const decrit = (nom: string, s: typeof ensemble) => `${nom} : ${s.map((d) => `${d.annee} ${d.v === null ? "non disponible" : nombre(d.v, 3)}`).join(", ")}`;
+  return svg(p, `Évolution de l'indice d'entropie. ${decrit(LIBELLES_SEGREGATION.indices.ensemble, ensemble)} ; ${decrit(LIBELLES_SEGREGATION.indices.publicPrive, publicPrive)}`);
 }

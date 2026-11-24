@@ -4,7 +4,7 @@
 // (tableau 6.1 de la spécification de la phase 2).
 import type { DonneesTerritoire, IpsMoyens, NiveauTerritoire } from "@obs/shared/donnees";
 import { date, entier, libelleMillesime, nombre, part } from "@obs/shared/format";
-import { academie, type CodeIndicateur, FAMILLES_PLURIEL, INDICATEURS, LIBELLES, LIBELLES_BUDGET } from "@obs/shared/libelles";
+import { academie, type CodeIndicateur, FAMILLES_PLURIEL, INDICATEURS, LIBELLES, LIBELLES_BUDGET, LIBELLES_SEGREGATION } from "@obs/shared/libelles";
 import { cheminTerritoire, communeDeRattachement, LIBELLES_PLM } from "@obs/shared/territoires";
 import type { Comparaison, Famille, Niveau, Secteur } from "@obs/shared/types";
 import Base from "../layouts/Base.astro";
@@ -16,6 +16,7 @@ import Absence from "./Absence.astro";
 import { absenceBudget, motifAbsenceTerritoire, niveauDe } from "../lib/budget";
 import Ariane from "./Ariane.astro";
 import BlocBudget from "./BlocBudget.astro";
+import BlocSegregation from "./BlocSegregation.astro";
 import CarteTerritoire from "./CarteTerritoire.astro";
 import Cellule from "./Cellule.astro";
 import LegendeCourbeIps from "./LegendeCourbeIps.astro";
@@ -194,6 +195,11 @@ const badges = [
               <div class="src">Moyennes publiées par la DEPP (IPS des collèges et des lycées).</div>
             </div>
           </div>
+        )}
+
+        {f === "college" && (d.segregation ?? []).length > 0 && <BlocSegregation annees={d.segregation!} />}
+        {f === "college" && (niveau === "academie" || niveau === "region" || niveau === "france") && (
+          <p class="src" id="segregation-renvoi">{LIBELLES_SEGREGATION.renvoi}</p>
         )}
 
         {s.ipsHistorique.length >= 2 && (() => {

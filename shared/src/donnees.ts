@@ -124,6 +124,14 @@ export interface Nuage {
   sources: { resultats: SourceId; ips: SourceId[] };
 }
 
+/** Ségrégation sociale entre collèges d'un département pour une année, telle que publiée par la DEPP. */
+export interface AnneeSegregation {
+  annee: number; colleges: number | null; partPrive: number | null;
+  entropie: { ensemble: number | null; public: number | null; prive: number | null; publicPrive: number | null };
+  /** Contributions publiées (en %). */
+  contributions: { public: number | null; prive: number | null; publicPrive: number | null };
+}
+
 export interface DonneesTerritoire {
   ref: RefTerritoire;
   /** Du plus large au plus proche ; [] pour la France. */
@@ -141,6 +149,8 @@ export interface DonneesTerritoire {
   academies?: RefTerritoire[];
   /** Départements et académies : nuages IPS × réussite d'au moins 5 points ; absent sinon. */
   nuages?: Nuage[];
+  /** Pages département : ségrégation sociale entre collèges, par année croissante ; absent sinon. */
+  segregation?: AnneeSegregation[];
   /** Corrections de millésime des données affichées sur la page (ségrégation du département, budgets) ; absent si aucune. */
   corrections?: (Correction & { source: SourceId })[];
 }

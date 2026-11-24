@@ -260,3 +260,19 @@ export const LIBELLES_NUAGES = {
   vaNonPubliee: "valeur ajoutée non publiée",
   effectif: { brevet_general: "candidats", bac_gt: "présents", bac_pro: "présents" },
 } as const;
+
+/** Libellés du bloc « Ségrégation sociale entre collèges » (pages département ; renvoi sur les autres pages de territoire). */
+export const LIBELLES_SEGREGATION = {
+  titre: "Ségrégation sociale entre collèges",
+  indices: {
+    ensemble: "Ensemble des collèges",
+    public: "Entre collèges publics",
+    prive: "Entre collèges privés sous contrat",
+    publicPrive: "Entre public et privé",
+  },
+  partPublicPrive: "Part de la ségrégation due à l'écart entre public et privé",
+  colleges: "Collèges pris en compte",
+  partPrive: "Part du privé",
+  indicateur: "Indicateur",
+  renvoi: "La DEPP publie la ségrégation sociale entre collèges par département seulement : voir les pages des départements.",
+} as const;

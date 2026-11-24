@@ -1,0 +1,50 @@
+---
+// Ségrégation sociale entre collèges d'un département : courbe d'évolution (SVG au build) et tableau des cinq dernières
+// années publiées (une ligne par indicateur). Valeurs telles que publiées par la DEPP ; une absence est dite, jamais un zéro.
+import type { AnneeSegregation } from "@obs/shared/donnees";
+import { date, entier, nombre, part } from "@obs/shared/format";
+import { LIBELLES, LIBELLES_SEGREGATION as L } from "@obs/shared/libelles";
+import { lireSources } from "../lib/donnees";
+import { svgSegregation } from "../lib/plot";
+import Cellule from "./Cellule.astro";
+
+interface Props { annees: AnneeSegregation[] }
+const { annees } = Astro.props;
+const visibles = annees.slice(-5);
+const premiere = annees[0]!.annee;
+const derniere = annees.at(-1)!.annee;
+const source = lireSources().segregation;
+type Cellule = { t: string; abs: boolean };
+const indice = (v: number | null): Cellule => (v === null ? { t: LIBELLES.nonDisponible, abs: true } : { t: nombre(v, 3), abs: false });
+const pourcent = (v: number | null): Cellule => (v === null ? { t: LIBELLES.nonDisponible, abs: true } : { t: part(v), abs: false });
+const lignes: { libelle: string; valeurs: Cellule[] }[] = [
+  { libelle: L.indices.ensemble, valeurs: visibles.map((a) => indice(a.entropie.ensemble)) },
+  { libelle: L.indices.public, valeurs: visibles.map((a) => indice(a.entropie.public)) },
+  { libelle: L.indices.prive, valeurs: visibles.map((a) => indice(a.entropie.prive)) },
+  { libelle: L.indices.publicPrive, valeurs: visibles.map((a) => indice(a.entropie.publicPrive)) },
+  { libelle: L.partPublicPrive, valeurs: visibles.map((a) => pourcent(a.contributions.publicPrive)) },
+  { libelle: L.colleges, valeurs: visibles.map((a) => (a.colleges === null ? { t: LIBELLES.nonDisponible, abs: true } : { t: entier(a.colleges), abs: false })) },
+  { libelle: L.partPrive, valeurs: visibles.map((a) => pourcent(a.partPrive)) },
+];
+---
+<div class="segregation" id="segregation">
+  <h3 class="sous-titre">{L.titre}</h3>
+  <div class="card">
+    <div class="lab"><span>Indice d'entropie</span><span class="yr">{premiere} → {derniere}</span></div>
+    <Fragment set:html={svgSegregation(annees)} />
+    <div class="legend"><span>— {L.indices.ensemble}</span><span>- - {L.indices.publicPrive}</span></div>
+    <div class="table-wrap" style="margin-top:10px">
+      <table class="cmp">
+        <thead><tr><th>{L.indicateur}</th>{visibles.map((a) => <th class="n">{a.annee}</th>)}</tr></thead>
+        <tbody>
+          {lignes.map((l) => (
+            <tr><td>{l.libelle}</td>{l.valeurs.map((v) => <td class="n"><Cellule texte={v.t} absent={v.abs} /></td>)}</tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    {source?.actuelle && (
+      <div class="src">Source : {source.producteur}, <a href={source.pageUrl}>{source.titre}</a> · {derniere} · collecté le {date(source.actuelle.collecteLe)} · <a href={source.actuelle.url}>donnée brute</a></div>
+    )}
+  </div>
+</div>
