@@ -29,6 +29,7 @@ select
   vrai(segpa) as segpa,
   vrai(ulis) as ulis,
   vrai(hebergement) as internat,
+  famille_ecole(ecole_maternelle, ecole_elementaire) as famille_ecole,
   trim(etat) as etat
 from src_annuaire
 where identifiant_de_l_etablissement is not null;
@@ -67,13 +68,17 @@ select *,
     when not regexp_matches(uai, '^[0-9]{7}[A-Z]$') then 'uai_invalide'
     when etat is distinct from 'OUVERT' then 'ferme'
     when dep like '98%' then 'hors_perimetre_geographique'
-    when type_etablissement not in ('Collège', 'Lycée', 'EREA') then 'type_hors_perimetre'
+    when type_etablissement not in ('Collège', 'Lycée', 'EREA', 'Ecole') then 'type_hors_perimetre'
+    when type_etablissement = 'Ecole' and nature_ecole_hors_perimetre(nature) then 'nature_ecole_hors_perimetre'
     when secteur_brut = 'prive_hors_contrat' then 'prive_hors_contrat'
     when secteur_brut is null then 'secteur_inconnu'
     when famille is null then 'famille_inconnue'
   end as motif
 from (
-  select a.*, famille(a.nature, case when a.type_etablissement = 'Lycée' then t.type_lycee end) as famille
+  -- écoles : famille d'après les indicateurs maternelle et élémentaire de l'annuaire, pas d'après la nature
+  select a.*,
+    case when a.type_etablissement = 'Ecole' then a.famille_ecole
+         else famille(a.nature, case when a.type_etablissement = 'Lycée' then t.type_lycee end) end as famille
   from annuaire_rang a
   left join type_lycee t using (uai)
   where a.rang = 1

@@ -2,7 +2,7 @@
 // Fiche établissement : identité, chiffres clés situés, élèves, composition sociale, enseignants,
 // vie scolaire, voisins nommés, sources. Graphiques rendus en SVG au build.
 import { entier, nombre, part } from "@obs/shared/format";
-import { FAMILLES, LIBELLES, LIBELLES_BUDGET, NIVEAUX_TERRITORIAUX } from "@obs/shared/libelles";
+import { estEcole, FAMILLES, LIBELLES, LIBELLES_BUDGET, NIVEAUX_TERRITORIAUX } from "@obs/shared/libelles";
 import type { CodeIndicateur } from "@obs/shared/libelles";
 import type { Niveau, Secteur } from "@obs/shared/types";
 import Absence from "../../components/Absence.astro";
@@ -26,7 +26,8 @@ import { aPointCalcule, domaine, seriesReferencesIps, svgBarres, svgCourbe, svgP
 import LegendeCourbeIps from "../../components/LegendeCourbeIps.astro";
 
 export function getStaticPaths() {
-  return lireIndex().map((e) => ({ params: { uai: e.u } }));
+  // Pas encore de page pour les écoles : jusqu'à la tâche 9 du plan phase Écoles (modèle de fiche école).
+  return lireIndex().filter((e) => !estEcole(e.f)).map((e) => ({ params: { uai: e.u } }));
 }
 
 const f = lireFiche(Astro.params.uai!);

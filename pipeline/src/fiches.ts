@@ -3,8 +3,9 @@ import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { DonneesSource, EntreeIndex } from "@obs/shared/donnees";
 import type {
-  CodeIndicateur, Famille, Fiche, Identite, Indicateur, Mesure, Repartition, ResultatsVoie, Secteur, Site, SourceId, SourceRef, Voisin,
+  CodeIndicateur, Famille, FamilleEcole, FamilleSecondDegre, Fiche, Identite, Indicateur, Mesure, Repartition, ResultatsVoie, Secteur, Site, SourceId, SourceRef, Voisin,
 } from "@obs/shared/types";
+import { FAMILLES_SECOND_DEGRE } from "@obs/shared/libelles";
 import type { Manifest } from "./archive.ts";
 import type { Db } from "./db.ts";
 import { budgetDeFiche, calculerBudgets } from "./budget-eleves.ts";
@@ -29,8 +30,8 @@ export function distanceKm(lat1: number, lon1: number, lat2: number, lon2: numbe
   return 2 * RAYON_TERRE_KM * Math.asin(Math.sqrt(a));
 }
 
-/** Familles comparables pour le voisinage (publié sur /methode/). */
-export const FAMILLES_VOISINES: Record<Famille, Famille[]> = {
+/** Familles comparables pour le voisinage (publié sur /methode/). Second degré seulement : les écoles n'ont pas de voisins. */
+export const FAMILLES_VOISINES: Record<FamilleSecondDegre, FamilleSecondDegre[]> = {
   college: ["college"],
   legt: ["legt", "lpo"],
   lpo: ["legt", "lpo", "lp"],
@@ -38,13 +39,22 @@ export const FAMILLES_VOISINES: Record<Famille, Famille[]> = {
   erea: ["erea"],
 };
 
+/** Écoles compatibles entre elles (successeurs et écoles proches). */
+export const FAMILLES_COMPATIBLES_ECOLES: Record<FamilleEcole, Famille[]> = {
+  maternelle: ["maternelle", "primaire"],
+  elementaire: ["elementaire", "primaire"],
+  primaire: ["maternelle", "elementaire", "primaire"],
+};
+
+const SECOND_DEGRE_SQL = FAMILLES_SECOND_DEGRE.map((f) => `'${f}'`).join(", ");
+
 const HAVERSINE_SQL = `2 * ${RAYON_TERRE_KM} * asin(sqrt(
   pow(sin(radians(b.lat - a.lat) / 2), 2) + cos(radians(a.lat)) * cos(radians(b.lat)) * pow(sin(radians(b.lon - a.lon) / 2), 2)))`;
 
 /**
  * Les k plus proches établissements actifs de familles compatibles, publics et privés sous contrat,
  * dans le rayon. null si l'établissement n'a pas de coordonnées. Les pages disparues n'ont pas de voisins
- * et ne sont voisines de personne.
+ * et ne sont voisines de personne. Les écoles non plus : absentes du résultat, leur fiche reçoit null.
  */
 export async function calculerVoisins(
   db: Db,
@@ -62,7 +72,10 @@ export async function calculerVoisins(
   const paires = await db.sql<{
     uai: string; voisin: string; d: number; nom: string; famille: Famille; secteur: Secteur; commune: string;
   }>(`
-    with e as (select uai, nom, famille, secteur, commune, lat, lon from etablissements where lat is not null and lon is not null),
+    with e as (
+      select uai, nom, famille, secteur, commune, lat, lon from etablissements
+      where lat is not null and lon is not null and famille in (${SECOND_DEGRE_SQL})
+    ),
     compat(a, b) as (values ${compat}),
     p as (
       select a.uai, b.uai as voisin, ${HAVERSINE_SQL} as d, b.nom, b.famille, b.secteur, b.commune
@@ -76,7 +89,7 @@ export async function calculerVoisins(
     order by uai, d, voisin`);
   const parUai = Map.groupBy(paires, (p) => p.uai);
   const avecCoordonnees = await db.sql<{ uai: string; gps: boolean }>(
-    "select uai, lat is not null and lon is not null as gps from etablissements",
+    `select uai, lat is not null and lon is not null as gps from etablissements where famille in (${SECOND_DEGRE_SQL})`,
   );
   const mesure = (uai: string, code: CodeIndicateur): Mesure =>
     ind.get(uai)?.find((i) => i.code === code)?.mesure ?? { valeur: null, statut: "non_disponible", source: null, rentree: null };

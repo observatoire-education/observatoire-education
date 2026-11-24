@@ -6,7 +6,9 @@ import type { BudgetCollectivite, MoyennesBudgetFrance, ParSecteur } from "./don
 export type { CodeIndicateur, CodeRepartition };
 
 export type Statut = "ok" | "non_publie_prive" | "non_disponible";
-export type Famille = "college" | "legt" | "lpo" | "lp" | "erea";
+export type FamilleSecondDegre = "college" | "legt" | "lpo" | "lp" | "erea";
+export type FamilleEcole = "maternelle" | "elementaire" | "primaire";
+export type Famille = FamilleSecondDegre | FamilleEcole;
 export type Secteur = "public" | "prive_sous_contrat";
 export type Niveau = "departement" | "academie" | "france";
 export type SourceId =

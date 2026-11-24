@@ -1,10 +1,10 @@
 // Fonctions de normalisation, en TypeScript et en macros DuckDB générées à partir des mêmes listes.
 // Correspondances explicites, sans approximation : un libellé inconnu donne null (et un motif d'exclusion).
-import type { Famille, Secteur } from "@obs/shared/types";
+import type { Famille, FamilleEcole, FamilleSecondDegre, Secteur } from "@obs/shared/types";
 import { litteral } from "./duck.ts";
 
 /** Natures de l'annuaire (`libelle_nature`, en majuscules) → famille. */
-export const NATURES: Record<Famille, readonly string[]> = {
+export const NATURES: Record<FamilleSecondDegre, readonly string[]> = {
   college: ["COLLEGE", "COLLEGE SPECIALISE", "COLLEGE CLIMATIQUE"],
   legt: [
     "LYCEE ENSEIGNT GENERAL ET TECHNOLOGIQUE",
@@ -17,6 +17,13 @@ export const NATURES: Record<Famille, readonly string[]> = {
   lp: ["LYCEE PROFESSIONNEL"],
   erea: ["ETAB REGIONAL/LYCEE ENSEIGNEMENT ADAPTE"],
 };
+
+/** Natures d'école exclues du périmètre (motif `nature_ecole_hors_perimetre`). */
+export const NATURES_ECOLE_HORS_PERIMETRE = [
+  "ECOLE REGIONALE DU PREMIER DEGRE",
+  "ECOLE SANS EFFECTIFS PERMANENTS",
+  "ECOLE DE PLEIN AIR",
+] as const;
 
 /** `type_de_lycee` de l'IPS des lycées : il l'emporte sur la nature de l'annuaire. */
 export const TYPES_LYCEE = ["LEGT", "LPO", "LP"] as const;
@@ -83,6 +90,19 @@ export function famille(nature: string | null, typeLycee: string | null): Famill
   return null;
 }
 
+/**
+ * Famille d'une école d'après les indicateurs `ecole_maternelle` et `ecole_elementaire` de l'annuaire
+ * (pas d'après la nature : une « école de niveau élémentaire » avec des classes maternelles est primaire).
+ */
+export function familleEcole(maternelle: unknown, elementaire: unknown): FamilleEcole | null {
+  const m = (VRAIS as readonly string[]).includes(texte(maternelle) ?? "");
+  const e = (VRAIS as readonly string[]).includes(texte(elementaire) ?? "");
+  if (m && e) return "primaire";
+  if (e) return "elementaire";
+  if (m) return "maternelle";
+  return null;
+}
+
 export function secteur(statut: string | null, contrat: string | null): Secteur | "prive_hors_contrat" | null {
   const s = statut?.trim();
   const c = contrat?.trim() ?? null;
@@ -133,6 +153,15 @@ create or replace macro famille(nature, type_lycee) as (
   case
     when upper(trim(type_lycee)) in (${liste(TYPES_LYCEE)}) then lower(upper(trim(type_lycee)))
       ${casFamille}
+  end);
+
+create or replace macro nature_ecole_hors_perimetre(nature) as (coalesce(upper(trim(nature)) in (${liste(NATURES_ECOLE_HORS_PERIMETRE)}), false));
+
+create or replace macro famille_ecole(maternelle, elementaire) as (
+  case
+    when vrai(maternelle) and vrai(elementaire) then 'primaire'
+    when vrai(elementaire) then 'elementaire'
+    when vrai(maternelle) then 'maternelle'
   end);
 
 create or replace macro secteur(statut, contrat) as (

@@ -1,7 +1,8 @@
 // Résultats aux examens d'une fiche : brevet (IVAC) et baccalauréat (IVAL), à partir des tables `resultats`
 // et `moyennes_resultats`. Une valeur absente n'est jamais un zéro : elle porte le statut « non_publie ».
 import type { Nuage, ParSecteur, PointNuage } from "@obs/shared/donnees";
-import type { Famille, Fiche, Niveau, ResultatsVoie, ResumeResultat, SourceId, ValeurResultat, VoieResultat } from "@obs/shared/types";
+import { estSecondDegre } from "@obs/shared/libelles";
+import type { Famille, FamilleSecondDegre, Fiche, Niveau, ResultatsVoie, ResumeResultat, SourceId, ValeurResultat, VoieResultat } from "@obs/shared/types";
 import type { CodeResultat, StatutResultat } from "@obs/shared/types";
 import type { Db } from "./db.ts";
 
@@ -101,13 +102,16 @@ export async function calculerResultats(db: Db): Promise<Map<string, ResultatsVo
 }
 
 /** Voies résumées par famille (règle « un seul chiffre par établissement »). */
-const VOIES_RESUME: Record<Famille, VoieResultat[]> = {
+const VOIES_RESUME: Record<FamilleSecondDegre, VoieResultat[]> = {
   college: ["brevet_general"],
   legt: ["bac_gt"],
   lp: ["bac_pro"],
   lpo: ["bac_gt", "bac_pro"],
   erea: ["brevet_general", "bac_gt", "bac_pro"],
 };
+
+/** Voies résumées d'une famille ; aucune pour une école (pas d'examen). */
+const voiesResume = (f: Famille): VoieResultat[] => (estSecondDegre(f) ? VOIES_RESUME[f] : []);
 
 /** Dernière session de chaque source de résultats (ivac, ival_gt, ival_pro). */
 export type DernieresSessions = Partial<Record<SourceId, number>>;
@@ -122,7 +126,7 @@ export async function dernieresSessions(db: Db): Promise<DernieresSessions> {
  * dont la session est la dernière de leur source : une session plus ancienne reste sur la fiche, hors des listes.
  */
 export function resume(f: Pick<Fiche, "famille" | "resultats">, dernieres: DernieresSessions): ResumeResultat[] {
-  return VOIES_RESUME[f.famille].flatMap((voie) => {
+  return voiesResume(f.famille).flatMap((voie) => {
     const r = f.resultats.find((x) => x.voie === voie);
     const v = r?.valeurs.find((x) => x.code === "taux_reussite");
     return r && v && r.session === dernieres[r.source] ? [{ voie, session: r.session, taux: v.valeur, va: v.va }] : [];
@@ -159,7 +163,7 @@ export function nuages(groupe: Fiche[], ipsParVoie: Map<string, IpsRentree>, ren
     const sourcesIps = new Set<SourceId>();
     let sourceResultats: SourceId = voie === "brevet_general" ? "ivac" : voie === "bac_gt" ? "ival_gt" : "ival_pro";
     for (const f of groupe) {
-      if (!VOIES_RESUME[f.famille].includes(voie)) continue; // même règle que les listes : un chiffre par famille
+      if (!voiesResume(f.famille).includes(voie)) continue; // même règle que les listes : un chiffre par famille
       const r = f.resultats.find((x) => x.voie === voie);
       if (!r || r.session !== dernieres[r.source] || r.session - 1 !== rentreeIps) continue;
       const v = r.valeurs.find((x) => x.code === "taux_reussite");

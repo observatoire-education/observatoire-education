@@ -4,14 +4,15 @@ import { collectiviteDe, libelleCollectivite, motifSansCollectivite, type IdColl
 import type {
   BudgetCollectivite, ExerciceBudget, MontantBudget, MoyenneBudget, MoyennesBudgetFrance, ParSecteur, StatutBudget,
 } from "@obs/shared/donnees";
-import type { Fiche } from "@obs/shared/types";
+import { estSecondDegre } from "@obs/shared/libelles";
+import type { Fiche, FamilleSecondDegre } from "@obs/shared/types";
 import { AGRICOLE, CITES_SCOLAIRES, EXERCICE_MIN, SEUIL_PERSONNEL_PAR_ELEVE } from "./budget-constantes.ts";
 import type { Db } from "./db.ts";
 
 const NIVEAUX: NiveauBudget[] = ["colleges", "lycees"];
 
-/** Niveau de budget d'une famille d'établissement : collèges, ou lycées (legt, lpo, lp, erea). */
-export function niveauDe(famille: Fiche["famille"]): NiveauBudget {
+/** Niveau de budget d'une famille du second degré : collèges, ou lycées (legt, lpo, lp, erea). Les écoles n'en ont pas. */
+export function niveauDe(famille: FamilleSecondDegre): NiveauBudget {
   return famille === "college" ? "colleges" : "lycees";
 }
 
@@ -22,6 +23,7 @@ export function niveauDe(famille: Fiche["famille"]): NiveauBudget {
 export function elevesParCollectivite(fiches: Fiche[], rentree: number): Map<string, ParSecteur<number>> {
   const r = new Map<string, ParSecteur<number>>();
   for (const f of fiches) {
+    if (!estSecondDegre(f.famille)) continue; // écoles : budget des communes, hors de ce calcul
     const niveau = niveauDe(f.famille);
     const valeur = f.indicateurs.find((i) => i.code === "eleves")?.historique.find(([an]) => an === rentree)?.[1];
     if (valeur === undefined || valeur === null) continue;
@@ -188,6 +190,7 @@ export interface Budgets {
  * Collectivité null (avec son motif) si aucune n'est rattachée ou si elle n'a aucun élève dans les fiches.
  */
 export function budgetDeFiche(f: Pick<Fiche, "famille" | "dep" | "codeCommune">, budgets: Budgets): Fiche["budget"] {
+  if (!estSecondDegre(f.famille)) return { france: [] }; // écoles : ni collèges ni lycées
   const niveau = niveauDe(f.famille);
   const id = collectiviteDe(niveau, f.dep, f.codeCommune);
   const france = budgets.france.filter((m) => m.niveau === niveau);

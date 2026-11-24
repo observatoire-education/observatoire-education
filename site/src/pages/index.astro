@@ -1,7 +1,7 @@
 ---
 // Accueil : titre neutre, grande recherche, bandeau national, territoires, mises à jour des sources, principes.
 import { date, entier, part } from "@obs/shared/format";
-import { academie, LIBELLES } from "@obs/shared/libelles";
+import { academie, estEcole, LIBELLES } from "@obs/shared/libelles";
 import BlocFrance from "../components/BlocFrance.astro";
 import Base from "../layouts/Base.astro";
 import { communesDisponibles, lireFrance, lireIndex, lireSources, lireTerritoire } from "../lib/donnees";
@@ -10,7 +10,8 @@ const france = lireFrance();
 const sources = Object.values(lireSources())
   .filter((s) => s.actuelle)
   .sort((a, b) => b.actuelle!.collecteLe.localeCompare(a.actuelle!.collecteLe));
-const actifs = lireIndex().filter((e) => !e.x).length;
+// Collèges et lycées seulement, jusqu'à la tâche 9 du plan phase Écoles (pages des écoles).
+const actifs = lireIndex().filter((e) => !e.x && !estEcole(e.f)).length;
 const f = france.familles;
 const compte = (cles: (keyof typeof f)[]) => {
   const pub = cles.reduce((a, k) => a + (f[k]?.compte.public ?? 0), 0);

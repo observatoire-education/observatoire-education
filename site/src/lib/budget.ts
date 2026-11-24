@@ -5,7 +5,7 @@ import { lireSources } from "./donnees";
 import { ecart, entier } from "@obs/shared/format";
 import { LIBELLES, LIBELLES_BUDGET as L } from "@obs/shared/libelles";
 
-import type { Famille } from "@obs/shared/types";
+import type { FamilleSecondDegre } from "@obs/shared/types";
 
 export { millions } from "@obs/shared/format";
 
@@ -52,8 +52,8 @@ export function ecartSigne(a: number, b: number): string {
   return Math.round(d) === 0 ? t : `${d > 0 ? "+" : "−"}${t}`;
 }
 
-/** Niveau de budget d'une famille d'établissement : collèges, ou lycées (lycées GT, polyvalents, professionnels, EREA). */
-export const niveauDe = (famille: Famille): NiveauBudget => (famille === "college" ? "colleges" : "lycees");
+/** Niveau de budget d'une famille du second degré : collèges, ou lycées (lycées GT, polyvalents, professionnels, EREA). Les écoles n'en ont pas. */
+export const niveauDe = (famille: FamilleSecondDegre): NiveauBudget => (famille === "college" ? "colleges" : "lycees");
 
 /** Lien vers la donnée brute archivée d'un exercice (`budget_N`), si elle est connue. */
 export const brutBudget = (id: string): string | undefined => lireSources()[id]?.actuelle?.url;

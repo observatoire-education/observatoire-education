@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import type { EntreeIndex } from "@obs/shared/donnees";
-import { LIBELLES_BUDGET } from "@obs/shared/libelles";
+import { estEcole, LIBELLES_BUDGET } from "@obs/shared/libelles";
 import { doc, page, siteTest, texte } from "./site.ts";
 
 beforeAll(async () => {
@@ -97,6 +97,13 @@ describe("accueil et recherche", () => {
     expect(idx.length).toBe(32); // 24 actifs + 2 pages du registre + 5 fiches historiques
     expect(Object.keys(idx.find((e) => e.u === "0440001A")!).sort()).toEqual(["c", "d", "f", "n", "s", "u"]);
     expect(idx.find((e) => e.u === "0440004D")).toBeUndefined();
+  });
+
+  test("écoles : ni page, ni recherche, ni plan du site (jusqu'aux tâches 9 et 10 du plan phase Écoles)", () => {
+    const idx = JSON.parse(page("recherche.json")) as EntreeIndex[];
+    expect(idx.filter((e) => estEcole(e.f))).toEqual([]);
+    expect(() => page("etablissement/0440201A")).toThrow(/page absente/);
+    expect(page("sitemap.xml")).not.toContain("/etablissement/0440201A/");
   });
 });
 

@@ -2,13 +2,14 @@
 import { comparerCollectivites, type NiveauBudget } from "@obs/shared/collectivites";
 import type { BudgetCollectivite, DonneesTerritoire, LigneListe, LigneTerritoire, SyntheseFamille } from "@obs/shared/donnees";
 import { entier } from "@obs/shared/format";
-import { FAMILLES } from "@obs/shared/libelles";
-import type { Famille, ResumeResultat } from "@obs/shared/types";
+import { FAMILLES, FAMILLES_SECOND_DEGRE } from "@obs/shared/libelles";
+import type { Famille, FamilleSecondDegre, ResumeResultat } from "@obs/shared/types";
 
-export const ORDRE_FAMILLES: Famille[] = ["college", "legt", "lpo", "lp", "erea"];
+/** Familles des pages de territoire : second degré seulement (les écoles n'y figurent pas). */
+export const ORDRE_FAMILLES: FamilleSecondDegre[] = [...FAMILLES_SECOND_DEGRE];
 
-export const famillesDe = (d: DonneesTerritoire): [Famille, SyntheseFamille][] =>
-  ORDRE_FAMILLES.flatMap((f) => (d.familles[f] ? [[f, d.familles[f]!] as [Famille, SyntheseFamille]] : []));
+export const famillesDe = (d: DonneesTerritoire): [FamilleSecondDegre, SyntheseFamille][] =>
+  ORDRE_FAMILLES.flatMap((f) => (d.familles[f] ? [[f, d.familles[f]!] as [FamilleSecondDegre, SyntheseFamille]] : []));
 
 /** Pluriel des familles dans une phrase (« 2 lycées professionnels ») ; le sigle EREA est invariable. */
 const PLURIEL: Record<Famille, string> = {
@@ -17,6 +18,9 @@ const PLURIEL: Record<Famille, string> = {
   lpo: "lycées polyvalents",
   lp: "lycées professionnels",
   erea: "EREA",
+  maternelle: "écoles maternelles",
+  elementaire: "écoles élémentaires",
+  primaire: "écoles primaires",
 };
 
 /** Nom d'une famille dans une phrase : en minuscules, au singulier ou au pluriel selon n ; EREA reste un sigle. */

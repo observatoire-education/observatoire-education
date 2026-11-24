@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { depCanonique, famille, libelleTerritoire, nombre, rentree, secteur } from "../pipeline/src/normalise.ts";
+import { depCanonique, famille, familleEcole, libelleTerritoire, nombre, rentree, secteur } from "../pipeline/src/normalise.ts";
 import { dbTest } from "./aide.ts";
 
 const db = await dbTest();
@@ -111,13 +111,8 @@ describe("tables canoniques", () => {
       "0440004D": "prive_hors_contrat",
       "0440008H": "secteur_inconnu",
       "0440009J": "famille_inconnue",
-      // écoles : pas encore classées (tâche 5)
-      "0440104D": "type_hors_perimetre",
-      "0440105E": "type_hors_perimetre",
-      "0440108H": "type_hors_perimetre",
-      "0440201A": "type_hors_perimetre",
-      "0440202B": "type_hors_perimetre",
-      "0440203C": "type_hors_perimetre",
+      "0440204D": "nature_ecole_hors_perimetre", // école régionale du premier degré
+      "0440205E": "prive_hors_contrat", // école privée hors contrat
       "9870001A": "hors_perimetre_geographique",
       "../X/0440010K": "uai_invalide", // l'UAI sert à nommer des fichiers et des URL : format strict
     });
@@ -127,7 +122,8 @@ describe("tables canoniques", () => {
     const r = await db.sql<{ uai: string; dep: string }>("select uai, dep from etablissements order by uai");
     expect(r.map((x) => x.uai)).toEqual([
       "0350001A", "0350002B", "0350003C", "0350004D", "0350005E", "0350011L", "0350012M", "0350013N", "0350014P", "0350015R",
-      "0440001A", "0440002B", "0440003C", "0440005E", "0440006F", "0440007G", "0440103C", "0440200E", "0750701C", "0751501A", "0751502B",
+      "0440001A", "0440002B", "0440003C", "0440005E", "0440006F", "0440007G", "0440103C", "0440104D", "0440105E", "0440108H",
+      "0440200E", "0440201A", "0440202B", "0440203C", "0750701C", "0751501A", "0751502B",
       "6200001F", "9711023K", "9750001C", "9770001G",
     ]);
     expect(r.find((x) => x.uai === "6200001F")!.dep).toBe("2A");
@@ -169,6 +165,39 @@ describe("tables canoniques", () => {
       { rang: 3, nom: "Annexe du lycée Guist'hau", principal: false },
     ]);
     expect(await db.sql("select count(*)::int as n from sites where uai <> '0440003C'")).toEqual([{ n: 0 }]);
+  });
+
+  test("famille des écoles : indicateurs maternelle et élémentaire de l'annuaire", async () => {
+    const r = await db.sql<{ uai: string; famille: string }>(
+      "select uai, famille from etablissements where famille in ('maternelle', 'elementaire', 'primaire') order by uai",
+    );
+    expect(Object.fromEntries(r.map((x) => [x.uai, x.famille]))).toEqual({
+      "0440104D": "elementaire",
+      "0440105E": "maternelle",
+      "0440108H": "primaire", // nature « école de niveau élémentaire », mais les deux indicateurs
+      "0440201A": "maternelle",
+      "0440202B": "elementaire",
+      "0440203C": "primaire",
+    });
+  });
+
+  test("famille_ecole : les deux indicateurs → primaire, un seul → sa famille, aucun → null", async () => {
+    const cas: [string | null, string | null, ReturnType<typeof familleEcole>][] = [
+      ["1", "1", "primaire"],
+      ["0", "1", "elementaire"],
+      ["1", "0", "maternelle"],
+      ["0", "0", null],
+      [null, null, null],
+    ];
+    expect(cas.map(([m, e]) => familleEcole(m, e))).toEqual(cas.map((c) => c[2]));
+    expect(familleEcole(1, 0)).toBe("maternelle");
+    for (const [m, e, f] of cas) {
+      const lit = (v: string | null) => (v === null ? "null::varchar" : `'${v}'`);
+      const [r] = await db.sql<{ v: string | null }>(`select famille_ecole(${lit(m)}, ${lit(e)}) as v`);
+      expect(r!.v).toBe(f);
+    }
+    // indicateurs lus en entiers par DuckDB
+    expect(await db.sql("select famille_ecole(1, 1) as v")).toEqual([{ v: "primaire" }]);
   });
 
   test("famille : le type de lycée de l'IPS l'emporte sur l'annuaire", async () => {

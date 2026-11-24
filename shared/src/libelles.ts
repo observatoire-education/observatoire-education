@@ -1,6 +1,6 @@
 // Libellés exacts affichés sur le site. Toute formulation passe par ce fichier :
 // ton neutre, vocabulaire des producteurs de données, aucun mot de palmarès.
-import type { Famille, Secteur, Statut } from "./types.ts";
+import type { Famille, FamilleEcole, FamilleSecondDegre, Secteur, Statut } from "./types.ts";
 
 const jjmmaaaa = (isoDate: string): string => {
   const [a, m, j] = isoDate.slice(0, 10).split("-");
@@ -40,6 +40,9 @@ export const FAMILLES: Record<Famille, string> = {
   lpo: "Lycée polyvalent",
   lp: "Lycée professionnel",
   erea: "EREA",
+  maternelle: "École maternelle",
+  elementaire: "École élémentaire",
+  primaire: "École primaire",
 };
 
 /** Libellés au pluriel, pour les onglets des pages de synthèse. */
@@ -49,7 +52,25 @@ export const FAMILLES_PLURIEL: Record<Famille, string> = {
   lpo: "Lycées polyvalents",
   lp: "Lycées pro",
   erea: "EREA",
+  maternelle: "Écoles maternelles",
+  elementaire: "Écoles élémentaires",
+  primaire: "Écoles primaires",
 };
+
+/** Familles du second degré (collèges, lycées, EREA), dans l'ordre d'affichage. */
+export const FAMILLES_SECOND_DEGRE = ["college", "legt", "lpo", "lp", "erea"] as const satisfies readonly FamilleSecondDegre[];
+/** Familles des écoles (premier degré). */
+export const FAMILLES_ECOLES = ["maternelle", "elementaire", "primaire"] as const satisfies readonly FamilleEcole[];
+
+/** Vrai pour une école maternelle, élémentaire ou primaire. */
+export function estEcole(f: Famille): f is FamilleEcole {
+  return (FAMILLES_ECOLES as readonly Famille[]).includes(f);
+}
+
+/** Vrai pour un collège, un lycée ou un EREA. */
+export function estSecondDegre(f: Famille): f is FamilleSecondDegre {
+  return (FAMILLES_SECOND_DEGRE as readonly Famille[]).includes(f);
+}
 
 export const SECTEURS: Record<Secteur, string> = {
   public: "Public",

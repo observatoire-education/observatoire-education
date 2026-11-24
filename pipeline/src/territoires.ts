@@ -6,7 +6,7 @@ import type {
   ParSecteur, RefTerritoire, SyntheseFamille, ValeurCarte,
 } from "@obs/shared/donnees";
 import { collectiviteDe, type NiveauBudget, REGIONS, regionDe } from "@obs/shared/collectivites";
-import { CODES_INDICATEURS, INDICATEURS } from "@obs/shared/libelles";
+import { CODES_INDICATEURS, estSecondDegre, INDICATEURS } from "@obs/shared/libelles";
 import { communeDeRattachement, LIBELLES_PLM, SEUIL_COMMUNE } from "@obs/shared/territoires";
 import type { Famille, Fiche, Indicateur, Mesure, Niveau, Secteur, SourceId } from "@obs/shared/types";
 import type { Manifest } from "./archive.ts";
@@ -129,9 +129,15 @@ const pairesIps = (groupe: Fiche[], rentree: number | null, rentreeIps: number |
     return ips !== null && eleves !== null ? [{ valeur: ips, poids: eleves }] : [];
   });
 
-/** Communes (arrondissements rattachés) qui comptent au moins SEUIL_COMMUNE établissements actifs distincts. */
+/**
+ * Les pages de territoire ne portent que sur le second degré (collèges, lycées, EREA) : les écoles en sont
+ * retirées avant tout calcul (synthèses, listes, communes retenues, contrôle de la pondération).
+ */
+export const secondDegre = (fiches: Fiche[]): Fiche[] => fiches.filter((f) => estSecondDegre(f.famille));
+
+/** Communes (arrondissements rattachés) qui comptent au moins SEUIL_COMMUNE établissements actifs distincts du second degré. */
 export function communesRetenues(actives: Fiche[]): Map<string, Fiche[]> {
-  const groupes = Map.groupBy(actives.filter((f) => f.disparuLe === null), (f) => communeDeRattachement(f.codeCommune));
+  const groupes = Map.groupBy(secondDegre(actives).filter((f) => f.disparuLe === null), (f) => communeDeRattachement(f.codeCommune));
   return new Map([...groupes].filter(([, g]) => new Set(g.map((f) => f.uai)).size >= SEUIL_COMMUNE));
 }
 
@@ -165,7 +171,7 @@ export function controlerPonderation(
   rentreeIps: number | null = rentree,
 ): ControlePonderation {
   const ecarts: number[] = [];
-  for (const [cle, groupe] of Map.groupBy(actives, (f) => `${f.famille}|${f.dep}`)) {
+  for (const [cle, groupe] of Map.groupBy(secondDegre(actives), (f) => `${f.famille}|${f.dep}`)) {
     const depp = ipsDep.get(cle);
     if (!depp) continue;
     for (const [secteur, publiee] of [["public", depp.pub], ["prive_sous_contrat", depp.priv]] as const) {
@@ -228,6 +234,7 @@ export async function exporterTerritoires(
   actives: Fiche[], db: Db, sortie: string, rentree: number | null, budgets: Budgets = BUDGETS_VIDES,
   corrections: EntreeCorrection[] = [], manifest?: Manifest,
 ): Promise<void> {
+  actives = secondDegre(actives); // aucune école sur les pages de territoire
   for (const d of ["regions", "departements", "academies", "communes"]) await mkdir(join(sortie, d), { recursive: true });
   const ipsHistorique = await calculerIpsHistorique(db);
   const rentreeIps = await derniereRentreeIps(db);
@@ -248,7 +255,8 @@ export async function exporterTerritoires(
   };
   const ips = { dep: await ipsMoyens(db, "dep"), aca: await ipsMoyens(db, "aca"), nat: await ipsMoyens(db, "nat") };
   const horsContratLignes = await db.sql<{ dep: string; aca: string; code_commune: string }>(
-    "select dep, aca, code_commune from classement where motif = 'prive_hors_contrat'",
+    // collèges et lycées hors contrat seulement : les pages de territoire ne portent pas sur les écoles
+    "select dep, aca, code_commune from classement where motif = 'prive_hors_contrat' and type_etablissement <> 'Ecole'",
   );
   const horsContrat = (filtre: (l: { dep: string; aca: string; code_commune: string }) => boolean) =>
     horsContratLignes.filter(filtre).length;

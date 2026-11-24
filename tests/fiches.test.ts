@@ -5,8 +5,11 @@ import { join } from "node:path";
 import type { DonneesFrance, DonneesSource, DonneesTerritoire, EntreeIndex } from "@obs/shared/donnees";
 import type { Fiche } from "@obs/shared/types";
 import { budgetDeFiche } from "../pipeline/src/budget-eleves.ts";
-import { assemblerFiches, calculerVoisins, distanceKm, attacherBudgets, exporter, millesimesAffiches } from "../pipeline/src/fiches.ts";
-import { exporterTerritoires } from "../pipeline/src/territoires.ts";
+import { estEcole, FAMILLES, FAMILLES_ECOLES, FAMILLES_PLURIEL, FAMILLES_SECOND_DEGRE } from "@obs/shared/libelles";
+import {
+  assemblerFiches, calculerVoisins, distanceKm, attacherBudgets, exporter, FAMILLES_COMPATIBLES_ECOLES, millesimesAffiches,
+} from "../pipeline/src/fiches.ts";
+import { communesRetenues, controlerPonderation, exporterTerritoires, ipsMoyens } from "../pipeline/src/territoires.ts";
 import { ecrireRegistre, lireRegistre, mettreAJourRegistre, type Registre } from "../pipeline/src/registre.ts";
 import type { BudgetCollectivite } from "@obs/shared/donnees";
 import { calculerBudgets } from "../pipeline/src/budget-eleves.ts";
@@ -89,11 +92,68 @@ describe("voisinage", () => {
   });
 });
 
+describe("écoles", () => {
+  const ECOLES = ["0440104D", "0440105E", "0440108H", "0440201A", "0440202B", "0440203C"];
+
+  test("libellés, familles du second degré et des écoles", () => {
+    expect(FAMILLES_SECOND_DEGRE).toEqual(["college", "legt", "lpo", "lp", "erea"]);
+    expect(FAMILLES_ECOLES).toEqual(["maternelle", "elementaire", "primaire"]);
+    expect([FAMILLES.maternelle, FAMILLES.elementaire, FAMILLES.primaire]).toEqual(["École maternelle", "École élémentaire", "École primaire"]);
+    expect([FAMILLES_PLURIEL.maternelle, FAMILLES_PLURIEL.elementaire, FAMILLES_PLURIEL.primaire])
+      .toEqual(["Écoles maternelles", "Écoles élémentaires", "Écoles primaires"]);
+    expect(FAMILLES_ECOLES.every(estEcole)).toBe(true);
+    expect(FAMILLES_SECOND_DEGRE.some(estEcole)).toBe(false);
+  });
+
+  test("écoles compatibles", () => {
+    expect(FAMILLES_COMPATIBLES_ECOLES).toEqual({
+      maternelle: ["maternelle", "primaire"],
+      elementaire: ["elementaire", "primaire"],
+      primaire: ["maternelle", "elementaire", "primaire"],
+    });
+  });
+
+  test("une fiche par école ouverte, avec sa famille", () => {
+    expect(Object.fromEntries(fiches.filter((f) => estEcole(f.famille)).map((f) => [f.uai, f.famille]))).toEqual({
+      "0440104D": "elementaire", "0440105E": "maternelle", "0440108H": "primaire",
+      "0440201A": "maternelle", "0440202B": "elementaire", "0440203C": "primaire",
+    });
+  });
+
+  test("ni voisins ni voisines de personne", async () => {
+    const tous = await calculerVoisins(db);
+    for (const uai of ECOLES) expect(tous.has(uai)).toBe(false);
+    for (const liste of tous.values()) for (const v of liste ?? []) expect(estEcole(v.famille)).toBe(false);
+    for (const uai of ECOLES) expect(fiche(uai).voisins).toBeNull(); // 0440201A a des coordonnées
+  });
+
+  test("ni budget de collèges ou de lycées, ni résultats", () => {
+    for (const uai of ECOLES) {
+      expect(fiche(uai).budget).toEqual({ france: [] });
+      expect(fiche(uai).resultats).toEqual([]);
+      expect(fiche(uai).sources.map((s) => s.id).filter((id) => id.startsWith("budget_"))).toEqual([]);
+    }
+  });
+
+  test("absentes des territoires", async () => {
+    const actives = fiches.filter((f) => f.disparuLe === null);
+    expect(communesRetenues(actives).get("44109")!.some((f) => estEcole(f.famille))).toBe(false);
+    // une école fictive avec IPS et élèves, et une moyenne DEPP pour sa famille : ignorée par le contrôle
+    const ipsDep = await ipsMoyens(db, "dep");
+    const sansEcole = controlerPonderation(actives, ipsDep, 2025);
+    const fictive: Fiche = { ...fiche("0440001A"), uai: "0440299Z", famille: "maternelle" };
+    ipsDep.set("maternelle|44", { ...ipsDep.get("college|44")!, pub: 50 });
+    expect(controlerPonderation([...actives, fictive], ipsDep, 2025)).toEqual(sansEcole);
+    expect(communesRetenues([...actives, fictive]).get("44109")!.map((f) => f.uai)).not.toContain("0440299Z");
+  });
+});
+
 describe("fiches", () => {
   test("une fiche par établissement du périmètre, triées par UAI", () => {
     expect(fiches.map((f) => f.uai)).toEqual([
       "0350001A", "0350002B", "0350003C", "0350004D", "0350005E", "0350011L", "0350012M", "0350013N", "0350014P", "0350015R",
-      "0440001A", "0440002B", "0440003C", "0440005E", "0440006F", "0440007G", "0440020P", "0440021R", "0440023T", "0440099Z", "0440101A", "0440102B", "0440103C", "0440200E",
+      "0440001A", "0440002B", "0440003C", "0440005E", "0440006F", "0440007G", "0440020P", "0440021R", "0440023T", "0440099Z", "0440101A", "0440102B", "0440103C",
+      "0440104D", "0440105E", "0440108H", "0440200E", "0440201A", "0440202B", "0440203C",
       "0750701C", "0751501A", "0751502B", "6200001F", "9711023K", "9750001C", "9770001G",
     ]);
   });
@@ -281,7 +341,7 @@ describe("registre des pages", () => {
     expect(apres["0440001A"]).toEqual({ premiere: "2026-01-01", identite: expect.objectContaining({ nom: "Collège Jules-Verne" }) });
     expect(apres["0440002B"]!.premiere).toBe("2026-11-23");
     expect(apres["0440099Z"]).toMatchObject({ disparuLe: "2020-08-31", identite: { nom: "Collège Disparu" } });
-    expect(Object.keys(apres)).toHaveLength(31); // + 5 fiches historiques + 10 d'Ille-et-Vilaine (nuages)
+    expect(Object.keys(apres)).toHaveLength(37); // + 5 fiches historiques + 10 d'Ille-et-Vilaine (nuages) + 6 écoles
   });
 
   test("lecture et écriture : une ligne par UAI, triée", async () => {
@@ -290,7 +350,7 @@ describe("registre des pages", () => {
     const r = mettreAJourRegistre({}, fiches, "2026-11-23");
     ecrireRegistre(chemin, r);
     const texte = await Bun.file(chemin).text();
-    expect(texte.split("\n")).toHaveLength(31 + 3); // accolades, 31 entrées, fin de fichier
+    expect(texte.split("\n")).toHaveLength(37 + 3); // accolades, 37 entrées (dont 6 écoles), fin de fichier
     expect(texte.indexOf("0440001A")).toBeLessThan(texte.indexOf("6200001F"));
     expect(lireRegistre(chemin)).toEqual(r);
   });
@@ -305,7 +365,7 @@ describe("export des données du site", () => {
     expect(f.nom).toBe("Collège Jules-Verne");
 
     const index: EntreeIndex[] = await Bun.file(join(sortie, "index.json")).json();
-    expect(index).toHaveLength(31);
+    expect(index).toHaveLength(37); // dont 6 écoles : l'index des données les contient, seules les routes du site les retirent
     expect(index[0]).toEqual({ u: "0350001A", n: "Collège Les Ajoncs", c: "Rennes", d: "35", f: "college", s: "public" });
 
     const dep: DonneesTerritoire = await Bun.file(join(sortie, "departements", "44.json")).json();
