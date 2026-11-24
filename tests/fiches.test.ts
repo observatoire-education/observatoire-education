@@ -139,7 +139,11 @@ describe("écoles", () => {
     const f = fiche("0440202B");
     expect(f.classes).toMatchObject({ rentree: 2025, total: 8 });
     expect(f.indicateurs.find((i) => i.code === "eleves_par_classe")!.mesure.statut).toBe("ok");
-    expect(f.sources.map((s) => s.id)).toEqual(["annuaire", "effectifs_ecoles", "classes_ecoles", "ecoles_ep"]);
+    expect(f.sources.map((s) => s.id)).toEqual([
+      "annuaire", "effectifs_ecoles", "ips_ecoles_2016", "ips_ecoles", "personnels_ecoles", "classes_ecoles", "ecoles_ep",
+    ]);
+    expect(f.sources.find((s) => s.id === "ips_ecoles")!.rentree).toBe(2024);
+    expect(f.sources.find((s) => s.id === "personnels_ecoles")!.rentree).toBe(2025);
     expect(f.sources.find((s) => s.id === "ecoles_ep")!.rentree).toBe(2018); // dernière rentrée affichée de la série
     expect(millesimesAffiches(f).get("ecoles_ep")).toEqual(new Set([2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018]));
     expect(millesimesAffiches(f).get("classes_ecoles")).toEqual(new Set([2025]));

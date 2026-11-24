@@ -143,3 +143,36 @@ describe("répartitions", () => {
     expect((await repartitionsDe("0440003C")).map((x) => x.code)).not.toContain("lv1");
   });
 });
+
+describe("enseignants des écoles", () => {
+  test("ETP d'enseignants et élèves par ETP, source du premier degré", async () => {
+    const etp = await indic("0440202B", "etp_enseignants");
+    expect(etp.mesure).toEqual({ valeur: 8, statut: "ok", source: "personnels_ecoles", rentree: 2025 });
+    expect(etp.historique).toEqual([[2024, 8], [2025, 8]]);
+    expect((await indic("0440202B", "eleves_par_etp_ens")).mesure).toMatchObject({ valeur: 24.5, source: "personnels_ecoles" });
+    expect((await indic("0440202B", "part_enseignantes")).mesure.valeur).toBe(80);
+    // privé sous contrat : publié comme le public
+    const prive = await indic("0440203C", "eleves_par_etp_ens");
+    expect(prive.mesure).toEqual({ valeur: 20.75, statut: "ok", source: "personnels_ecoles", rentree: 2025 });
+    expect(prive.comparaisons[0]).toMatchObject({ niveau: "departement", prive: { valeur: 20.75, statut: "ok" } });
+  });
+
+  test("ni vie scolaire, ni agrégés, ni statuts : absents de la fiche, pas affichés comme absences", async () => {
+    const codes = (await calculerIndicateurs(await dbTest())).get("0440202B")!.map((i) => i.code);
+    for (const c of ["etp_total", "etp_vs", "eleves_par_etp_vs", "part_agreges", "part_non_titulaires", "ecart_type_ips", "part_filles"]) {
+      expect(codes).not.toContain(c);
+    }
+    expect((await repartitionsDe("0440202B")).map((r) => r.code)).toEqual(["sexe_enseignants", "ages", "anciennete"]);
+  });
+
+  test("répartitions des enseignants d'une école", async () => {
+    const sexe = await repart("0440202B", "sexe_enseignants");
+    expect(sexe).toMatchObject({ statut: "ok", source: "personnels_ecoles", rentree: 2025 });
+    expect(sexe.parts!.map((x) => Math.round(x * 10) / 10)).toEqual([80, 20]);
+    const ages = await repart("0440202B", "ages");
+    expect(ages.parts).toEqual([25, 50, 25]);
+    expect(ages.references.find((x) => x.niveau === "departement" && x.secteur === "public")!.parts).not.toBeNull();
+    expect((await repart("0440202B", "anciennete")).parts).toEqual([25, 37.5, 12.5, 25]);
+    expect(await repart("0440203C", "ages")).toMatchObject({ statut: "ok", parts: [25, 50, 25], source: "personnels_ecoles" });
+  });
+});

@@ -1,24 +1,41 @@
-// IPS de 2016 à aujourd'hui : moyennes par territoire, famille et rentrée.
+// IPS de 2016 à aujourd'hui : moyennes par territoire, groupe de familles et rentrée.
 // Moyenne publiée par la DEPP quand elle existe (département, académie, France), sinon calculée par
 // l'observatoire : Σ(IPS × élèves) / Σ élèves, arrondie à 0,1. Commune et région : toujours calculées.
+// Groupes : chaque famille du second degré à part ; les écoles (maternelles, élémentaires, primaires) ensemble,
+// comme les moyennes publiées par la DEPP pour les écoles. Une école n'entre jamais dans une moyenne de collèges.
 import { regionDe } from "@obs/shared/collectivites";
+import { estEcole, FAMILLES_SECOND_DEGRE } from "@obs/shared/libelles";
 import type { Famille, Mesure, PointIps, Secteur } from "@obs/shared/types";
 import { communeDeRattachement } from "@obs/shared/territoires";
 import type { Db } from "./db.ts";
+import { litteral } from "./duck.ts";
 
 export type NiveauIps = "commune" | "departement" | "academie" | "region" | "france";
 
 export interface IpsHistorique {
-  /** Points par rentrée croissante, un par rentrée où au moins une valeur (public ou privé) existe. */
+  /**
+   * Points par rentrée croissante, un par rentrée où au moins une valeur (public ou privé) existe.
+   * Pour une famille d'écoles : la série de toutes les écoles.
+   */
   serie(niveau: NiveauIps, famille: Famille, territoire: string): PointIps[];
 }
+
+/** Groupe de familles des moyennes d'IPS : les écoles ensemble, chaque famille du second degré à part. */
+export const groupeIps = (f: Famille): string => (estEcole(f) ? "ecoles" : f);
 
 /** Première rentrée des effectifs : elle pondère aussi les rentrées antérieures (2016 à 2018). */
 export const RENTREE_EFFECTIFS = 2019;
 
-/** Dernière rentrée présente dans la table `ips` (null si elle est vide). */
+/**
+ * Sous-requête : dernière rentrée de l'IPS du second degré (null si aucune). Les écoles n'y entrent pas : un IPS
+ * des écoles publié avant celui des collèges ne doit pas sortir les collèges des agrégats ni du contrôle.
+ */
+export const SQL_DERNIERE_RENTREE_IPS = `(select max(i.rentree) from ips i join fiches_etab f using (uai)
+  where f.famille in (${FAMILLES_SECOND_DEGRE.map(litteral).join(", ")}))`;
+
+/** Dernière rentrée de l'IPS du second degré dans la table `ips` (null si elle est vide). */
 export async function derniereRentreeIps(db: Db): Promise<number | null> {
-  return (await db.sql<{ r: number | null }>("select max(rentree) as r from ips"))[0]?.r ?? null;
+  return (await db.sql<{ r: number | null }>(`select ${SQL_DERNIERE_RENTREE_IPS} as r`))[0]?.r ?? null;
 }
 
 /**
@@ -59,7 +76,7 @@ export async function calculerIpsHistorique(db: Db): Promise<IpsHistorique> {
     left join fermes fe using (uai)
     left join effectifs w on w.uai = i.uai and w.rentree = greatest(i.rentree, ${RENTREE_EFFECTIFS})`);
 
-  // Moyennes publiées : niveau|famille|territoire|rentrée → valeurs (constantes dans un groupe, hors null).
+  // Moyennes publiées : niveau|groupe|territoire|rentrée → valeurs (constantes dans un groupe, hors null).
   const publiees = new Map<string, Paire>();
   const noter = (cle: string, pub: number | null, priv: number | null) => {
     const p = publiees.get(cle) ?? { public: null, prive: null };
@@ -77,8 +94,9 @@ export async function calculerIpsHistorique(db: Db): Promise<IpsHistorique> {
     sommes.set(cle, s);
   };
   const rentreesDe = new Map<string, Set<number>>();
-  const cle = (niveau: NiveauIps, famille: string, territoire: string, rentree?: number) =>
-    `${niveau}|${famille}|${territoire}${rentree === undefined ? "" : `|${rentree}`}`;
+  // Clé par groupe de familles (écoles ensemble), pas par famille.
+  const cle = (niveau: NiveauIps, famille: Famille, territoire: string, rentree?: number) =>
+    `${niveau}|${groupeIps(famille)}|${territoire}${rentree === undefined ? "" : `|${rentree}`}`;
   const suivre = (c: string, rentree: number) => {
     const ens = rentreesDe.get(c) ?? new Set<number>();
     ens.add(rentree);

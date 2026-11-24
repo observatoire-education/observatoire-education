@@ -16,7 +16,7 @@ import type { Db } from "./db.ts";
 import { depCanonique } from "./normalise.ts";
 import { dernieresSessions, type DernieresSessions, type IpsRentree, nuages, resume, VOIES_NUAGE } from "./resultats.ts";
 import { calculerSegregation } from "./segregation.ts";
-import { calculerIpsHistorique, derniereRentreeIps, ipsCourant, type NiveauIps } from "./ips-historique.ts";
+import { calculerIpsHistorique, derniereRentreeIps, ipsCourant, type NiveauIps, SQL_DERNIERE_RENTREE_IPS } from "./ips-historique.ts";
 
 // --- Aides partagées avec fiches.ts ---
 
@@ -87,7 +87,7 @@ export async function ipsMoyens(db: Db, niveau: "dep" | "aca" | "nat"): Promise<
     select e.famille, ${territoire} as territoire,
       any_value(i.${niveau}_public) as pub, any_value(i.${niveau}_prive) as priv
     from ips i join etablissements e using (uai)
-    where i.rentree = (select max(rentree) from ips)
+    where i.rentree = ${SQL_DERNIERE_RENTREE_IPS}
     group by all`);
   return new Map(lignes.map((l) => [`${l.famille}|${l.territoire}`, l]));
 }

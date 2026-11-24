@@ -1,8 +1,10 @@
 -- 03 : IPS et personnels des établissements qui ont une fiche (table fiches_etab, créée par 05).
 
--- IPS de 2016-2017 à aujourd'hui : union des huit jeux. Une même (uai, rentrée) dans plusieurs jeux :
--- le jeu le plus récent l'emporte (actuel, puis ap2022, puis 2016-2021). Moyennes publiées : seulement
--- dans les jeux actuels (collèges, lycées par type de lycée) et le jeu EREA ; null ailleurs.
+-- IPS de 2016-2017 à aujourd'hui : union des dix jeux (huit du second degré, deux des écoles). Une même
+-- (uai, rentrée) dans plusieurs jeux : le jeu le plus récent l'emporte (actuel, puis ap2022, puis 2016-2021).
+-- Moyennes publiées : seulement dans les jeux actuels (collèges, lycées par type de lycée), le jeu EREA et le
+-- jeu des écoles à partir de 2022 (moyennes de l'ensemble des écoles du territoire, par secteur) ; null ailleurs.
+-- Écoles : ni écart-type, ni IPS par voie.
 -- Lycées : `ips` = IPS de l'établissement (actuel) ou de l'ensemble GT + pro (anciens jeux) ;
 -- `ips_gt` et `ips_pro` : IPS par voie. Écart-type : celui de l'établissement (actuel), null pour les anciens jeux.
 create or replace table ips as
@@ -81,6 +83,25 @@ with brut as (
   select upper(trim(uai)) as uai, rentree(rentree_scolaire) as rentree, 'ips_erea_2016' as source, 2 as priorite,
     nombre(ips) as ips, nombre(ecart_type_de_l_ips) as ecart_type
   from src_ips_erea_2016
+  union all by name
+  select
+    upper(trim(uai)) as uai,
+    rentree(rentree_scolaire) as rentree,
+    'ips_ecoles' as source,
+    0 as priorite,
+    nombre(ips) as ips,
+    null::double as ecart_type,
+    nombre(ips_departemental_public) as dep_public,
+    nombre(ips_departemental_prive) as dep_prive,
+    nombre(ips_academique_public) as aca_public,
+    nombre(ips_academique_prive) as aca_prive,
+    nombre(ips_national_public) as nat_public,
+    nombre(ips_national_prive) as nat_prive
+  from src_ips_ecoles
+  union all by name
+  select upper(trim(uai)) as uai, rentree(rentree_scolaire) as rentree, 'ips_ecoles_2016' as source, 2 as priorite,
+    nombre(ips) as ips, null::double as ecart_type
+  from src_ips_ecoles_2016
 )
 select uai, rentree, source, ips, ecart_type, ips_gt, ips_pro,
   dep_public, dep_prive, aca_public, aca_prive, nat_public, nat_prive
@@ -89,11 +110,15 @@ where rentree is not null and uai in (select uai from fiches_etab)
 qualify row_number() over (partition by uai, rentree order by priorite, source) = 1
 order by uai, rentree;
 
--- Personnels : volumes en ETP ; une valeur vide reste null (jamais 0).
+-- Personnels : volumes en ETP ; une valeur vide reste null (jamais 0). Second degré, puis écoles : le jeu du
+-- premier degré ne publie que les enseignants (total, femmes, âges, ancienneté dans l'école) ; ni ETP total,
+-- ni vie scolaire, ni statuts (null, jamais 0).
 create or replace table personnels as
+select * from (
 select
   upper(trim(uai)) as uai,
   rentree(annee_de_la_rentree_scolaire) as rentree,
+  'personnels' as source,
   nombre(etp_total) as etp_total,
   nombre(etp_de_personnels_de_vie_scolaire) as etp_vs,
   nombre(etp_enseignants_hommes_et_femmes) as etp_ens,
@@ -111,6 +136,22 @@ select
   nombre(etp_d_enseignants_ayant_une_anciennete_dans_l_etablissement_de_5_ans_a_moins_de_8_ans) as etp_anc_5_7,
   nombre(etp_d_enseignants_ayant_une_anciennete_dans_l_etablissement_de_8_ans_ou_plus) as etp_anc_8_plus
 from src_personnels
-where rentree(annee_de_la_rentree_scolaire) is not null
-  and upper(trim(uai)) in (select uai from fiches_etab)
+union all by name
+select
+  upper(trim(identifiant_de_l_etablissement)) as uai,
+  rentree(annee_de_la_rentree_scolaire) as rentree,
+  'personnels_ecoles' as source,
+  nombre(etp_d_enseignants_hommes_et_femmes) as etp_ens,
+  nombre(etp_de_femmes_enseignantes) as etp_femmes,
+  nombre(etp_d_enseignants_de_moins_de_35_ans) as etp_moins_35,
+  nombre(etp_d_enseignants_de_35_a_moins_de_50_ans) as etp_35_49,
+  nombre(etp_d_enseignants_de_50_ans_ou_plus) as etp_50_plus,
+  nombre(etp_d_enseignants_ayant_une_anciennete_dans_l_etablissement_de_moins_de_2_ans) as etp_anc_moins_2,
+  nombre(etp_d_enseignants_ayant_une_anciennete_dans_l_etablissement_de_2_ans_a_moins_de_5_ans) as etp_anc_2_4,
+  nombre(etp_d_enseignants_ayant_une_anciennete_dans_l_etablissement_de_5_ans_a_moins_de_8_ans) as etp_anc_5_7,
+  nombre(etp_d_enseignants_ayant_une_anciennete_dans_l_etablissement_de_8_ans_ou_plus) as etp_anc_8_plus
+from src_personnels_ecoles
+)
+where rentree is not null
+  and uai in (select uai from fiches_etab)
 order by uai, rentree;

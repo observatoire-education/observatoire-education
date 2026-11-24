@@ -10,7 +10,7 @@ import type {
 } from "@obs/shared/types";
 import type { Db } from "./db.ts";
 import { litteral } from "./duck.ts";
-import { calculerIpsHistorique } from "./ips-historique.ts";
+import { calculerIpsHistorique, SQL_DERNIERE_RENTREE_IPS } from "./ips-historique.ts";
 
 // --- Définitions ---
 
@@ -92,9 +92,13 @@ interface DefRepartition {
 const repPersonnels = (code: CodeRepartition, cats: string[]): DefRepartition => ({
   code,
   source: "personnels",
-  sql: `select uai, rentree, 'personnels' as source, [${cats.join(", ")}]::double[] as cats, null::double as couverture
+  sql: `select uai, rentree, source, [${cats.join(", ")}]::double[] as cats, null::double as couverture
         from personnels`,
 });
+
+/** Source affichée d'une répartition sans donnée : celle du premier degré pour une école. */
+const sourceParDefaut = (d: DefRepartition, f: Famille): SourceId =>
+  estEcole(f) && d.source === "personnels" ? "personnels_ecoles" : d.source;
 
 const repLangue = (code: "lv1" | "lv2", rang: 1 | 2): DefRepartition => ({
   code,
@@ -133,7 +137,7 @@ const TERRITOIRE: Record<Niveau, string> = { departement: "dep", academie: "aca"
 // --- SQL (étape « 02 ») ---
 
 function selectMesure(d: DefMesure): string {
-  const source = d.source === "effectifs" ? "source_effectifs" : "'personnels'";
+  const source = d.source === "effectifs" ? "source_effectifs" : "source_personnels";
   return `select uai, rentree, ${litteral(d.code)} as code, ${source} as source, ${d.facteur ?? 1}::double as facteur,
       (${d.num})::double as num, ${d.den ? `(${d.den})::double` : "null::double"} as den,
       ${d.couverture ?? "null::double"} as couverture
@@ -150,7 +154,8 @@ select
   coalesce(e.uai, p.uai) as uai,
   coalesce(e.rentree, p.rentree) as rentree,
   e.eleves, e.filles_pub, e.garcons_pub, e.classes, e.sources[1] as source_effectifs,
-  p.* exclude (uai, rentree)
+  p.source as source_personnels,
+  p.* exclude (uai, rentree, source)
 from effectifs e
 full outer join personnels p on p.uai = e.uai and p.rentree = e.rentree;
 
@@ -255,7 +260,12 @@ export async function calculerIndicateurs(db: Db): Promise<Map<string, Indicateu
   );
   const ipsHistorique = await calculerIpsHistorique(db);
   const derniere = await dernieresRentrees(db, "moyennes");
-  const derniereIps = (await db.sql<{ r: number }>("select max(rentree) as r from ips"))[0]?.r ?? null;
+  // Dernière rentrée de l'IPS des écoles d'un côté, du second degré de l'autre.
+  const [{ ecoles: derniereIpsEcoles = null, second: derniereIpsSecond = null } = {}] = await db.sql<{
+    ecoles: number | null; second: number | null;
+  }>(`select max(i.rentree) filter (where f.famille in (${FAMILLES_ECOLES.map(litteral).join(", ")})) as ecoles,
+        ${SQL_DERNIERE_RENTREE_IPS} as second
+      from ips i join fiches_etab f using (uai)`);
   // Écoles dont la dernière rentrée des effectifs a 0 classe ou un nombre de classes absent → cette rentrée.
   const rentreeSansClasses = new Map(
     (await db.sql<{ uai: string; rentree: number }>(`
@@ -305,7 +315,7 @@ export async function calculerIndicateurs(db: Db): Promise<Map<string, Indicateu
       let comparaisons: Comparaison[] = [];
       const genre = INDICATEURS[code].genre;
       if (genre === "indice") {
-        const r = mesure.rentree ?? derniereIps;
+        const r = mesure.rentree ?? (estEcole(e.famille) ? derniereIpsEcoles : derniereIpsSecond);
         const ligne = (ipsSource.get(e.uai) ?? []).find((x) => x.rentree === r);
         const m = (v: number | null | undefined, calculee = false): Mesure =>
           v === null || v === undefined ? absente("non_disponible", r) : { valeur: v, statut: "ok", source: calculee ? null : ligne!.source, rentree: r };
@@ -378,7 +388,7 @@ export async function calculerRepartitions(db: Db): Promise<Map<string, Repartit
         parts: valide ? enParts(valide.cats as number[]) : null,
         statut: valide ? "ok" : "non_disponible",
         references,
-        source: valide?.source ?? d.source,
+        source: valide?.source ?? sourceParDefaut(d, e.famille),
         rentree,
       };
       const couverture = (valide ?? serie.at(-1))?.couverture;

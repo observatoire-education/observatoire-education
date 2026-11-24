@@ -107,3 +107,55 @@ describe("IPS de 2016 à aujourd'hui", () => {
     ]);
   });
 });
+
+describe("IPS des écoles", () => {
+  test("historique 2016 → 2024 : jeu 2016-2021, puis jeu à partir de 2022", async () => {
+    const i = await indic("0440202B", "ips");
+    expect(i.mesure).toEqual({ valeur: 96, statut: "ok", source: "ips_ecoles", rentree: 2024 });
+    expect(i.historique).toEqual([
+      [2016, 92], [2017, 92.5], [2018, 93], [2019, 93.5], [2020, 94], [2021, 94.5], [2022, 95], [2023, 95.5], [2024, 96],
+    ]);
+    expect(i.sourcesHistorique).toEqual([...Array(6).fill("ips_ecoles_2016"), "ips_ecoles", "ips_ecoles", "ips_ecoles"]);
+  });
+
+  test("maternelle sans IPS : non disponible", async () => {
+    expect((await indic("0440201A", "ips")).mesure).toMatchObject({ valeur: null, statut: "non_disponible" });
+  });
+
+  test("comparaisons : moyennes publiées par le jeu à partir de 2022", async () => {
+    const i = await indic("0440202B", "ips");
+    const publiee = (valeur: number) => ({ valeur, statut: "ok" as const, source: "ips_ecoles" as const, rentree: 2024 });
+    expect(i.comparaisons).toEqual([
+      { niveau: "departement", calculee: false, public: publiee(99.9), prive: publiee(106.5) },
+      { niveau: "academie", calculee: false, public: publiee(104.5), prive: publiee(112) },
+      { niveau: "france", calculee: false, public: publiee(102.9), prive: publiee(119.3) },
+    ]);
+  });
+
+  test("avant 2022 : moyennes calculées parmi les écoles seulement, toutes familles d'écoles ensemble", async () => {
+    const h = await calculerIpsHistorique(await dbTest());
+    // 2018 : public 0440202B (élémentaire, 93), privé 0440203C (primaire, 119), pondérés par les élèves de 2019 ;
+    // aucun collège n'y entre (les collèges publics de Loire-Atlantique donnent 91,6 en 2018)
+    const p = h.serie("departement", "elementaire", "44").find((x) => x.rentree === 2018);
+    expect(p).toEqual({ rentree: 2018, public: 93, prive: 119, calculee: true });
+    for (const f of ["maternelle", "primaire"] as const) {
+      expect(h.serie("departement", f, "44")).toEqual(h.serie("departement", "elementaire", "44"));
+    }
+    expect(h.serie("commune", "primaire", "44109").find((x) => x.rentree === 2021)).toEqual({
+      rentree: 2021, public: 94.5, prive: 120.5, calculee: true,
+    });
+    expect(rentrees(h.serie("departement", "elementaire", "44"))).toEqual([2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024]);
+    expect(h.serie("departement", "elementaire", "44").at(-1)).toEqual({ rentree: 2024, public: 99.9, prive: 106.5, calculee: false });
+    // une école n'entre jamais dans une moyenne de collèges
+    expect(h.serie("departement", "college", "44").find((x) => x.rentree === 2018)).toEqual({
+      rentree: 2018, public: 91.6, prive: 120, calculee: true,
+    });
+    expect(h.serie("commune", "college", "44109").find((x) => x.rentree === 2021)).toBeUndefined();
+  });
+
+  test("référence historique d'une école : série des écoles du département", async () => {
+    const i = await indic("0440203C", "ips");
+    expect(i.referencesHistoriques!.find((p) => p.rentree === 2018)).toEqual({ rentree: 2018, public: 93, prive: 119, calculee: true });
+    expect(i.comparaisons[0]).toMatchObject({ niveau: "departement", calculee: false, prive: { valeur: 106.5 } });
+  });
+});
