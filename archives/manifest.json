@@ -9,6 +9,15 @@
         "modified": "2026-11-23T06:01:25.300000+00:00",
         "collecteLe": "2026-11-23T20:42:11.283Z",
         "lignes": 14908
+      },
+      {
+        "sha256": "d249fc70d62f69f78ab63749ec03dd6b4b21a28115a3eea54ac3bcd6e838919a",
+        "tag": "archives-annuaire-2026",
+        "fichier": "d249fc70d62f69f7.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-annuaire-2026/d249fc70d62f69f7.parquet",
+        "modified": "2026-11-24T06:01:26.405000+00:00",
+        "collecteLe": "2026-11-24T12:18:03.613Z",
+        "lignes": 14905
       }
     ],
     "ips_colleges": [
@@ -76,24 +85,109 @@
         "collecteLe": "2026-11-23T20:42:11.283Z",
         "lignes": 21396
       }
+    ],
+    "budget_2020": [
+      {
+        "sha256": "798603841202667224298eb0f808600fcdbb1f2e59873203d3d09a44a6600801",
+        "tag": "archives-budget_2020-2026",
+        "fichier": "7986038412026672.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-budget_2020-2026/7986038412026672.parquet",
+        "modified": "2021-12-17T08:18:43.488000+00:00",
+        "collecteLe": "2026-11-24T12:18:03.613Z",
+        "lignes": 6417,
+        "requete": "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/balances-comptables-des-collectivites-et-des-etablissements-publics-locaux-avec7/exports/parquet?where=categ%20in%20(%22DEPT%22%2C%22REG%22%2C%22CTU%22%2C%22ML%22%2C%22PARIS%22)%20and%20cbudg%20%3D%20%221%22%20and%20fonction%20in%20(%22221%22%2C%2290221%22%2C%2291221%22%2C%2292221%22%2C%2293221%22%2C%2294221%22%2C%22222%22%2C%2290222%22%2C%2291222%22%2C%2292222%22%2C%2293222%22%2C%2294222%22%2C%22223%22%2C%2290223%22%2C%2291223%22%2C%2292223%22%2C%2293223%22%2C%2294223%22%2C%2222%22%2C%229022%22%2C%229122%22%2C%229222%22%2C%229322%22%2C%229422%22%2C%2224%22%2C%229024%22%2C%229124%22%2C%229224%22%2C%229324%22%2C%229424%22)"
+      }
+    ],
+    "budget_2021": [
+      {
+        "sha256": "bf2d3de26a6453b95514c00dafa425225d88b2678677460cc99b4f158f6fbde4",
+        "tag": "archives-budget_2021-2026",
+        "fichier": "bf2d3de26a6453b9.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-budget_2021-2026/bf2d3de26a6453b9.parquet",
+        "modified": "2022-12-22T16:43:32+00:00",
+        "collecteLe": "2026-11-24T12:18:03.613Z",
+        "lignes": 6603,
+        "requete": "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/balances-comptables-des-collectivites-et-des-etablissements-publics-locaux-avec8/exports/parquet?where=categ%20in%20(%22DEPT%22%2C%22REG%22%2C%22CTU%22%2C%22ML%22%2C%22PARIS%22)%20and%20cbudg%20%3D%20%221%22%20and%20fonction%20in%20(%22221%22%2C%2290221%22%2C%2291221%22%2C%2292221%22%2C%2293221%22%2C%2294221%22%2C%22222%22%2C%2290222%22%2C%2291222%22%2C%2292222%22%2C%2293222%22%2C%2294222%22%2C%22223%22%2C%2290223%22%2C%2291223%22%2C%2292223%22%2C%2293223%22%2C%2294223%22%2C%2222%22%2C%229022%22%2C%229122%22%2C%229222%22%2C%229322%22%2C%229422%22%2C%2224%22%2C%229024%22%2C%229124%22%2C%229224%22%2C%229324%22%2C%229424%22)"
+      }
+    ],
+    "budget_2022": [
+      {
+        "sha256": "15d27cda818bdf6ba6ca7dae2c7d1c55dac70241b8f20ed56e39998d31137579",
+        "tag": "archives-budget_2022-2026",
+        "fichier": "15d27cda818bdf6b.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-budget_2022-2026/15d27cda818bdf6b.parquet",
+        "modified": "2023-12-07T12:04:35+00:00",
+        "collecteLe": "2026-11-24T12:18:03.613Z",
+        "lignes": 6985,
+        "requete": "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/balances-comptables-des-collectivites-et-des-etablissements-publics-locaux-2022/exports/parquet?where=categ%20in%20(%22DEPT%22%2C%22REG%22%2C%22CTU%22%2C%22ML%22%2C%22PARIS%22)%20and%20cbudg%20%3D%20%221%22%20and%20fonction%20in%20(%22221%22%2C%2290221%22%2C%2291221%22%2C%2292221%22%2C%2293221%22%2C%2294221%22%2C%22222%22%2C%2290222%22%2C%2291222%22%2C%2292222%22%2C%2293222%22%2C%2294222%22%2C%22223%22%2C%2290223%22%2C%2291223%22%2C%2292223%22%2C%2293223%22%2C%2294223%22%2C%2222%22%2C%229022%22%2C%229122%22%2C%229222%22%2C%229322%22%2C%229422%22%2C%2224%22%2C%229024%22%2C%229124%22%2C%229224%22%2C%229324%22%2C%229424%22)"
+      }
+    ],
+    "budget_2023": [
+      {
+        "sha256": "2a8b70baa07a20caa069c62b3b3d9229df07c8c2d91da876f911a823d45e71bc",
+        "tag": "archives-budget_2023-2026",
+        "fichier": "2a8b70baa07a20ca.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-budget_2023-2026/2a8b70baa07a20ca.parquet",
+        "modified": "2024-12-06T13:57:17+00:00",
+        "collecteLe": "2026-11-24T12:18:03.613Z",
+        "lignes": 7029,
+        "requete": "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/balances-comptables-des-collectivites-et-des-epl-avec-fonction-2023/exports/parquet?where=categ%20in%20(%22DEPT%22%2C%22REG%22%2C%22CTU%22%2C%22ML%22%2C%22PARIS%22)%20and%20cbudg%20%3D%20%221%22%20and%20fonction%20in%20(%22221%22%2C%2290221%22%2C%2291221%22%2C%2292221%22%2C%2293221%22%2C%2294221%22%2C%22222%22%2C%2290222%22%2C%2291222%22%2C%2292222%22%2C%2293222%22%2C%2294222%22%2C%22223%22%2C%2290223%22%2C%2291223%22%2C%2292223%22%2C%2293223%22%2C%2294223%22%2C%2222%22%2C%229022%22%2C%229122%22%2C%229222%22%2C%229322%22%2C%229422%22%2C%2224%22%2C%229024%22%2C%229124%22%2C%229224%22%2C%229324%22%2C%229424%22)"
+      }
+    ],
+    "budget_2024": [
+      {
+        "sha256": "5fae262873ebc258c2b3fdef536511f04963259865f65ea1a309580b5526ff4a",
+        "tag": "archives-budget_2024-2026",
+        "fichier": "5fae262873ebc258.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-budget_2024-2026/5fae262873ebc258.parquet",
+        "modified": "2025-12-09T16:38:00+00:00",
+        "collecteLe": "2026-11-24T12:18:03.613Z",
+        "lignes": 7193,
+        "requete": "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/balances-comptables-des-collectivites-et-des-etablissements-publics-locaux-avec-la-presentation-croisee-nature-fonction-2024/exports/parquet?where=categ%20in%20(%22DEPT%22%2C%22REG%22%2C%22CTU%22%2C%22ML%22%2C%22PARIS%22)%20and%20cbudg%20%3D%20%221%22%20and%20fonction%20in%20(%22221%22%2C%2290221%22%2C%2291221%22%2C%2292221%22%2C%2293221%22%2C%2294221%22%2C%22222%22%2C%2290222%22%2C%2291222%22%2C%2292222%22%2C%2293222%22%2C%2294222%22%2C%22223%22%2C%2290223%22%2C%2291223%22%2C%2292223%22%2C%2293223%22%2C%2294223%22%2C%2222%22%2C%229022%22%2C%229122%22%2C%229222%22%2C%229322%22%2C%229422%22%2C%2224%22%2C%229024%22%2C%229124%22%2C%229224%22%2C%229324%22%2C%229424%22)"
+      }
+    ],
+    "budget_2025": [
+      {
+        "sha256": "3de38f7411d758473f7b7012078d222f0c30ed148513e529f52c7a782fc114dd",
+        "tag": "archives-budget_2025-2026",
+        "fichier": "3de38f7411d75847.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-budget_2025-2026/3de38f7411d75847.parquet",
+        "modified": "2026-07-13T16:06:26+00:00",
+        "collecteLe": "2026-11-24T12:18:03.613Z",
+        "lignes": 7294,
+        "requete": "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/balances-comptables-des-collectivites-et-des-etablissements-publics-locaux-avec-la-presentation-croisee-nature-fonction-2025/exports/parquet?where=categ%20in%20(%22DEPT%22%2C%22REG%22%2C%22CTU%22%2C%22ML%22%2C%22PARIS%22)%20and%20cbudg%20%3D%20%221%22%20and%20fonction%20in%20(%22221%22%2C%2290221%22%2C%2291221%22%2C%2292221%22%2C%2293221%22%2C%2294221%22%2C%22222%22%2C%2290222%22%2C%2291222%22%2C%2292222%22%2C%2293222%22%2C%2294222%22%2C%22223%22%2C%2290223%22%2C%2291223%22%2C%2292223%22%2C%2293223%22%2C%2294223%22%2C%2222%22%2C%229022%22%2C%229122%22%2C%229222%22%2C%229322%22%2C%229422%22%2C%2224%22%2C%229024%22%2C%229124%22%2C%229224%22%2C%229324%22%2C%229424%22)"
+      }
     ]
   },
   "vus": {
-    "annuaire": "2026-11-23T06:01:25.300000+00:00",
+    "annuaire": "2026-11-24T06:01:26.405000+00:00",
     "ips_colleges": "2026-09-01T09:31:02.578000+00:00",
     "ips_lycees": "2026-06-10T08:20:49.021000+00:00",
     "effectifs_colleges": "2026-07-27T10:24:40.709000+00:00",
     "effectifs_lycees_gt": "2026-07-27T08:15:52.712000+00:00",
     "effectifs_lycees_pro": "2026-07-27T10:21:28.880000+00:00",
-    "personnels": "2026-10-26T12:56:29.896000+00:00"
+    "personnels": "2026-10-26T12:56:29.896000+00:00",
+    "budget_2020": "2021-12-17T08:18:43.488000+00:00",
+    "budget_2021": "2022-12-22T16:43:32+00:00",
+    "budget_2022": "2023-12-07T12:04:35+00:00",
+    "budget_2023": "2024-12-06T13:57:17+00:00",
+    "budget_2024": "2025-12-09T16:38:00+00:00",
+    "budget_2025": "2026-07-13T16:06:26+00:00"
   },
   "actuelles": {
-    "annuaire": "b80a47a168dc243a732b79ac4a26ceeaf1166fe81a706395a50efb978080632c",
+    "annuaire": "d249fc70d62f69f78ab63749ec03dd6b4b21a28115a3eea54ac3bcd6e838919a",
     "ips_colleges": "7a4a1316bd2277c8a73ab77500a6e9f98dc2a1821ea27939badab7dfd8ef6e7c",
     "ips_lycees": "06dc158e506fefbb94f0655a5bb14ecf99a52f099b17f4e87cddbd2800490db8",
     "effectifs_colleges": "9071e44969f0046df5274895e4d13d8f2121fe6208fe3cfeaebb411e7c55f412",
     "effectifs_lycees_gt": "8a5870f31303333d8c7f981c5b3a4d8ebf7f88df3366a00c46fa960fc977ed95",
     "effectifs_lycees_pro": "85277a0c3b3f01bf70c31e9e6c0046c0992852b9b618797569b23b15fa9e3b8f",
-    "personnels": "939f23f4cf35b1ac1731950a11fe788d927cb89de58976e8fc7a0d72dfd4b400"
-  }
+    "personnels": "939f23f4cf35b1ac1731950a11fe788d927cb89de58976e8fc7a0d72dfd4b400",
+    "budget_2020": "798603841202667224298eb0f808600fcdbb1f2e59873203d3d09a44a6600801",
+    "budget_2021": "bf2d3de26a6453b95514c00dafa425225d88b2678677460cc99b4f158f6fbde4",
+    "budget_2022": "15d27cda818bdf6ba6ca7dae2c7d1c55dac70241b8f20ed56e39998d31137579",
+    "budget_2023": "2a8b70baa07a20caa069c62b3b3d9229df07c8c2d91da876f911a823d45e71bc",
+    "budget_2024": "5fae262873ebc258c2b3fdef536511f04963259865f65ea1a309580b5526ff4a",
+    "budget_2025": "3de38f7411d758473f7b7012078d222f0c30ed148513e529f52c7a782fc114dd"
+  },
+  "jeux": {}
 }
