@@ -9,3 +9,4 @@ site/.astro/
 .env
 .env.*
 .superpowers/
+.claude/launch.json
