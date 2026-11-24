@@ -1,9 +1,12 @@
 // Collectivités compétentes pour les collèges (départements) et les lycées (régions),
 // régions, et rattachement d'une commune à sa collectivité.
 
-/** Identifiant d'une collectivité : `dep-44`, `reg-52`, `ml-lyon`, `paris`, `cea`, `ctu-corse`, `ctu-martinique`, `ctu-guyane`. */
+/**
+ * Identifiant d'une collectivité : `dep-44`, `reg-52`, `ml-lyon`, `paris`, `cea`, `ctu-corse`, `ctu-martinique`,
+ * `ctu-guyane` ; pour les écoles, la commune : `com-44109` (Paris, Lyon et Marseille : la commune, pas l'arrondissement).
+ */
 export type IdCollectivite = string;
-export type NiveauBudget = "colleges" | "lycees";
+export type NiveauBudget = "colleges" | "lycees" | "ecoles";
 
 /** Les 18 régions (codes INSEE) et leurs départements (codes au format du site). Le 975 n'a pas de région. */
 export const REGIONS: readonly { code: string; libelle: string; deps: readonly string[] }[] = [

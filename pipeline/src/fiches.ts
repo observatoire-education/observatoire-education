@@ -300,7 +300,10 @@ export function attacherBudgets(
   for (const f of fiches) {
     f.budget = budgetDeFiche(f, budgets);
     f.sources = f.sources.filter((x) => !x.id.startsWith("budget_"));
-    const ex = (f.budget.colleges ?? f.budget.lycees)?.exercices.at(-1);
+    // École publique dont la commune est absente des balances : l'absence est constatée sur le dernier exercice.
+    const dernier = f.budget.ecoles === null ? f.budget.france[0]?.exercices.at(-1)?.exercice : undefined;
+    const ex = (f.budget.colleges ?? f.budget.lycees ?? f.budget.ecoles)?.exercices.at(-1)
+      ?? (dernier !== undefined ? { source: `budget_${dernier}` as const, rentree: dernier - 1 } : undefined);
     const s = ex && sourcesBudget.find((x) => x.id === ex.source);
     const v = s && manifest.derniere(s.id);
     if (s && v) {

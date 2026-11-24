@@ -174,14 +174,16 @@ export function posteEvolutionAvecPersonnel(exercices: ExerciceBudget[]): boolea
  * Évolution des moyens de la collectivité, en € par élève : le public (fonctionnement personnel compris, ou
  * hors personnel si le personnel n'est jamais rattaché) et le privé (contribution). Un exercice sans valeur
  * fait un trou dans la courbe, jamais un zéro. Chaîne vide s'il n'y a aucune valeur à tracer.
+ * `prive` faux (écoles : la commune ne finance que ses écoles publiques ici) : le public seul.
  */
-export function svgEvolutionBudget(exercices: ExerciceBudget[]): string {
+export function svgEvolutionBudget(exercices: ExerciceBudget[], prive = true): string {
   const valeur = (m: { parEleve: number | null; statut: string }) => (m.statut === "ok" ? m.parEleve : null);
-  const avec = posteEvolutionAvecPersonnel(exercices);
-  const poste = avec ? LIBELLES_BUDGET.postes.avecPersonnel : LIBELLES_BUDGET.postes.horsPersonnel;
+  const avecPersonnel = posteEvolutionAvecPersonnel(exercices);
+  const avec = avecPersonnel && prive;
+  const poste = avecPersonnel ? LIBELLES_BUDGET.postes.avecPersonnel : LIBELLES_BUDGET.postes.horsPersonnel;
   const serie = (k: string, v: (e: ExerciceBudget) => number | null) =>
     exercices.map((e) => ({ annee: e.exercice, v: v(e), k }));
-  const pub = serie("pub", (e) => valeur(avec ? e.public.avecPersonnel : e.public.horsPersonnel));
+  const pub = serie("pub", (e) => valeur(avecPersonnel ? e.public.avecPersonnel : e.public.horsPersonnel));
   // Le privé n'est jamais tracé à côté du public « hors personnel » (postes non comparables).
   const pri = avec ? serie("pri", (e) => valeur(e.prive.fonctionnement)) : [];
   const defini = [...pub, ...pri].filter((d) => d.v !== null);

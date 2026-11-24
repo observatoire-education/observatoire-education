@@ -9,12 +9,13 @@ import type { FamilleSecondDegre } from "@obs/shared/types";
 
 export { millions } from "@obs/shared/format";
 
-/** Libellé exact de l'absence d'un montant, selon son statut (et collèges ou lycées). Jamais « 0 € ». */
+/** Libellé exact de l'absence d'un montant, selon son statut (et collèges, lycées ou écoles). Jamais « 0 € ». */
 export function absenceBudget(statut: StatutBudget, niveau: NiveauBudget): string {
   const colleges = niveau === "colleges";
   switch (statut) {
     case "personnel_non_rattache":
-      return colleges ? L.absences.personnelNonRattacheColleges : L.absences.personnelNonRattacheLycees;
+      return niveau === "ecoles" ? L.absences.personnelNonRattacheEcoles
+        : colleges ? L.absences.personnelNonRattacheColleges : L.absences.personnelNonRattacheLycees;
     case "fonction_non_detaillee":
       return colleges ? L.absences.fonctionNonDetailleeColleges : L.absences.fonctionNonDetailleeLycees;
     case "aucun_eleve_prive":
@@ -25,6 +26,8 @@ export function absenceBudget(statut: StatutBudget, niveau: NiveauBudget): strin
       return L.absences.aucuneCollectivite;
     case "aucune_contribution_identifiee":
       return L.absences.aucuneContributionIdentifiee;
+    case "budget_communal_non_publie":
+      return L.absences.budgetCommunalNonPublie;
     case "ok":
     case "non_disponible":
       return LIBELLES.nonDisponible;

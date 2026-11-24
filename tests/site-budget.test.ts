@@ -229,14 +229,17 @@ describe("pages de territoire", () => {
     expect(d.querySelector("section#college .moyens .src a")?.getAttribute("href")).toContain("budget_2024");
   });
 
-  test("commune : aucun bloc", () => {
-    expect(doc("commune/44109").querySelector(".moyens")).toBeNull();
+  test("commune : aucun bloc des collèges ni des lycées, seulement celui de la commune pour ses écoles", () => {
+    const blocs = [...doc("commune/44109").querySelectorAll(".moyens")];
+    expect(blocs.map((b) => b.getAttribute("data-collectivite"))).toEqual(["com-44109"]);
+    expect(blocs[0]!.closest("section")?.id).toBe("moyens-commune");
   });
 });
 
 describe("contrôles du bloc", () => {
   test("aucun « NaN », « Infinity » ni « undefined » dans les pages du budget", () => {
-    for (const chemin of ["etablissement/0440001A", "etablissement/0440003C", "etablissement/0751501A", "departement/44", "academie/17", "region/52", "france"]) {
+    for (const chemin of ["etablissement/0440001A", "etablissement/0440003C", "etablissement/0751501A", "departement/44", "academie/17", "region/52", "france",
+      "etablissement/0440202B", "etablissement/0440104D", "commune/44109", "commune/44150"]) {
       const h = page(chemin);
       expect(h).not.toMatch(/NaN|Infinity|undefined/);
     }
@@ -375,5 +378,61 @@ describe("page France : carte et CSV du budget", () => {
     expect(d.querySelector("a[href='/france/budget-lycees.csv']")).not.toBeNull();
     expect(d.querySelector("input#vue-carte-budget")).not.toBeNull();
     expect(d.querySelector("figure.vue-carte-budget")?.textContent).toContain("non disponible");
+  });
+});
+
+describe("écoles : dépenses de la commune pour ses écoles", () => {
+  // Nantes (fixtures budget_2024) : 203 200 € hors personnel, 1 016 000 € de personnel, 254 000 € d'investissement ;
+  // élèves des écoles publiques de Nantes à la rentrée 2023 : 100 + 194 + 214 = 508.
+  test("école publique (0440202B) : bloc de la commune, montants par élève des écoles publiques, source", () => {
+    const d = doc("etablissement/0440202B");
+    expect([...d.querySelectorAll("nav.toc a")].map((a) => a.getAttribute("href"))).toContain("#moyens");
+    const t = moyens("0440202B");
+    expect(t).toContain(L.titreCommune);
+    expect(t).toContain("Nantes");
+    for (const p of [L.postes.horsPersonnel, L.postes.avecPersonnel, L.postes.investissement]) expect(t).toContain(p);
+    expect(t).toContain("400"); // 203 200 ÷ 508
+    expect(t).toContain(entier(2400)); // (203 200 + 1 016 000) ÷ 508
+    expect(t).toContain("500"); // 254 000 ÷ 508
+    expect(t).toContain(L.interface.ecolesPubliques);
+    expect(t).not.toContain(L.postes.contributionColleges);
+    expect(t).toContain("DGFiP, balances comptables, exercice 2024 · élèves à la rentrée 2023 (DEPP)");
+    expect(t).toContain(L.mentionEcoles);
+    expect(d.querySelector("section#moyens a[href='/methode/#budget-communal']")).not.toBeNull();
+    const liens = [...d.querySelectorAll("section#sources a")].map((a) => a.getAttribute("href") ?? "");
+    expect(liens.some((h) => h.includes("budget_2024"))).toBe(true);
+  });
+
+  test("école privée (0440203C) : pas de bloc Moyens", () => {
+    const d = doc("etablissement/0440203C");
+    expect(d.querySelector("section#moyens")).toBeNull();
+    expect([...d.querySelectorAll("nav.toc a")].map((a) => a.getAttribute("href"))).not.toContain("#moyens");
+  });
+
+  test("commune absente des balances (Saint-Aubin, 0440104D) : libellé exact, aucun montant", () => {
+    const t = moyens("0440104D");
+    expect(t).toContain(L.absences.budgetCommunalNonPublie);
+    expect(L.absences.budgetCommunalNonPublie).toBe(
+      "Budget par fonction non publié pour cette commune (seules les communes de 3 500 habitants et plus le publient)",
+    );
+    expect(t).not.toContain(L.postes.horsPersonnel);
+  });
+
+  test("page commune : bloc de la commune (Nantes) ; commune absente des balances (Saint-Aubin) : libellé", () => {
+    const nantes = doc("commune/44109").querySelector("section#moyens-commune");
+    expect(nantes).not.toBeNull();
+    const t = (nantes!.textContent ?? "").replace(/[ \t\r\n]+/g, " ");
+    expect(t).toContain(L.titreCommune);
+    expect(t).toContain(entier(2400));
+    expect(t).toContain(L.mentionEcoles);
+    const sa = (doc("commune/44150").querySelector("section#moyens-commune")?.textContent ?? "").replace(/[ \t\r\n]+/g, " ");
+    expect(sa).toContain(L.absences.budgetCommunalNonPublie);
+    expect(texte("commune/44150")).toContain("Balances comptables des collectivités");
+  });
+
+  test("pages département, région et France : aucune commune dans les budgets ni les CSV", () => {
+    for (const n of ["colleges", "lycees"]) expect(page(`france/budget-${n}.csv`)).not.toContain("com-");
+    expect(page("departement/44")).not.toContain('data-collectivite="com-');
+    expect(page("france")).not.toContain('data-collectivite="com-');
   });
 });

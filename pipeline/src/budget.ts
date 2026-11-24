@@ -8,6 +8,8 @@ export interface LigneBudget {
   ndept: string | null;
   cregi: string | null;
   lbudg: string;
+  /** Code de la commune dans son département (3 caractères), pour les budgets de communes. */
+  insee?: string | null;
 }
 
 /**
@@ -35,7 +37,25 @@ function codeRegion(cregi: string | null): string | null {
   return insee && REGIONS.some((r) => r.code === insee) ? insee : null;
 }
 
-/** Collectivité qui porte un budget de la balance ; null si elle n'est pas reconnue (listée dans `budget_inconnus`). */
+/**
+ * Code INSEE d'une commune : département DGFiP sans son 0 (`044` → `44`, `02A` → `2A`) suivi de `insee` ; outre-mer
+ * (`101` à `106`) : `97` suivi de `insee` (`101` + `101` → `97101`, `102` + `302` → `97302`). null si incomplet.
+ */
+function codeCommune(ndept: string | null, insee: string | null | undefined): string | null {
+  const n = ndept?.trim();
+  const i = insee?.trim();
+  if (!n || !i || !/^\d{3}$/.test(i)) return null;
+  if (OUTRE_MER[n]) return `97${i}`;
+  return /^0\d\d$|^0\d[AB]$/.test(n) ? `${n.slice(1)}${i}` : null;
+}
+
+/** Syndicats (catégorie `SYND`) : regroupés sous un seul identifiant, hors des montants par élève. */
+export const ID_SYNDICATS = "syndicats";
+
+/**
+ * Collectivité qui porte un budget de la balance ; null si elle n'est pas reconnue (listée dans `budget_inconnus`).
+ * Communes : `com-<code INSEE>` ; syndicats (SIVOS…) : tous sous `syndicats`, jamais attribués à une commune.
+ */
 export function collectiviteDuBudget(l: LigneBudget): IdCollectivite | null {
   const lbudg = l.lbudg.toUpperCase();
   switch (l.categ) {
@@ -50,6 +70,12 @@ export function collectiviteDuBudget(l: LigneBudget): IdCollectivite | null {
     }
     case "ML":
       return "ml-lyon";
+    case "Commune": {
+      const code = codeCommune(l.ndept, l.insee);
+      return code ? `com-${code}` : null;
+    }
+    case "SYND":
+      return ID_SYNDICATS;
     case "PARIS":
       return "paris";
     case "CTU":
@@ -64,6 +90,8 @@ export function collectiviteDuBudget(l: LigneBudget): IdCollectivite | null {
 
 /**
  * Fonction normalisée : 221, 222, 223 seuls ou précédés d'un chapitre 90 à 94 ;
+ * 21 et tout code qui commence par 21 (211, 212, 213, détails locaux), seuls ou précédés d'un chapitre 90 à 94,
+ * deviennent « 21 » (écoles) ;
  * 22 seul ou précédé d'un chapitre 90 à 94 (`9322`) devient « 22 » (non détaillée) ;
  * 24 (cités scolaires), seul ou préfixé (`9324`), devient « 24 » ; `924` est ignoré.
  * `922`, `932`… (chapitre + fonction 2, tout l'enseignement) sont ignorés.
@@ -71,10 +99,12 @@ export function collectiviteDuBudget(l: LigneBudget): IdCollectivite | null {
 const RE_DETAILLEE = "^(9[0-4])?(221|222|223)$";
 const RE_NON_DETAILLEE = "^(9[0-4])?22$";
 const RE_CITES = "^(9[0-4])?24$";
+const RE_ECOLES = "^(9[0-4])?21[0-9]*$";
 
-export function fonctionNormalisee(code: string): "221" | "222" | "223" | "22" | "24" | null {
+export function fonctionNormalisee(code: string): "221" | "222" | "223" | "22" | "24" | "21" | null {
   if (new RegExp(RE_DETAILLEE).test(code)) return code.slice(-3) as "221" | "222" | "223";
   if (new RegExp(RE_CITES).test(code)) return "24";
+  if (new RegExp(RE_ECOLES).test(code)) return "21";
   return new RegExp(RE_NON_DETAILLEE).test(code) ? "22" : null;
 }
 
@@ -86,7 +116,8 @@ export const depenseReelle = `((${num("obnetdeb")} - ${num("oobdeb")}) - (${num(
 const fonctionSql = (c: string) =>
   `case when regexp_matches(${c}, '${RE_DETAILLEE}') then right(${c}, 3)
         when regexp_matches(${c}, '${RE_NON_DETAILLEE}') then '22'
-        when regexp_matches(${c}, '${RE_CITES}') then '24' end`;
+        when regexp_matches(${c}, '${RE_CITES}') then '24'
+        when regexp_matches(${c}, '${RE_ECOLES}') then '21' end`;
 
 const unionAll = (exercices: number[], select: (e: number) => string, vide: string, op = "union all") =>
   exercices.length ? exercices.map(select).join(`\n${op}\n`) : vide;
@@ -103,18 +134,18 @@ export async function exercicesPresents(db: Db): Promise<number[]> {
 export async function etapeBudget(db: Db): Promise<string> {
   const exercices = await exercicesPresents(db);
   await db.executer(`create or replace table budget_collectivites
-    (categ varchar, ndept varchar, cregi varchar, lbudg varchar, collectivite varchar)`);
+    (categ varchar, ndept varchar, cregi varchar, lbudg varchar, insee varchar, collectivite varchar)`);
   if (exercices.length) {
     const combinaisons = await db.sql<LigneBudget>(
-      unionAll(exercices, (e) => `select categ, ndept, cregi, lbudg from src_budget_${e}`, "", "union") +
-        " order by categ, ndept, cregi, lbudg",
+      unionAll(exercices, (e) => `select categ, ndept, cregi, lbudg, insee from src_budget_${e}`, "", "union") +
+        " order by categ, ndept, cregi, lbudg, insee",
     );
     // lbudg reste null s'il est null à la source : la jointure compare avec `is not distinct from`.
     const lignes = combinaisons.map((l) => ({ ...l, collectivite: collectiviteDuBudget({ ...l, lbudg: l.lbudg ?? "" }) }));
     await db.sql(
       `insert into budget_collectivites
        select unnest(from_json($1::json,
-         '[{"categ":"VARCHAR","ndept":"VARCHAR","cregi":"VARCHAR","lbudg":"VARCHAR","collectivite":"VARCHAR"}]'),
+         '[{"categ":"VARCHAR","ndept":"VARCHAR","cregi":"VARCHAR","lbudg":"VARCHAR","insee":"VARCHAR","collectivite":"VARCHAR"}]'),
          recursive := true)`,
       [JSON.stringify(lignes)],
     );
@@ -123,7 +154,7 @@ export async function etapeBudget(db: Db): Promise<string> {
 }
 
 const JOINTURE = `join budget_collectivites m on b.categ is not distinct from m.categ and b.ndept is not distinct from m.ndept
-  and b.cregi is not distinct from m.cregi and b.lbudg is not distinct from m.lbudg`;
+  and b.cregi is not distinct from m.cregi and b.lbudg is not distinct from m.lbudg and b.insee is not distinct from m.insee`;
 
 const classe6 = "(compte like '6%' and compte not like '68%' and compte not like '675%' and compte not like '676%')";
 const investissement = "(compte like '20%' or compte like '21%' or compte like '23%')";
@@ -133,9 +164,17 @@ const investissement = "(compte like '20%' or compte like '21%' or compte like '
  * imputé au compte voisin (Corrèze et Nièvre 2024-2025, Martinique 2020 ; voir docs/budget-controles.md).
  */
 const comptePrive = "((nomen = 'M52' and compte = '65512') or (nomen = 'M57' and compte in ('655112', '655122')))";
+/**
+ * Écoles : comptes hors des écoles publiques de la commune, exclus de ses postes. 6558 (autres contributions
+ * obligatoires, M14 et M57) mêle le forfait des écoles privées sous contrat et les frais de scolarité versés à d'autres
+ * communes, que les comptes ne séparent pas ; 2042 : subventions d'équipement aux personnes de droit privé. Même règle
+ * que la part privée des collèges (voir docs/budget-controles.md, section 9).
+ */
+const horsEcolesPubliques = "(compte = '6558' or compte like '2042%')";
 
 /**
- * Tables `budget_lignes`, `budget_postes`, `budget_non_detaille`, `budget_cites` et `budget_inconnus`
+ * Tables `budget_lignes`, `budget_postes` (niveaux collèges, lycées et écoles), `budget_non_detaille`, `budget_cites`
+ * et `budget_inconnus`
  * (suppose `budget_collectivites` remplie).
  */
 export function sqlBudget(exercices: number[]): string {
@@ -180,6 +219,20 @@ select exercice, collectivite, niveau, secteur, poste, sum(montant)::double as m
       case when ${comptePrive} then 'fonctionnement' when compte like '2042%' then 'investissement' end
     else case when ${classe6} then 'fonctionnement' when ${investissement} then 'investissement' end
   end as poste from s
+) where poste is not null
+group by exercice, collectivite, niveau, secteur, poste
+
+union all
+
+-- Écoles : la commune (la Ville de Paris pour la commune 75056), public seulement ; syndicats et intercommunalités exclus.
+select exercice, collectivite, 'ecoles' as niveau, 'public' as secteur, poste, sum(montant)::double as montant from (
+  select exercice, case when collectivite = 'paris' then 'com-75056' else collectivite end as collectivite, montant, case
+    when compte like '64%' then 'personnel'
+    when ${horsEcolesPubliques} then null
+    when ${classe6} then 'fonctionnement_hors_personnel'
+    when ${investissement} then 'investissement' end as poste
+  from budget_lignes
+  where fonction = '21' and (collectivite like 'com-%' or collectivite = 'paris')
 ) where poste is not null
 group by exercice, collectivite, niveau, secteur, poste;
 

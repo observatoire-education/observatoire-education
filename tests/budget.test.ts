@@ -29,6 +29,19 @@ describe("collectiviteDuBudget", () => {
     expect(collectiviteDuBudget(l("REG", "106", "106", "REG X"))).toBe("reg-06");
   });
 
+  test("communes : code INSEE = département DGFiP sans son 0 + insee ; outre-mer 97 + insee ; Paris pour ses écoles", () => {
+    const c = (ndept: string, insee: string | null, lbudg: string) => ({ categ: "Commune", ndept, cregi: null, lbudg, insee });
+    expect(collectiviteDuBudget(c("044", "109", "NANTES"))).toBe("com-44109");
+    expect(collectiviteDuBudget(c("02A", "004", "AJACCIO"))).toBe("com-2A004");
+    expect(collectiviteDuBudget(c("101", "101", "ABYMES"))).toBe("com-97101");
+    expect(collectiviteDuBudget(c("102", "302", "CAYENNE"))).toBe("com-97302");
+    expect(collectiviteDuBudget(c("106", "611", "MAMOUDZOU"))).toBe("com-97611");
+    expect(collectiviteDuBudget(c("044", null, "SANS CODE"))).toBeNull();
+    expect(collectiviteDuBudget(c("044", "1", "CODE COURT"))).toBeNull();
+    // Syndicats (SIVOS…) : regroupés, jamais attribués à une commune.
+    expect(collectiviteDuBudget({ categ: "SYND", ndept: "044", cregi: "052", lbudg: "SIVOS X" })).toBe("syndicats");
+  });
+
   test("collectivité inconnue : null", () => {
     expect(collectiviteDuBudget(l("CTU", "199", "199", "CTU ILE INCONNUE"))).toBeNull();
     expect(collectiviteDuBudget(l("REG", null, "999", "REG X"))).toBeNull();
@@ -51,6 +64,14 @@ describe("fonctionNormalisee", () => {
     expect(fonctionNormalisee("932")).toBeNull();
     expect(fonctionNormalisee("2210")).toBeNull();
     expect(fonctionNormalisee("81")).toBeNull();
+  });
+
+  test("écoles : 21 et ses sous-fonctions (211, 212, 213, détails locaux), seules ou préfixées, deviennent « 21 »", () => {
+    for (const f of ["21", "211", "212", "213", "2121", "21101", "90211", "93212", "93213", "9021"]) expect(fonctionNormalisee(f)).toBe("21");
+    // Services communs (20, 201), restauration (M14 251, M57 281), transport (252) : hors des écoles.
+    for (const f of ["2", "20", "201", "251", "252", "281", "93281", "2210"]) expect(fonctionNormalisee(f)).toBeNull();
+    expect(fonctionNormalisee("221")).toBe("221");
+    expect(fonctionNormalisee("93221")).toBe("221");
   });
 });
 
@@ -147,6 +168,42 @@ describe("balances normalisées", () => {
     const db = await dbTest();
     expect(await postes("dep-49", 2024)).toEqual({ "colleges/public/fonctionnement_hors_personnel": 5 });
     expect(await db.sql("select 1 from budget_inconnus where ident = '49000000100'")).toEqual([]);
+  });
+
+  test("commune : écoles publiques, sans les contributions obligatoires (6558) ni les subventions 2042, M14 puis M57", async () => {
+    expect(await postes("com-44109", 2023)).toEqual({
+      "ecoles/public/fonctionnement_hors_personnel": 202_000,
+      "ecoles/public/personnel": 1_010_000,
+      "ecoles/public/investissement": 50_500,
+    });
+    // 2024 : 6068 (152 400) + 60612 (50 800) ; 6558, 2042, 6811 et la restauration (281) exclus.
+    expect(await postes("com-44109", 2024)).toEqual({
+      "ecoles/public/fonctionnement_hors_personnel": 203_200,
+      "ecoles/public/personnel": 1_016_000,
+      "ecoles/public/investissement": 254_000,
+    });
+  });
+
+  test("Ville de Paris : ses écoles sont celles de la commune 75056 ; ses collèges restent à « paris »", async () => {
+    expect(await postes("com-75056", 2024)).toEqual({ "ecoles/public/fonctionnement_hors_personnel": 700_000 });
+    expect(Object.keys(await postes("paris", 2024)).every((k) => k.startsWith("colleges/"))).toBe(true);
+  });
+
+  test("syndicats : dans les lignes, jamais dans les postes ni dans les budgets non identifiés", async () => {
+    const db = await dbTest();
+    const [s] = await db.sql<{ t: number }>("select sum(montant) as t from budget_lignes where collectivite = 'syndicats' and exercice = 2024");
+    expect(s!.t).toBe(80_000);
+    expect(await db.sql("select 1 from budget_postes where collectivite = 'syndicats'")).toEqual([]);
+    expect(await db.sql("select 1 from budget_inconnus where lbudg like 'SIVOS%'")).toEqual([]);
+  });
+
+  test("départements et régions inchangés par les lignes des communes", async () => {
+    const db = await dbTest();
+    const r = await db.sql<{ niveau: string; n: number }>(
+      "select niveau, count(distinct collectivite)::int as n from budget_postes where collectivite not like 'com-%' group by 1 order by 1",
+    );
+    expect(r.map((x) => x.niveau)).toEqual(["colleges", "lycees"]);
+    expect(await db.sql("select 1 from budget_postes where niveau = 'ecoles' and collectivite not like 'com-%'")).toEqual([]);
   });
 
   test("budgets non identifiés listés à part", async () => {

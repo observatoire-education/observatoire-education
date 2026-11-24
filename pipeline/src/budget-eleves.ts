@@ -1,15 +1,20 @@
 // Montants par élève des collectivités et moyennes France.
 // Un exercice N est divisé par les élèves de la rentrée N−1 (DEPP) ; fiches disparues comprises.
+// Écoles : la commune, en € par élève de ses écoles publiques (fonctions 21x de ses comptes).
 import { collectiviteDe, libelleCollectivite, motifSansCollectivite, type IdCollectivite, type NiveauBudget } from "@obs/shared/collectivites";
 import type {
   BudgetCollectivite, ExerciceBudget, MontantBudget, MoyenneBudget, MoyennesBudgetFrance, ParSecteur, StatutBudget,
 } from "@obs/shared/donnees";
-import { estSecondDegre } from "@obs/shared/libelles";
+import { estEcole, estSecondDegre } from "@obs/shared/libelles";
+import { communeDeRattachement, LIBELLES_PLM } from "@obs/shared/territoires";
 import type { Fiche, FamilleSecondDegre } from "@obs/shared/types";
 import { AGRICOLE, CITES_SCOLAIRES, EXERCICE_MIN, SEUIL_PERSONNEL_PAR_ELEVE } from "./budget-constantes.ts";
 import type { Db } from "./db.ts";
 
-const NIVEAUX: NiveauBudget[] = ["colleges", "lycees"];
+const NIVEAUX: NiveauBudget[] = ["colleges", "lycees", "ecoles"];
+
+/** Collectivité des écoles d'une commune : la commune (pour un arrondissement, Paris, Lyon ou Marseille). */
+export const communeDuBudget = (codeCommune: string): IdCollectivite => `com-${communeDeRattachement(codeCommune)}`;
 
 /** Niveau de budget d'une famille du second degré : collèges, ou lycées (legt, lpo, lp, erea). Les écoles n'en ont pas. */
 export function niveauDe(famille: FamilleSecondDegre): NiveauBudget {
@@ -19,15 +24,16 @@ export function niveauDe(famille: FamilleSecondDegre): NiveauBudget {
 /**
  * Élèves de la rentrée par collectivité (clé `${niveau}|${id}`) et secteur. Les fiches disparues comptent
  * pour les rentrées où elles avaient des élèves ; une fiche sans valeur pour la rentrée ne compte pas.
+ * Écoles : seulement les écoles publiques, comptées pour leur commune (`ecoles|com-44109`).
  */
 export function elevesParCollectivite(fiches: Fiche[], rentree: number): Map<string, ParSecteur<number>> {
   const r = new Map<string, ParSecteur<number>>();
   for (const f of fiches) {
-    if (!estSecondDegre(f.famille)) continue; // écoles : budget des communes, hors de ce calcul
-    const niveau = niveauDe(f.famille);
+    if (estEcole(f.famille) && f.secteur !== "public") continue; // le budget des communes va à leurs écoles publiques
     const valeur = f.indicateurs.find((i) => i.code === "eleves")?.historique.find(([an]) => an === rentree)?.[1];
     if (valeur === undefined || valeur === null) continue;
-    const id = collectiviteDe(niveau, f.dep, f.codeCommune);
+    const niveau: NiveauBudget = estSecondDegre(f.famille) ? niveauDe(f.famille) : "ecoles";
+    const id = niveau === "ecoles" ? communeDuBudget(f.codeCommune) : collectiviteDe(niveau, f.dep, f.codeCommune);
     if (!id) continue;
     const cle = `${niveau}|${id}`;
     const e = r.get(cle) ?? { public: 0, prive: 0 };
@@ -42,9 +48,13 @@ const montant = (total: number, eleves: number): MontantBudget => ({ total, parE
 
 interface Ligne { exercice: number; collectivite: string; niveau: NiveauBudget; secteur: "public" | "prive"; poste: string; montant: number }
 
-/** Montants d'une collectivité pour un exercice : les lignes de `budget_postes` (par secteur et poste), les élèves, le statut. */
+/**
+ * Montants d'une collectivité pour un exercice : les lignes de `budget_postes` (par secteur et poste), les élèves, le
+ * statut. Sans aucune ligne : `non_disponible`, ou pour une commune `budget_communal_non_publie`.
+ */
 function exercice(
   n: number, lignes: Map<string, number>, nonDetaille: boolean, eleves: ParSecteur<number>, cites: number | null,
+  niveau: NiveauBudget,
 ): ExerciceBudget {
   const pub = eleves.public > 0 ? eleves.public : null;
   const priv = eleves.prive > 0 ? eleves.prive : null;
@@ -54,7 +64,7 @@ function exercice(
     const nd = absent("fonction_non_detaillee");
     sortie = { public: { horsPersonnel: nd, avecPersonnel: nd, investissement: nd }, prive: { fonctionnement: nd, investissement: nd } };
   } else if (lignes.size === 0) {
-    const nd = absent("non_disponible");
+    const nd = absent(niveau === "ecoles" ? "budget_communal_non_publie" : "non_disponible");
     sortie = { public: { horsPersonnel: nd, avecPersonnel: nd, investissement: nd }, prive: { fonctionnement: nd, investissement: nd } };
   } else {
     const parPublic = (poste: string): MontantBudget => {
@@ -105,6 +115,18 @@ function moyenne(exercices: ExerciceBudget[], p: Poste): MoyenneBudget {
   return { valeur: n > 0 ? total / eleves : null, n };
 }
 
+/** Nom de chaque commune des écoles (`com-44109` → « Nantes ») ; Paris, Lyon et Marseille pour leurs arrondissements. */
+function nomsDesCommunes(fiches: Fiche[]): Map<IdCollectivite, string> {
+  const r = new Map<IdCollectivite, string>();
+  for (const f of fiches) {
+    if (!estEcole(f.famille)) continue;
+    const code = communeDeRattachement(f.codeCommune);
+    const nom = LIBELLES_PLM[code as keyof typeof LIBELLES_PLM] ?? f.commune;
+    if (!r.has(`com-${code}`) || f.disparuLe === null) r.set(`com-${code}`, nom);
+  }
+  return r;
+}
+
 /** Niveau qui porte les cités scolaires : lycées pour les régions et collectivités uniques, collèges pour les autres. */
 const niveauDesCites = (id: IdCollectivite): NiveauBudget => (id.startsWith("reg-") || id.startsWith("ctu-") ? "lycees" : "colleges");
 
@@ -137,9 +159,14 @@ export async function calculerBudgets(
   const citesParCle = new Map(cites.map((c) => [`${c.exercice}|${c.collectivite}`, c.montant]));
   const eleves = new Map(exercices.map((e) => [e, elevesParCollectivite(fiches, e - 1)]));
 
-  // Collectivités connues : celles qui ont des élèves à l'une des rentrées des exercices publiés.
+  // Collectivités connues : celles qui ont des élèves à l'une des rentrées des exercices publiés. Communes : seulement
+  // celles qui ont des lignes pour l'un des exercices (les autres n'ont pas de budget, la fiche dit pourquoi).
+  const communesPubliees = new Set(postes.filter((l) => l.niveau === "ecoles").map((l) => `ecoles|${l.collectivite}`));
   const cles = new Set<string>();
-  for (const m of eleves.values()) for (const [cle, e] of m) if (e.public + e.prive > 0) cles.add(cle);
+  for (const m of eleves.values()) {
+    for (const [cle, e] of m) if (e.public + e.prive > 0 && (!cle.startsWith("ecoles|") || communesPubliees.has(cle))) cles.add(cle);
+  }
+  const noms = nomsDesCommunes(fiches);
 
   const collectivites = new Map<string, BudgetCollectivite>();
   for (const cle of [...cles].sort()) {
@@ -150,6 +177,7 @@ export async function calculerBudgets(
         eleves.get(e)!.get(cle) ?? { public: 0, prive: 0 },
         // Cités scolaires (fonction 24) : au niveau du financeur, jamais aux deux.
         niveauDesCites(id) === niveau ? (citesParCle.get(`${e}|${id}`) ?? null) : null,
+        niveau,
       ),
     );
     const mentions: BudgetCollectivite["mentions"] = [];
@@ -157,7 +185,7 @@ export async function calculerBudgets(
     const part = niveau === "colleges" ? CITES_SCOLAIRES[id] : undefined;
     if (part !== undefined) mentions.push("cites_scolaires");
     collectivites.set(cle, {
-      id, libelle: libelleCollectivite(id), niveau, exercices: parExercice, mentions,
+      id, libelle: niveau === "ecoles" ? noms.get(id)! : libelleCollectivite(id), niveau, exercices: parExercice, mentions,
       ...(part !== undefined ? { partCitesScolaires: part } : {}),
     });
   }
@@ -188,9 +216,15 @@ export interface Budgets {
 /**
  * Bloc budget d'une fiche : la collectivité du niveau de sa famille et les moyennes France de ce niveau.
  * Collectivité null (avec son motif) si aucune n'est rattachée ou si elle n'a aucun élève dans les fiches.
+ * École publique : sa commune (null si elle est absente des balances) ; école privée : aucun bloc.
  */
-export function budgetDeFiche(f: Pick<Fiche, "famille" | "dep" | "codeCommune">, budgets: Budgets): Fiche["budget"] {
-  if (!estSecondDegre(f.famille)) return { france: [] }; // écoles : ni collèges ni lycées
+export function budgetDeFiche(f: Pick<Fiche, "famille" | "secteur" | "dep" | "codeCommune">, budgets: Budgets): Fiche["budget"] {
+  if (estEcole(f.famille)) {
+    if (f.secteur !== "public") return { france: [] };
+    const commune = budgets.collectivites.get(`ecoles|${communeDuBudget(f.codeCommune)}`) ?? null;
+    const france = budgets.france.filter((m) => m.niveau === "ecoles");
+    return commune ? { ecoles: commune, france } : { ecoles: null, france, motif: "budget_communal_non_publie" };
+  }
   const niveau = niveauDe(f.famille);
   const id = collectiviteDe(niveau, f.dep, f.codeCommune);
   const france = budgets.france.filter((m) => m.niveau === niveau);
@@ -203,7 +237,7 @@ export function budgetDeFiche(f: Pick<Fiche, "famille" | "dep" | "codeCommune">,
 
 /** Nombre de collectivités par statut du fonctionnement hors personnel du public, au dernier exercice, par niveau. */
 export function statutsDernierExercice(budgets: Budgets): Record<NiveauBudget, Record<string, number>> {
-  const r: Record<NiveauBudget, Record<string, number>> = { colleges: {}, lycees: {} };
+  const r: Record<NiveauBudget, Record<string, number>> = { colleges: {}, lycees: {}, ecoles: {} };
   for (const c of budgets.collectivites.values()) {
     const e = c.exercices.at(-1);
     const statut = e?.public.horsPersonnel.statut ?? "non_disponible";

@@ -34,7 +34,8 @@ describe("fiche école", () => {
   test("aucune fiche école ne montre les blocs des lots à venir ni les données sans objet", () => {
     for (const uai of ECOLES) {
       const t = texte(fiche(uai)).toLowerCase();
-      for (const mot of ["Budget", "Vie scolaire", "agrégés"]) {
+      // Le budget de la commune (lot 4) est en ligne : voir tests/site-budget.test.ts.
+      for (const mot of ["Vie scolaire", "agrégés"]) {
         expect(`${uai} : ${mot} ${t.includes(mot.toLowerCase())}`).toBe(`${uai} : ${mot} false`);
       }
       expect(t).not.toContain("Voisins");
@@ -90,10 +91,10 @@ describe("fiche école", () => {
     expect(svgs[0]!.getAttribute("aria-label")).toEndWith(". Classes : 8 de 2011 à 2025");
   });
 
-  // 25 000 octets jusqu'au lot 1 ; relevé à 26 000 par le bloc des rattachements, puis à 27 500 par le bloc
-  // « Autour de l'école » (plafond permis : 30 000).
-  test("poids : la fiche 0440202B fait 27 500 octets au plus", () => {
-    expect(octets(fiche("0440202B"))).toBeLessThanOrEqual(27_500);
+  // 25 000 octets jusqu'au lot 1 ; relevé à 26 000 par le bloc des rattachements, à 27 500 par le bloc
+  // « Autour de l'école », puis à 29 700 par le bloc « Moyens de la commune » (29 601 ; plafond permis : 30 000).
+  test("poids : la fiche 0440202B fait 29 700 octets au plus", () => {
+    expect(octets(fiche("0440202B"))).toBeLessThanOrEqual(29_700);
   });
 
   test("fiche A4 d'une école : « Fiche pour le conseil d'école »", () => {
@@ -432,7 +433,7 @@ describe("pages commune étendues", () => {
   test("pages commune du second degré : contenu existant gardé, bloc des écoles ajouté avant les sources", () => {
     const d = doc("commune/44109");
     const ids = [...d.querySelectorAll("main section")].map((s) => s.id);
-    expect(ids.slice(-3)).toEqual(["ecoles", "ecoles-fermees", ""]); // puis la section « Sources »
+    expect(ids.slice(-4)).toEqual(["ecoles", "ecoles-fermees", "moyens-commune", ""]); // puis la section « Sources »
     expect(d.querySelector('a[href="/commune/44109/etablissements.csv"]')).not.toBeNull();
     expect(propre(d.querySelector("#ecoles-fermees")!.textContent)).toContain("École maternelle des Peupliers · Fermée le 05/07/2013");
   });

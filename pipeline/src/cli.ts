@@ -127,6 +127,12 @@ async function data(): Promise<void> {
   for (const [niveau, statuts] of Object.entries(statutsDernierExercice(budgets))) {
     console.log(`    ${niveau.padEnd(9)} ${Object.entries(statuts).map(([s, n]) => `${s} ${n}`).join(", ") || "aucune"}`);
   }
+  // Écoles : dépenses des syndicats (SIVOS…), collectées mais attribuées à aucune commune.
+  const syndicats = await db.sql<{ exercice: number; m: number }>(
+    `select exercice::int as exercice, sum(montant)::double as m from budget_lignes where collectivite = 'syndicats' group by 1 order by 1`,
+  );
+  const s = syndicats.at(-1);
+  if (s) console.log(`  écoles : ${(s.m / 1e6).toFixed(1).replace(".", ",")} M€ de syndicats en ${s.exercice}, attribués à aucune commune`);
   console.log(`données écrites dans ${CHEMINS.donnees}/ en ${Math.round(performance.now() - debut)} ms`);
   db.fermer();
 }

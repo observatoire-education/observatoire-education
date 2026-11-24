@@ -130,6 +130,10 @@ Avant l'étape 2, un build sur `main` échoue proprement (« aucune version arch
 
 La collecte tourne ensuite chaque nuit à 2 h 17 UTC. Une nuit sans changement de source enregistre seulement le journal, sans reconstruire le site.
 
+### Mise en ligne du lot 4 de la phase Écoles (budget des communes)
+
+Le filtre des balances comptables de la DGFiP s'élargit aux communes, aux syndicats et à la Ville de Paris sur les fonctions des écoles (21x). La première collecte après le merge voit le filtre changé : elle **retélécharge et archive une nouvelle version de chaque exercice** (`budget_2020` à `budget_2025`), environ 217 000 lignes par exercice au lieu de 7 000, sans comparaison avec la version précédente (le périmètre n'est plus le même, ce n'est pas une correction). Les montants des départements et des régions ne changent pas. Prévoir cette nuit-là six téléchargements plus lourds et six nouvelles versions sur les GitHub Releases.
+
 ## Contact
 
 contact@observatoireeducation.fr

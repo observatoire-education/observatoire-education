@@ -1,12 +1,13 @@
 ---
 // Corps de la fiche d'une école (maternelle, élémentaire, primaire), sous l'en-tête commun (spec, section 6.3) :
-// rattachements et écoles proches (école ouverte), élèves et classes, composition sociale, enseignants, sources. Le
-// bloc du lot à venir (Budget) est absent, sans mention d'attente. Une seule courbe (élèves et classes) pour tenir le
-// poids de la page.
+// rattachements et écoles proches (école ouverte), élèves et classes, composition sociale, enseignants, moyens de la
+// commune (école publique seulement), sources. Une seule courbe (élèves et classes) pour tenir le poids de la page ;
+// le bloc des moyens n'a pas de graphique d'évolution (il est sur la page de la commune).
 import { entier } from "@obs/shared/format";
 import { type CodeIndicateur, LIBELLES, LIBELLES_BUDGET, LIBELLES_ECOLES as LE, LIBELLES_ECOLES_PROCHES as LP, LIBELLES_RATTACHEMENTS as LR, libelleTypeClasse, NIVEAUX_TERRITORIAUX } from "@obs/shared/libelles";
 import type { Fiche, Niveau, Secteur, SourceId } from "@obs/shared/types";
 import Absence from "./Absence.astro";
+import BlocBudget from "./BlocBudget.astro";
 import BlocEcolesProches from "./BlocEcolesProches.astro";
 import BlocRattachements from "./BlocRattachements.astro";
 import Cellule from "./Cellule.astro";
@@ -71,7 +72,7 @@ const sourcePersonnels = source(f, "personnels_ecoles");
 const REPARTITIONS = [["ages", "Âge"], ["anciennete", "Ancienneté dans l'école"]] as const;
 ---
 <nav class="toc" aria-label="Sommaire">
-  {f.rattachements && <a href="#rattachements">{LR.titre}</a>}{f.ecolesProches !== undefined && <a href="#autour">{LP.titre}</a>}<a href="#eleves">Élèves</a><a href="#classes">{LE.classes}</a><a href="#social">Composition sociale</a><a href="#ens">Enseignants</a><a href="#sources">Sources</a>
+  {f.rattachements && <a href="#rattachements">{LR.titre}</a>}{f.ecolesProches !== undefined && <a href="#autour">{LP.titre}</a>}<a href="#eleves">Élèves</a><a href="#classes">{LE.classes}</a><a href="#social">Composition sociale</a><a href="#ens">Enseignants</a>{f.budget.ecoles !== undefined && <a href="#moyens">Moyens</a>}<a href="#sources">Sources</a>
 </nav>
 
 {f.rattachements && <BlocRattachements r={f.rattachements} uai={f.uai} prive={f.secteur === "prive_sous_contrat"} />}
@@ -212,6 +213,14 @@ const REPARTITIONS = [["ages", "Âge"], ["anciennete", "Ancienneté dans l'écol
   </div>
   <LigneSource s={sourcePersonnels} complement="parts calculées sur les ETP ; moyennes Σ / Σ" />
 </section>
+
+{f.budget.ecoles !== undefined && (
+  <section id="moyens">
+    <h2>{LIBELLES_BUDGET.titreCommune}</h2>
+    <BlocBudget budget={f.budget.ecoles} france={f.budget.france.find((m) => m.niveau === "ecoles")} secteurEnPremier="public"
+      evolution={false} niveau="ecoles" motif={f.budget.motif} />
+  </section>
+)}
 
 <Sources f={f} genereLe={genereLe} />
 <FicheA4 f={f} genereLe={genereLe} />

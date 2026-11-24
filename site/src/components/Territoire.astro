@@ -41,7 +41,11 @@ const familles = famillesDe(d);
 const seulementEcoles = niveau === "commune" && familles.length === 0;
 /** Sources d'une page des écoles seulement : celles de ses blocs (toutes les sources sur les autres pages). */
 const SOURCES_ECOLES = new Set<SourceId>(["annuaire", "fermes", "effectifs_ecoles", "ips_ecoles_2016", "ips_ecoles", "cog_communes", "cog_mouvements"]);
-const sources = Object.values(lireSources()).filter((s) => s.actuelle && (!seulementEcoles || SOURCES_ECOLES.has(s.id)));
+/** Page commune : dépenses de la commune pour ses écoles, ou leur absence (commune qui a une école publique ouverte). */
+const budgetCommune = niveau === "commune" ? (d.budget.collectivites.find((c) => c.niveau === "ecoles") ?? null) : null;
+const avecBudgetCommune = budgetCommune !== null || d.budget.motif !== undefined;
+const sources = Object.values(lireSources()).filter((s) => s.actuelle
+  && (!seulementEcoles || SOURCES_ECOLES.has(s.id) || (avecBudgetCommune && s.id.startsWith("budget_"))));
 const total = familles.reduce((a, [, s]) => a + s.compte.public + s.compte.prive, 0);
 const academies = d.academies ?? [];
 /** Premier onglet de lycées : le bloc des moyens des régions n'y figure qu'une fois, pas à chaque famille. */
@@ -337,6 +341,14 @@ const badges = [
   )}
 
   {d.ecoles && <BlocEcolesCommune e={d.ecoles} commune={d.ref} />}
+
+  {avecBudgetCommune && (
+    <section id="moyens-commune">
+      <h2>{LIBELLES_BUDGET.titreCommune}</h2>
+      <BlocBudget budget={budgetCommune} france={d.budget.france.find((m) => m.niveau === "ecoles")} secteurEnPremier="public"
+        evolution={true} niveau="ecoles" motif={d.budget.motif} />
+    </section>
+  )}
 
   <section>
     <h2>Sources</h2>

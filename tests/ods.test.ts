@@ -117,6 +117,13 @@ describe("client Opendatasoft", () => {
     expect(FILTRE_BUDGET).not.toContain('"924"');
   });
 
+  test("filtre budget : communes, syndicats et Ville de Paris sur les fonctions 21x, seules ou préfixées", () => {
+    expect(FILTRE_BUDGET).toContain('categ in ("Commune","SYND","PARIS")');
+    for (const p of ["21", "9021", "9121", "9221", "9321", "9421"]) expect(FILTRE_BUDGET).toContain(`startswith(fonction, "${p}")`);
+    // Départements et régions : même périmètre qu'avant (fonctions listées, sans les 21x).
+    expect(FILTRE_BUDGET).toContain('categ in ("DEPT","REG","CTU","ML","PARIS") and fonction in (');
+  });
+
   test("téléchargement d'une source budget : filtre encodé, URL renvoyée", async () => {
     const { f, appels } = fauxFetch([parquet()]);
     const s = sourceBudget(2024, EXERCICES_BUDGET[2024]!);

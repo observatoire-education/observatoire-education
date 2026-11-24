@@ -587,7 +587,19 @@ export async function exporterTerritoires(
     };
     for (const f of groupe) if (f.famille === "college") ajouter("colleges", collectiviteDe("colleges", f.dep, f.codeCommune));
     for (const dep of deps) ajouter("lycees", collectiviteDe("lycees", dep, ""));
-    return { collectivites: collectivitesTriees(cles), france: budgets.france };
+    return { collectivites: collectivitesTriees(cles), france: franceSecondDegre };
+  };
+  // Les communes (budget de leurs écoles) n'ont leur bloc que sur leur page et sur les fiches de leurs écoles publiques.
+  const franceSecondDegre = budgets.france.filter((m) => m.niveau !== "ecoles");
+  const franceEcoles = budgets.france.filter((m) => m.niveau === "ecoles");
+  const communesEcolesPubliques = new Set(
+    toutes.filter((f) => estEcole(f.famille) && f.secteur === "public").map((f) => communeDeRattachement(f.codeCommune)),
+  );
+  /** Page commune : le budget de la commune pour ses écoles ; à défaut, le motif si elle a une école publique ouverte. */
+  const budgetCommune = (code: string): BudgetTerritoire => {
+    const c = budgets.collectivites.get(`ecoles|com-${code}`);
+    if (c) return { collectivites: [c], france: franceEcoles };
+    return communesEcolesPubliques.has(code) ? { collectivites: [], france: [], motif: "budget_communal_non_publie" } : { collectivites: [], france: [] };
   };
   const collectivitesTriees = (cles: Iterable<string>): BudgetCollectivite[] =>
     [...cles].sort((a, b) => (a.startsWith("colleges") === b.startsWith("colleges") ? a.localeCompare(b) : a.startsWith("colleges") ? -1 : 1))
@@ -621,7 +633,7 @@ export async function exporterTerritoires(
     const ref: RefTerritoire = { niveau: "commune", code, libelle: libelleCommune(code, groupe) };
     communesParDep.set(premier.dep, [...(communesParDep.get(premier.dep) ?? []), ref]);
     const donnees: DonneesTerritoire = {
-      budget: { collectivites: [], france: [] }, // pas de bloc budget sur les pages commune
+      budget: budgetCommune(code), // collèges et lycées : pas de bloc sur les pages commune ; écoles : la commune
       ref, parents: [FRANCE, ...regionParent(groupe), refAcademie(premier), refDepartement(premier)], rentree,
       familles: familles(groupe, (_, g) => calculee(g), { liste: true, niveaux: null, territoire: ["commune", code] }),
       horsContrat: horsContrat((l) => communeDeRattachement(l.code_commune) === code),
@@ -635,7 +647,7 @@ export async function exporterTerritoires(
     if (communes.has(code)) continue;
     const region = regionDe(c.dep.code);
     const donnees: DonneesTerritoire = {
-      budget: { collectivites: [], france: [] },
+      budget: budgetCommune(code),
       ref: { niveau: "commune", code, libelle: c.libelle },
       parents: [
         FRANCE, ...(region ? [refRegion(region)] : []), { niveau: "academie", code: c.aca.code, libelle: c.aca.libelle },
@@ -720,6 +732,7 @@ export async function exporterTerritoires(
         .sort(parLibelle),
     }))
     .sort(parLibelle);
+  const clesSecondDegre = [...budgets.collectivites.keys()].filter((k) => !k.startsWith("ecoles|"));
   // Carte « budget » : une valeur par collectivité des collèges, avec les départements qu'elle couvre.
   const carteBudget: DonneesFrance["carteBudget"] = {
     genre: "collectivites",
@@ -734,8 +747,8 @@ export async function exporterTerritoires(
       .sort((a, b) => a.id.localeCompare(b.id)),
   };
   const france: DonneesFrance = {
-    budget: { collectivites: collectivitesTriees(budgets.collectivites.keys()), france: budgets.france },
-    ...correctionsDe(null, collectivitesTriees(budgets.collectivites.keys())),
+    budget: { collectivites: collectivitesTriees(clesSecondDegre), france: franceSecondDegre },
+    ...correctionsDe(null, collectivitesTriees(clesSecondDegre)),
     ref: FRANCE, parents: [], rentree,
     familles: familles(actives, (famille) => depp(ips.nat.get(`${famille}|FR`)), { liste: false, niveaux: ["france"], territoire: ["france", "FR"] }),
     horsContrat: horsContratLignes.length,

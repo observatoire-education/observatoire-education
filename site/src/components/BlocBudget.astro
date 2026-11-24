@@ -2,8 +2,9 @@
 // Bloc « Moyens de la collectivité » : dépenses par élève de la collectivité qui finance les collèges (département)
 // ou les lycées (région), au dernier exercice publié. Le privé n'est mis en regard du public que pour le
 // fonctionnement, personnel compris ; sans ce poste, la contribution au privé reste seule, sans écart.
+// Écoles : la commune, public seulement (€ par élève de ses écoles publiques), avec ce que le montant ne compte pas.
 import type { NiveauBudget } from "@obs/shared/collectivites";
-import type { BudgetCollectivite, MoyennesBudgetFrance } from "@obs/shared/donnees";
+import type { BudgetCollectivite, MotifSansBudget, MoyennesBudgetFrance } from "@obs/shared/donnees";
 import { nombre } from "@obs/shared/format";
 import { LIBELLES_BUDGET as L } from "@obs/shared/libelles";
 import { absenceBudget, brutBudget, comparaisonBudget, ecartSigne, millions, montantBudget } from "../lib/budget";
@@ -20,7 +21,7 @@ interface Props {
   /** Niveau des établissements de la page (une collectivité absente n'en porte pas). */
   niveau: NiveauBudget;
   /** Pourquoi il n'y a pas de collectivité. */
-  motif?: "aucune_collectivite" | "collectivite_non_identifiee";
+  motif?: MotifSansBudget;
 }
 const { budget, france, secteurEnPremier, evolution, niveau, motif } = Astro.props;
 
@@ -51,16 +52,19 @@ const regard = pu && pr && pu.statut === "ok" && pu.parEleve !== null && pr.stat
   ? { public: nombre(pu.parEleve, 0), ecart: ecartSigne(pr.parEleve, pu.parEleve) }
   : null;
 
-const svg = evolution && budget ? svgEvolutionBudget(budget.exercices) : "";
-const avecPrive = budget ? posteEvolutionAvecPersonnel(budget.exercices) : false;
-const postePublic = avecPrive ? L.postes.avecPersonnel : L.postes.horsPersonnel;
+const ecoles = niveau === "ecoles";
+const svg = evolution && budget ? svgEvolutionBudget(budget.exercices, !ecoles) : "";
+const avecPersonnel = budget ? posteEvolutionAvecPersonnel(budget.exercices) : false;
+const avecPrive = avecPersonnel && !ecoles;
+const postePublic = avecPersonnel ? L.postes.avecPersonnel : L.postes.horsPersonnel;
 const absenceCollectivite = absenceBudget(motif ?? "collectivite_non_identifiee", niveau);
 const partCites = budget?.partCitesScolaires;
-const secteurs = secteurEnPremier === "prive" ? (["prive", "public"] as const) : (["public", "prive"] as const);
+const secteurs = ecoles ? (["public"] as const) : secteurEnPremier === "prive" ? (["prive", "public"] as const) : (["public", "prive"] as const);
+const libellePublic = ecoles ? L.interface.ecolesPubliques : L.interface.public;
 ---
 <div class="moyens" data-collectivite={budget?.id}>
   {!budget ? (
-    <div class="card"><div class="lab"><span>{L.titre}</span></div><div style="margin:8px 0"><Absence texte={absenceCollectivite} /></div></div>
+    <div class="card"><div class="lab"><span>{ecoles ? L.titreCommune : L.titre}</span></div><div style="margin:8px 0"><Absence texte={absenceCollectivite} /></div>{ecoles && <div class="src"><a href="/methode/#budget-communal">{L.interface.voirSources}</a></div>}</div>
   ) : !e ? (
     <div class="card"><div class="lab"><span>{budget.libelle}</span></div><div style="margin:8px 0"><Absence texte={absenceBudget("non_disponible", niveau)} /></div></div>
   ) : (
@@ -68,7 +72,7 @@ const secteurs = secteurEnPremier === "prive" ? (["prive", "public"] as const) :
       <div class="cols2 budget">
         {secteurs.map((s) => s === "public" ? (
           <div class="card">
-            <div class="lab"><span>{budget.libelle} · {L.interface.public}</span><span class="yr">{L.interface.exercice(e.exercice)}</span></div>
+            <div class="lab"><span>{budget.libelle} · {libellePublic}</span><span class="yr">{L.interface.exercice(e.exercice)}</span></div>
             <div class="table-wrap"><table class="cmp mini-t">
               <thead><tr><th>{L.unites.parEleve}</th><th class="n">{L.interface.montant}</th><th class="n">{L.interface.ecartMoyenne}</th></tr></thead>
               <tbody>
@@ -116,10 +120,11 @@ const secteurs = secteurEnPremier === "prive" ? (["prive", "public"] as const) :
         <div class="card" style="margin-top:14px">
           <div class="lab"><span>{L.interface.evolution} · {L.unites.parEleve}</span><span class="yr">{budget.exercices[0]!.exercice} → {budget.exercices.at(-1)!.exercice}</span></div>
           <Fragment set:html={svg} />
-          <div class="legend"><span class="sect pub">{L.interface.public} : {postePublic}</span>{avecPrive && <span class="sect pri">{L.interface.prive} : {contribution}</span>}</div>
+          <div class="legend"><span class="sect pub">{libellePublic} : {postePublic}</span>{avecPrive && <span class="sect pri">{L.interface.prive} : {contribution}</span>}</div>
           <div class="src">{L.interface.exercicesDe(budget.exercices[0]!.exercice, budget.exercices.at(-1)!.exercice)} · Source : {L.interface.sourceSansExercice} · <a href="/sources/">{L.interface.voirSources}</a></div>
         </div>
       )}
+      {ecoles && <p class="mute mention-budget">{L.mentionEcoles} <a href="/methode/#budget-communal">{L.interface.voirSources}</a></p>}
       {budget.mentions.includes("agricole") && <p class="mute mention-budget">{L.mentionAgricole}</p>}
       {budget.mentions.includes("cites_scolaires") && partCites !== undefined && <p class="mute mention-budget">{L.mentionCitesScolaires(nombre(partCites, 1), e.exercice)}</p>}
       {e.citesScolaires !== null && e.citesScolaires > 0 && <p class="mute mention-budget">{L.citesScolairesHorsMontants(millions(e.citesScolaires))}</p>}

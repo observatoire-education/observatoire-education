@@ -139,12 +139,23 @@ describe("écoles", () => {
     for (const uai of ECOLES) expect(fiche(uai).voisins).toBeNull(); // 0440201A a des coordonnées
   });
 
-  test("ni budget de collèges ou de lycées, ni résultats", () => {
+  test("ni budget de collèges ou de lycées, ni résultats ; école publique : le budget de sa commune", () => {
     for (const uai of ECOLES) {
-      expect(fiche(uai).budget).toEqual({ france: [] });
-      expect(fiche(uai).resultats).toEqual([]);
-      expect(fiche(uai).sources.map((s) => s.id).filter((id) => id.startsWith("budget_"))).toEqual([]);
+      const f = fiche(uai);
+      expect(f.budget).not.toHaveProperty("colleges");
+      expect(f.budget).not.toHaveProperty("lycees");
+      expect(f.resultats).toEqual([]);
+      const budgets = f.sources.map((s) => s.id).filter((id) => id.startsWith("budget_"));
+      if (f.secteur === "public") {
+        expect(f.budget.france.map((m) => m.niveau)).toEqual(["ecoles"]);
+        expect(budgets).toEqual(["budget_2024"]);
+      } else {
+        expect(f.budget).toEqual({ france: [] });
+        expect(budgets).toEqual([]);
+      }
     }
+    expect(fiche("0440202B").budget.ecoles?.id).toBe("com-44109");
+    expect(fiche("0440104D").budget).toMatchObject({ ecoles: null, motif: "budget_communal_non_publie" });
   });
 
   test("classes et élèves par classe sur la fiche d'une école, pas sur celle d'un collège", () => {
@@ -152,7 +163,7 @@ describe("écoles", () => {
     expect(f.classes).toMatchObject({ rentree: 2025, total: 8 });
     expect(f.indicateurs.find((i) => i.code === "eleves_par_classe")!.mesure.statut).toBe("ok");
     expect(f.sources.map((s) => s.id)).toEqual([
-      "annuaire", "effectifs_ecoles", "ips_ecoles_2016", "ips_ecoles", "personnels_ecoles", "classes_ecoles", "ecoles_ep",
+      "annuaire", "effectifs_ecoles", "ips_ecoles_2016", "ips_ecoles", "personnels_ecoles", "classes_ecoles", "ecoles_ep", "budget_2024",
     ]);
     expect(f.sources.find((s) => s.id === "ips_ecoles")!.rentree).toBe(2024);
     expect(f.sources.find((s) => s.id === "personnels_ecoles")!.rentree).toBe(2025);
@@ -429,7 +440,9 @@ describe("export des données du site", () => {
     const commune: DonneesTerritoire = await Bun.file(join(sortie, "communes", "44109.json")).json();
     expect(commune.ref).toEqual({ niveau: "commune", code: "44109", libelle: "Nantes" });
     expect(commune.parents.map((p) => `${p.niveau} ${p.code}`)).toEqual(["france FR", "region 52", "academie 17", "departement 44"]);
-    expect(commune.budget).toEqual({ collectivites: [], france: [] });
+    // Collèges et lycées : aucun bloc sur la page commune ; écoles : la commune et la moyenne France des écoles.
+    expect(commune.budget.collectivites.map((c) => `${c.niveau} ${c.id}`)).toEqual(["ecoles com-44109"]);
+    expect(commune.budget.france.map((m) => m.niveau)).toEqual(["ecoles"]);
     const colCommune = commune.familles.college!;
     expect(colCommune.ipsMoyen.calculee).toBe(true);
     const avecIpsEtEleves = (secteur: string) =>
@@ -543,7 +556,7 @@ describe("budget des fiches et des territoires", () => {
   });
 
   test("Mayotte : budget null, aucune collectivité", () => {
-    const f = { famille: "college", dep: "976", codeCommune: "97611" } as const;
+    const f = { famille: "college", secteur: "public", dep: "976", codeCommune: "97611" } as const;
     expect(budgetDeFiche(f, { collectivites: new Map(), france: [] })).toEqual({ colleges: null, france: [], motif: "aucune_collectivite" });
   });
 

@@ -21,6 +21,7 @@ Vocabulaire :
 | 6. Saint-Martin, Saint-Barthélemy, Saint-Pierre-et-Miquelon | absents des balances | « collectivité non identifiée » |
 | 7. Compte 655122 | forfait des collèges privés de deux départements imputé au compte des lycées privés ; contribution au privé introuvable à La Réunion et en Martinique 2024 | 655122 compté au privé (correction du code) ; statut « aucune contribution au privé identifiée » (décision du porteur du 2026-11-24) |
 | 8. Alsace, exercice 2025 | conformes ; 2025 complet | pas de changement |
+| 9. Communes, dépenses pour leurs écoles | 2 913 à 3 185 communes par exercice ; 69 % des élèves du public en 2024 ; syndicats 5 à 8 M€, intercommunalités 258 à 359 M€ | fonctions 21x, même formule que les collèges ; 6558 et 2042 hors des écoles publiques ; seuil de personnel de 50 € gardé ; syndicats et intercommunalités non attribués |
 
 Le porteur a tranché le 2026-11-24 les trois points ouverts : **Mayotte** (aucune collectivité, contrôle 2), la **fonction 24 « Cités scolaires »** (collectée et signalée, hors montants par élève, contrôle 5) et la **contribution au privé introuvable** (statut dédié, contrôle 7).
 
@@ -206,6 +207,46 @@ La Corrèze (1 383 élèves de collèges privés) et la Nièvre (1 041) n'ont pa
 - personnel : le Lot-et-Garonne a un compte 64 résiduel en 2024 (6 849 €) et aucun en 2025 ; il reste sous le seuil. Le Val-d'Oise rattache son personnel aux collèges à partir de 2025 (44,08 M€), alors qu'il n'avait aucun compte 64 dans la fonction 221 de 2020 à 2024. Sa série « personnel compris » commence donc en 2025.
 
 L'exercice 2025 est complet et utilisable.
+
+## 9. Communes : dépenses pour leurs écoles (phase Écoles)
+
+Contrôles faits le 24 novembre 2026 par des requêtes agrégées sur data.economie.gouv.fr (mêmes jeux, exercices 2020 à 2025) et sur les effectifs des écoles de la DEPP (rentrée 2023), rapprochés par l'Annuaire de l'éducation.
+
+**Catégories.** Les valeurs exactes de `categ` sont `Commune` (avec cette casse) et `SYND` ; les autres catégories du jeu 2024 sont `CTU`, `DEPT`, `EPL`, `EPT`, `GFP` (intercommunalités à fiscalité propre), `ML`, `PARIS` et `REG`. Le code de la commune est donné par deux colonnes : `ndept` (département sur 3 caractères, `044`, `02A`, ou `101` à `106` outre-mer) et `insee` (commune dans son département, 3 chiffres). Code INSEE : `ndept` sans son 0 suivi de `insee` (`044` + `109` → `44109`) ; outre-mer, `97` suivi de `insee` (`101` + `101` → `97101`, `102` + `302` → `97302`, `106` + `611` → `97611`, vérifié sur les cinq territoires). Paris, Lyon et Marseille sont une seule commune dans les balances (`13055`, `69123`) ; Paris est la catégorie `PARIS` (`075` + `056`).
+
+**Fonctions.** M14 (la plupart des communes jusqu'en 2023) et M57 (la plupart à partir de 2024) ont la même fonction 21 « enseignement du premier degré » : 211 écoles maternelles, 212 écoles primaires (élémentaires), 213 classes regroupées. Les communes ajoutent des détails locaux (2111, 2121, 21101…, une à quinze communes chacun) et, selon le mode de vote, un chapitre devant le code (90211, 93212 : 16 à 18 communes en 2024). Sont hors des écoles : 20 et 201 (services communs de l'enseignement, partagés entre niveaux), M14 25x et M57 28x (hébergement et restauration scolaires, transport, sport et médecine scolaires, classes de découverte), 22x (second degré). Nombre de communes (budget principal) avec des lignes en 2024 : 211 dans 2 955 communes, 212 dans 3 006, 213 dans 1 852.
+
+**Règle retenue.** Fonction : 21 et tout code qui commence par 21, seul ou précédé d'un chapitre 90 à 94, ramené à « 21 ». Formule de la dépense réelle et comptes : les mêmes que pour les collèges (section 1 ; personnel = comptes 64 ; fonctionnement = classe 6 hors 68, 675 et 676 ; investissement = 20, 21, 23). Comme la part privée des collèges, deux comptes sont retirés des écoles publiques :
+- **6558, autres contributions obligatoires** (M14 et M57) : 254 M€ dans 1 163 communes en 2024, environ 15 % du fonctionnement hors personnel. Il mêle le forfait communal des écoles privées sous contrat et les frais de scolarité versés à d'autres communes pour leurs élèves, que les comptes ne séparent pas. Ces dépenses ne vont pas aux écoles publiques de la commune ; les compter gonflerait le montant par élève, surtout là où le privé est important. Elles ne sont pas publiées à part (aucun montant fiable du privé) ;
+- **2042, subventions d'équipement aux personnes de droit privé**, comme pour les collèges.
+
+Les subventions aux associations (65748 : coopératives scolaires, associations sportives, parfois les organismes de gestion des écoles privées) restent comptées : les comptes ne disent pas le bénéficiaire.
+
+**Filtre de collecte.** Ajout, au filtre de la phase 3 qui reste identique pour les départements et les régions : `categ in ("Commune","SYND","PARIS")` et une fonction qui commence par `21`, `9021`, `9121`, `9221`, `9321` ou `9421`. Vérifié sur 2024 : 209 488 lignes de 3 185 communes, 1 273 lignes de 60 syndicats, 124 lignes de la Ville de Paris ; départements et régions : mêmes lignes qu'avant. L'extrait passe d'environ 7 000 lignes à environ 217 000 par exercice.
+
+**Couverture.**
+
+| Exercice | Communes avec des lignes 21x | Dépenses nettes, tous comptes | Ville de Paris | Syndicats | Intercommunalités (GFP, non collectées) |
+|---|---|---|---|---|---|
+| 2020 | 2 913 | 5 159 M€ | 481 M€ | 28 · 8 M€ | 250 · 258 M€ |
+| 2021 | 2 933 | 5 536 M€ | 442 M€ | 25 · 7 M€ | 250 · 278 M€ |
+| 2022 | 3 003 | 6 097 M€ | 466 M€ | 29 · 7 M€ | 255 · 276 M€ |
+| 2023 | 3 072 | 6 526 M€ | 483 M€ | 43 · 7 M€ | 245 · 310 M€ |
+| 2024 | 3 185 | 6 962 M€ | 509 M€ | 60 · 6 M€ | 293 · 327 M€ |
+| 2025 | 3 172 | 7 040 M€ | 538 M€ | 54 · 5 M€ | 297 · 359 M€ |
+
+En 2024, 3 249 communes ont un budget principal dans le jeu ; 3 185 ont des lignes dans les fonctions des écoles. Rapprochées des 20 722 communes qui avaient au moins une école publique à la rentrée 2023 (élèves de la DEPP, commune de l'Annuaire) : 3 256 communes publiées (Paris compris), 69,2 % des élèves des écoles publiques. Quatre communes publiées n'avaient aucun élève du public à cette rentrée.
+
+**Seuil de personnel.** Comptes 64 des fonctions 21x par élève du public, 2024, 3 255 communes : 540 sous 1 € (dont 36 négatifs), 30 entre 1 et 10 €, 26 entre 10 et 50 €, 23 entre 50 et 100 €, 41 entre 100 et 200 €, 59 entre 200 et 300 €, puis 2 536 au-dessus (la masse entre 500 et 2 000 €). Il n'y a pas de creux net comme pour les collèges ; la zone la moins dense va de 1 à 100 € (79 communes). **Décision :** le seuil des collèges (`SEUIL_PERSONNEL_PAR_ELEVE`, 50 € par élève) est gardé : 2 659 communes « personnel compris », 596 « personnel non rattaché aux écoles dans les comptes de la commune ». Les communes entre 50 et 300 € rattachent probablement une partie seulement de leur personnel (ATSEM, entretien) ; elles ne sont pas signalées. Pour information, fonctionnement hors personnel par élève en 2024 : médiane 406 €, 10 % sous 125 €, 10 % au-dessus de 782 €.
+
+**Intercommunalités et syndicats.** Une commune peut confier ses écoles à une intercommunalité (communauté de communes avec la compétence scolaire) ou à un syndicat (SIVOS, regroupements pédagogiques). Leurs dépenses ne sont **attribuées à aucune commune** : les balances ne disent pas comment elles se répartissent entre les communes membres, ni entre leurs écoles ; une répartition par élève serait un calcul de l'observatoire, pas un chiffre de la source. Les syndicats sont collectés (catégorie `SYND`, regroupés sous `syndicats`, jamais dans les montants) pour que leur poids reste mesuré à chaque génération ; les intercommunalités (`GFP`) ne sont pas collectées, leur poids est donné ci-dessus. Conséquence : le montant d'une commune dont une partie des écoles est gérée par un syndicat ou une intercommunalité est **sous-estimé**, et une commune qui leur a tout confié est absente des balances par fonction : sa fiche affiche le même libellé qu'une commune de moins de 3 500 habitants. Les dépenses de la Métropole de Lyon (4,6 M€ en 2024) et de quelques départements et régions dans ces fonctions ne sont pas collectées.
+
+**Absence.** Une commune qui n'a aucune ligne dans ces fonctions (pour l'exercice, ou pour tous) affiche « Budget par fonction non publié pour cette commune (seules les communes de 3 500 habitants et plus le publient) ». **Écart avec la spec** (section 6.8, « Budget non publié pour les communes de moins de 3 500 habitants ») : aucune source de population n'est collectée, et une commune absente peut avoir plus de 3 500 habitants (écoles confiées à un syndicat ou à une intercommunalité) ; le libellé ne dit pas une taille que l'observatoire ne connaît pas (décision du contrôleur, 2026-11-24).
+
+**Limites propres aux communes.**
+- Communes nouvelles : la balance d'un exercice porte le code de la commune de l'époque ; les élèves sont comptés sous le code en vigueur. Une commune fusionnée après un exercice n'est pas rapprochée pour cet exercice.
+- Les frais de scolarité reçus d'autres communes (recettes) ne sont pas déduits, comme pour les collèges ; ceux qu'une commune verserait à un autre compte que 6558 (par exemple 6287, remboursements de frais ; non vérifié) resteraient comptés.
+- Les corrections de la DGFiP sur une commune sont détectées à la collecte (clé `categ|ndept|cregi|lbudg`) mais pas reportées sur les fiches des écoles : la clé ne contient pas le code de la commune.
 
 ## Limites connues
 

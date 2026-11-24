@@ -314,6 +314,8 @@ export const NIVEAUX_TERRITORIAUX = {
 /** Libellés du bloc « Moyens de la collectivité » (budget des collèges et des lycées). */
 export const LIBELLES_BUDGET = {
   titre: "Moyens de la collectivité",
+  /** Écoles : fiche d'une école publique et page commune. */
+  titreCommune: "Moyens de la commune",
   postes: {
     horsPersonnel: "Fonctionnement hors personnel",
     avecPersonnel: "Fonctionnement, personnel compris",
@@ -334,6 +336,9 @@ export const LIBELLES_BUDGET = {
     collectiviteNonIdentifiee: "collectivité non identifiée dans les balances de la DGFiP",
     aucuneCollectivite: "aucune collectivité ne finance ces établissements dans les balances de la DGFiP",
     aucuneContributionIdentifiee: "aucune contribution au privé identifiée dans les comptes de la collectivité pour cet exercice",
+    personnelNonRattacheEcoles: "personnel non rattaché aux écoles dans les comptes de la commune",
+    budgetCommunalNonPublie:
+      "Budget par fonction non publié pour cette commune (seules les communes de 3 500 habitants et plus le publient)",
   },
   moyenne: {
     calculee: "moyenne calculée par l'observatoire",
@@ -356,9 +361,13 @@ export const LIBELLES_BUDGET = {
     voirSources: "Sources et méthode",
     requeteRejouee: "Requête utilisée (rejouée sur les données actuelles du portail)",
     donneeBrute: "donnée brute",
+    ecolesPubliques: "écoles publiques",
   },
   source: (exercice: number) =>
     `DGFiP, balances comptables, exercice ${exercice} · élèves à la rentrée ${exercice - 1} (DEPP)`,
+  /** Écoles : ce que le montant compte et ne compte pas (lien vers /methode/#budget-communal). */
+  mentionEcoles:
+    "Dépenses de la commune pour ses écoles (fonction « enseignement du premier degré » de ses comptes), hors restauration et transport scolaires. Celles d'une intercommunalité ou d'un syndicat scolaire ne sont pas comptées.",
   mentionAgricole:
     "Les dépenses de la région incluent l'enseignement agricole, dont les élèves ne sont pas comptés ici : le montant par élève en est surestimé, surtout pour le privé.",
   /** Montant formaté par l'appelant (par exemple « 97,3 M€ »). */

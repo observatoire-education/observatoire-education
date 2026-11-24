@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type { BudgetCollectivite, MontantBudget } from "@obs/shared/donnees";
 import type { Famille, Fiche, Secteur } from "@obs/shared/types";
-import { calculerBudgets, elevesParCollectivite } from "../pipeline/src/budget-eleves.ts";
+import { budgetDeFiche, calculerBudgets, elevesParCollectivite } from "../pipeline/src/budget-eleves.ts";
+import { absenceBudget } from "../site/src/lib/budget.ts";
 import type { Db } from "../pipeline/src/db.ts";
 import { connexion } from "../pipeline/src/duck.ts";
 import { identiteTest } from "./aide.ts";
@@ -54,15 +55,20 @@ describe("elevesParCollectivite", () => {
     expect(m.size).toBe(2);
   });
 
-  test("les élèves des écoles ne comptent pas (budget des communes)", () => {
+  test("écoles : élèves des écoles publiques comptés pour leur commune, jamais pour le département ; privé non compté", () => {
     const fiches = [
       fiche("A", { eleves: [[2023, 400]] }),
       fiche("S", { eleves: [[2023, 200]], famille: "primaire" }),
+      fiche("T", { eleves: [[2023, 50]], famille: "elementaire" }),
       fiche("M", { eleves: [[2023, 90]], famille: "maternelle", secteur: "prive_sous_contrat" }),
+      // arrondissement : la commune de Paris
+      fiche("P", { eleves: [[2023, 30]], famille: "maternelle", dep: "75", codeCommune: "75115" }),
     ];
     const m = elevesParCollectivite(fiches, 2023);
     expect(m.get("colleges|dep-44")).toEqual({ public: 400, prive: 0 });
-    expect(m.size).toBe(1);
+    expect(m.get("ecoles|com-44109")).toEqual({ public: 250, prive: 0 });
+    expect(m.get("ecoles|com-75056")).toEqual({ public: 30, prive: 0 });
+    expect(m.size).toBe(3);
   });
 
   test("une fiche disparue compte dans les élèves des exercices où elle avait des élèves", async () => {
@@ -231,5 +237,73 @@ describe("calculerBudgets", () => {
     const creuse = collectivites.get("colleges|dep-23")!;
     expect(creuse.mentions).toEqual(["cites_scolaires"]);
     expect(creuse.partCitesScolaires).toBe(9.1);
+  });
+});
+
+describe("communes : dépenses pour leurs écoles", () => {
+  const ecoles = [
+    fiche("E1", { famille: "elementaire", eleves: [[2022, 300], [2023, 300]] }),
+    fiche("E2", { famille: "maternelle", eleves: [[2022, 100], [2023, 100]] }),
+    fiche("E3", { famille: "primaire", secteur: "prive_sous_contrat", eleves: [[2023, 500]] }),
+    fiche("SA", { famille: "elementaire", codeCommune: "44150", eleves: [[2023, 10]] }),
+    fiche("A", { eleves: [[2023, 400]] }),
+  ];
+  const postes: Poste[] = [
+    [2023, "com-44109", "ecoles", "public", "fonctionnement_hors_personnel", 40_000],
+    [2024, "com-44109", "ecoles", "public", "fonctionnement_hors_personnel", 160_000],
+    [2024, "com-44109", "ecoles", "public", "personnel", 800_000],
+    [2024, "com-44109", "ecoles", "public", "investissement", 200_000],
+    [2024, "dep-44", "colleges", "public", "fonctionnement_hors_personnel", 4000],
+  ];
+
+  test("€ par élève des écoles publiques de la commune, rentrée N−1 ; libellé : le nom de la commune", async () => {
+    const { collectivites } = await calculerBudgets(await dbBudget(postes), ecoles);
+    const c = collectivites.get("ecoles|com-44109")!;
+    expect(c).toMatchObject({ id: "com-44109", libelle: "Nantes", niveau: "ecoles", mentions: [] });
+    const e = exo(c, 2024);
+    expect(e.eleves).toEqual({ public: 400, prive: null });
+    expect(e.public.horsPersonnel).toEqual({ total: 160_000, parEleve: 400, statut: "ok" });
+    expect(e.public.avecPersonnel).toEqual({ total: 960_000, parEleve: 2400, statut: "ok" });
+    expect(e.public.investissement).toEqual({ total: 200_000, parEleve: 500, statut: "ok" });
+    expect(exo(c, 2023).public.avecPersonnel.statut).toBe("personnel_non_rattache");
+    // département inchangé : les élèves des écoles ne comptent pas
+    expect(exo(dep44(collectivites), 2024).public.horsPersonnel).toEqual({ total: 4000, parEleve: 10, statut: "ok" });
+  });
+
+  test("commune absente des balances : pas de budget, la fiche d'une école publique dit pourquoi", async () => {
+    const budgets = await calculerBudgets(await dbBudget(postes), ecoles);
+    expect(budgets.collectivites.has("ecoles|com-44150")).toBe(false);
+    const f = budgetDeFiche({ famille: "elementaire", secteur: "public", dep: "44", codeCommune: "44150" }, budgets);
+    expect(f).toEqual({ ecoles: null, france: budgets.france.filter((m) => m.niveau === "ecoles"), motif: "budget_communal_non_publie" });
+    expect(absenceBudget("budget_communal_non_publie", "ecoles")).toBe(
+      "Budget par fonction non publié pour cette commune (seules les communes de 3 500 habitants et plus le publient)",
+    );
+  });
+
+  test("fiche d'une école publique : le budget de sa commune ; école privée : aucun bloc", async () => {
+    const budgets = await calculerBudgets(await dbBudget(postes), ecoles);
+    const pub = budgetDeFiche({ famille: "maternelle", secteur: "public", dep: "44", codeCommune: "44109" }, budgets);
+    expect(pub.ecoles?.id).toBe("com-44109");
+    expect(pub.france.map((m) => m.niveau)).toEqual(["ecoles"]);
+    expect(budgetDeFiche({ famille: "primaire", secteur: "prive_sous_contrat", dep: "44", codeCommune: "44109" }, budgets)).toEqual({ france: [] });
+  });
+
+  test("exercice sans ligne pour une commune publiée ailleurs : statut de la commune non publiée, jamais 0", async () => {
+    const db = await dbBudget([...postes, [2025, "dep-44", "colleges", "public", "fonctionnement_hors_personnel", 4000]]);
+    const { collectivites } = await calculerBudgets(db, [...ecoles, fiche("E1b", { famille: "elementaire", eleves: [[2024, 300]] })]);
+    const e = exo(collectivites.get("ecoles|com-44109")!, 2025);
+    for (const m of [e.public.horsPersonnel, e.public.avecPersonnel, e.public.investissement]) {
+      expect(m).toEqual({ total: null, parEleve: null, statut: "budget_communal_non_publie" });
+    }
+  });
+
+  test("moyenne France des écoles : Σ dépenses ÷ Σ élèves des communes publiées ; départements et régions à part", async () => {
+    const db = await dbBudget([...postes, [2024, "com-44150", "ecoles", "public", "fonctionnement_hors_personnel", 1_000]]);
+    const { france } = await calculerBudgets(db, ecoles);
+    expect(france.map((m) => m.niveau)).toEqual(["colleges", "lycees", "ecoles"]);
+    const m = france.find((x) => x.niveau === "ecoles")!.exercices.find((x) => x.exercice === 2024)!;
+    expect(m.public.horsPersonnel).toEqual({ valeur: 161_000 / 410, n: 2 });
+    const c = france.find((x) => x.niveau === "colleges")!.exercices.find((x) => x.exercice === 2024)!;
+    expect(c.public.horsPersonnel).toEqual({ valeur: 10, n: 1 });
   });
 });

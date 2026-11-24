@@ -277,7 +277,12 @@ export type StatutBudget =
   | "collectivite_non_identifiee"
   | "aucune_collectivite"
   | "aucune_contribution_identifiee"
+  /** Écoles : la commune n'a aucune ligne dans les fonctions des écoles des balances pour l'exercice. */
+  | "budget_communal_non_publie"
   | "non_disponible";
+
+/** Pourquoi une fiche ou une page commune n'a pas de collectivité pour son budget. */
+export type MotifSansBudget = "aucune_collectivite" | "collectivite_non_identifiee" | "budget_communal_non_publie";
 
 /** Un montant (€) et son montant par élève ; `null` jamais remplacé par zéro, le statut dit pourquoi. */
 export interface MontantBudget {
@@ -326,4 +331,6 @@ export interface MoyennesBudgetFrance {
 export interface BudgetTerritoire {
   collectivites: BudgetCollectivite[];
   france: MoyennesBudgetFrance[];
+  /** Page commune qui a une école publique ouverte, mais dont la commune est absente des balances par fonction. */
+  motif?: "budget_communal_non_publie";
 }

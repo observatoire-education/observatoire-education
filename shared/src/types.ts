@@ -1,7 +1,7 @@
 // Types communs au pipeline et au site.
 // Règle cardinale : une donnée absente n'est jamais un zéro ; elle porte un statut.
 import type { CodeIndicateur, CodeRepartition } from "./libelles.ts";
-import type { BudgetCollectivite, MoyennesBudgetFrance, ParSecteur } from "./donnees.ts";
+import type { BudgetCollectivite, MotifSansBudget, MoyennesBudgetFrance, ParSecteur } from "./donnees.ts";
 
 export type { CodeIndicateur, CodeRepartition };
 
@@ -357,12 +357,19 @@ export interface Fiche extends Identite {
   /** Résultats aux examens, dans l'ordre brevet général, brevet pro, bac GT, bac pro ; [] si aucun. */
   resultats: ResultatsVoie[];
   sources: SourceRef[];
-  /** Moyens de la collectivité ; seul le niveau de la famille est présent, null = collectivité non identifiée. */
+  /**
+   * Moyens de la collectivité ; seul le niveau de la famille est présent, null = collectivité non identifiée.
+   * École publique : `ecoles`, la commune (null si elle est absente des balances) ; école privée : aucun niveau.
+   */
   budget: {
     colleges?: BudgetCollectivite | null;
     lycees?: BudgetCollectivite | null;
+    ecoles?: BudgetCollectivite | null;
     france: MoyennesBudgetFrance[];
-    /** Pourquoi la collectivité est null : aucune (Mayotte) ou non identifiée (Saint-Martin, Saint-Barthélemy, Saint-Pierre-et-Miquelon). */
-    motif?: "aucune_collectivite" | "collectivite_non_identifiee";
+    /**
+     * Pourquoi la collectivité est null : aucune (Mayotte), non identifiée (Saint-Martin, Saint-Barthélemy,
+     * Saint-Pierre-et-Miquelon) ou, pour une école, commune absente des balances par fonction.
+     */
+    motif?: MotifSansBudget;
   };
 }

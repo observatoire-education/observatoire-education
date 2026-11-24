@@ -414,10 +414,18 @@ const FONCTIONS_BUDGET = [
 ];
 const liste = (valeurs: string[]) => valeurs.map((v) => `"${v}"`).join(",");
 
-export const FILTRE_BUDGET = `categ in (${liste(["DEPT", "REG", "CTU", "ML", "PARIS"])}) and cbudg = "1" and fonction in (${liste(FONCTIONS_BUDGET)})`;
+/**
+ * Écoles (enseignement du premier degré, M14 et M57) : 21 et tout code qui commence par 21 (211 maternelles,
+ * 212 élémentaires, 213 classes regroupées, détails locaux comme 2121), seul ou précédé d'un chapitre 90 à 94.
+ */
+const PREFIXES_ECOLES = ["", "90", "91", "92", "93", "94"].map((p) => `${p}21`);
+
+export const FILTRE_BUDGET = `cbudg = "1" and (`
+  + `(categ in (${liste(["DEPT", "REG", "CTU", "ML", "PARIS"])}) and fonction in (${liste(FONCTIONS_BUDGET)}))`
+  + ` or (categ in (${liste(["Commune", "SYND", "PARIS"])}) and (${PREFIXES_ECOLES.map((p) => `startswith(fonction, "${p}")`).join(" or ")})))`;
 
 export const COLONNES_BUDGET = [
-  ...["exer", "ident", "siren", "lbudg", "categ", "ndept", "cregi", "cbudg", "nomen", "fonction", "compte"],
+  ...["exer", "ident", "siren", "lbudg", "categ", "ndept", "insee", "cregi", "cbudg", "nomen", "fonction", "compte"],
   ...["obnetdeb", "obnetcre", "oobdeb", "oobcre"],
 ];
 
