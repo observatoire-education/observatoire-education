@@ -35,9 +35,9 @@ Repère 64 × 64. Couleurs « craie » = variantes claires du site, identiques e
 
 - `site/public/favicon.svg` (version simplifiée) + `<link rel="icon" type="image/svg+xml">` dans `site/src/layouts/Base.astro`.
 - `site/public/apple-touch-icon.png` (180 px) pour l'écran d'accueil iOS. Pas de `favicon.ico` (choix du réalisateur : tous les navigateurs visés lisent le favicon SVG déclaré ; un 404 sur `/favicon.ico` est sans effet).
-- Header : le `<i>` de `.brand` remplacé par le SVG simplifié en ligne (≈ 20 px, `aria-hidden`), la règle `.brand i` de `obs.css` adaptée.
+- Header : le `<i>` de `.brand` remplacé par `<img src="/favicon.svg" alt="">` (22 px), le lien portant `aria-label` ; la règle `.brand i` de `obs.css` remplacée. (Amendement à la réalisation : une image plutôt que le SVG en ligne, qui portait la fiche complète au-delà de la limite de 60 000 octets ; l'image est mise en cache une fois pour tout le site.)
 - Version complète conservée comme `site/public/logo.svg` (README, usages futurs).
-- **Mode sombre** : l'ardoise `#1b1f30` se confond presque avec la barre sombre (`--surface` `#151826`). Dans le header en sombre, l'ardoise reçoit un contour fin (couleur `--line` ou plus clair) pour garder sa forme.
+- **Mode sombre** : l'ardoise `#1b1f30` se confond presque avec la barre sombre (`--surface` `#151826`). Dans le header, l'ardoise reçoit un contour fin (`box-shadow` à 22 % de `--ink`) pour garder sa forme en sombre.
 
 ## Laissé au réalisateur
 
