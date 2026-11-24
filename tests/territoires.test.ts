@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { cheminTerritoire, communeDeRattachement } from "@obs/shared/territoires";
 import type { Fiche, Identite, Indicateur } from "@obs/shared/types";
-import { communesRetenues, controlerPonderation, moyennePonderee } from "../pipeline/src/territoires.ts";
+import { communesRetenues, controlerPonderation, moyennePonderee, verifierPonderation } from "../pipeline/src/territoires.ts";
 import { identiteTest } from "./aide.ts";
 
 describe("rattachement des communes", () => {
@@ -31,16 +31,16 @@ describe("chemin d'un territoire", () => {
 /** Fiche minimale : collège public de Nantes, avec IPS et élèves facultatifs. */
 const ficheTest = (
   uai: string,
-  options: { ips?: number; eleves?: number; disparuLe?: string; identite?: Partial<Identite> } = {},
+  options: { ips?: number; eleves?: number; rentreeEleves?: number; disparuLe?: string; identite?: Partial<Identite> } = {},
 ): Fiche => {
-  const indicateur = (code: "ips" | "eleves", v: number): Indicateur => ({
-    code, mesure: { valeur: v, statut: "ok", source: null, rentree: 2025 }, comparaisons: [], historique: [],
+  const indicateur = (code: "ips" | "eleves", v: number, rentree = 2025): Indicateur => ({
+    code, mesure: { valeur: v, statut: "ok", source: null, rentree }, comparaisons: [], historique: [],
   });
   return {
     ...identiteTest(`Collège ${uai}`), ...options.identite, uai, disparuLe: options.disparuLe ?? null,
     indicateurs: [
       ...(options.ips === undefined ? [] : [indicateur("ips", options.ips)]),
-      ...(options.eleves === undefined ? [] : [indicateur("eleves", options.eleves)]),
+      ...(options.eleves === undefined ? [] : [indicateur("eleves", options.eleves, options.rentreeEleves)]),
     ],
     repartitions: [], eleves: null, voisins: null, sources: [],
   };
@@ -71,7 +71,31 @@ describe("synthèses de territoire", () => {
   test("contrôle de la pondération face aux moyennes de la DEPP", () => {
     const actives = [ficheTest("0440101A", { ips: 100, eleves: 100 }), ficheTest("0440102B", { ips: 130, eleves: 300 })];
     const depp = (pub: number) => new Map([["college|44", { famille: "college" as const, territoire: "44", pub, priv: null }]]);
-    expect(controlerPonderation(actives, depp(122.5))).toEqual({ n: 1, mediane: 0, p90: 0 });
-    expect(controlerPonderation(actives, depp(115)).mediane).toBe(7.5);
+    expect(controlerPonderation(actives, depp(122.5), 2025)).toEqual({ n: 1, mediane: 0, p90: 0 });
+    expect(controlerPonderation(actives, depp(115), 2025).mediane).toBe(7.5);
+  });
+
+  test("contrôle de la pondération : écart mesuré sur la moyenne non arrondie, à 0,01 près", () => {
+    // (100 × 1 + 101 × 2) / 3 = 100,666… : arrondie à 100,7 pour l'affichage, écart de 0,67 face à 100
+    const actives = [ficheTest("0440101A", { ips: 100, eleves: 1 }), ficheTest("0440102B", { ips: 101, eleves: 2 })];
+    expect(moyennePonderee([{ valeur: 100, poids: 1 }, { valeur: 101, poids: 2 }])).toBe(100.7);
+    const depp = new Map([["college|44", { famille: "college" as const, territoire: "44", pub: 100, priv: null }]]);
+    expect(controlerPonderation(actives, depp, 2025)).toEqual({ n: 1, mediane: 0.67, p90: 0.67 });
+  });
+
+  test("contrôle de la pondération : seuls les élèves de la dernière rentrée pondèrent", () => {
+    const actives = [
+      ficheTest("0440101A", { ips: 100, eleves: 100 }),
+      ficheTest("0440102B", { ips: 130, eleves: 300, rentreeEleves: 2024 }), // effectifs d'une rentrée ancienne : ignoré
+    ];
+    const depp = new Map([["college|44", { famille: "college" as const, territoire: "44", pub: 100, priv: null }]]);
+    expect(controlerPonderation(actives, depp, 2025)).toEqual({ n: 1, mediane: 0, p90: 0 });
+  });
+
+  test("garde de la pondération : n = 0 ou écarts au-delà des seuils font échouer", () => {
+    expect(() => verifierPonderation({ n: 0, mediane: 0, p90: 0 })).toThrow(/aucun groupe/);
+    expect(() => verifierPonderation({ n: 10, mediane: 0.3, p90: 0.5 })).toThrow(/10 groupes, écart médian 0.3, 90e centile 0.5/);
+    expect(() => verifierPonderation({ n: 10, mediane: 0.1, p90: 1.2 })).toThrow();
+    expect(verifierPonderation({ n: 746, mediane: 0.06, p90: 0.52 })).toBe("746 groupes, écart médian 0.06, 90e centile 0.52");
   });
 });

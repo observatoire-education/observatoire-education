@@ -83,18 +83,31 @@ export async function ecrireJson(chemin: string, donnees: unknown): Promise<void
 const arrondi1 = (x: number) => Math.round(x * 10) / 10;
 const arrondi2 = (x: number) => Math.round(x * 100) / 100;
 
-/** Σ(valeur × poids) / Σ poids, arrondie à 0,1 ; null si Σ poids = 0. */
-export function moyennePonderee(paires: { valeur: number; poids: number }[]): number | null {
+type Paire = { valeur: number; poids: number };
+
+/** Σ(valeur × poids) / Σ poids, non arrondie ; null si Σ poids = 0. */
+function moyennePondereeBrute(paires: Paire[]): number | null {
   const poids = paires.reduce((a, p) => a + p.poids, 0);
-  if (poids === 0) return null;
-  return arrondi1(paires.reduce((a, p) => a + p.valeur * p.poids, 0) / poids);
+  return poids === 0 ? null : paires.reduce((a, p) => a + p.valeur * p.poids, 0) / poids;
 }
 
-/** Paires (IPS, élèves) des fiches qui publient les deux. */
-const pairesIps = (groupe: Fiche[]) =>
+/** Σ(valeur × poids) / Σ poids, arrondie à 0,1 ; null si Σ poids = 0. */
+export function moyennePonderee(paires: Paire[]): number | null {
+  const m = moyennePondereeBrute(paires);
+  return m === null ? null : arrondi1(m);
+}
+
+/** Élèves de la fiche à la rentrée donnée (la dernière des effectifs), sinon null. */
+const elevesALaRentree = (f: Fiche, rentree: number | null): number | null => {
+  const m = valeur(f, "eleves");
+  return m?.statut === "ok" && m.rentree === rentree ? m.valeur : null;
+};
+
+/** Paires (IPS, élèves de la rentrée donnée) des fiches qui publient les deux. */
+const pairesIps = (groupe: Fiche[], rentree: number | null): Paire[] =>
   groupe.flatMap((f) => {
     const ips = ok(valeur(f, "ips"));
-    const eleves = ok(valeur(f, "eleves"));
+    const eleves = elevesALaRentree(f, rentree);
     return ips !== null && eleves !== null ? [{ valeur: ips, poids: eleves }] : [];
   });
 
@@ -106,6 +119,13 @@ export function communesRetenues(actives: Fiche[]): Map<string, Fiche[]> {
 
 /** Écarts tolérés entre la moyenne pondérée par les élèves et la moyenne départementale publiée par la DEPP. */
 export const SEUILS_PONDERATION = { mediane: 0.2, p90: 1.0 };
+
+export interface ControlePonderation {
+  n: number;
+  /** Écarts absolus, arrondis à 0,01. */
+  mediane: number;
+  p90: number;
+}
 
 /** Quantile par interpolation linéaire sur des valeurs triées. */
 function quantile(tries: number[], q: number): number {
@@ -123,19 +143,33 @@ function quantile(tries: number[], q: number): number {
 export function controlerPonderation(
   actives: Fiche[],
   ipsDep: Map<string, IpsMoyen>,
-): { n: number; mediane: number; p90: number } {
+  rentree: number | null,
+): ControlePonderation {
   const ecarts: number[] = [];
   for (const [cle, groupe] of Map.groupBy(actives, (f) => `${f.famille}|${f.dep}`)) {
     const depp = ipsDep.get(cle);
     if (!depp) continue;
     for (const [secteur, publiee] of [["public", depp.pub], ["prive_sous_contrat", depp.priv]] as const) {
       if (publiee === null) continue;
-      const calculee = moyennePonderee(pairesIps(groupe.filter((f) => f.secteur === secteur)));
+      const calculee = moyennePondereeBrute(pairesIps(groupe.filter((f) => f.secteur === secteur), rentree));
       if (calculee !== null) ecarts.push(Math.abs(calculee - publiee));
     }
   }
-  const tries = ecarts.map(arrondi1).sort((a, b) => a - b);
+  const tries = ecarts.sort((a, b) => a - b);
   return { n: tries.length, mediane: arrondi2(quantile(tries, 0.5)), p90: arrondi2(quantile(tries, 0.9)) };
+}
+
+/**
+ * Garde du build : lève une erreur si aucun groupe n'a pu être contrôlé (jointure IPS cassée, table vide)
+ * ou si les écarts dépassent SEUILS_PONDERATION. Renvoie le résumé des trois chiffres.
+ */
+export function verifierPonderation(c: ControlePonderation): string {
+  const chiffres = `${c.n} groupes, écart médian ${c.mediane}, 90e centile ${c.p90}`;
+  if (c.n === 0) throw new Error("contrôle de la pondération impossible : aucun groupe (famille, département, secteur) avec une moyenne DEPP et des établissements avec IPS et élèves");
+  if (c.mediane > SEUILS_PONDERATION.mediane || c.p90 > SEUILS_PONDERATION.p90) {
+    throw new Error(`moyenne pondérée trop éloignée des moyennes de la DEPP : ${chiffres}`);
+  }
+  return chiffres;
 }
 
 // --- Export ---
@@ -171,7 +205,7 @@ export async function exporterTerritoires(actives: Fiche[], db: Db, sortie: stri
     public: secteur(groupe, "public").length, prive: secteur(groupe, "prive_sous_contrat").length,
   });
   const elevesDe = (groupe: Fiche[]): number | null => {
-    const v = groupe.map((f) => valeur(f, "eleves")).filter((m) => m?.statut === "ok" && m.rentree === rentree).map((m) => m!.valeur!);
+    const v = groupe.map((f) => elevesALaRentree(f, rentree)).filter((e) => e !== null);
     return v.length ? v.reduce((a, b) => a + b, 0) : null;
   };
   const eleves = (groupe: Fiche[]): ParSecteur<number | null> => ({
@@ -206,7 +240,7 @@ export async function exporterTerritoires(actives: Fiche[], db: Db, sortie: stri
   });
   const depp = (m: IpsMoyen | undefined): IpsMoyens => ({ public: m?.pub ?? null, prive: m?.priv ?? null, calculee: false });
   const calculee = (groupe: Fiche[]): IpsMoyens => {
-    const [pub, priv] = SECTEURS.map((s) => pairesIps(secteur(groupe, s)));
+    const [pub, priv] = SECTEURS.map((s) => pairesIps(secteur(groupe, s), rentree));
     return { public: moyennePonderee(pub!), prive: moyennePonderee(priv!), calculee: true, n: { public: pub!.length, prive: priv!.length } };
   };
 

@@ -7,7 +7,7 @@ import { type Depot, DepotGithub, DepotLocal } from "./depot.ts";
 import { assemblerFiches, exporter } from "./fiches.ts";
 import { OdsClient } from "./ods.ts";
 import { ecrireRegistre, lireRegistre, mettreAJourRegistre } from "./registre.ts";
-import { controlerPonderation, ipsMoyens, SEUILS_PONDERATION } from "./territoires.ts";
+import { controlerPonderation, ipsMoyens, verifierPonderation } from "./territoires.ts";
 
 interface Config {
   SITE_URL: string;
@@ -65,11 +65,15 @@ async function data(): Promise<void> {
   const fiches = await assemblerFiches(db, manifest, registre, dateDonnees);
   // Contrôle de la moyenne pondérée (pages communes) : appliquée aux départements, elle doit retrouver la DEPP.
   // En cas d'échec, rien n'est écrit ni publié.
-  const ponderation = controlerPonderation(fiches.filter((f) => f.disparuLe === null), await ipsMoyens(db, "dep"));
-  const chiffres = `${ponderation.n} groupes, écart médian ${ponderation.mediane}, 90e centile ${ponderation.p90}`;
-  if (ponderation.mediane > SEUILS_PONDERATION.mediane || ponderation.p90 > SEUILS_PONDERATION.p90) {
+  // n = 0 (jointure IPS cassée, table vide) est aussi un échec.
+  const [{ r: rentree } = { r: null }] = await db.sql<{ r: number | null }>("select max(rentree) as r from effectifs");
+  const ponderation = controlerPonderation(fiches.filter((f) => f.disparuLe === null), await ipsMoyens(db, "dep"), rentree);
+  let chiffres: string;
+  try {
+    chiffres = verifierPonderation(ponderation);
+  } catch (e) {
     db.fermer();
-    throw new Error(`moyenne pondérée trop éloignée des moyennes de la DEPP : ${chiffres}`);
+    throw e;
   }
   console.log(`pondération des IPS : ${chiffres}`);
   ecrireRegistre(CHEMINS.registre, mettreAJourRegistre(registre, fiches, dateDonnees.toISOString().slice(0, 10)));
