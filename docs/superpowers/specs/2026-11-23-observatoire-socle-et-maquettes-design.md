@@ -42,12 +42,12 @@ Rien ne change aux décisions de la spec (statique, GitHub Actions nocturne, Git
 
 **Écartés :** ECharts (lourd, rendu canvas qui s'imprime mal, air « tableau de bord commercial ») ; uPlot / Chart.js (peu expressifs pour les distributions) ; Leaflet + tuiles raster OpenStreetMap (conditions d'usage incompatibles avec un trafic important).
 
-### 2.4 Statistiques dans le navigateur (phase 2) : JSON précalculé + DuckDB-WASM à la demande
+### 2.4 Statistiques dans le navigateur (explorateur en phase 5) : JSON précalculé + DuckDB-WASM à la demande
 
 **Retenu (option « les deux ») :**
 - Chaque page de synthèse charge **son propre JSON précalculé** (quelques dizaines de Ko pour un département) : tri, filtres, graphiques en local, instantané sur téléphone.
-- Un bouton **« Explorer les données »** (`/explorer/`) charge **DuckDB-WASM à la demande** (3 à 4 Mo) pour des croisements libres sur la France entière.
-- Les **fichiers Parquet de chaque millésime sont publiés en téléchargement** : n'importe qui peut refaire un calcul (opposabilité).
+- *(Phase 5.)* Un bouton **« Explorer les données »** (`/explorer/`) charge **DuckDB-WASM à la demande** (3 à 4 Mo) pour des croisements libres sur la France entière.
+- *(Phase 5.)* Les **fichiers Parquet de chaque millésime sont publiés en téléchargement** : n'importe qui peut refaire un calcul (opposabilité).
 - L'explorateur suit les règles anti-palmarès : tri par nom par défaut, aucun rang affiché.
 
 **Écartés :** JSON seul (ne répond qu'aux questions prévues) ; DuckDB-WASM seul (trop lourd pour l'usage courant).
@@ -81,7 +81,7 @@ Rien ne change aux décisions de la spec (statique, GitHub Actions nocturne, Git
 
 **Périmètre de la phase 1 (validé par le porteur) :**
 - En ligne : fiches établissement (public et privé sous contrat), accueil avec recherche, pages département, `/sources/`, `/methode/`, 404 (redirection des UAI en minuscules).
-- En phase 2 : pages commune, académie et France, explorateur DuckDB-WASM, `/donnees/`.
+- En phase 2 (livrée) : pages commune, académie et France. En phase 5 : explorateur DuckDB-WASM, `/donnees/`.
 - **Fil d'Ariane sans lien mort** : tant qu'une page de territoire n'existe pas, son maillon est du texte simple ; il devient un lien quand la page est générée.
 - **Historique** : séries IPS « à partir de 2023 », et les millésimes présents dans les jeux actuels d'effectifs et de personnels. L'IPS 2016-2022 (autres jeux, autre schéma) passe en phase 4.
 
@@ -127,7 +127,7 @@ Ordre :
 **Règle d'affichage des comparaisons (validée par le porteur, conforme à la spec 4.2) :** sur la page web, chaque moyenne de comparaison s'affiche **avec l'écart en premier et la moyenne entre parenthèses**, par exemple « −14,0 (106,4) », pour tous les indicateurs qui ont une moyenne (pas seulement l'IPS). Les maquettes ne l'appliquent qu'au tableau de l'IPS ; les autres tableaux sont à aligner. Sur la **fiche A4**, le tableau central garde les **moyennes seules** pour rester lisible. Les volumes (élèves, ETP) n'ont pas de moyenne ni d'écart.
 3. **Sommaire** : Élèves · Composition sociale · Enseignants · Vie scolaire · Voisins · Sources.
 4. **Élèves** : historique de l'effectif avec SEGPA / ULIS ; tableau par niveau avec filles, garçons, part de filles, et barre comparée aux moyennes ; langues vivantes LV1 et LV2.
-5. **Composition sociale** : IPS et écart-type, graphique à points (losange établissement, point moyenne publique, anneau moyenne privée) sur trois lignes département / académie / France ; évolution ; tableau des écarts. Moyennes **publiées par la DEPP**, non recalculées.
+5. **Composition sociale** : IPS et écart-type, graphique à points (losange établissement, point moyenne publique, anneau moyenne privée) sur trois lignes département / académie / France ; évolution ; tableau des écarts. Moyennes **publiées par la DEPP**, affichées telles quelles ; quand la DEPP n'en publie pas (commune), l'observatoire la calcule, pondérée par les effectifs, et l'indique (spec de phase 2, section 6.4).
 6. **Enseignants** : ETP total, ETP enseignants, élèves par ETP enseignant (seuls les ratios ont une moyenne ; les volumes ne se comparent pas) ; puis barres empilées à 100 % sur cinq lignes (établissement, département public et privé, France public et privé) pour **femmes / hommes, statuts, âge, ancienneté dans l'établissement**.
 7. **Vie scolaire** : élèves par ETP de vie scolaire et ETP, situés par rapport aux moyennes publiques.
 8. **Résultats et moyens** (phases 3 et 4) : IVAC / DNB, budget de la collectivité en € par élève, même gabarit.
@@ -197,7 +197,7 @@ Les pages **académie**, **France** et **commune** suivent ce gabarit (pas de ma
 3. **Archives** : GitHub Releases au lieu de fichiers Parquet committés dans `archives/`.
 4. **Pages communes** `/commune/<INSEE>/` : nouveau type de page (environ 5 000), en phase 2 avec les synthèses.
 5. **Indicateurs de la fiche élargis** dès la phase 1 : femmes / hommes (élèves et enseignants), statuts, âges, ancienneté complète, niveaux, SEGPA / ULIS, langues vivantes. L'IPS devient un indicateur parmi d'autres.
-6. **Explorateur DuckDB-WASM** et publication des Parquet par millésime (`/donnees/`), en phase 2.
+6. **Explorateur DuckDB-WASM** et publication des Parquet par millésime (`/donnees/`), en phase 5.
 7. **Tests** : `bun test` avec couverture, plus des tests sur le HTML généré.
 8. **Licences** : Licence Ouverte 2.0 pour les données, AGPL-3.0 pour le code (la spec laissait la question ouverte ; le dépôt AED reste en CC BY-NC).
 9. **Historique de l'IPS 2016-2022** : déplacé en phase 4.

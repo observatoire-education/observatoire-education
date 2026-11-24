@@ -32,9 +32,10 @@ Les trois sont déjà dans le dépôt, sous `docs/superpowers/` (rien à copier)
 - **Résultats et budget** : les blocs ne sont pas affichés.
 
 ### Phases suivantes (plans séparés)
-- **Phase 2 :** pages commune, académie et France ; cartes SVG des territoires ; explorateur DuckDB-WASM ; `/donnees/`.
+- **Phase 2 (livrée) :** pages France, académie et commune ; cartes SVG des territoires ; Saint-Barthélemy et Saint-Martin rattachés à la Guadeloupe, Saint-Pierre-et-Miquelon couvert ; maillage des territoires, recherche des communes. Plan : `2026-11-24-observatoire-phase2-territoires.md`.
 - **Phase 3 :** budget en euros par élève.
 - **Phase 4 :** IVAC et IVAL, ségrégation, IPS 2016-2022, successeurs, corrections de millésime.
+- **Phase 5 :** explorateur DuckDB-WASM (`/explorer/`), publication des Parquet par millésime (`/donnees/`).
 
 ## Global Constraints
 
