@@ -68,6 +68,71 @@ export interface DonneesFrance {
   academies: { aca: string; libelle: string; departements: { dep: string; libelle: string }[] }[];
 }
 
+export type NiveauTerritoire = "france" | "academie" | "departement" | "commune";
+
+/** Un territoire désigné par son niveau et son code (France : code « FR »). */
+export interface RefTerritoire {
+  niveau: NiveauTerritoire;
+  code: string;
+  libelle: string;
+}
+
+/** IPS moyen d'un territoire, par secteur. */
+export interface IpsMoyens {
+  public: number | null;
+  prive: number | null;
+  /** false : valeur publiée par la DEPP. */
+  calculee: boolean;
+  /** Seulement si calculee : établissements pris en compte. */
+  n?: ParSecteur<number>;
+}
+
+export interface LigneTerritoire {
+  ref: RefTerritoire;
+  compte: ParSecteur<number>;
+  eleves: ParSecteur<number | null>;
+  partPrive: number | null;
+  ecartIpsColleges: number | null;
+}
+
+export interface PointCarte {
+  uai: string;
+  nom: string;
+  lat: number;
+  lon: number;
+  secteur: Secteur;
+  eleves: number | null;
+}
+
+export interface ValeurCarte {
+  dep: string;
+  partPrive: number | null;
+  ecartIpsColleges: number | null;
+}
+
+export type CarteDonnees =
+  | { genre: "points"; points: PointCarte[] }
+  | { genre: "departements"; valeurs: ValeurCarte[] };
+
+export interface DonneesTerritoire {
+  ref: RefTerritoire;
+  /** Du plus large au plus proche ; [] pour la France. */
+  parents: RefTerritoire[];
+  rentree: number | null;
+  familles: Partial<Record<Famille, SyntheseFamille>>;
+  horsContrat: number;
+  /** France : académies ; académie : départements ; sinon []. */
+  enfants: LigneTerritoire[];
+  /** Département : communes ayant une page ; sinon []. */
+  communes: RefTerritoire[];
+  carte: CarteDonnees;
+}
+
+/** Données de la France pour la phase 2 (le type `DonneesFrance` ci-dessus est conservé pour l'instant). */
+export interface DonneesFranceTerritoire extends DonneesTerritoire {
+  academies: { aca: string; libelle: string; departements: { dep: string; libelle: string }[] }[];
+}
+
 /** Une version archivée d'une source (GitHub Release). */
 export interface VersionSource {
   sha256: string;
