@@ -27,6 +27,13 @@ describe("fiche établissement", () => {
     expect(texte("etablissement/0440002B")).toContain("Contrat d'association");
   });
 
+  test("IPS ancien : moyennes calculées, jamais « publiées par la DEPP » ; IPS actuel : publiées", () => {
+    const calculee = texte("etablissement/0440005E");
+    expect(calculee).toContain("moyenne calculée par l'observatoire");
+    expect(calculee).not.toContain("moyennes publiées par la DEPP");
+    expect(texte("etablissement/0440001A")).toContain("moyennes publiées par la DEPP");
+  });
+
   test("sans GPS : voisins non calculables, pas de bouton carte", () => {
     expect(texte("etablissement/0440005E")).toContain("Voisins non calculables (coordonnées absentes)");
     expect(doc("etablissement/0440005E").querySelector("#afficher-carte")).toBeNull();

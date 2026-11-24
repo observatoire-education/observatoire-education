@@ -272,12 +272,12 @@ export async function calculerIndicateurs(db: Db): Promise<Map<string, Indicateu
       if (genre === "indice") {
         const r = mesure.rentree ?? derniereIps;
         const ligne = (ipsSource.get(e.uai) ?? []).find((x) => x.rentree === r);
-        const m = (v: number | null | undefined): Mesure =>
-          v === null || v === undefined ? absente("non_disponible", r) : { valeur: v, statut: "ok", source: ligne!.source, rentree: r };
+        const m = (v: number | null | undefined, calculee = false): Mesure =>
+          v === null || v === undefined ? absente("non_disponible", r) : { valeur: v, statut: "ok", source: calculee ? null : ligne!.source, rentree: r };
         // Moyenne publiée pour la rentrée, sinon calculée par l'observatoire (série du territoire).
         comparaisons = NIVEAUX.map((n) => {
           const point = ligne && ipsHistorique.serie(n, e.famille, territoireDe(e, n)).find((p) => p.rentree === r);
-          return { niveau: n, public: m(point?.public), prive: m(point?.prive), calculee: point?.calculee ?? false };
+          return { niveau: n, public: m(point?.public, point?.calculee), prive: m(point?.prive, point?.calculee), calculee: point?.calculee ?? false };
         });
       } else if (genre === "ratio" || genre === "part") {
         const r = mesure.rentree ?? derniere.get(code);

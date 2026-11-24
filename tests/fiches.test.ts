@@ -48,6 +48,17 @@ describe("voisinage", () => {
     expect((await calculerVoisins(db)).get("0440003C")!.map((x) => x.uai)).toEqual(["0440006F"]);
   });
 
+  test("IPS de 2018 seulement : absent des agrégats et des voisins de la dernière rentrée", async () => {
+    const f = fiches.find((x) => x.uai === "0440005E")!;
+    expect(f.indicateurs.find((i) => i.code === "ips")!.mesure).toMatchObject({ valeur: 86, rentree: 2018 }); // la fiche garde son IPS daté
+    // un voisin géolocalisé dont le dernier IPS date de 2018 : son IPS n'est pas comparé
+    const ind = new Map(fiches.map((x) => [x.uai, x.indicateurs.map((i) => (
+      x.uai === "0440002B" && i.code === "ips" ? { ...i, mesure: { ...i.mesure, rentree: 2018 } } : i))]));
+    const v = (await calculerVoisins(db, 1, 30, ind)).get("0440001A")!;
+    expect(v[0]!.uai).toBe("0440002B");
+    expect(v[0]!.ips).toMatchObject({ valeur: null, statut: "non_disponible" });
+  });
+
   test("sans coordonnées : voisins null, et voisin de personne", async () => {
     const tous = await calculerVoisins(db);
     expect(tous.get("0440005E")).toBeNull();
@@ -271,8 +282,9 @@ describe("export des données du site", () => {
     expect(col.liste.map((l) => l.nom)).toEqual(["Collège Jules-Verne", "Collège Saint-Exemple", "Collège Sans GPS", "Collège Simple"]);
     expect(col.liste.find((l) => l.uai === "0440002B")).toMatchObject({ statutVs: "non_publie_prive", elevesParEtpVs: null, ips: 123 });
     expect(col.ipsMoyen).toEqual({ public: 106.4, prive: 121.4, calculee: false });
+    expect(col.liste.find((l) => l.uai === "0440005E")!.ips).toBeNull(); // IPS de 2018 : hors de la liste
     expect(col.distributionIps.bornes).toHaveLength(21);
-    expect(col.distributionIps.public.reduce((a, b) => a + b, 0)).toBe(2); // 0440005E : son seul IPS est celui de 2018
+    expect(col.distributionIps.public.reduce((a, b) => a + b, 0)).toBe(1); // 0440005E : son seul IPS (2018) n'est pas de la dernière rentrée
     expect(col.moyennes.find((m) => m.code === "eleves_par_etp_ens")!.comparaisons[0]!.public.valeur).toBe(14.75);
     expect(Object.keys(dep.familles).sort()).toEqual(["college", "erea", "legt", "lpo"]);
     expect(dep.familles.college!.ipsHistorique.find((p) => p.rentree === 2018)).toEqual({ rentree: 2018, public: 91.6, prive: 120, calculee: true });
@@ -288,6 +300,7 @@ describe("export des données du site", () => {
     const avecIpsEtEleves = (secteur: string) =>
       fiches.filter((f) =>
         f.disparuLe === null && f.famille === "college" && f.codeCommune === "44109" && f.secteur === secteur &&
+        f.indicateurs.find((i) => i.code === "ips")?.mesure.rentree === 2025 &&
         ["ips", "eleves"].every((c) => f.indicateurs.find((i) => i.code === c)?.mesure.statut === "ok")).length;
     expect(colCommune.ipsMoyen.n).toEqual({ public: avecIpsEtEleves("public"), prive: avecIpsEtEleves("prive_sous_contrat") });
     const noms = colCommune.liste.map((l) => l.nom);

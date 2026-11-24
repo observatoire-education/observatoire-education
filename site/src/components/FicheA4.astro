@@ -204,7 +204,7 @@ const nd = (v: number | null) => (v === null ? "n. d." : entier(v));
     <div><b>Sources</b> (Licence Ouverte 2.0 ; versions archivées et téléchargeables sur la page « Sources ») :</div>
     <ol>
       {f.sources.map((s) => (
-        <li>{s.producteur}, {s.titre}{s.rentree !== null && ` · rentrée ${anneeScolaire(s.rentree)}`} · collecté le {date(s.collecteLe)}{s.id.startsWith("ips_") ? " · moyennes publiées par la DEPP" : s.id === "annuaire" ? "" : " · moyennes calculées (Σ / Σ)"}.</li>
+        <li>{s.producteur}, {s.titre}{s.rentree !== null && ` · rentrée ${anneeScolaire(s.rentree)}`} · collecté le {date(s.collecteLe)}{["ips_colleges", "ips_lycees", "ips_erea"].includes(s.id) ? " · moyennes publiées par la DEPP" : s.id.startsWith("ips_") ? "" : s.id === "annuaire" ? "" : " · moyennes calculées (Σ / Σ)"}.</li>
       ))}
     </ol>
     <div>

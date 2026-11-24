@@ -2,7 +2,7 @@
 // Moyenne publiée par la DEPP quand elle existe (département, académie, France), sinon calculée par
 // l'observatoire : Σ(IPS × élèves) / Σ élèves, arrondie à 0,1. Commune et région : toujours calculées.
 import { regionDe } from "@obs/shared/collectivites";
-import type { Famille, PointIps, Secteur } from "@obs/shared/types";
+import type { Famille, Mesure, PointIps, Secteur } from "@obs/shared/types";
 import { communeDeRattachement } from "@obs/shared/territoires";
 import type { Db } from "./db.ts";
 
@@ -15,6 +15,19 @@ export interface IpsHistorique {
 
 /** Première rentrée des effectifs : elle pondère aussi les rentrées antérieures (2016 à 2018). */
 export const RENTREE_EFFECTIFS = 2019;
+
+/** Dernière rentrée présente dans la table `ips` (null si elle est vide). */
+export async function derniereRentreeIps(db: Db): Promise<number | null> {
+  return (await db.sql<{ r: number | null }>("select max(rentree) as r from ips"))[0]?.r ?? null;
+}
+
+/**
+ * IPS d'un établissement pour un agrégat (liste, distribution, moyenne, voisin, contrôle) : seulement s'il est
+ * de la dernière rentrée de l'IPS. Un IPS plus ancien (la fiche le montre, avec sa rentrée) reste hors des agrégats.
+ */
+export function ipsCourant(m: Mesure | undefined, derniereRentree: number | null): number | null {
+  return m?.statut === "ok" && m.rentree !== null && m.rentree === derniereRentree ? m.valeur : null;
+}
 
 const arrondi1 = (x: number) => Math.round(x * 10) / 10;
 

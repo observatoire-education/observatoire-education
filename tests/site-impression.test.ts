@@ -9,6 +9,14 @@ const a4 = (uai: string) => doc(`etablissement/${uai}`).querySelector(".a4")!;
 const texteA4 = (uai: string) => (a4(uai).textContent ?? "").replace(/\s+/g, " ");
 
 describe("fiche imprimable A4", () => {
+  test("sources de l'A4 : « publiées par la DEPP » seulement pour les jeux actuels d'IPS", () => {
+    const sources = [...a4("0440001A").querySelectorAll(".ft ol li")].map((li) => (li.textContent ?? "").replace(/\s+/g, " "));
+    const ips = (mot: string) => sources.find((s) => s.includes(mot))!;
+    expect(ips("(2016-2021)")).not.toContain("moyennes publiées par la DEPP");
+    expect(ips("(2022)")).not.toContain("moyennes publiées par la DEPP");
+    expect(sources.filter((s) => s.includes("moyennes publiées par la DEPP")).length).toBe(1);
+  });
+
   test("bloc A4 : moyennes seules, sources numérotées, QR", () => {
     const t = texteA4("0440001A");
     expect(t).toContain("106,4");

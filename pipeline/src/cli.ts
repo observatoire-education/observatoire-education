@@ -9,6 +9,7 @@ import { type Depot, DepotGithub, DepotLocal } from "./depot.ts";
 import { assemblerFiches, exporter, type RapportSuccesseurs } from "./fiches.ts";
 import { OdsClient } from "./ods.ts";
 import { ecrireRegistre, lireRegistre, mettreAJourRegistre } from "./registre.ts";
+import { derniereRentreeIps } from "./ips-historique.ts";
 import { controlerPonderation, ipsMoyens, verifierPonderation } from "./territoires.ts";
 
 interface Config {
@@ -73,7 +74,7 @@ async function data(): Promise<void> {
   // En cas d'échec, rien n'est écrit ni publié.
   // n = 0 (jointure IPS cassée, table vide) est aussi un échec.
   const [{ r: rentree } = { r: null }] = await db.sql<{ r: number | null }>("select max(rentree) as r from effectifs");
-  const ponderation = controlerPonderation(fiches.filter((f) => f.disparuLe === null), await ipsMoyens(db, "dep"), rentree);
+  const ponderation = controlerPonderation(fiches.filter((f) => f.disparuLe === null), await ipsMoyens(db, "dep"), rentree, await derniereRentreeIps(db));
   let chiffres: string;
   try {
     chiffres = verifierPonderation(ponderation);

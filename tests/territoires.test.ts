@@ -88,6 +88,13 @@ describe("synthèses de territoire", () => {
     expect(controlerPonderation(actives, depp(115), 2025).mediane).toBe(7.5);
   });
 
+  test("contrôle de la pondération : un IPS d'une autre rentrée que la dernière n'entre pas", () => {
+    const actives = [ficheTest("0440101A", { ips: 100, eleves: 100 }), ficheTest("0440102B", { ips: 130, eleves: 300 })];
+    const depp = new Map([["college|44", { famille: "college" as const, territoire: "44", pub: 122.5, priv: null }]]);
+    expect(controlerPonderation(actives, depp, 2025, 2026).n).toBe(0); // IPS de 2025, dernière rentrée d'IPS : 2026
+    expect(controlerPonderation(actives, depp, 2025, 2025).n).toBe(1);
+  });
+
   test("contrôle de la pondération : écart mesuré sur la moyenne non arrondie, à 0,01 près", () => {
     // (100 × 1 + 101 × 2) / 3 = 100,666… : arrondie à 100,7 pour l'affichage, écart de 0,67 face à 100
     const actives = [ficheTest("0440101A", { ips: 100, eleves: 1 }), ficheTest("0440102B", { ips: 101, eleves: 2 })];

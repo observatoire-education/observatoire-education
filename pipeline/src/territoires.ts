@@ -13,7 +13,7 @@ import type { Manifest } from "./archive.ts";
 import type { Budgets } from "./budget-eleves.ts";
 import { collectivitesCorrigees, type EntreeCorrection, resoudreCorrection } from "./corrections.ts";
 import type { Db } from "./db.ts";
-import { calculerIpsHistorique, type NiveauIps } from "./ips-historique.ts";
+import { calculerIpsHistorique, derniereRentreeIps, ipsCourant, type NiveauIps } from "./ips-historique.ts";
 
 // --- Aides partagées avec fiches.ts ---
 
@@ -41,7 +41,7 @@ export function libelleListe(f: Fiche): string {
   return `${LIBELLES_PLM[ville as keyof typeof LIBELLES_PLM]} ${n === 1 ? "1er" : `${n}e`} arrondissement`;
 }
 
-export function ligneListe(f: Fiche): LigneListe {
+export function ligneListe(f: Fiche, rentreeIps: number | null): LigneListe {
   const vs = valeur(f, "eleves_par_etp_vs");
   return {
     uai: f.uai, nom: f.nom, secteur: f.secteur, commune: libelleListe(f), codeCommune: f.codeCommune, ep: f.ep,
@@ -50,7 +50,7 @@ export function ligneListe(f: Fiche): LigneListe {
     elevesParEtpVs: ok(vs),
     statutVs: vs?.statut ?? "non_disponible",
     partEnseignantes: ok(valeur(f, "part_enseignantes")),
-    ips: ok(valeur(f, "ips")),
+    ips: ipsCourant(valeur(f, "ips"), rentreeIps),
   };
 }
 
@@ -118,9 +118,9 @@ const elevesALaRentree = (f: Fiche, rentree: number | null): number | null => {
 };
 
 /** Paires (IPS, élèves de la rentrée donnée) des fiches qui publient les deux. */
-const pairesIps = (groupe: Fiche[], rentree: number | null): Paire[] =>
+const pairesIps = (groupe: Fiche[], rentree: number | null, rentreeIps: number | null = rentree): Paire[] =>
   groupe.flatMap((f) => {
-    const ips = ok(valeur(f, "ips"));
+    const ips = ipsCourant(valeur(f, "ips"), rentreeIps);
     const eleves = elevesALaRentree(f, rentree);
     return ips !== null && eleves !== null ? [{ valeur: ips, poids: eleves }] : [];
   });
@@ -158,6 +158,7 @@ export function controlerPonderation(
   actives: Fiche[],
   ipsDep: Map<string, IpsMoyen>,
   rentree: number | null,
+  rentreeIps: number | null = rentree,
 ): ControlePonderation {
   const ecarts: number[] = [];
   for (const [cle, groupe] of Map.groupBy(actives, (f) => `${f.famille}|${f.dep}`)) {
@@ -165,7 +166,7 @@ export function controlerPonderation(
     if (!depp) continue;
     for (const [secteur, publiee] of [["public", depp.pub], ["prive_sous_contrat", depp.priv]] as const) {
       if (publiee === null) continue;
-      const calculee = moyennePondereeBrute(pairesIps(groupe.filter((f) => f.secteur === secteur), rentree));
+      const calculee = moyennePondereeBrute(pairesIps(groupe.filter((f) => f.secteur === secteur), rentree, rentreeIps));
       if (calculee !== null) ecarts.push(Math.abs(calculee - publiee));
     }
   }
@@ -225,6 +226,7 @@ export async function exporterTerritoires(
 ): Promise<void> {
   for (const d of ["regions", "departements", "academies", "communes"]) await mkdir(join(sortie, d), { recursive: true });
   const ipsHistorique = await calculerIpsHistorique(db);
+  const rentreeIps = await derniereRentreeIps(db);
   const ips = { dep: await ipsMoyens(db, "dep"), aca: await ipsMoyens(db, "aca"), nat: await ipsMoyens(db, "nat") };
   const horsContratLignes = await db.sql<{ dep: string; aca: string; code_commune: string }>(
     "select dep, aca, code_commune from classement where motif = 'prive_hors_contrat'",
@@ -272,7 +274,7 @@ export async function exporterTerritoires(
   });
   const depp = (m: IpsMoyen | undefined): IpsMoyens => ({ public: m?.pub ?? null, prive: m?.priv ?? null, calculee: false });
   const calculee = (groupe: Fiche[]): IpsMoyens => {
-    const [pub, priv] = SECTEURS.map((s) => pairesIps(secteur(groupe, s), rentree));
+    const [pub, priv] = SECTEURS.map((s) => pairesIps(secteur(groupe, s), rentree, rentreeIps));
     return { public: moyennePonderee(pub!), prive: moyennePonderee(priv!), calculee: true, n: { public: pub!.length, prive: priv!.length } };
   };
 
@@ -284,7 +286,7 @@ export async function exporterTerritoires(
   ): DonneesTerritoire["familles"] => {
     const resultat: DonneesTerritoire["familles"] = {};
     for (const [famille, g] of Map.groupBy(groupe, (f) => f.famille)) {
-      const valeursIps = (s: Secteur) => secteur(g, s).map((f) => ok(valeur(f, "ips"))).filter((v) => v !== null);
+      const valeursIps = (s: Secteur) => secteur(g, s).map((f) => ipsCourant(valeur(f, "ips"), rentreeIps)).filter((v) => v !== null);
       const synthese: SyntheseFamille = {
         compte: compte(g),
         eleves: eleves(g),
@@ -296,7 +298,7 @@ export async function exporterTerritoires(
           : moyennesTerritoire(g)
               .map((m) => ({ ...m, comparaisons: m.comparaisons.filter((c) => options.niveaux!.includes(c.niveau)) }))
               .filter((m) => m.comparaisons.length),
-        liste: options.liste ? g.map(ligneListe).sort(parNom) : [],
+        liste: options.liste ? g.map((f) => ligneListe(f, rentreeIps)).sort(parNom) : [],
       };
       resultat[famille] = synthese;
     }

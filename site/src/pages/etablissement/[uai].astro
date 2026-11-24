@@ -67,6 +67,8 @@ const points = (code: CodeIndicateur, sansPrive = false) => {
   const me = v.statut === "ok" ? v.valeur : null;
   return svgPoints(r, me, domaine([me, ...r.flatMap((x) => [x.public, x.prive])]));
 };
+// Moyennes de la DEPP seulement si les comparaisons affichées sont publiées ; sinon calculées par l'observatoire.
+const ipsCalculee = iIps.comparaisons.some((c) => c.calculee);
 const sourceIps = iIps.mesure.source ? source(f, iIps.mesure.source) : f.sources.find((s) => s.id.startsWith("ips_"));
 
 // Enseignants
@@ -188,7 +190,7 @@ const franceBudget = f.budget.france.find((m) => m.niveau === niveauBudget);
             ))}
           </tbody>
         </table>
-        <LigneSource s={sourceIps} complement="moyennes publiées par la DEPP" />
+        <LigneSource s={sourceIps} complement={ipsCalculee ? LIBELLES_BUDGET.moyenne.calculee : "moyennes publiées par la DEPP"} />
       </div>
     </div>
   </section>

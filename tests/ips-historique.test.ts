@@ -82,6 +82,8 @@ describe("IPS de 2016 à aujourd'hui", () => {
     expect(ferme.comparaisons[0]).toMatchObject({ niveau: "departement", calculee: true, public: { valeur: 91.6, statut: "ok" } });
     expect(ferme.comparaisons.map((c) => c.niveau)).toEqual(["departement", "academie", "france"]);
     expect(ferme.comparaisons.every((c) => c.calculee)).toBe(true);
+    expect(ferme.comparaisons[0]!.public.source).toBeNull(); // moyenne calculée : pas la source de l'établissement
+    expect((await indic("0440001A", "ips")).comparaisons[0]!.public.source).toBe("ips_colleges"); // publiée
   });
 
   test("source par rentrée de l'historique quand elle change", async () => {

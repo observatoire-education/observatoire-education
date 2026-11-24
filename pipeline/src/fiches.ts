@@ -14,6 +14,7 @@ import { calculerIndicateurs, calculerRepartitions } from "./indicateurs.ts";
 import type { Registre } from "./registre.ts";
 import { SOURCES, toutesSources } from "./sources.ts";
 import { appliquerManuels, attacherSuccesseurs, deduireSuccesseurs, lireManuels, type Manuels, verifierCycles } from "./successeurs.ts";
+import { derniereRentreeIps, ipsCourant } from "./ips-historique.ts";
 import { ecrireJson, exporterTerritoires } from "./territoires.ts";
 
 // --- Voisinage ---
@@ -75,6 +76,12 @@ export async function calculerVoisins(
   );
   const mesure = (uai: string, code: string): Mesure =>
     ind.get(uai)?.find((i) => i.code === code)?.mesure ?? { valeur: null, statut: "non_disponible", source: null, rentree: null };
+  // IPS d'un voisin : seulement celui de la dernière rentrée (un IPS plus ancien n'est pas comparé).
+  const rentreeIps = await derniereRentreeIps(db);
+  const mesureIps = (uai: string): Mesure => {
+    const m = mesure(uai, "ips");
+    return ipsCourant(m, rentreeIps) === null ? { valeur: null, statut: "non_disponible", source: null, rentree: rentreeIps } : m;
+  };
 
   const resultat = new Map<string, Voisin[] | null>();
   for (const { uai, gps } of avecCoordonnees) {
@@ -85,7 +92,7 @@ export async function calculerVoisins(
             uai: p.voisin, nom: p.nom, famille: p.famille, secteur: p.secteur, commune: p.commune, distanceKm: p.d,
             eleves: mesure(p.voisin, "eleves"),
             elevesParEtpEns: mesure(p.voisin, "eleves_par_etp_ens"),
-            ips: mesure(p.voisin, "ips"),
+            ips: mesureIps(p.voisin),
           }))
         : null,
     );
