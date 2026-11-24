@@ -9,7 +9,7 @@ import { entier } from "@obs/shared/format";
 import { FAMILLES, LIBELLES, LIBELLES_COMMUNE_ECOLES as LC, LIBELLES_RATTACHEMENTS as LR, SECTEURS } from "@obs/shared/libelles";
 import { svgCartePoints } from "../lib/cartes";
 import { contourCommune } from "../lib/contours";
-import { valeur } from "../lib/affichage";
+import { anneeScolaire, valeur } from "../lib/affichage";
 import { svgElevesClasses } from "../lib/plot";
 import Absence from "./Absence.astro";
 import BlocEcolesProches from "./BlocEcolesProches.astro";
@@ -17,7 +17,7 @@ import Cellule from "./Cellule.astro";
 
 interface Props { e: EcolesCommune; commune: RefTerritoire }
 const { e, commune } = Astro.props;
-const titre = (libelle: string, rentree: number | null) => (rentree ? `${libelle} ${rentree}` : libelle);
+const titre = (libelle: string, rentree: number | null) => (rentree ? `${libelle} ${anneeScolaire(rentree)}` : libelle);
 const publiques = e.ecoles.filter((x) => x.secteur === "public").length;
 const courbe = svgElevesClasses(e.historique);
 const rentrees = e.historique.map(([r]) => r);

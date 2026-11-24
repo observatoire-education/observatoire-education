@@ -160,7 +160,7 @@ const REPARTITIONS = [["ages", "Âge"], ["anciennete", "Ancienneté dans l'écol
             <tr>
               <td>{libelleNiveau(n)}</td>
               {(["public", "prive_sous_contrat"] as const).map((s) => (
-                <td class={`n ${s === "public" ? "pub" : "pri"}`}><Cellule texte={comparaison("ips", reference(iIps, n, s)!, iIps.mesure)} absent={refAbsente(reference(iIps, n, s))} /></td>
+                <td class={`n ${s === "public" ? "pub" : "pri"}`}><Cellule texte={comparaison("ips", reference(iIps, n, s), iIps.mesure)} absent={refAbsente(reference(iIps, n, s))} /></td>
               ))}
             </tr>
           ))}
@@ -197,7 +197,7 @@ const REPARTITIONS = [["ages", "Âge"], ["anciennete", "Ancienneté dans l'écol
                   <td>{libelle}</td>
                   <td class="n"><Cellule texte={valeur(code, i.mesure)} absent={absente(i.mesure)} gras /></td>
                   {COLONNES.map(([n, s]) => (
-                    <td class={`n ${s === "public" ? "pub" : "pri"}`}><Cellule texte={comparaison(code, reference(i, n, s)!, i.mesure)} absent={refAbsente(reference(i, n, s))} /></td>
+                    <td class={`n ${s === "public" ? "pub" : "pri"}`}><Cellule texte={comparaison(code, reference(i, n, s), i.mesure)} absent={refAbsente(reference(i, n, s))} /></td>
                   ))}
                 </tr>
               );

@@ -99,6 +99,15 @@ export function titrePialEnDeux(famille: Famille, nom: string): { debut: string;
   return { debut: `PIAL ${article}${famille === "erea" ? f : f.toLocaleLowerCase("fr")} `, nom: court };
 }
 
+/** Données absentes, page /sources/. */
+export const LIBELLES_ABSENCES = {
+  titre: "Données absentes",
+  evaluations: "Évaluations nationales par école : non publiées. Les résultats des évaluations nationales ne sont pas diffusés école par école ; l'observatoire n'en affiche donc aucun.",
+  /** Introduction de la liste des départements sans carte scolaire publiée. */
+  cartes: "Carte scolaire des collèges non publiée : les écoles de ces départements n'ont pas de collège de secteur sur leur fiche.",
+  cartesToutes: "Carte scolaire des collèges : publiée pour tous les départements des écoles de l'observatoire.",
+} as const;
+
 /** Regroupement pédagogique intercommunal d'une école (Annuaire de l'éducation), dans l'en-tête de la fiche. */
 export const LIBELLES_RPI = {
   disperse: "Regroupement pédagogique intercommunal dispersé",
@@ -200,6 +209,8 @@ export const LIBELLES_PREMIER_DEGRE = {
   sansClasses: (n: number, texte: string): string =>
     n > 1 ? `${texte} écoles sans nombre de classes publié, non comptées` : `${texte} école sans nombre de classes publié, non comptée`,
   noteFermetures: "Une fermeture par école : la fusion de deux écoles en une compte pour deux fermetures.",
+  /** Dernière année du graphique des fermetures = année de la collecte : année partielle. */
+  anneeEnCours: (annee: number, date: string): string => `${annee} : année en cours, fermetures connues jusqu'au ${date}`,
 } as const;
 
 /** « Preel-CP » (typologie des classes) → « Préélémentaire-CP ». */

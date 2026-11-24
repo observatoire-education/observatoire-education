@@ -9,7 +9,7 @@ import { estEcole, FAMILLES, FAMILLES_ECOLES, FAMILLES_PLURIEL, FAMILLES_SECOND_
 import {
   assemblerFiches, calculerVoisins, distanceKm, attacherBudgets, exporter, FAMILLES_COMPATIBLES_ECOLES, millesimesAffiches,
 } from "../pipeline/src/fiches.ts";
-import { communesRetenues, controlerPonderation, exporterTerritoires, ipsMoyens } from "../pipeline/src/territoires.ts";
+import { communesRetenues, controlerPonderation, departementsSansCarte, exporterTerritoires, ipsMoyens } from "../pipeline/src/territoires.ts";
 import { ecrireRegistre, lireRegistre, mettreAJourRegistre, type Registre } from "../pipeline/src/registre.ts";
 import type { BudgetCollectivite } from "@obs/shared/donnees";
 import { calculerBudgets } from "../pipeline/src/budget-eleves.ts";
@@ -396,6 +396,18 @@ describe("registre des pages", () => {
   });
 });
 
+describe("départements sans carte scolaire publiée", () => {
+  test("ceux d'au moins une école ouverte dont le secteur est « carte non publiée », triés par code", () => {
+    expect(departementsSansCarte(fiches)).toEqual([]); // 35 et 44 publient leur carte
+    const sans = (uai: string, dep: string, depLibelle: string): Fiche => ({
+      ...fiche(uai), dep, depLibelle,
+      rattachements: { ...fiche(uai).rattachements!, secteur: { statut: "carte_non_publiee", colleges: [] } },
+    });
+    expect(departementsSansCarte([...fiches, sans("0440201A", "75", "Paris"), sans("0440202B", "2A", "Corse-du-Sud"), sans("0440104D", "75", "Paris")]))
+      .toEqual([{ niveau: "departement", code: "2A", libelle: "Corse-du-Sud" }, { niveau: "departement", code: "75", libelle: "Paris" }]);
+  });
+});
+
 describe("export des données du site", () => {
   test("fichiers produits", async () => {
     const sortie = join(await temporaire(), "data");
@@ -403,6 +415,12 @@ describe("export des données du site", () => {
     expect((await readdir(join(sortie, "fiches"))).sort()).toEqual(fiches.map((f) => `${f.uai}.json`));
     const f: Fiche = await Bun.file(join(sortie, "fiches", "0440001A.json")).json();
     expect(f.nom).toBe("Collège Jules-Verne");
+    expect("communePage" in f).toBe(false); // second degré : le site garde son maillon commune
+    // Écoles, ouvertes ou fermées : page commune d'aujourd'hui (même clé que les pages commune), null sans page.
+    const page = async (uai: string) => ((await Bun.file(join(sortie, "fiches", `${uai}.json`)).json()) as Fiche).communePage;
+    expect(await page("0440201A")).toEqual({ code: "44109", libelle: "Nantes" });
+    expect(await page("0440106F")).toEqual({ code: "44150", libelle: "Saint-Aubin" }); // Le Moulin, commune déléguée de Saint-Aubin
+    expect(await page("0350201R")).toEqual({ code: "35360", libelle: "Vitré" });
 
     const index: EntreeIndex[] = await Bun.file(join(sortie, "index.json")).json();
     expect(index).toHaveLength(42); // dont 7 écoles et 4 écoles fermées : l'index des données les contient, seules les routes du site les retirent

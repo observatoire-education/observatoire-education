@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import type { EntreeIndex } from "@obs/shared/donnees";
-import { estEcole, LIBELLES_BUDGET } from "@obs/shared/libelles";
+import { estEcole, LIBELLES_ABSENCES, LIBELLES_BUDGET } from "@obs/shared/libelles";
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import { DIST_TEST, doc, page, siteTest, texte } from "./site.ts";
@@ -42,10 +42,12 @@ describe("page département", () => {
   test("CSV de la liste, généré au build", () => {
     const csv = page("departement/44/etablissements.csv");
     const lignes = csv.trim().split("\n");
-    expect(lignes[0]).toBe("uai;nom;famille;secteur;commune;ep;eleves;eleves_par_etp_ens;eleves_par_etp_vs;part_enseignantes;ips;session_brevet;reussite_brevet;va_brevet;session_bac_gt;reussite_bac_gt;va_bac_gt;session_bac_pro;reussite_bac_pro;va_bac_pro");
+    expect(lignes[0]).toBe("uai;nom;famille;secteur;commune;ep;eleves;eleves_par_etp_ens;eleves_par_etp_vs;part_enseignantes;ips;session_brevet;reussite_brevet;va_brevet;session_bac_gt;reussite_bac_gt;va_bac_gt;session_bac_pro;reussite_bac_pro;va_bac_pro;rentree_eleves;rentree_ips");
     expect(lignes.find((l) => l.startsWith("0440002B"))).toContain(";non_publie_prive;");
     // Résultats du collège Saint-Exemple : brevet, session 2025, 60 % et +1 ; colonnes du bac vides.
-    expect(lignes.find((l) => l.startsWith("0440002B"))!.split(";").slice(-9)).toEqual(["2025", "60", "1", "", "", "", "", "", ""]);
+    expect(lignes.find((l) => l.startsWith("0440002B"))!.split(";").slice(-11, -2)).toEqual(["2025", "60", "1", "", "", "", "", "", ""]);
+    // rentrées des élèves et de l'IPS de chaque ligne, en dernières colonnes (écoles : 2025 et 2024)
+    expect(lignes.find((l) => l.startsWith("0440202B"))!.split(";").slice(-2)).toEqual(["2025", "2024"]);
     expect(lignes).toHaveLength(1 + 8 + 6); // 8 établissements actifs du second degré dans le 44, puis 6 écoles ouvertes
   });
 
@@ -133,6 +135,14 @@ describe("sources, méthode, 404, sitemap", () => {
     expect(t).toContain("ADMIN EXPRESS");
     expect(t).toContain("dernière édition disponible au 24 novembre 2026");
     expect(t).toContain("Licence Ouverte 2.0");
+  });
+
+  test("sources : données absentes, évaluations nationales par école et cartes scolaires non publiées", () => {
+    const a = doc("sources").getElementById("absences")!;
+    const t = a.textContent!.replace(/\s+/g, " ");
+    expect(t).toContain(LIBELLES_ABSENCES.evaluations);
+    // les deux départements des écoles du site d'essai (35, 44) ont leur carte scolaire
+    expect(t).toContain(LIBELLES_ABSENCES.cartesToutes);
   });
 
   test("sources : les six exercices des balances DGFiP, chacun avec sa requête archivée", () => {

@@ -1,13 +1,14 @@
 ---
 // Sources : chaque jeu, son producteur, sa page d'origine et toutes ses versions archivées (liens permanents).
 import { date, entier } from "@obs/shared/format";
-import { LIBELLES_BUDGET } from "@obs/shared/libelles";
+import { LIBELLES_ABSENCES as LA, LIBELLES_BUDGET } from "@obs/shared/libelles";
 import Base from "../layouts/Base.astro";
-import { lireSources } from "../lib/donnees";
+import { lireFrance, lireSources } from "../lib/donnees";
 import { executionsRecentes } from "../lib/journal";
 
 const sources = Object.values(lireSources());
 const executions = executionsRecentes();
+const sansCarte = lireFrance().departementsSansCarte ?? [];
 /** Requête de la version actuelle (ou la dernière) d'un exercice du budget. */
 const requeteArchivee = (s: (typeof sources)[number]): string | undefined =>
   s.id.startsWith("budget_") ? (s.actuelle ?? s.versions[s.versions.length - 1])?.requete : undefined;
@@ -42,6 +43,13 @@ const ACTIONS: Record<string, string> = { inchange: "inchangé", telecharge: "no
       )}
     </section>
   ))}
+  <section id="absences">
+    <h2>{LA.titre}</h2>
+    <p class="mute">{LA.evaluations}</p>
+    {sansCarte.length === 0 ? <p class="mute">{LA.cartesToutes}</p> : (
+      <p class="mute">{LA.cartes} {sansCarte.map((d, i) => <>{i > 0 && ", "}<a href={`/departement/${d.code}/`}>{d.libelle} ({d.code})</a></>)}.</p>
+    )}
+  </section>
   <section id="rased">
     <h2>Réseaux d'aides spécialisées (RASED)</h2>
     <p class="mute">RASED : aucune donnée ouverte. Les réseaux d'aides spécialisées aux élèves en difficulté ne publient aucun jeu de données par école ; l'observatoire n'en affiche donc aucune.</p>

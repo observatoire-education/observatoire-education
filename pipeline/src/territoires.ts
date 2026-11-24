@@ -51,15 +51,19 @@ export function libelleListe(f: Fiche): string {
 
 export function ligneListe(f: Fiche, rentreeIps: number | null, sessions: DernieresSessions): LigneListe {
   const vs = valeur(f, "eleves_par_etp_vs");
+  const eleves = valeur(f, "eleves");
+  const ips = ipsCourant(valeur(f, "ips"), rentreeIps);
   return {
     uai: f.uai, nom: f.nom, secteur: f.secteur, commune: libelleListe(f), codeCommune: f.codeCommune, ep: f.ep,
-    eleves: ok(valeur(f, "eleves")),
+    eleves: ok(eleves),
     elevesParEtpEns: ok(valeur(f, "eleves_par_etp_ens")),
     elevesParEtpVs: ok(vs),
     statutVs: vs?.statut ?? "non_disponible",
     partEnseignantes: ok(valeur(f, "part_enseignantes")),
-    ips: ipsCourant(valeur(f, "ips"), rentreeIps),
+    ips,
     reussite: resume(f, sessions),
+    rentreeEleves: ok(eleves) === null ? null : (eleves?.rentree ?? null),
+    rentreeIps: ips === null ? null : rentreeIps,
   };
 }
 
@@ -460,17 +464,27 @@ function regionDuGroupe(groupe: Fiche[]): string | null {
 
 const BUDGETS_VIDES: Budgets = { collectivites: new Map(), france: [] };
 
+/** Départements d'au moins une école ouverte dont le secteur est « carte non publiée », triés par code. */
+export function departementsSansCarte(fiches: Fiche[]): RefTerritoire[] {
+  const deps = new Map<string, string>();
+  for (const f of fiches) if (f.rattachements?.secteur.statut === "carte_non_publiee") deps.set(f.dep, f.depLibelle);
+  return [...deps].sort((a, b) => a[0].localeCompare(b[0])).map(([code, libelle]) => ({ niveau: "departement", code, libelle }));
+}
+
 /**
  * Écrit `regions/<code>.json`, `departements/<dep>.json`, `academies/<aca>.json`, `communes/<insee>.json`
  * et `france.json` à partir des fiches actives. `rentree` : dernière rentrée des effectifs.
  * `budgets` : résultat de `calculerBudgets` sur toutes les fiches (actives et disparues).
+ * Renvoie les pages commune écrites (code → nom), et la table des communes du Code officiel géographique.
  */
 export async function exporterTerritoires(
   actives: Fiche[], db: Db, sortie: string, rentree: number | null, budgets: Budgets = BUDGETS_VIDES,
   corrections: EntreeCorrection[] = [], manifest?: Manifest,
-): Promise<void> {
+): Promise<{ pagesCommune: Map<string, string>; table: TableCommunes }> {
   // Écoles des communes (pages commune) et des départements (CSV), avant de ne garder que le second degré.
-  const ecolesCommunes = await ecolesDesCommunes(db, actives);
+  const table = await chargerCommunes(db);
+  const ecolesCommunes = await ecolesDesCommunes(db, actives, table);
+  const pagesCommune = new Map<string, string>();
   const ecolesParDep = Map.groupBy(actives.filter((f) => estEcole(f.famille)), (f) => f.dep);
   const lignesDep = lignesEcoles(new Map(actives.map((f) => [f.uai, f])), new Map(actives.map((f) => [f.uai, f.indicateurs])));
   const toutes = actives;
@@ -645,6 +659,7 @@ export async function exporterTerritoires(
       ...(ecolesCommunes.has(code) ? { ecoles: ecolesCommunes.get(code)!.ecoles } : {}),
     };
     await ecrireJson(join(sortie, "communes", `${code}.json`), donnees);
+    pagesCommune.set(code, ref.libelle);
   }
   // Communes qui ont, ou ont eu depuis 2012, une école, sans page pour le second degré : page des écoles seulement.
   for (const [code, c] of ecolesCommunes) {
@@ -663,6 +678,7 @@ export async function exporterTerritoires(
       ecoles: c.ecoles,
     };
     await ecrireJson(join(sortie, "communes", `${code}.json`), donnees);
+    pagesCommune.set(code, c.libelle);
   }
 
   // Départements
@@ -764,6 +780,8 @@ export async function exporterTerritoires(
     communes: [], carte: valeursCarte(actives),
     academiesEtDepartements: academies, regions, carteBudget,
     premierDegre: premierDegre({ niveau: "france", code: "FR", contient: () => true }),
+    departementsSansCarte: departementsSansCarte(toutes),
   };
   await ecrireJson(join(sortie, "france.json"), france);
+  return { pagesCommune, table };
 }

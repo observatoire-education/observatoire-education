@@ -31,8 +31,12 @@ export function valeur(code: CodeIndicateur, m: Mesure): string {
   return m.statut === "ok" && m.valeur !== null ? formater(code, m.valeur) : absence(m.statut === "ok" ? "non_disponible" : m.statut);
 }
 
-/** Sur le web : « −14,0 (106,4) » ; moyenne seule si l'établissement n'a pas de valeur ; absence sinon. */
-export function comparaison(code: CodeIndicateur, reference: Mesure, mesure: Mesure): string {
+/**
+ * Sur le web : « −14,0 (106,4) » ; moyenne seule si l'établissement n'a pas de valeur ; absence sinon (référence
+ * non publiée, ou aucune ligne de référence pour ce niveau).
+ */
+export function comparaison(code: CodeIndicateur, reference: Mesure | undefined, mesure: Mesure): string {
+  if (!reference) return absence("non_disponible");
   if (reference.statut !== "ok" || reference.valeur === null) {
     return absence(reference.statut === "ok" ? "non_disponible" : reference.statut);
   }

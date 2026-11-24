@@ -6,7 +6,7 @@
 import { entier } from "@obs/shared/format";
 import { FAMILLES, LIBELLES_RATTACHEMENTS as LR, SECTEURS } from "@obs/shared/libelles";
 import type { Fiche, LigneEcole } from "@obs/shared/types";
-import { valeur } from "../lib/affichage";
+import { anneeScolaire, valeur } from "../lib/affichage";
 import Absence from "./Absence.astro";
 import Cellule from "./Cellule.astro";
 
@@ -14,7 +14,7 @@ interface Props { f: Fiche; ecoles: LigneEcole[] }
 const { f, ecoles } = Astro.props;
 const sourceEleves = f.sources.find((s) => s.id === "effectifs_ecoles");
 const sourceIps = f.sources.find((s) => s.id === "ips_ecoles" || s.id === "ips_ecoles_2016");
-const titre = (libelle: string, rentree: number | null | undefined) => (rentree ? `${libelle} ${rentree}` : libelle);
+const titre = (libelle: string, rentree: number | null | undefined) => (rentree ? `${libelle} ${anneeScolaire(rentree)}` : libelle);
 const publiques = ecoles.filter((e) => e.secteur === "public").length;
 ---
 <section id="ecoles-secteur">

@@ -346,6 +346,11 @@ export interface Fiche extends Identite {
   classes?: Classes | null;
   /** Écoles ouvertes seulement (absent des fiches du second degré et des écoles fermées). */
   rattachements?: Rattachements;
+  /**
+   * Écoles seulement, ouvertes ou fermées : page commune d'aujourd'hui (code en vigueur, même clé que les pages
+   * commune) pour le fil d'Ariane ; null si la commune n'a pas de page. Absent du second degré.
+   */
+  communePage?: { code: string; libelle: string } | null;
   /** Écoles ouvertes seulement : regroupement pédagogique intercommunal de l'Annuaire ; null hors RPI. */
   rpi?: Rpi | null;
   /** Écoles ouvertes seulement : écoles les plus proches ; null si l'école n'a pas de coordonnées. */

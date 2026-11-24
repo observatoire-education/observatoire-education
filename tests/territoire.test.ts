@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { DonneesTerritoire } from "@obs/shared/donnees";
-import { csvTerritoire, nomFamille } from "../site/src/lib/territoire.ts";
+import { csvTerritoire, noteAnneeEnCours, nomFamille } from "../site/src/lib/territoire.ts";
 
 const dep = (nom: string, commune = "Nantes"): DonneesTerritoire => ({
   ref: { niveau: "departement", code: "44", libelle: "Loire-Atlantique" },
@@ -11,7 +11,8 @@ const dep = (nom: string, commune = "Nantes"): DonneesTerritoire => ({
       compte: { public: 1, prive: 0 }, eleves: { public: 10, prive: null }, ipsMoyen: { public: 100, prive: null, calculee: false },
       ipsHistorique: [], distributionIps: { public: [], prive: [], bornes: [] }, moyennes: [],
       liste: [{ uai: "0440001A", nom, secteur: "public", commune, codeCommune: "44109", ep: null, eleves: 10, elevesParEtpEns: -1.5,
-        elevesParEtpVs: null, statutVs: "non_disponible", partEnseignantes: null, ips: 100, reussite: [] }],
+        elevesParEtpVs: null, statutVs: "non_disponible", partEnseignantes: null, ips: 100, reussite: [],
+        rentreeEleves: 2025, rentreeIps: 2024 }],
     },
   },
 });
@@ -40,14 +41,31 @@ describe("CSV des territoires", () => {
     ];
     const [entete, ligne] = csvTerritoire(d).trim().split("\n");
     const cols = entete!.split(";");
-    expect(cols.slice(-9)).toEqual([
+    expect(cols.slice(-11, -2)).toEqual([
       "session_brevet", "reussite_brevet", "va_brevet", "session_bac_gt", "reussite_bac_gt", "va_bac_gt",
       "session_bac_pro", "reussite_bac_pro", "va_bac_pro",
     ]);
-    expect(ligne!.split(";").slice(-9)).toEqual(["", "", "", "2025", "92", "-2", "2025", "", ""]);
+    expect(ligne!.split(";").slice(-11, -2)).toEqual(["", "", "", "2025", "92", "-2", "2025", "", ""]);
     const brevet = dep("Collège");
     brevet.familles.college!.liste[0]!.reussite = [{ voie: "brevet_general", session: 2025, taux: 80, va: 0 }];
-    expect(csvTerritoire(brevet).trim().split("\n")[1]!.split(";").slice(-9)).toEqual(["2025", "80", "0", "", "", "", "", "", ""]);
+    expect(csvTerritoire(brevet).trim().split("\n")[1]!.split(";").slice(-11, -2)).toEqual(["2025", "80", "0", "", "", "", "", "", ""]);
+  });
+
+  test("rentrées des élèves et de l'IPS, en dernières colonnes : celles de chaque ligne, vides sans valeur", () => {
+    const d = dep("Collège");
+    const [entete, ligne] = csvTerritoire(d).trim().split("\n");
+    expect(entete!.split(";").slice(-2)).toEqual(["rentree_eleves", "rentree_ips"]);
+    expect(ligne!.split(";").slice(-2)).toEqual(["2025", "2024"]);
+    const sans = dep("Collège");
+    Object.assign(sans.familles.college!.liste[0]!, { eleves: null, rentreeEleves: null, ips: null, rentreeIps: null });
+    expect(csvTerritoire(sans).trim().split("\n")[1]!.split(";").slice(-2)).toEqual(["", ""]);
+    // écoles d'un département : rentrées de la synthèse du premier degré (celles des listes d'écoles)
+    const ecole = { uai: "0440202B", nom: "École", famille: "elementaire" as const, secteur: "public" as const, commune: "Nantes", ep: null };
+    const avecEcoles = { ...dep("Collège"), premierDegre: { rentrees: { eleves: 2025, ips: 2024 } } } as unknown as DonneesTerritoire;
+    avecEcoles.listeEcoles = [{ ...ecole, eleves: 196, ips: 90.1 }, { ...ecole, uai: "0440201A", eleves: null, ips: null }];
+    const lignes = csvTerritoire(avecEcoles).trim().split("\n");
+    expect(lignes[2]!.split(";").slice(-2)).toEqual(["2025", "2024"]);
+    expect(lignes[3]!.split(";").slice(-2)).toEqual(["", ""]);
   });
 
   test("académie : une ligne par département, point décimal, écart vide si absent", () => {
@@ -69,6 +87,15 @@ describe("CSV des territoires", () => {
     expect(lignes[1]).toBe("44;Loire-Atlantique;4;2;3090;600;16.3;");
     expect(lignes[2]).toBe("49;'=Maine-et-Loire;1;0;;;;-2.5");
     expect(lignes).toHaveLength(3);
+  });
+});
+
+describe("écoles fermées par année : année en cours", () => {
+  test("dernière année du graphique = année de la collecte : année partielle, dite avec la date de collecte", () => {
+    expect(noteAnneeEnCours([[2025, 3], [2026, 1]], "2026-11-22T02:17:00Z")).toBe("2026 : année en cours, fermetures connues jusqu'au 22/11/2026");
+    expect(noteAnneeEnCours([[2024, 3], [2025, 0]], "2026-11-22T02:17:00Z")).toBeNull();
+    expect(noteAnneeEnCours([], "2026-11-22T02:17:00Z")).toBeNull();
+    expect(noteAnneeEnCours([[2026, 1]], undefined)).toBeNull();
   });
 });
 

@@ -1,8 +1,8 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { LIBELLES_RATTACHEMENTS as LR, LIBELLES_RPI } from "@obs/shared/libelles";
-import { mentionMoyennesA4 } from "../site/src/lib/affichage.ts";
+import { LIBELLES, LIBELLES_RATTACHEMENTS as LR, LIBELLES_RPI } from "@obs/shared/libelles";
+import { comparaison, mentionMoyennesA4 } from "../site/src/lib/affichage.ts";
 import { svgElevesClasses } from "../site/src/lib/plot.ts";
 import { DIST_TEST, doc, octets, page, siteTest, texte } from "./site.ts";
 
@@ -113,6 +113,13 @@ describe("fiche école", () => {
   });
 });
 
+describe("comparaison sans ligne de référence", () => {
+  test("aucune comparaison pour le niveau : absence dite, jamais d'erreur ni de zéro", () => {
+    const mesure = { valeur: 98.5, statut: "ok" as const, source: null, rentree: 2024 };
+    expect(comparaison("ips", undefined, mesure)).toBe(LIBELLES.nonDisponible);
+  });
+});
+
 describe("mentions des sources des écoles sur la fiche A4", () => {
   test("IPS des écoles publié par la DEPP ; typologie des classes et éducation prioritaire sans moyenne", () => {
     expect(mentionMoyennesA4("ips_ecoles", false)).toBe(" · moyennes publiées par la DEPP");
@@ -151,6 +158,20 @@ const NOTE_PRIVE = "Les écoles privées ne sont pas soumises à la carte scolai
 const DEFINITION_PIAL = "Le PIAL (pôle inclusif d'accompagnement localisé) organise l'accompagnement des élèves en situation de handicap.";
 const liens = (e: Element | null | undefined) => [...(e?.querySelectorAll("a") ?? [])].map((a) => a.getAttribute("href"));
 
+describe("fil d'Ariane d'une école", () => {
+  const dernier = (uai: string) => [...doc(fiche(uai)).querySelectorAll("nav.crumb > *:not(.sep)")].at(-1)!;
+  test("école fermée d'une ancienne commune : lien vers la page de la commune d'aujourd'hui", () => {
+    const a = dernier("0440106F"); // Le Moulin, commune déléguée de Saint-Aubin
+    expect(a.getAttribute("href")).toBe("/commune/44150/");
+    expect(propre(a.textContent)).toBe("Saint-Aubin");
+  });
+
+  test("école ouverte : lien vers sa commune", () => {
+    expect(dernier("0440201A").getAttribute("href")).toBe("/commune/44109/");
+    expect(dernier("0350201R").getAttribute("href")).toBe("/commune/35360/");
+  });
+});
+
 describe("regroupement pédagogique intercommunal (RPI)", () => {
   test("école en RPI dispersé : libellé exact dans l'en-tête, lien vers la méthode", () => {
     const b = doc(fiche("0350201R")).querySelector(".badges")!;
@@ -165,6 +186,13 @@ describe("regroupement pédagogique intercommunal (RPI)", () => {
   test("école hors RPI : rien dans l'en-tête", () => {
     expect(texte(fiche("0440202B"))).not.toContain("Regroupement pédagogique");
     expect(page(fiche("0440202B"))).not.toContain("#rpi");
+  });
+
+  test("méthode du premier degré : seules les écoles fermées sont comptées, l'année en cours est partielle", () => {
+    const t = propre(doc("methode").getElementById("premier-degre-territoires")!.nextElementSibling!.textContent);
+    expect(t).not.toContain("les classes fermées");
+    expect(t).toContain("Seules les écoles fermées sont comptées, par année de fermeture et une fois par école");
+    expect(t).toContain("L'année en cours est partielle : quand elle termine le graphique, la page le dit");
   });
 
   test("la méthode définit le RPI", () => {
@@ -232,7 +260,7 @@ describe("collège : écoles de son secteur et PIAL", () => {
     expect(propre(b.querySelector("h2")?.textContent)).toBe("Écoles de son secteur");
     const t = propre(b.textContent);
     expect(t).toContain("3 écoles publiques, 0 privée sous contrat");
-    expect([...b.querySelectorAll("thead th")].map((x) => propre(x.textContent))).toEqual(["École", "Nature", "Secteur", "Commune", "Élèves 2025", "IPS 2024"]);
+    expect([...b.querySelectorAll("thead th")].map((x) => propre(x.textContent))).toEqual(["École", "Nature", "Secteur", "Commune", "Élèves 2025-2026", "IPS 2024-2025"]);
     const lignes = [...b.querySelectorAll("tbody tr")].map((r) => [...r.querySelectorAll("td")].map((x) => propre(x.textContent)));
     expect(lignes).toEqual([
       ["École élémentaire du Bourg", "École élémentaire", "Public", "Saint-Aubin", "10", "non publié"],
@@ -298,7 +326,7 @@ describe("autour de l'école", () => {
     expect(t).toContain("Aucune autre école à moins de 10 km");
     expect(t).toMatch(/École maternelle ou primaire la plus proche : École primaire des Tilleuls, \d+,\d km/);
     expect(t).toMatch(/École élémentaire ou primaire la plus proche : École primaire des Tilleuls, \d+,\d km/);
-    expect([...b.querySelectorAll("thead th")].map((x) => propre(x.textContent))).toEqual(["École", "Distance", "Nature", "Secteur", "Élèves 2025", "Classes 2025"]);
+    expect([...b.querySelectorAll("thead th")].map((x) => propre(x.textContent))).toEqual(["École", "Distance", "Nature", "Secteur", "Élèves 2025-2026", "Classes 2025-2026"]);
     const lignes = [...b.querySelectorAll("tbody tr")].map((r) => [...r.querySelectorAll("td")].map((x) => propre(x.textContent)));
     expect(lignes.map((l) => l[0])).toEqual(["École primaire des Tilleuls", "École primaire Sainte-Marie", "École élémentaire Jules-Ferry"]);
     expect(lignes[1]!.slice(2)).toEqual(["École primaire", "Privé s. c.", "166", "7"]);
@@ -379,7 +407,7 @@ describe("pages commune étendues", () => {
     const b = d.querySelector("#ecoles")!;
     expect(propre(b.querySelector("h2")?.textContent)).toBe("Écoles de la commune");
     expect(propre(b.textContent)).toContain("2 écoles publiques, 0 privée sous contrat");
-    expect([...b.querySelectorAll("thead th")].map((x) => propre(x.textContent))).toEqual(["École", "Nature", "Secteur", "Élèves 2025", "Classes 2025", "IPS 2024"]);
+    expect([...b.querySelectorAll("thead th")].map((x) => propre(x.textContent))).toEqual(["École", "Nature", "Secteur", "Élèves 2025-2026", "Classes 2025-2026", "IPS 2024-2025"]);
     const lignes = [...b.querySelectorAll("tbody tr")].map((r) => [...r.querySelectorAll("td")].map((x) => propre(x.textContent)));
     expect(lignes).toEqual([
       ["École élémentaire du Bourg", "École élémentaire", "Public", "10", "1", "non publié"],

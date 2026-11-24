@@ -498,8 +498,6 @@ export async function exporter(
   await rm(sortie, { recursive: true, force: true });
   await mkdir(join(sortie, "fiches"), { recursive: true });
 
-  for (const f of fiches) await ecrireJson(join(sortie, "fiches", `${f.uai}.json`), f);
-
   const index: EntreeIndex[] = fiches.map((f) => ({
     u: f.uai, n: f.nom, c: f.commune, d: f.dep, f: f.famille, s: f.secteur, ...(f.disparuLe ? { x: 1 as const } : {}),
   }));
@@ -507,7 +505,15 @@ export async function exporter(
 
   const actives = fiches.filter((f) => f.disparuLe === null);
   const [{ r: rentree } = { r: null }] = await db.sql<{ r: number | null }>("select max(rentree) as r from effectifs");
-  await exporterTerritoires(actives, db, sortie, rentree, await calculerBudgets(db, fiches), corrections, manifest);
+  const { pagesCommune, table } = await exporterTerritoires(actives, db, sortie, rentree, await calculerBudgets(db, fiches), corrections, manifest);
+  // Écoles, ouvertes ou fermées : page commune d'aujourd'hui, avec la même clé que les pages commune (fil d'Ariane).
+  for (const f of fiches) {
+    if (estEcole(f.famille)) {
+      const code = table.actuelle(f.codeCommune);
+      f.communePage = pagesCommune.has(code) ? { code, libelle: pagesCommune.get(code)! } : null;
+    }
+    await ecrireJson(join(sortie, "fiches", `${f.uai}.json`), f);
+  }
 
   const sources: Record<string, DonneesSource> = Object.fromEntries(
     toutesSources(manifest).map((s) => [s.id, {

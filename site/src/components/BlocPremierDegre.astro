@@ -8,9 +8,9 @@ import { entier, nombre } from "@obs/shared/format";
 import { LIBELLES, LIBELLES_COMMUNE_ECOLES, LIBELLES_PREMIER_DEGRE as L } from "@obs/shared/libelles";
 import { cheminTerritoire } from "@obs/shared/territoires";
 import { anneeScolaire } from "../lib/affichage";
-import { communesDisponibles } from "../lib/donnees";
+import { communesDisponibles, lireSources } from "../lib/donnees";
 import { svgBarres, svgDistribution, svgElevesClasses } from "../lib/plot";
-import { fermeturesParAnnee, parInitiale } from "../lib/territoire";
+import { fermeturesParAnnee, noteAnneeEnCours, parInitiale } from "../lib/territoire";
 
 interface Props { p: SynthesePremierDegre; territoire: RefTerritoire; communes?: RefTerritoire[] }
 const { p, territoire, communes = [] } = Astro.props;
@@ -20,6 +20,7 @@ const val = (v: number | null, f: (x: number) => string) => (v === null ? LIBELL
 const courbe = svgElevesClasses(p.historique, [L.ecoles, "Classes"]);
 const rentreesHistorique = p.historique.map(([r]) => r);
 const fermetures = fermeturesParAnnee(p.fermetures, p.rentrees.eleves);
+const enCours = noteAnneeEnCours(fermetures, lireSources().fermes?.actuelle?.collecteLe);
 const lettres = parInitiale(communes.filter((c) => communesDisponibles().has(c.code)));
 const nIps = [...p.distributionIps.public, ...p.distributionIps.prive].reduce((a, b) => a + b, 0);
 /** Écoles sans nombre de classes publié, hors des totaux de classes (et des élèves par classe) : dit par rentrée. */
@@ -68,7 +69,7 @@ const sansClassesRentree = p.sansClasses.find(([r]) => r === p.rentrees.eleves);
       <div class="card">
         <div class="lab"><span>{L.fermetures}</span><span class="yr">{fermetures[0]![0]} → {fermetures.at(-1)![0]}</span></div>
         <Fragment set:html={svgBarres(fermetures)} />
-        <p class="src">{L.noteFermetures}</p>
+        <p class="src">{L.noteFermetures}{enCours && ` ${enCours}.`}</p>
       </div>
     </div>
   )}

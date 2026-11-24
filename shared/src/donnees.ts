@@ -31,6 +31,9 @@ export interface LigneListe {
   partEnseignantes: number | null;
   ips: number | null;
   reussite: ResumeResultat[];
+  /** Rentrées de `eleves` et de `ips` (CSV) ; null sans valeur. */
+  rentreeEleves: number | null;
+  rentreeIps: number | null;
 }
 
 export interface ParSecteur<T> {
@@ -239,6 +242,8 @@ export interface DonneesFrance extends DonneesTerritoire {
   regions: RefTerritoire[];
   /** Vue « budget » de la carte : fonctionnement hors personnel par élève du public des collèges, par collectivité. */
   carteBudget: Extract<CarteDonnees, { genre: "collectivites" }>;
+  /** Départements dont au moins une école ouverte n'a pas de collège de secteur faute de carte scolaire publiée (page /sources/). */
+  departementsSansCarte: RefTerritoire[];
 }
 
 /** Une version archivée d'une source (GitHub Release). */

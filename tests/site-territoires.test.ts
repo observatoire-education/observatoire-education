@@ -78,8 +78,9 @@ describe("page commune", () => {
 
   test("CSV des établissements de la commune", () => {
     const lignes = page("commune/44109/etablissements.csv").trim().split("\n");
-    expect(lignes[0]).toBe("uai;nom;famille;secteur;commune;ep;eleves;eleves_par_etp_ens;eleves_par_etp_vs;part_enseignantes;ips;session_brevet;reussite_brevet;va_brevet;session_bac_gt;reussite_bac_gt;va_bac_gt;session_bac_pro;reussite_bac_pro;va_bac_pro");
+    expect(lignes[0]).toBe("uai;nom;famille;secteur;commune;ep;eleves;eleves_par_etp_ens;eleves_par_etp_vs;part_enseignantes;ips;session_brevet;reussite_brevet;va_brevet;session_bac_gt;reussite_bac_gt;va_bac_gt;session_bac_pro;reussite_bac_pro;va_bac_pro;rentree_eleves;rentree_ips");
     expect(lignes.some((l) => l.startsWith("0440001A;"))).toBe(true);
+    expect(lignes.find((l) => l.startsWith("0440201A;"))!.split(";").slice(-2)).toEqual(["2025", ""]); // maternelle : IPS non publié
   });
 
   test("commune sous le seuil : pas de page, nom sans lien dans la fiche", () => {

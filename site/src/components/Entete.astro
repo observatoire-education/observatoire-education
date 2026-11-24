@@ -16,9 +16,12 @@ const { f } = Astro.props;
 const prive = f.secteur === "prive_sous_contrat";
 const contrat = f.contrat ? (CONTRATS[f.contrat] ?? f.contrat) : null;
 const url = lienPermanent(`/etablissement/${f.uai}/`);
-// Maillon commune : la ville pour un arrondissement de Paris, Lyon ou Marseille qui a sa page.
-const codeCommune = communeDeRattachement(f.codeCommune);
-const plm = communesDisponibles().has(codeCommune) ? LIBELLES_PLM[codeCommune as keyof typeof LIBELLES_PLM] : undefined;
+// Maillon commune d'une école : la page commune d'aujourd'hui calculée par le pipeline (commune nouvelle d'une
+// ancienne commune, par exemple). Second degré : la ville pour un arrondissement de Paris, Lyon ou Marseille qui a sa page.
+const codeCommune = f.communePage ? f.communePage.code : communeDeRattachement(f.codeCommune);
+const plm = f.communePage
+  ? f.communePage.libelle
+  : communesDisponibles().has(codeCommune) ? LIBELLES_PLM[codeCommune as keyof typeof LIBELLES_PLM] : undefined;
 // Maillon région : seulement si la région a sa page (le 975 n'a pas de région).
 const codeRegion = regionDe(f.dep);
 const region = codeRegion && regionsDisponibles().includes(codeRegion)

@@ -1,8 +1,8 @@
 // Aides des pages de territoire (France, académie, département, commune) : synthèses, lignes de liste, CSV.
 import { comparerCollectivites, type NiveauBudget } from "@obs/shared/collectivites";
 import type { BudgetCollectivite, DonneesTerritoire, LigneListe, LigneTerritoire, SyntheseFamille } from "@obs/shared/donnees";
-import { entier } from "@obs/shared/format";
-import { FAMILLES, FAMILLES_ECOLES, FAMILLES_SECOND_DEGRE } from "@obs/shared/libelles";
+import { date, entier } from "@obs/shared/format";
+import { FAMILLES, FAMILLES_ECOLES, FAMILLES_SECOND_DEGRE, LIBELLES_PREMIER_DEGRE } from "@obs/shared/libelles";
 import type { Famille, FamilleSecondDegre, LigneEcole, ResumeResultat } from "@obs/shared/types";
 
 /** Familles des pages de territoire : second degré seulement (les écoles n'y figurent pas). */
@@ -35,6 +35,8 @@ const COLONNES_CSV = [
   "part_enseignantes", "ips",
   "session_brevet", "reussite_brevet", "va_brevet", "session_bac_gt", "reussite_bac_gt", "va_bac_gt",
   "session_bac_pro", "reussite_bac_pro", "va_bac_pro",
+  // ajoutées à la fin, pour ne pas décaler les colonnes existantes
+  "rentree_eleves", "rentree_ips",
 ] as const;
 
 /** Résumés d'une ligne : brevet (série générale, sinon professionnelle), bac GT, bac pro ; vide si absent, jamais 0. */
@@ -79,15 +81,18 @@ export function csvTerritoire(d: DonneesTerritoire): string {
     s.liste.map((l: LigneListe) => [
       l.uai, l.nom, famille, l.secteur, l.commune, l.ep, l.eleves, l.elevesParEtpEns,
       l.elevesParEtpVs ?? (l.statutVs === "non_publie_prive" ? "non_publie_prive" : null),
-      l.partEnseignantes, l.ips, ...colonnesReussite(l.reussite),
+      l.partEnseignantes, l.ips, ...colonnesReussite(l.reussite), l.rentreeEleves, l.rentreeIps,
     ]),
   );
   // Écoles ouvertes (commune : celles de sa page ; département : toutes), après le second degré, par famille puis par
   // nom ; les colonnes sans objet pour une école restent vides.
   const ecoles: (LigneEcole & { ep: string | null })[] = d.ref.niveau === "commune" ? (d.ecoles?.ecoles ?? []) : (d.listeEcoles ?? []);
+  // Rentrées des listes d'écoles (les mêmes pour la commune et le département), vides sans valeur.
+  const rentrees = (d.ref.niveau === "commune" ? d.ecoles?.rentrees : d.premierDegre?.rentrees) ?? { eleves: null, ips: null };
   const lignesEcoles = FAMILLES_ECOLES.flatMap((famille) =>
     ecoles.filter((e) => e.famille === famille).map((e) => [
       e.uai, e.nom, famille, e.secteur, e.commune, e.ep, e.eleves, null, null, null, e.ips, ...colonnesReussite([]),
+      e.eleves === null ? null : rentrees.eleves, e.ips === null ? null : rentrees.ips,
     ]));
   return csv(COLONNES_CSV, [...secondDegre, ...lignesEcoles]);
 }
@@ -145,6 +150,16 @@ export function parInitiale<T extends { libelle: string }>(communes: T[]): [stri
  * Écoles fermées par année, de 2012 à `jusqua` (ou à la dernière fermeture si elle est plus tardive) : une année
  * absente de la liste des fermés est une année sans fermeture (la liste est complète depuis 2012), donc 0.
  */
+/**
+ * Note sous les écoles fermées par année quand la dernière année du graphique est celle de la collecte de la liste
+ * des fermés : année en cours, donc partielle (fermetures connues jusqu'à la date de collecte). null sinon.
+ */
+export function noteAnneeEnCours(fermetures: [number, number][], collecteLe: string | undefined): string | null {
+  const derniere = fermetures.at(-1)?.[0];
+  if (derniere === undefined || !collecteLe || derniere !== Number(collecteLe.slice(0, 4))) return null;
+  return LIBELLES_PREMIER_DEGRE.anneeEnCours(derniere, date(collecteLe));
+}
+
 export function fermeturesParAnnee(fermetures: [number, number][], jusqua: number | null): [number, number][] {
   if (fermetures.length === 0) return [];
   const n = new Map(fermetures);
