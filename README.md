@@ -87,10 +87,9 @@ Avant de changer les serveurs DNS chez OVH, vérifier dans la zone importée :
 
 - les MX : `mx1.mail.ovh.net` (priorité 1), `mx2.mail.ovh.net` (5), `mx3.mail.ovh.net` (100) ;
 - le TXT SPF ;
-- les enregistrements DKIM d'OVH ;
-- supprimer les quatre A `185.199.108.153` à `185.199.111.153` de GitHub Pages.
+- les enregistrements DKIM d'OVH.
 
-Le changement des serveurs DNS chez OVH n'a lieu qu'après la recette décrite plus loin (procédure de bascule).
+Les enregistrements de GitHub Pages (les quatre A `185.199.108.153` à `185.199.111.153` et le CNAME `www` vers `observatoire-education.github.io`) restent en place jusqu'à la bascule : ils servent le site pendant la propagation des serveurs DNS. Le changement des serveurs DNS chez OVH n'a lieu qu'après la recette décrite plus loin (procédure de bascule).
 
 Ensuite, lancer le workflow `nightly` à la main (*Actions → nightly → Run workflow*) : première collecte, archives, premier déploiement.
 
@@ -109,9 +108,11 @@ Procédure à suivre, dans l'ordre, une fois les préalables faits :
    - `/etablissement/0440001a/` redirige ;
    - une URL inconnue rend la page 404 ;
    - `robots.txt` est identique sur les deux hôtes.
-4. Dans un seul commit de bascule : ajouter à `wrangler.jsonc` `routes: [{ "pattern": "observatoireeducation.fr", "custom_domain": true }]` (pas avant, la zone devant exister dans Cloudflare), supprimer le fichier `CNAME` à la racine (il ne servait qu'à GitHub Pages) et ajouter `"workers_dev": false` et `"preview_urls": false` pour que l'hôte `workers.dev` cesse de servir une fois le domaine personnalisé actif.
-5. Changer les serveurs DNS chez OVH (par le porteur du projet), après la vérification des enregistrements décrite plus haut.
-6. Tester l'envoi d'un message vers `contact@observatoireeducation.fr`.
+4. Changer les serveurs DNS chez OVH (par le porteur du projet) pour ceux attribués par Cloudflare, après la vérification des enregistrements décrite plus haut, en gardant les enregistrements de GitHub Pages : le site reste servi par GitHub Pages pendant la propagation.
+5. Attendre que la zone soit « Active » dans Cloudflare.
+6. Supprimer dans la zone Cloudflare les quatre A de GitHub Pages et le CNAME `www` (Cloudflare refuse un domaine personnalisé tant qu'un enregistrement existe pour ce nom), puis pousser aussitôt le commit de bascule (branche `bascule-cloudflare`) : `wrangler.jsonc` déclare les domaines personnalisés `observatoireeducation.fr` et `www.observatoireeducation.fr`, désactive `workers_dev` et `preview_urls` (l'aperçu de recette cesse de servir), et le fichier `CNAME`, propre à GitHub Pages, est supprimé. Le site est coupé entre la suppression des enregistrements et la fin du déploiement (quelques minutes).
+7. Vérifier `https://observatoireeducation.fr/` et `https://www.observatoireeducation.fr/`, puis tester l'envoi d'un message vers `contact@observatoireeducation.fr`.
+8. Désactiver GitHub Pages dans *Settings → Pages* du dépôt.
 
 La bascule est validée quand une nuit de collecte et de déploiement a réussi après elle.
 
