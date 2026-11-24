@@ -44,6 +44,15 @@ const points = [
 const rayons = (s: string, motif: RegExp) => [...s.matchAll(/<g([^>]*)><circle r="([\d.]+)"/g)].filter((m) => motif.test(m[1]!)).map((m) => Number(m[2]));
 
 describe("cartes", () => {
+  test("cartes de territoires : coordonnées à une décimale au plus (poids des pages)", () => {
+    const deps = svgCarteDepartements(valeurs, "prive", { encartsDrom: false }).svg;
+    const budget = svgCarteBudget(valeurs.map((v) => ({ id: `dep-${v.dep}`, deps: [v.dep], budget: 500 })), { encartsDrom: false }).svg;
+    for (const s of [deps, budget]) {
+      expect(s).toMatch(/\d\.\d/);
+      expect(s).not.toMatch(/\d\.\d\d/);
+    }
+  });
+
   test("carte des départements : un département sans valeur est grisé", () => {
     const { svg, absents } = svgCarteDepartements(valeurs, "prive", { encartsDrom: false });
     expect(svg).toContain('role="img"');

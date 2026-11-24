@@ -10,7 +10,8 @@ const { document } = parseHTML("<!doctype html><html><body></body></html>");
 
 const STYLE = { background: "transparent", color: "var(--muted)", fontFamily: "var(--mono)", fontSize: "11px", overflow: "visible" };
 
-export function svg(p: SVGSVGElement | HTMLElement, aria: string): string {
+/** `decimales` : précision des coordonnées (cartes de territoires : 1, soit un dixième de pixel). */
+export function svg(p: SVGSVGElement | HTMLElement, aria: string, decimales: 1 | 2 = 2): string {
   const el = p.tagName.toLowerCase() === "svg" ? p : p.querySelector("svg")!;
   el.setAttribute("role", "img");
   el.setAttribute("aria-label", aria);
@@ -19,8 +20,8 @@ export function svg(p: SVGSVGElement | HTMLElement, aria: string): string {
   el.removeAttribute("class");
   // Le SVG entier porte sa description (role="img") : les libellés des groupes internes sont superflus.
   for (const g of el.querySelectorAll("[aria-label]")) if (g !== el) g.removeAttribute("aria-label");
-  // Coordonnées à deux décimales au plus.
-  return el.outerHTML.replace(/(\d+\.\d{2})\d+/g, "$1");
+  // Coordonnées tronquées à `decimales` décimales.
+  return el.outerHTML.replace(decimales === 1 ? /(\d+\.\d)\d+/g : /(\d+\.\d{2})\d+/g, "$1");
 }
 
 export interface RangPoints {

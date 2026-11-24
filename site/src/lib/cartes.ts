@@ -94,7 +94,7 @@ export function svgCarteDepartements(
         }),
       ],
     });
-    return svg(p, aria);
+    return svg(p, aria, 1);
   };
   const presents = valeurs.map((v) => connus.get(v.dep)).filter((f): f is Fond => !!f);
   const aria = `Carte par département : ${TITRE[vue]}`;
@@ -142,7 +142,7 @@ export function svgCarteBudget(
         }),
       ],
     });
-    return svg(p, label);
+    return svg(p, label, 1);
   };
   const conique = { type: "conic-conformal", parallels: [44, 49], rotate: [-3, 0] };
   const codeDe = (f: (typeof formes)[number]) => f.contour.properties.code;
