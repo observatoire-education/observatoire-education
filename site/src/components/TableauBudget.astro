@@ -4,12 +4,22 @@ import { comparerCollectivites, type NiveauBudget } from "@obs/shared/collectivi
 import type { BudgetCollectivite } from "@obs/shared/donnees";
 import { LIBELLES_BUDGET as L } from "@obs/shared/libelles";
 import { brutBudget, montantBudget } from "../lib/budget";
+import { departementsDisponibles, regionsDisponibles } from "../lib/donnees";
 import Cellule from "./Cellule.astro";
 
 interface Props { collectivites: BudgetCollectivite[]; niveau: NiveauBudget }
 const { collectivites, niveau } = Astro.props;
 const lignes = [...collectivites].sort(comparerCollectivites);
 const exercice = Math.max(...lignes.map((c) => c.exercices.at(-1)?.exercice ?? 0));
+// Les départements (et la Ville de Paris, qui en exerce la compétence) et les régions renvoient à leur page.
+const pagesDep = new Set(departementsDisponibles());
+const pagesReg = new Set(regionsDisponibles());
+const lienCollectivite = (id: string): string | null => {
+  const dep = id === "paris" ? "75" : id.startsWith("dep-") ? id.slice(4) : null;
+  if (dep) return pagesDep.has(dep) ? `/departement/${dep}/` : null;
+  const reg = id.startsWith("reg-") ? id.slice(4) : null;
+  return reg && pagesReg.has(reg) ? `/region/${reg}/` : null;
+};
 const contribution = niveau === "colleges" ? L.postes.contributionColleges : L.postes.contributionLycees;
 ---
 <div class="moyens moyens-tableau">
@@ -27,9 +37,10 @@ const contribution = niveau === "colleges" ? L.postes.contributionColleges : L.p
           const cellules = e
             ? [[e.public.horsPersonnel, "pub"], [e.public.avecPersonnel, "pub"], [e.public.investissement, "pub"], [e.prive.fonctionnement, "pri"], [e.prive.investissement, "pri"]] as const
             : [];
+          const lien = lienCollectivite(c.id);
           return (
             <tr>
-              <th scope="row">{c.libelle}</th>
+              <th scope="row">{lien ? <a href={lien}>{c.libelle}</a> : c.libelle}</th>
               {cellules.map(([m, s]) => {
                 const a = montantBudget(m, niveau);
                 return <td class={`n ${s}`}><Cellule texte={a.texte} absent={a.absent} /></td>;
