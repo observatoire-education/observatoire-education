@@ -83,6 +83,17 @@ Configuration dans `observatoire.config.json` :
 
 Après l'ajout d'une source (par exemple un nouvel exercice du budget), lancer `nightly` à la main (*Actions → nightly → Run workflow*) : tant qu'aucune version de cette source n'est archivée, le build sur push échoue et le site reste sur la version précédente.
 
+### Mise en ligne de la phase 4
+
+La phase 4 ajoute 11 sources (établissements fermés, IPS 2016-2021 et 2022, IVAC, IVAL, ségrégation). Ordre à suivre :
+
+1. Merger la branche dans `main`.
+2. Lancer le workflow `nightly` à la main (*Actions → nightly → Run workflow*, `workflow_dispatch`) : première collecte des 11 nouvelles sources, publiées sur les GitHub Releases.
+3. Lancer `bun scripts/rattraper-corrections.ts` sur le dépôt réel (manifeste à jour, accès aux Releases), puis commiter `archives/corrections.json`. Une paire de versions en échec est signalée dans la sortie sans arrêter les autres.
+4. Le déploiement suit : le push de `archives/corrections.json` reconstruit le site et le redéploie avec les mentions de correction.
+
+Avant l'étape 2, un build sur `main` échoue proprement (« aucune version archivée pour fermes ») sans rien publier de faux : le site reste sur la version précédente.
+
 La collecte tourne ensuite chaque nuit à 2 h 17 UTC. Une nuit sans changement de source enregistre seulement le journal, sans reconstruire le site.
 
 ## Contact

@@ -203,9 +203,10 @@ Comme les phases précédentes (`bun test`, tests sur le HTML généré), avec e
 4. La déduction des successeurs a besoin de la **date d'ouverture** des établissements actifs : `date_ouverture` rejoint les colonnes requises de l'Annuaire (une nouvelle version de l'Annuaire est archivée à la première collecte).
 5. **Poids d'une fiche** : le budget de poids d'une fiche complète du site d'essai est fixé à 60 000 octets (tâches 10 et 11, bloc Résultats et IPS historique). Build mesuré sur données réelles : 769,1 Mo et 13 917 fichiers, sous les garde-fous de 900 Mo et 50 000 fichiers.
 6. **Sessions** : un résumé de réussite porte la dernière session **de sa source** (et non une session commune à toutes les sources) ; les valeurs plus anciennes ne sont pas mélangées dans les listes, voisins et nuages.
-7. **Nuages** : chaque point associe les résultats d'une session à l'IPS de la rentrée session − 1 ; l'IPS par voie des lycées est utilisé quand il est publié pour cette rentrée, sinon l'IPS de l'ensemble de l'établissement pour tous les points, avec une note sous le graphique.
+7. **Nuages** : chaque point associe les résultats d'une session à l'IPS de la rentrée session − 1 ; l'IPS par voie des lycées est utilisé quand il est publié pour cette rentrée, sinon l'IPS de l'ensemble de l'établissement pour tous les points, avec une note sous le graphique. Le tableau des établissements donne l'IPS de la dernière rentrée, qui peut différer de celui du nuage : la note sous le nuage le dit (« … le tableau des établissements donne le taux de réussite et la valeur ajoutée, et l'IPS de la dernière rentrée. ») au lieu d'annoncer « les mêmes chiffres ».
 8. **Secteur des fermés** : lorsque le jeu des établissements fermés ne le donne pas, le secteur est repris des sources qui citent l'établissement fermé.
 9. **IPS** : la DEPP annonce une rupture de série à la rentrée 2022 (voir 6.8) ; les titres des jeux `ips_colleges_2022` et `ips_lycees_2022` suivent ceux du portail (« … dans les collèges (2022) », « … dans les lycées (2022) »).
+10. **Fermés avant 2019** : sans effectifs avant la rentrée 2019, un établissement fermé avant la rentrée 2019 ne compte pas dans les moyennes calculées des rentrées 2016 à 2018 (pondérées par les élèves de 2019) ; aucun changement de calcul, /methode/ le dit.
 
 ## 9. Idées gardées pour plus tard
 
