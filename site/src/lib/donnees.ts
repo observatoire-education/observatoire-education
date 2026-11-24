@@ -29,6 +29,7 @@ export const lireTerritoire = (ref: Pick<RefTerritoire, "niveau" | "code">): Don
     ? lireFrance()
     : lire<DonneesTerritoire>(`${DOSSIERS[ref.niveau]}/${ref.code}.json`, ref.niveau !== "commune");
 export const departementsDisponibles = (): string[] => codes("departements");
+export const regionsDisponibles = (): string[] => codes("regions");
 export const academiesDisponibles = (): string[] => codes("academies");
 let communes: Set<string> | undefined;
 /** Communes ayant une page (au moins SEUIL_COMMUNE établissements, décidé par le pipeline). */

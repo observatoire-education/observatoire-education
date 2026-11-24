@@ -14,9 +14,9 @@ describe("fiche établissement", () => {
     expect(t).toMatch(/Source : MEN-DEPP, Indices de position sociale des collèges · rentrée 2025-2026 · collecté le \d\d\/\d\d\/\d{4}/);
   });
 
-  test("fil d'Ariane : France, académie, département et commune sont des liens", () => {
+  test("fil d'Ariane : France, région, académie, département et commune sont des liens", () => {
     const liens = [...doc("etablissement/0440001A").querySelectorAll(".crumb a")].map((a) => a.getAttribute("href"));
-    expect(liens).toEqual(["/france/", "/academie/17/", "/departement/44/", "/commune/44109/"]);
+    expect(liens).toEqual(["/france/", "/region/52/", "/academie/17/", "/departement/44/", "/commune/44109/"]);
     expect(texte("etablissement/0440001A")).toContain("Académie de Nantes");
   });
 

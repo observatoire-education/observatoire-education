@@ -1,14 +1,15 @@
 ---
-// Fil d'Ariane : France › Académie › Département › Commune. Tout maillon dont la page existe est un lien.
+// Fil d'Ariane : France › Région › Académie › Département › Commune. Tout maillon dont la page existe est un lien.
 import type { RefTerritoire } from "@obs/shared/donnees";
 import { academie } from "@obs/shared/libelles";
 import { cheminTerritoire } from "@obs/shared/territoires";
-import { communesDisponibles } from "../lib/donnees";
+import { communesDisponibles, regionsDisponibles } from "../lib/donnees";
 
 interface Props { parents: RefTerritoire[]; dernier?: string }
 const { parents, dernier } = Astro.props;
 const libelle = (r: RefTerritoire) => (r.niveau === "academie" ? academie(r.libelle) : r.libelle);
-const aUnePage = (r: RefTerritoire) => r.niveau !== "commune" || communesDisponibles().has(r.code);
+const aUnePage = (r: RefTerritoire) =>
+  r.niveau === "commune" ? communesDisponibles().has(r.code) : r.niveau !== "region" || regionsDisponibles().includes(r.code);
 ---
 {(parents.length > 0 || dernier) && (
   <nav class="crumb" aria-label="Fil d'Ariane">

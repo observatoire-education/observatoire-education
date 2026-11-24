@@ -1,12 +1,13 @@
 ---
-// En-tête de fiche : fil d'Ariane (seuls les maillons dont la page existe sont des liens),
+// En-tête de fiche : fil d'Ariane (France › région › académie › département › commune ; seuls les maillons dont la page existe sont des liens),
 // nom, pastilles, mention de disparition, sites multiples, actions.
 import type { RefTerritoire } from "@obs/shared/donnees";
 import { CONTRATS, FAMILLES, LIBELLES, SECTEURS } from "@obs/shared/libelles";
+import { regionDe, REGIONS } from "@obs/shared/collectivites";
 import { communeDeRattachement, LIBELLES_PLM } from "@obs/shared/territoires";
 import type { Fiche } from "@obs/shared/types";
 import { lienPermanent } from "../lib/config";
-import { communesDisponibles } from "../lib/donnees";
+import { communesDisponibles, regionsDisponibles } from "../lib/donnees";
 import Ariane from "./Ariane.astro";
 
 interface Props { f: Fiche }
@@ -17,8 +18,14 @@ const url = lienPermanent(`/etablissement/${f.uai}/`);
 // Maillon commune : la ville pour un arrondissement de Paris, Lyon ou Marseille qui a sa page.
 const codeCommune = communeDeRattachement(f.codeCommune);
 const plm = communesDisponibles().has(codeCommune) ? LIBELLES_PLM[codeCommune as keyof typeof LIBELLES_PLM] : undefined;
+// Maillon région : seulement si la région a sa page (le 975 n'a pas de région).
+const codeRegion = regionDe(f.dep);
+const region = codeRegion && regionsDisponibles().includes(codeRegion)
+  ? [{ niveau: "region", code: codeRegion, libelle: REGIONS.find((r) => r.code === codeRegion)!.libelle } as RefTerritoire]
+  : [];
 const parents: RefTerritoire[] = [
   { niveau: "france", code: "FR", libelle: "France" },
+  ...region,
   { niveau: "academie", code: f.aca, libelle: f.acaLibelle },
   { niveau: "departement", code: f.dep, libelle: f.depLibelle },
   { niveau: "commune", code: codeCommune, libelle: plm ?? f.commune },

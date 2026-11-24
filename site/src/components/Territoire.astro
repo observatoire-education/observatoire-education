@@ -1,5 +1,5 @@
 ---
-// Gabarit des pages de territoire (France, académie, département, commune) : un onglet (ancre) par famille
+// Gabarit des pages de territoire (France, région, académie, département, commune) : un onglet (ancre) par famille
 // d'établissement, car les moyennes n'ont de sens qu'à type égal. Les blocs affichés dépendent du niveau
 // (tableau 6.1 de la spécification de la phase 2).
 import type { DonneesTerritoire, IpsMoyens, NiveauTerritoire } from "@obs/shared/donnees";
@@ -29,12 +29,14 @@ const france = lireFrance();
 const sources = Object.values(lireSources()).filter((s) => s.actuelle);
 const familles = famillesDe(d);
 const total = familles.reduce((a, [, s]) => a + s.compte.public + s.compte.prive, 0);
+const academies = d.academies ?? [];
 const avecEtablissements = niveau === "departement" || niveau === "commune";
 
 /** Le territoire et ses niveaux supérieurs, du plus proche au plus large (colonnes des moyennes). */
 const NIVEAUX: Niveau[] =
   niveau === "departement" ? ["departement", "academie", "france"]
   : niveau === "academie" ? ["academie", "france"]
+  : niveau === "region" ? ["france"]
   : niveau === "france" ? ["france"]
   : [];
 const nom = niveau === "academie" ? academie(d.ref.libelle) : d.ref.libelle;
@@ -42,11 +44,12 @@ const titre = niveau === "departement" ? `${d.ref.libelle} (${d.ref.code})` : ni
 const lieu =
   niveau === "departement" ? `du département ${d.ref.libelle}`
   : niveau === "academie" ? `de l'${nom.charAt(0).toLowerCase()}${nom.slice(1)}`
+  : niveau === "region" ? `de la région ${nom}`
   : niveau === "commune" ? `de la commune de ${d.ref.libelle}`
   : "en France";
 const csv =
   niveau === "france" ? { href: `${chemin}academies.csv`, texte: "Télécharger les académies (CSV)" }
-  : niveau === "academie" ? { href: `${chemin}departements.csv`, texte: "Télécharger les départements (CSV)" }
+  : niveau === "academie" || niveau === "region" ? { href: `${chemin}departements.csv`, texte: "Télécharger les départements (CSV)" }
   : { href: `${chemin}etablissements.csv`, texte: "Télécharger la liste (CSV)" };
 const libelleNiveau = (n: Niveau) => (n === "departement" ? (dep ?? d.ref).libelle : n === "academie" ? academie(aca?.libelle ?? "") : "France");
 const enteteNiveau = (n: Niveau) => (n === "departement" ? "Dép." : n === "academie" ? "Académie" : "France");
@@ -72,7 +75,7 @@ const ipsCalcule = (f: Famille, ips: IpsMoyens, compte: number, s: "public" | "p
   const v = ips[s];
   if (v !== null) return { t: nombre(v), n: ips.n?.[s] ?? null };
   if (compte > 0) return { t: LIBELLES.nonDisponible, n: null };
-  return { t: `Aucun ${nomFamille(f, 1)} ${s === "public" ? "public" : "privé"} dans la commune`, n: null };
+  return { t: `Aucun ${nomFamille(f, 1)} ${s === "public" ? "public" : "privé"} dans ${niveau === "region" ? "la région" : "la commune"}`, n: null };
 };
 /** Commune : moyennes d'IPS publiées par la DEPP pour son département, en repère. */
 const ipsDepartement = niveau === "commune" && dep ? lireTerritoire(dep).familles : {};
@@ -95,7 +98,8 @@ const badges = [
   ...(niveau === "commune" && dep ? [dep.libelle] : []),
   `${entier(total)} établissements`,
   ...(niveau === "departement" ? [`${communes.filter((c) => c.n !== null).length} communes avec un collège ou un lycée`] : []),
-  ...(niveau === "academie" ? [`${d.enfants.length} départements`] : []),
+  ...(niveau === "academie" || niveau === "region" ? [`${d.enfants.length} départements`] : []),
+  ...(niveau === "region" ? [`${academies.length} académies`] : []),
   ...(niveau === "france" ? [`${d.enfants.length} académies`] : []),
 ];
 ---
@@ -219,10 +223,26 @@ const badges = [
     );
   })}
 
-  {(niveau === "france" || niveau === "academie") && (
+  {niveau === "france" && (
+    <section id="regions">
+      <h2>Régions</h2>
+      <div class="chips">{[...france.regions].sort((a, b) => a.libelle.localeCompare(b.libelle, "fr")).map((r) => (
+        <a class="chip chip-texte" href={cheminTerritoire(r)}>{r.libelle}</a>
+      ))}</div>
+    </section>
+  )}
+
+  {(niveau === "france" || niveau === "academie" || niveau === "region") && (
     <section id="territoires">
-      <h2>{niveau === "france" ? "Académies" : "Départements de l'académie"}</h2>
+      <h2>{niveau === "france" ? "Académies" : niveau === "region" ? "Départements de la région" : "Départements de l'académie"}</h2>
       <ListeTerritoires lignes={d.enfants} />
+    </section>
+  )}
+
+  {niveau === "region" && academies.length > 0 && (
+    <section id="academies">
+      <h2>Académies de la région</h2>
+      <div class="chips">{academies.map((a) => <a class="chip chip-texte" href={cheminTerritoire(a)}>{academie(a.libelle)}</a>)}</div>
     </section>
   )}
 

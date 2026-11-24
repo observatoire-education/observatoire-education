@@ -2,14 +2,16 @@
 // Le dossier vient de OBS_CONTOURS, par défaut site/contours (le build s'exécute depuis site/).
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { REGIONS } from "@obs/shared/collectivites";
 import type { Feature, FeatureCollection, Geometry } from "geojson";
-import { feature } from "topojson-client";
-import type { Topology } from "topojson-specification";
+import { feature, merge } from "topojson-client";
+import type { GeometryCollection, MultiPolygon, Polygon, Topology } from "topojson-specification";
 
 type Contour = Feature<Geometry, { code: string; dep?: string }>;
 type Contours = FeatureCollection<Geometry, { code: string; dep?: string }>;
 
 interface Charge {
+  topoDepartements: { topo: Topology; geometries: (Polygon | MultiPolygon)[] };
   departements: Contour[];
   communes: Contour[];
   communesParCode: Map<string, Contour>;
@@ -18,16 +20,22 @@ interface Charge {
 
 let cache: { dossier: string; charge: Charge } | undefined;
 
-function lire(dossier: string, fichier: string): Contour[] {
+function topologie(dossier: string, fichier: string): { topo: Topology; objet: GeometryCollection<{ code: string }> } {
   const topo = JSON.parse(readFileSync(resolve(dossier, fichier), "utf8")) as Topology;
-  const objet = Object.values(topo.objects)[0];
-  if (!objet) throw new Error(`${fichier} : aucun objet TopoJSON`);
+  const objet = Object.values(topo.objects)[0] as GeometryCollection<{ code: string }> | undefined;
+  if (!objet || objet.type !== "GeometryCollection") throw new Error(`${fichier} : aucun objet TopoJSON`);
+  return { topo, objet };
+}
+
+function lire(dossier: string, fichier: string): Contour[] {
+  const { topo, objet } = topologie(dossier, fichier);
   return (feature(topo, objet) as unknown as Contours).features;
 }
 
 function charger(): Charge {
   const dossier = process.env.OBS_CONTOURS ?? resolve(process.cwd(), "..", "site", "contours");
   if (cache?.dossier === dossier) return cache.charge;
+  const dep = topologie(dossier, "departements.topo.json");
   const departements = lire(dossier, "departements.topo.json");
   const communes = lire(dossier, "communes.topo.json");
   const communesParCode = new Map<string, Contour>();
@@ -39,7 +47,7 @@ function charger(): Charge {
     liste.push(c);
     communesParDep.set(dep, liste);
   }
-  const charge = { departements, communes, communesParCode, communesParDep };
+  const charge = { topoDepartements: { topo: dep.topo, geometries: dep.objet.geometries as (Polygon | MultiPolygon)[] }, departements, communes, communesParCode, communesParDep };
   cache = { dossier, charge };
   return charge;
 }
@@ -58,3 +66,16 @@ export const contourDepartement = (code: string): Contour | null =>
 export const communesDuDepartement = (dep: string): Contours => collection(charger().communesParDep.get(dep) ?? []);
 
 export const contourCommune = (insee: string): Contour | null => charger().communesParCode.get(insee) ?? null;
+
+/**
+ * Contour d'une région : fusion des contours de ses départements (`merge` de topojson-client, sans frontière
+ * intérieure). Null si aucun de ses départements n'a de contour.
+ */
+export function contourRegion(code: string): Contour | null {
+  const region = REGIONS.find((r) => r.code === code);
+  if (!region) return null;
+  const { topo, geometries } = charger().topoDepartements;
+  const membres = geometries.filter((g) => region.deps.includes(String((g.properties as { code?: string } | undefined)?.code)));
+  if (!membres.length) return null;
+  return { type: "Feature", properties: { code }, geometry: merge(topo, membres) };
+}

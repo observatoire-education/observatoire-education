@@ -50,10 +50,10 @@ const csv = (colonnes: readonly string[], lignes: (string | number | null)[][]):
 
 /**
  * CSV (séparateur « ; », point décimal) ; une absence est vide, ou porte son statut (« non_publie_prive »).
- * Département et commune : un établissement par ligne ; académie et France : un territoire enfant par ligne.
+ * Département et commune : un établissement par ligne ; région, académie et France : un territoire enfant par ligne.
  */
 export function csvTerritoire(d: DonneesTerritoire): string {
-  if (d.ref.niveau === "academie" || d.ref.niveau === "france") {
+  if (d.ref.niveau === "academie" || d.ref.niveau === "france" || d.ref.niveau === "region") {
     return csv(COLONNES_CSV_ENFANTS, d.enfants.map((e: LigneTerritoire) => [
       e.ref.code, e.ref.libelle, e.compte.public, e.compte.prive, e.eleves.public, e.eleves.prive, e.partPrive,
       e.ecartIpsColleges,
