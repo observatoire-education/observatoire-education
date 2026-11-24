@@ -1,6 +1,7 @@
 // Types communs au pipeline et au site.
 // Règle cardinale : une donnée absente n'est jamais un zéro ; elle porte un statut.
 import type { CodeIndicateur, CodeRepartition } from "./libelles.ts";
+import type { BudgetCollectivite, MoyennesBudgetFrance } from "./donnees.ts";
 
 export type { CodeIndicateur, CodeRepartition };
 
@@ -15,7 +16,8 @@ export type SourceId =
   | "effectifs_colleges"
   | "effectifs_lycees_gt"
   | "effectifs_lycees_pro"
-  | "personnels";
+  | "personnels"
+  | `budget_${number}`;
 
 /** Une valeur, son statut et son origine (source et rentrée de septembre). */
 export interface Mesure {
@@ -143,4 +145,6 @@ export interface Fiche extends Identite {
   /** null = voisins non calculables (coordonnées absentes ou page disparue). */
   voisins: Voisin[] | null;
   sources: SourceRef[];
+  /** Moyens de la collectivité ; seul le niveau de la famille est présent, null = collectivité non identifiée. */
+  budget: { colleges?: BudgetCollectivite | null; lycees?: BudgetCollectivite | null; france: MoyennesBudgetFrance[] };
 }

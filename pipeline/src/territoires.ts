@@ -287,6 +287,7 @@ export async function exporterTerritoires(actives: Fiche[], db: Db, sortie: stri
     const ref: RefTerritoire = { niveau: "commune", code, libelle: libelleCommune(code, groupe) };
     communesParDep.set(premier.dep, [...(communesParDep.get(premier.dep) ?? []), ref]);
     const donnees: DonneesTerritoire = {
+      budget: { collectivites: [], france: [] }, // provisoire : calculé à la tâche 6
       ref, parents: [FRANCE, refAcademie(premier), refDepartement(premier)], rentree,
       familles: familles(groupe, (_, g) => calculee(g), { liste: true, niveaux: null }),
       horsContrat: horsContrat((l) => communeDeRattachement(l.code_commune) === code),
@@ -299,6 +300,7 @@ export async function exporterTerritoires(actives: Fiche[], db: Db, sortie: stri
   for (const [dep, groupe] of Map.groupBy(actives, (f) => f.dep)) {
     const premier = groupe[0]!;
     const donnees: DonneesTerritoire = {
+      budget: { collectivites: [], france: [] }, // provisoire : calculé à la tâche 6
       ref: refDepartement(premier), parents: [FRANCE, refAcademie(premier)], rentree,
       familles: familles(groupe, (famille) => depp(ips.dep.get(`${famille}|${dep}`)), {
         liste: true, niveaux: ["departement", "academie", "france"],
@@ -313,6 +315,7 @@ export async function exporterTerritoires(actives: Fiche[], db: Db, sortie: stri
   const parAcademie = Map.groupBy(actives, (f) => f.aca);
   for (const [aca, groupe] of parAcademie) {
     const donnees: DonneesTerritoire = {
+      budget: { collectivites: [], france: [] }, // provisoire : calculé à la tâche 6
       ref: refAcademie(groupe[0]!), parents: [FRANCE], rentree,
       familles: familles(groupe, (famille) => depp(ips.aca.get(`${famille}|${aca}`)), { liste: false, niveaux: ["academie", "france"] }),
       horsContrat: horsContrat((l) => l.aca === aca),
@@ -335,6 +338,7 @@ export async function exporterTerritoires(actives: Fiche[], db: Db, sortie: stri
     }))
     .sort(parLibelle);
   const france: DonneesFrance = {
+    budget: { collectivites: [], france: [] }, // provisoire : calculé à la tâche 6
     ref: FRANCE, parents: [], rentree,
     familles: familles(actives, (famille) => depp(ips.nat.get(`${famille}|FR`)), { liste: false, niveaux: ["france"] }),
     horsContrat: horsContratLignes.length,

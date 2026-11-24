@@ -25,7 +25,7 @@ interface Reglage {
 const duck = await connexion();
 
 async function fabriquer(id: SourceId, r: Reglage, dest: string): Promise<void> {
-  const colonnes = SOURCES[id].colonnesRequises.filter((c) => c !== r.sansColonne);
+  const colonnes = SOURCES[id]!.colonnesRequises.filter((c) => c !== r.sansColonne);
   const expr = (c: string) => {
     if (c === "identifiant_de_l_etablissement" || c === "uai") return `'044' || lpad(i::varchar, 4, '0') || 'A'`;
     if (c === "type_etablissement") return `'Collège'`;

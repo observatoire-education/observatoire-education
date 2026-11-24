@@ -1,4 +1,5 @@
 // Format des fichiers de données produits par le pipeline (site/data/) et lus par le site.
+import type { IdCollectivite, NiveauBudget } from "./collectivites.ts";
 import type { CodeIndicateur } from "./libelles.ts";
 import type { Comparaison, Famille, Secteur, SourceId, Statut } from "./types.ts";
 
@@ -51,7 +52,7 @@ export interface SyntheseFamille {
   liste: LigneListe[];
 }
 
-export type NiveauTerritoire = "france" | "academie" | "departement" | "commune";
+export type NiveauTerritoire = "france" | "region" | "academie" | "departement" | "commune";
 
 /** Un territoire désigné par son niveau et son code (France : code « FR »). */
 export interface RefTerritoire {
@@ -91,11 +92,14 @@ export interface ValeurCarte {
   dep: string;
   partPrive: number | null;
   ecartIpsColleges: number | null;
+  /** Fonctionnement hors personnel par élève du public (collèges, dernier exercice) de la collectivité du département. */
+  budget?: number | null;
 }
 
 export type CarteDonnees =
   | { genre: "points"; points: PointCarte[] }
-  | { genre: "departements"; valeurs: ValeurCarte[] };
+  | { genre: "departements"; valeurs: ValeurCarte[] }
+  | { genre: "collectivites"; valeurs: { id: IdCollectivite; deps: string[]; budget: number | null }[] };
 
 export interface DonneesTerritoire {
   ref: RefTerritoire;
@@ -109,10 +113,13 @@ export interface DonneesTerritoire {
   /** Département : communes ayant une page ; sinon []. */
   communes: RefTerritoire[];
   carte: CarteDonnees;
+  budget: BudgetTerritoire;
+  /** Page région : académies de la région ; sinon absent. */
+  academies?: RefTerritoire[];
 }
 
 /** Données de la France : celles d'un territoire, plus la liste des académies et de leurs départements. */
-export interface DonneesFrance extends DonneesTerritoire {
+export interface DonneesFrance extends Omit<DonneesTerritoire, "academies"> {
   academies: { aca: string; libelle: string; departements: { dep: string; libelle: string }[] }[];
 }
 
@@ -127,6 +134,8 @@ export interface VersionSource {
   modified: string;
   collecteLe: string;
   lignes: number;
+  /** Requête qui a produit le fichier (sources interrogées par requête, comme le budget). */
+  requete?: string;
 }
 
 export interface DonneesSource {
@@ -138,4 +147,59 @@ export interface DonneesSource {
   actuelle: VersionSource | null;
   /** Toutes les versions archivées, de la plus ancienne à la plus récente. */
   versions: VersionSource[];
+}
+
+export type StatutBudget =
+  | "ok"
+  | "personnel_non_rattache"
+  | "fonction_non_detaillee"
+  | "aucun_eleve_prive"
+  | "collectivite_non_identifiee"
+  | "non_disponible";
+
+/** Un montant (€) et son montant par élève ; `null` jamais remplacé par zéro, le statut dit pourquoi. */
+export interface MontantBudget {
+  total: number | null;
+  parEleve: number | null;
+  statut: StatutBudget;
+}
+
+export interface ExerciceBudget {
+  exercice: number;
+  /** Rentrée des élèves : exercice − 1. */
+  rentree: number;
+  source: SourceId;
+  eleves: ParSecteur<number | null>;
+  public: { horsPersonnel: MontantBudget; avecPersonnel: MontantBudget; investissement: MontantBudget };
+  prive: { fonctionnement: MontantBudget; investissement: MontantBudget };
+}
+
+export interface BudgetCollectivite {
+  id: IdCollectivite;
+  libelle: string;
+  niveau: NiveauBudget;
+  /** Par exercice croissant. */
+  exercices: ExerciceBudget[];
+  mentions: ("agricole" | "cites_scolaires")[];
+  partCitesScolaires?: number;
+}
+
+/** Moyenne France d'un poste : `n` collectivités ayant une valeur. */
+export interface MoyenneBudget {
+  valeur: number | null;
+  n: number;
+}
+
+export interface MoyennesBudgetFrance {
+  niveau: NiveauBudget;
+  exercices: {
+    exercice: number;
+    public: { horsPersonnel: MoyenneBudget; avecPersonnel: MoyenneBudget; investissement: MoyenneBudget };
+    prive: { fonctionnement: MoyenneBudget; investissement: MoyenneBudget };
+  }[];
+}
+
+export interface BudgetTerritoire {
+  collectivites: BudgetCollectivite[];
+  france: MoyennesBudgetFrance[];
 }

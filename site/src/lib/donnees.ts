@@ -19,14 +19,15 @@ export const lireIndex = (): EntreeIndex[] => lire<EntreeIndex[]>("index.json", 
 export const lireFrance = (): DonneesFrance => lire<DonneesFrance>("france.json", true);
 export const lireSources = (): Record<string, DonneesSource> => lire<Record<string, DonneesSource>>("sources.json", true);
 
-const DOSSIERS = { departement: "departements", academie: "academies", commune: "communes" } as const;
+const DOSSIERS = { departement: "departements", region: "regions", academie: "academies", commune: "communes" } as const;
 const codes = (dossier: string): string[] =>
   existsSync(join(DOSSIER, dossier)) ? readdirSync(join(DOSSIER, dossier)).map((f) => f.replace(/\.json$/, "")).sort() : [];
 
 /** Données d'un territoire ; celles des communes (un millier) ne sont pas gardées en mémoire. */
 export const lireTerritoire = (ref: Pick<RefTerritoire, "niveau" | "code">): DonneesTerritoire =>
   ref.niveau === "france"
-    ? lireFrance()
+    ? // `academies` de la France a une forme propre (académies et leurs départements) ; la page ne lit que les champs communs.
+      (lireFrance() as unknown as DonneesTerritoire)
     : lire<DonneesTerritoire>(`${DOSSIERS[ref.niveau]}/${ref.code}.json`, ref.niveau !== "commune");
 export const departementsDisponibles = (): string[] => codes("departements");
 export const academiesDisponibles = (): string[] => codes("academies");

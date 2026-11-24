@@ -169,6 +169,7 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
     return {
       uai, ...identite, disparuLe,
       indicateurs: ind, repartitions: rep, eleves: el,
+      budget: { france: [] }, // provisoire : calculé à la tâche 7
       voisins: disparuLe === null ? (voisins.get(uai) ?? null) : null,
       sources: sourcesUtilisees(manifest, ind, rep, el),
     };

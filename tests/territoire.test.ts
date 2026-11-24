@@ -5,7 +5,7 @@ import { csvTerritoire, nomFamille } from "../site/src/lib/territoire.ts";
 const dep = (nom: string, commune = "Nantes"): DonneesTerritoire => ({
   ref: { niveau: "departement", code: "44", libelle: "Loire-Atlantique" },
   parents: [{ niveau: "france", code: "FR", libelle: "France" }, { niveau: "academie", code: "17", libelle: "Nantes" }],
-  rentree: 2025, horsContrat: 0, enfants: [], communes: [], carte: { genre: "points", points: [] },
+  rentree: 2025, horsContrat: 0, enfants: [], communes: [], budget: { collectivites: [], france: [] }, carte: { genre: "points", points: [] },
   familles: {
     college: {
       compte: { public: 1, prive: 0 }, eleves: { public: 10, prive: null }, ipsMoyen: { public: 100, prive: null, calculee: false },

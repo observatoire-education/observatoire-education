@@ -143,5 +143,40 @@ export function academie(libelle: string): string {
 export const NIVEAUX_TERRITORIAUX = {
   departement: "Département",
   academie: "Académie",
+  region: "Région",
   france: "France",
+} as const;
+
+/** Libellés du bloc « Moyens de la collectivité » (budget des collèges et des lycées). */
+export const LIBELLES_BUDGET = {
+  titre: "Moyens de la collectivité",
+  postes: {
+    horsPersonnel: "Fonctionnement hors personnel",
+    avecPersonnel: "Fonctionnement, personnel compris",
+    investissement: "Investissement",
+    contributionColleges: "Contribution aux collèges privés",
+    contributionLycees: "Contribution aux lycées privés",
+  },
+  unites: {
+    parEleve: "€ par élève",
+    parElevePrive: "€ par élève du privé",
+  },
+  absences: {
+    personnelNonRattacheColleges: "personnel non rattaché aux collèges dans les comptes de la collectivité",
+    personnelNonRattacheLycees: "personnel non rattaché aux lycées dans les comptes de la collectivité",
+    fonctionNonDetailleeColleges: "fonction collèges non détaillée dans les comptes de la collectivité",
+    fonctionNonDetailleeLycees: "fonction lycées non détaillée dans les comptes de la collectivité",
+    aucunElevePrive: "aucun élève du privé sous contrat",
+    collectiviteNonIdentifiee: "collectivité non identifiée dans les balances de la DGFiP",
+  },
+  moyenne: {
+    calculee: "moyenne calculée par l'observatoire",
+    de: (n: number) => `moyenne de ${n} collectivités`,
+  },
+  source: (exercice: number) =>
+    `DGFiP, balances comptables, exercice ${exercice} · élèves à la rentrée ${exercice - 1} (DEPP)`,
+  mentionAgricole:
+    "Les dépenses de la région incluent l'enseignement agricole, dont les élèves ne sont pas comptés ici : le montant par élève en est surestimé, surtout pour le privé.",
+  mentionCitesScolaires: (pourcent: string) =>
+    `Les comptes de la collectivité incluent des reversements entre collectivités pour des cités scolaires (environ ${pourcent} % des dépenses retenues).`,
 } as const;

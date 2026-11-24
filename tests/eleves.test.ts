@@ -95,7 +95,7 @@ describe("tables d'effectifs", () => {
 
 describe("cohérence des définitions", () => {
   test("les colonnes requises sont exactement celles que lit le calcul", () => {
-    for (const j of JEUX_EFFECTIFS) expect(SOURCES[j.source].colonnesRequises).toEqual(colonnesDe(j));
+    for (const j of JEUX_EFFECTIFS) expect(SOURCES[j.source]!.colonnesRequises).toEqual(colonnesDe(j));
   });
 
   test("ordres uniques et langues alignées sur les répartitions", () => {

@@ -50,7 +50,7 @@ const ficheTest = (
     code, mesure: { valeur: v, statut: "ok", source: null, rentree }, comparaisons: [], historique: [],
   });
   return {
-    ...identiteTest(`Collège ${uai}`), ...options.identite, uai, disparuLe: options.disparuLe ?? null,
+    ...identiteTest(`Collège ${uai}`), ...options.identite, uai, disparuLe: options.disparuLe ?? null, budget: { france: [] },
     indicateurs: [
       ...(options.ips === undefined ? [] : [indicateur("ips", options.ips)]),
       ...(options.eleves === undefined ? [] : [indicateur("eleves", options.eleves, options.rentreeEleves)]),
