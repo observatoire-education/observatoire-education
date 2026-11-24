@@ -1,6 +1,6 @@
 # Observatoire citoyen de l'éducation : phase 4, réussite, historique et fiabilité
 
-Date : 2026-11-24. Statut : validée par le porteur le 2026-11-24.
+Date : 2026-11-24. Statut : livrée (validée par le porteur le 2026-11-24, mise en ligne à décider).
 Complète : `2026-11-23-observatoire-citoyen-education-design.md` (la spec), `2026-11-23-observatoire-socle-et-maquettes-design.md` (le socle), `2026-11-24-observatoire-phase2-territoires-design.md` (phase 2) et `2026-11-24-observatoire-phase3-budget-design.md` (phase 3). En cas de conflit sur le périmètre de la phase 4, ce document l'emporte.
 
 ## 1. Intention
@@ -167,6 +167,7 @@ Elle gagne :
 - **Résultats des collèges à partir de 2022** : l'IVAC a changé de méthode à la session 2022, les séries d'avant ne se comparent pas ; le brevet par établissement existe de 2006 à 2021, sans valeur ajoutée, et n'est pas repris (décision du porteur).
 - **Lecture de la valeur ajoutée** : c'est l'écart entre le taux constaté et le taux attendu compte tenu des caractéristiques des élèves (âge, origine sociale, sexe…, selon la note de la DEPP). Une valeur ajoutée positive dans un établissement à IPS élevé veut dire « mieux qu'attendu pour ce public ».
 - La rupture de 2021 pour les lycées.
+- La rupture de série de l'IPS à la rentrée 2022, annoncée par la DEPP dans la documentation des jeux IPS (nouvelles valeurs de référence ; élèves sans PCS renseignée exclus du calcul) : mention sous les courbes d'IPS et ancre `#ips-ancien`.
 - Les moyennes de taux calculées par l'observatoire (pondération).
 - Les règles de déduction des successeurs et l'existence du fichier de corrections manuelles.
 - La définition d'une correction de millésime.
@@ -192,6 +193,19 @@ Comme les phases précédentes (`bun test`, tests sur le HTML généré), avec e
 - une valeur ajoutée absente ou sous secret s'affiche « non publié », jamais 0 ;
 - un lien successeur n'existe que dans un sens cohérent (le successeur pointe vers le prédécesseur et inversement) ;
 - une correction de millésime simulée produit la mention sur la seule page concernée.
+
+## 8 bis. Écarts constatés à la livraison
+
+Écarts entre cette spec et ce qui a été livré, décidés en cours de phase :
+1. Les pages académie, région et France n'ont pas de liste d'établissements : les colonnes de résultats vont dans la liste des pages **département et commune** seulement (la section 7 les mettait partout).
+2. Les **EREA** n'avaient aucun IPS (aucune source) : le lot 2 leur en donne un, de 2016-2017 à la dernière rentrée.
+3. Les effectifs ne remontent qu'à la rentrée **2019** : les moyennes d'IPS calculées des rentrées 2016 à 2018 sont pondérées par les élèves de 2019.
+4. La déduction des successeurs a besoin de la **date d'ouverture** des établissements actifs : `date_ouverture` rejoint les colonnes requises de l'Annuaire (une nouvelle version de l'Annuaire est archivée à la première collecte).
+5. **Poids d'une fiche** : le budget de poids d'une fiche complète du site d'essai passe à 60 000 octets (tâches 10 et 11, bloc Résultats et IPS historique), puis à 60 500 octets (tâche 14, mention de rupture de série de l'IPS sous la courbe). Build mesuré sur données réelles après le lot 3 : 767 Mo et 13 917 fichiers, sous les garde-fous de 900 Mo et 50 000 fichiers.
+6. **Sessions** : un résumé de réussite porte la dernière session **de sa source** (et non une session commune à toutes les sources) ; les valeurs plus anciennes ne sont pas mélangées dans les listes, voisins et nuages.
+7. **Nuages** : chaque point associe les résultats d'une session à l'IPS de la rentrée session − 1 ; l'IPS par voie des lycées est utilisé quand il est publié pour cette rentrée, sinon l'IPS de l'ensemble de l'établissement pour tous les points, avec une note sous le graphique.
+8. **Secteur des fermés** : lorsque le jeu des établissements fermés ne le donne pas, le secteur est repris des sources qui citent l'établissement fermé.
+9. **IPS** : la DEPP annonce une rupture de série à la rentrée 2022 (voir 6.8) ; les titres des jeux `ips_colleges_2022` et `ips_lycees_2022` suivent ceux du portail (« … dans les collèges (2022) », « … dans les lycées (2022) »).
 
 ## 9. Idées gardées pour plus tard
 

@@ -2,7 +2,7 @@
 
 Les chiffres publics de chaque collège et lycée de France, public et privé sous contrat : sourcés, datés, sans palmarès.
 
-Une page par établissement (environ 11 200), des pages par département, par académie, par région et par commune, une page France, le budget des collectivités en euros par élève, une recherche, une fiche imprimable A4. Chaque chiffre est situé par rapport aux moyennes du département, de l'académie et de la France, et porte sa source, son millésime et un lien vers la donnée brute archivée. Le site ne commente pas les chiffres.
+Une page par établissement (environ 11 200), des pages par département, par académie, par région et par commune, une page France, le budget des collectivités en euros par élève, les résultats des examens et la valeur ajoutée, l'historique de l'IPS depuis 2016, les établissements fermés et leurs successeurs, une recherche, une fiche imprimable A4. Chaque chiffre est situé par rapport aux moyennes du département, de l'académie et de la France, et porte sa source, son millésime et un lien vers la donnée brute archivée. Le site ne commente pas les chiffres.
 
 ## Fonctionnement
 
@@ -47,7 +47,7 @@ OBS_DEPOT=local bun run build
 
 ## Sources
 
-Jeux publiés par le ministère de l'Éducation nationale (MEN) et sa direction statistique (DEPP) sur data.education.gouv.fr, sous Licence Ouverte : Annuaire de l'éducation ; indices de position sociale des collèges et des lycées ; effectifs d'élèves des collèges, des lycées généraux et technologiques et des lycées professionnels ; personnels des établissements du second degré. Le budget des collectivités vient des balances comptables de la DGFiP (présentation croisée nature-fonction, un jeu par exercice de 2020 à 2025, sur data.economie.gouv.fr), collectées par requête filtrée et archivées avec cette requête ; les formules et les comptes retenus sont dans `docs/budget-controles.md`. Le registre est dans `pipeline/src/sources.ts` ; la méthode est publiée sur la page `/methode/` du site.
+Jeux publiés par le ministère de l'Éducation nationale (MEN) et sa direction statistique (DEPP) sur data.education.gouv.fr, sous Licence Ouverte : Annuaire de l'éducation ; indices de position sociale des collèges, des lycées et des EREA (jeux 2016-2021 et 2022 et après) ; établissements fermés ; indicateurs de valeur ajoutée des collèges (IVAC) et de résultat des lycées généraux et technologiques et professionnels (IVAL) ; indicateur de ségrégation sociale entre collèges ; effectifs d'élèves des collèges, des lycées généraux et technologiques et des lycées professionnels ; personnels des établissements du second degré. Le budget des collectivités vient des balances comptables de la DGFiP (présentation croisée nature-fonction, un jeu par exercice de 2020 à 2025, sur data.economie.gouv.fr), collectées par requête filtrée et archivées avec cette requête ; les formules et les comptes retenus sont dans `docs/budget-controles.md`. Le registre est dans `pipeline/src/sources.ts` ; la méthode est publiée sur la page `/methode/` du site.
 
 ## Phases
 
@@ -56,12 +56,12 @@ Jeux publiés par le ministère de l'Éducation nationale (MEN) et sa direction 
 | 1 | Pages établissement, départements, recherche, fiche imprimable | livrée |
 | 2 | Pages académie, commune et France, cartes | livrée |
 | 3 | Budget des collectivités en euros par élève ; pages région | livrée |
-| 4 | IVAC / IVAL, indice de ségrégation, IPS 2016-2022, successeurs, corrections de millésime | à venir |
+| 4 | IVAC / IVAL, indice de ségrégation, IPS 2016-2022, successeurs, corrections de millésime | livrée (mise en ligne à décider) |
 | 5 | Exploration des données | à venir |
 | Écoles | Écoles du premier degré | à venir |
 | Transport scolaire | Financement, tracés des lignes et temps de trajet, d'abord pour les lycées | à venir |
 
-L'ordre de 4, 5, Écoles et Transport scolaire reste à fixer. Le détail est dans `docs/superpowers/specs/`.
+L'ordre de 5, Écoles et Transport scolaire reste à fixer. Le détail est dans `docs/superpowers/specs/`.
 
 ## Mise en ligne
 
