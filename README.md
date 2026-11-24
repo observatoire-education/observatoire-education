@@ -2,7 +2,7 @@
 
 Les chiffres publics de chaque école, collège et lycée de France, public et privé sous contrat : sourcés, datés, sans palmarès.
 
-Une page par établissement (environ 11 200), des pages par département, par académie, par région et par commune, une page France, le budget des collectivités en euros par élève, les résultats des examens et la valeur ajoutée, l'historique de l'IPS depuis 2016, les établissements fermés et leurs successeurs, une recherche, une fiche imprimable A4. Chaque chiffre est situé par rapport aux moyennes du département, de l'académie et de la France, et porte sa source, son millésime et un lien vers la donnée brute archivée. Le site ne commente pas les chiffres.
+Une page par établissement et par école, des pages par département, par académie, par région et par commune, une page France, le budget des collectivités en euros par élève, les résultats des examens et la valeur ajoutée, l'historique de l'IPS depuis 2016, les établissements fermés et leurs successeurs, une recherche, une fiche imprimable A4. Chaque chiffre est situé par rapport aux moyennes du département, de l'académie et de la France, et porte sa source, son millésime et un lien vers la donnée brute archivée. Le site ne commente pas les chiffres. Avec les écoles et les communes, le site compte environ 92 000 fichiers (estimation, à confirmer par le premier build réel ; le garde-fou s'arrête à 95 000).
 
 ## Fonctionnement
 
@@ -58,10 +58,10 @@ Jeux publiés par le ministère de l'Éducation nationale (MEN) et sa direction 
 | 3 | Budget des collectivités en euros par élève ; pages région | livrée |
 | 4 | IVAC / IVAL, indice de ségrégation, IPS 2016-2022, successeurs, corrections de millésime | livrée (mise en ligne à décider) |
 | 5 | Exploration des données | à venir |
-| Écoles | Écoles du premier degré | à venir |
+| Écoles | Écoles du premier degré : fiches, collège de secteur, PIAL, écoles proches, pages commune, budget des communes | livrée (mise en ligne à décider) |
 | Transport scolaire | Financement, tracés des lignes et temps de trajet, d'abord pour les lycées | à venir |
 
-L'ordre de 5, Écoles et Transport scolaire reste à fixer. Le détail est dans `docs/superpowers/specs/`.
+La phase Écoles est faite ; le Transport scolaire vient ensuite, selon le porteur. L'ordre de la phase 5 reste à fixer. Le détail est dans `docs/superpowers/specs/`.
 
 ## Hébergement
 
@@ -129,6 +129,17 @@ La phase 4 ajoute 11 sources (établissements fermés, IPS 2016-2021 et 2022, IV
 Avant l'étape 2, un build sur `main` échoue proprement (« aucune version archivée pour fermes ») sans rien publier de faux : le site reste sur la version précédente.
 
 La collecte tourne ensuite chaque nuit à 2 h 17 UTC. Une nuit sans changement de source enregistre seulement le journal, sans reconstruire le site.
+
+### Mise en ligne de la phase Écoles
+
+La phase Écoles ajoute 8 sources (6 sources d'écoles, la carte scolaire des collèges, deux fichiers COG de l'Insee) et élargit les extraits du budget (voir plus bas). Ordre à suivre :
+
+1. Faire d'abord la bascule d'hébergement (lot 0) : voir la section Hébergement et la procédure de recette et de bascule ci-dessus. Le nombre de fichiers du site dépasse ce que GitHub Pages peut servir : le site doit déjà être sur Cloudflare Workers.
+2. Merger la branche dans `main`.
+3. Lancer le workflow `nightly` à la main (`workflow_dispatch`) : première collecte des 8 nouvelles sources, et nouvelle version archivée de chaque exercice du budget.
+4. Vérifier le journal de la collecte et du build : taux de rapprochement des adresses avec la carte scolaire, têtes de PIAL sans fiche, alerte « COG périmé » (à partir du 15 février, changer alors le millésime dans `pipeline/src/sources.ts`), nombre de fichiers affiché par le garde-fou (sous 95 000).
+
+Avant l'étape 3, un build sur `main` échoue proprement (aucune version archivée pour les nouvelles sources) sans rien publier de faux.
 
 ### Mise en ligne du lot 4 de la phase Écoles (budget des communes)
 

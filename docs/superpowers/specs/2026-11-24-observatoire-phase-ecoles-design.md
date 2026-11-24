@@ -1,6 +1,6 @@
 # Observatoire citoyen de l'éducation : phase Écoles (premier degré)
 
-Date : 2026-11-24. Statut : validée par le porteur le 2026-11-24.
+Date : 2026-11-24. Statut : livrée (mise en ligne à décider).
 Complète : `2026-11-23-observatoire-citoyen-education-design.md` (la spec), `2026-11-23-observatoire-socle-et-maquettes-design.md` (le socle) et les specs des phases 2, 3 et 4. En cas de conflit sur le périmètre de la phase Écoles, ce document l'emporte.
 
 ## 1. Intention
@@ -203,6 +203,27 @@ Même exigence que les phases précédentes : chaque règle de calcul a ses test
 - **Évaluations nationales** par département sur les pages département.
 - **RASED**, si une source ouverte apparaît.
 - **Rattachement officiel école → collège** (conseil école-collège), si une source apparaît.
+
+## 8 bis. Écarts constatés à la livraison
+
+Écarts entre cette spec et ce qui a été livré, décidés en cours de phase :
+1. **Tête de réseau REP/REP+** non affichée (aucune source à jour) : l'appartenance seule.
+2. Pas de liste nominative d'écoles sur les pages **département** : le CSV du département, et une liste de liens vers les pages commune.
+3. **Préélémentaire** publié en un seul total (pas de PS, MS, GS).
+4. **Famille** primaire / élémentaire tirée des drapeaux `ecole_maternelle` et `ecole_elementaire` de l'Annuaire.
+5. Comparaisons de la fiche école : département, académie, France (pas la commune ; les moyennes communales sont sur la page commune).
+6. **Hébergement** : la collecte de l'Annuaire écartait le type « Ecole » (`TYPES_RETENUS`) ; corrigé.
+7. **Collège de secteur** : une adresse sans numéro n'est rattachée que si toute la voie (1 à 9999, chaque parité, chaque lieu-dit) mène au même ensemble de collèges ; une voie présente dans plusieurs lieux-dits doit concorder partout ; un collège sans fiche dans l'ensemble rend l'adresse « non rapprochée ». Taux réels (données 2026-11) : commune 56,6 %, voie 28,0 %, non rapprochée 5,8 %, carte non publiée 9,5 %.
+8. **Écoles du secteur** : publiques et privées sous contrat ; collèges publics seulement ; note « seules les écoles rapprochées sont listées ».
+9. **Écoles fermées** citées aussi par l'éducation prioritaire et la typologie des classes (6.3) ; les fermetures sont comptées par école (une fusion de deux écoles = deux fermetures).
+10. **Écoles proches** : absences explicites à 50 km (« Aucune autre école à moins de 50 km », « Aucune école maternelle ou primaire à moins de 50 km », « Aucune école élémentaire ou primaire à moins de 50 km ») ; commune sans école : « Aucune école à moins de n km » ; commune sans contour : « Position de la commune non disponible : écoles les plus proches non calculées ».
+11. **Communes nouvelles** (6.7) : dans l'Annuaire, les écoles ouvertes portent le code et le nom de la commune nouvelle ; la phrase « Plus d'école à {commune déléguée} depuis {année} » n'est jamais affichée ; chaque commune déléguée a une partie « {déléguée} : écoles fermées » ; le chef-lieu n'a pas de partie propre (ses écoles fermées restent dans la liste principale). Les contours IGN sont de 2023 : une commune créée depuis n'a pas de centre.
+12. **COG** : deux sources Insee (mouvements et communes) en fichiers directs ; année codée en dur, alerte « COG périmé » dans le journal à partir du 15 février de l'année suivante ; à changer chaque janvier.
+13. **Classes** : 0 classe = non publié ; commune : une école sans classes publiées rend le total de la rentrée inconnu ; territoires : total sur les écoles qui publient, avec la note « {n} école(s) sans nombre de classes publié, non comptée(s) ».
+14. **Budget communal** : libellé « Budget par fonction non publié pour cette commune (seules les communes de 3 500 habitants et plus le publient) » (aucune source de population) ; Ville de Paris (catégorie PARIS) traitée comme la commune 75056 ; dépenses des syndicats et intercommunalités non attribuées ; exercice antérieur à une fusion : « Commune fusionnée après cet exercice : montant par élève non calculé » ; fonctions 21x (211 maternelles, 212 élémentaires, 213 classes regroupées).
+15. **Index de recherche** : plafond de 10 000 000 octets (estimation 7,7 Mo) ; repli : découpage par département.
+16. **Poids** : la fiche école d'essai la plus lourde pèse environ 30 Ko (le budget de 20 à 25 Ko visés est dépassé avec les blocs des lots 2 à 4) ; une fiche collège avec les écoles du secteur, environ 63 Ko.
+17. **Hébergement Cloudflare** : `workers_dev: false` et `preview_urls: false` au commit de bascule ; `INDEXABLE` est déjà vrai.
 
 ## 9. Laissé au builder
 
