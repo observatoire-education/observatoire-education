@@ -94,16 +94,21 @@ describe("accueil et recherche", () => {
 
   test("recherche.json : clés courtes", () => {
     const idx = JSON.parse(page("recherche.json")) as EntreeIndex[];
-    expect(idx.length).toBe(32); // 24 actifs + 2 pages du registre + 5 fiches historiques
+    expect(idx.length).toBe(42); // 24 actifs + 2 pages du registre + 5 fiches historiques, et 10 écoles (dont 4 fermées)
     expect(Object.keys(idx.find((e) => e.u === "0440001A")!).sort()).toEqual(["c", "d", "f", "n", "s", "u"]);
     expect(idx.find((e) => e.u === "0440004D")).toBeUndefined();
   });
 
-  test("écoles : page et plan du site, mais pas encore de recherche (jusqu'à la tâche 10 du plan phase Écoles)", () => {
+  test("écoles : dans la recherche, avec leur page et dans le plan du site", () => {
     const idx = JSON.parse(page("recherche.json")) as EntreeIndex[];
-    expect(idx.filter((e) => estEcole(e.f))).toEqual([]);
+    expect(idx.filter((e) => estEcole(e.f)).length).toBe(10);
+    expect(idx.find((e) => e.u === "0440202B")).toEqual({ u: "0440202B", n: "École élémentaire Jules-Ferry", c: "Nantes", d: "44", f: "elementaire", s: "public" });
     expect(page("etablissement/0440201A")).toContain("<h1>École maternelle Les Lilas</h1>");
     expect(page("sitemap.xml")).toContain("/etablissement/0440201A/");
+  });
+
+  test("accueil : le nombre d'établissements compte les écoles ouvertes", () => {
+    expect(texte("index.html")).toContain("des 31 établissements publics et privés sous contrat");
   });
 });
 
@@ -161,6 +166,23 @@ describe("sources, méthode, 404, sitemap", () => {
     expect(t).toContain("depuis 2020");
     expect(t).toContain("fonction collèges non détaillée dans les comptes de la collectivité");
     expect(t).toContain("classé en fonctionnement hors personnel");
+  });
+
+  test("sources : les six jeux des écoles et l'absence de données sur les RASED", () => {
+    const d = doc("sources");
+    for (const id of ["effectifs_ecoles", "ips_ecoles_2016", "ips_ecoles", "personnels_ecoles", "classes_ecoles", "ecoles_ep"]) {
+      expect(d.getElementById(id)).not.toBeNull();
+    }
+    expect(texte("sources")).toContain("RASED : aucune donnée ouverte");
+  });
+
+  test("méthode : IPS des écoles et écoles fermées", () => {
+    const d = doc("methode");
+    const t = texte("methode");
+    expect(d.getElementById("ecoles-sans-ips")).not.toBeNull();
+    expect(d.getElementById("successeurs-ecoles")).not.toBeNull();
+    expect(t).toContain("IPS non publié pour cette école");
+    expect(t).toContain("maternelle → maternelle ou primaire");
   });
 
   test("méthode : périmètre, moyennes, voisinage, absences, pages conservées", () => {

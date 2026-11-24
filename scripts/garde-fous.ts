@@ -14,6 +14,9 @@ export interface Limites {
  */
 export const LIMITES: Limites = { fichiers: 95_000, octetsParFichier: 25 * 1024 * 1024 };
 
+/** Poids maximal de recherche.json (chargé par le navigateur au premier focus de la recherche). */
+export const OCTETS_RECHERCHE_MAX = 6_000_000;
+
 export interface Config {
   SITE_URL: string;
   DOMAINE: string;
@@ -35,6 +38,9 @@ export function verifierDist(dossier: string, limites: Limites = LIMITES): { oct
         octets += s.size;
         fichiers++;
         if (s.size > limites.octetsParFichier) tropGros.push(`${p} (${s.size} octets)`);
+        if (p === join(dossier, "recherche.json") && s.size > OCTETS_RECHERCHE_MAX) {
+          throw new Error(`${p} pèse ${s.size} octets, au-delà de ${OCTETS_RECHERCHE_MAX} octets : l'index de recherche est trop lourd pour être chargé par la recherche`);
+        }
       }
     }
   };

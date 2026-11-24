@@ -63,4 +63,19 @@ describe("recherche de l'accueil", () => {
     const sans = await rechercher([], "nante", [], [{ i: "44109", l: "Nantès", d: "44" }]);
     expect(sans.querySelector("a[href='/commune/44109/']")).not.toBeNull();
   });
+
+  test("écoles : libellé de la famille", async () => {
+    const e = (u: string, n: string, f: string) => ({ u, n, c: "Nantes", d: "44", f, s: "public" });
+    const res = await rechercher([
+      e("0440201A", "École maternelle Les Lilas", "maternelle"),
+      e("0440202B", "École élémentaire Jules-Ferry", "elementaire"),
+      e("0440203C", "École primaire Sainte-Marie", "primaire"),
+    ], "ecole");
+    const lignes = [...res.querySelectorAll("a .s")].map((x) => x.textContent);
+    expect(lignes).toEqual([
+      "Public · École élémentaire · Nantes",
+      "Public · École maternelle · Nantes",
+      "Public · École primaire · Nantes",
+    ]);
+  });
 });

@@ -152,6 +152,19 @@ const JEUX = "https://data.education.gouv.fr/explore/dataset";
     </ol>
     <p>La première règle qui trouve un candidat unique l'emporte. Si la première règle trouve plusieurs candidats, l'observatoire n'indique aucun successeur et ne passe pas à la seconde. Le fichier <code>pipeline/successeurs-manuels.json</code> permet d'ajouter ou de retirer un lien avec son motif ; il l'emporte sur la déduction, et un code UAI inconnu y fait échouer la génération des données. Les liens ne pointent que vers des établissements qui ont une page. Une chaîne (A, puis B, puis C) est affichée maillon par maillon.</p>
 
+    <h2 id="ecoles-sans-ips">Écoles sans IPS</h2>
+    <p>L'indice de position sociale des écoles, publié par la DEPP (<a href={`${JEUX}/fr-en-ips_ecoles_v2/information/`}>2016-2021</a>, <a href={`${JEUX}/fr-en-ips-ecoles-ap2022/information/`}>2022 et après</a>), porte sur les élèves des classes élémentaires. Une école maternelle n'a donc pas d'IPS, et une école primaire ou élémentaire peut ne pas en avoir pour une rentrée donnée si la DEPP ne l'a pas publié. La fiche indique alors « IPS non publié pour cette école », sans valeur de remplacement.</p>
+
+    <h2 id="successeurs-ecoles">Écoles fermées et successeurs</h2>
+    <p>Une école fermée depuis 2012 a une page si au moins une source numérique la cite : effectifs, IPS, éducation prioritaire ou typologie des classes. Sa famille (maternelle, élémentaire ou primaire) est déduite de la nature donnée dans le jeu des établissements fermés.</p>
+    <p>Le successeur d'une école se déduit comme pour le second degré (voir <a href="#successeurs">Établissements fermés et successeurs</a>), parmi les écoles de famille compatible :</p>
+    <ul>
+      <li>maternelle → maternelle ou primaire ;</li>
+      <li>élémentaire → élémentaire ou primaire ;</li>
+      <li>primaire → maternelle, élémentaire ou primaire.</li>
+    </ul>
+    <p>Une fusion peut donner plusieurs prédécesseurs à une même école : la fiche les liste tous. Les séries de chiffres ne sont jamais fusionnées : les données de l'école fermée restent sur sa page, celles de son successeur sur la sienne.</p>
+
     <h2 id="corrections">Corrections du producteur</h2>
     <p>Une version d'une source millésimée est une correction lorsqu'au moins une ligne (clé et millésime) d'un millésime déjà présent dans la version précédente a changé de valeur sur une colonne requise, ou a disparu. Une ligne d'un millésime nouveau n'est pas une correction. Seules les valeurs publiées déclenchent la mention, jamais une moyenne calculée. La fiche donne les liens vers la version précédente et la version corrigée.</p>
 

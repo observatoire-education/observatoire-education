@@ -7,7 +7,7 @@
   var regions = JSON.parse((document.getElementById("regions") || {}).textContent || "[]");
   var communes = JSON.parse((document.getElementById("communes") || {}).textContent || "[]");
   var nomDep = {}; deps.forEach(function (d) { nomDep[d.d] = d.l; });
-  var familles = { college: "Collège", legt: "Lycée GT", lpo: "Lycée polyvalent", lp: "Lycée pro", erea: "EREA" };
+  var familles = { college: "Collège", legt: "Lycée GT", lpo: "Lycée polyvalent", lp: "Lycée pro", erea: "EREA", maternelle: "École maternelle", elementaire: "École élémentaire", primaire: "École primaire" };
   var index = null, chargement = null;
   var norm = function (s) { return String(s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase(); };
   // Toute donnée insérée dans le HTML est échappée ; les chemins sont encodés.
