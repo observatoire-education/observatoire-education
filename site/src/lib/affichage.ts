@@ -61,11 +61,12 @@ export const anneeScolaire = (r: number | null): string => (r === null ? "" : `$
 /**
  * Complément d'une ligne de source sur la fiche A4 : « moyennes publiées par la DEPP » pour les jeux actuels d'IPS,
  * sauf si les comparaisons d'IPS de la fiche sont calculées par l'observatoire (IPS d'une rentrée sans moyenne
- * publiée) ; rien pour les autres jeux d'IPS, l'Annuaire, la liste des établissements fermés et les résultats ;
- * « moyennes calculées » sinon.
+ * publiée) ; rien pour les autres jeux d'IPS, l'Annuaire, la liste des établissements fermés, les résultats, la
+ * typologie des classes et l'éducation prioritaire des écoles (sans moyenne) ; « moyennes calculées » sinon.
  */
 export function mentionMoyennesA4(id: SourceId, ipsCalculee: boolean): string {
-  if (id === "ips_colleges" || id === "ips_lycees" || id === "ips_erea") return ipsCalculee ? "" : " · moyennes publiées par la DEPP";
+  if (id === "ips_colleges" || id === "ips_lycees" || id === "ips_erea" || id === "ips_ecoles") return ipsCalculee ? "" : " · moyennes publiées par la DEPP";
   if (id.startsWith("ips_") || id === "annuaire" || id === "fermes" || id === "ivac" || id.startsWith("ival_")) return "";
+  if (id === "classes_ecoles" || id === "ecoles_ep") return "";
   return " · moyennes calculées (Σ / Σ)";
 }

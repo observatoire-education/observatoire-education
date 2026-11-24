@@ -1,10 +1,11 @@
 ---
 // Fiche imprimable A4 : même page, masquée à l'écran, seule affichée à l'impression (window.print()).
 // Tableaux seulement (aucun graphique), moyennes seules, chaque ligne renvoie à sa source numérotée.
+// Une école : fiche titrée pour le conseil d'école, avec ses classes, sans vie scolaire, budget ni voisins.
 import QRCode from "qrcode";
 import Fermeture from "./Fermeture.astro";
 import { date, entier, estSession, nombre } from "@obs/shared/format";
-import { academie, type CodeIndicateur, CONTRATS, FAMILLES, FAMILLES_PLURIEL, INDICATEURS, LIBELLES, LIBELLES_BUDGET, LIBELLES_RESULTATS as LR, SECTEURS } from "@obs/shared/libelles";
+import { academie, type CodeIndicateur, CONTRATS, estEcole, FAMILLES, FAMILLES_PLURIEL, INDICATEURS, LIBELLES, LIBELLES_BUDGET, LIBELLES_ECOLES, LIBELLES_RESULTATS as LR, libelleTypeClasse, SECTEURS } from "@obs/shared/libelles";
 import type { Fiche, Mesure, Niveau, ResultatsVoie, Secteur, SourceId, ValeurResultat } from "@obs/shared/types";
 import { anneeScolaire, formater, indicateur, mentionMoyennesA4, reference } from "../lib/affichage";
 import { absenceBudget, montantBudget, niveauDe } from "../lib/budget";
@@ -16,6 +17,7 @@ const { f, genereLe } = Astro.props;
 const lien = lienPermanent(`/etablissement/${f.uai}/`);
 const qr = await QRCode.toString(lien, { type: "svg", margin: 0, errorCorrectionLevel: "M" });
 const prive = f.secteur === "prive_sous_contrat";
+const ecole = estEcole(f.famille);
 const ipsCalculee = indicateur(f, "ips").comparaisons.some((c) => c.calculee);
 
 // Numéro de chaque source dans le pied de page.
@@ -45,30 +47,51 @@ const LIGNES: [CodeIndicateur, string][] = [
   ["part_anciennete_moins_2", "Présents depuis moins de 2 ans"],
   ["part_anciennete_8_plus", "Présents depuis 8 ans ou plus"],
 ];
+const LIGNES_ECOLE: [CodeIndicateur, string][] = [
+  ["eleves_par_classe", LIBELLES_ECOLES.elevesParClasse],
+  ["ips", "IPS"],
+  ["eleves_par_etp_ens", "Élèves par ETP enseignant"],
+  ["part_enseignantes", "Enseignantes (part des ETP)"],
+  ["part_moins_35", "Enseignants de moins de 35 ans"],
+  ["part_50_plus", "Enseignants de 50 ans ou plus"],
+  ["part_anciennete_moins_2", "Présents depuis moins de 2 ans"],
+  ["part_anciennete_8_plus", "Présents depuis 8 ans ou plus"],
+];
 const COLONNES: [Niveau, Secteur][] = [
   ["departement", "public"], ["departement", "prive_sous_contrat"],
   ["academie", "public"], ["academie", "prive_sous_contrat"],
   ["france", "public"], ["france", "prive_sous_contrat"],
 ];
-const lignes = LIGNES.map(([code, libelle]) => {
+const present = (code: CodeIndicateur) => f.indicateurs.some((i) => i.code === code);
+const lignes = (ecole ? LIGNES_ECOLE.filter(([code]) => present(code)) : LIGNES).map(([code, libelle]) => {
   const i = indicateur(f, code);
   const src = i.mesure.source ?? i.comparaisons.find((c) => c.public.source)?.public.source ?? null;
   return { code, libelle, i, renvoi: renvoi(src) };
 });
 const iEleves = indicateur(f, "eleves");
-const ecartType = indicateur(f, "ecart_type_ips");
+const ecartType = ecole ? null : indicateur(f, "ecart_type_ips");
 const rentree = iEleves.mesure.rentree ?? indicateur(f, "ips").mesure.rentree;
 
 const el = f.eleves;
 const niveaux = (el?.niveaux ?? []).filter((n) => n.eleves !== 0 && n.eleves !== null);
 const renvoiEleves = renvoi(el?.source[0]);
 const etp = (code: CodeIndicateur) => etab(code, indicateur(f, code).mesure);
-const renvoiPersonnels = renvoi("personnels");
+const renvoiPersonnels = renvoi(ecole ? "personnels_ecoles" : "personnels");
 const contrat = f.contrat ? (CONTRATS[f.contrat] ?? f.contrat) : null;
 
+// Écoles : classes de la dernière rentrée et leur type ; ULIS et UEEA quand l'école en accueille.
+const cl = f.classes ?? null;
+const renvoiClasses = renvoi(cl?.source[0]);
+const renvoiTypes = renvoi("classes_ecoles");
+const lignesSpeciales = ecole ? [
+  ...(f.ulis || (el?.ulis ?? 0) > 0 ? [{ libelle: LIBELLES_ECOLES.ulis, eleves: el?.ulis ?? null }] : []),
+  ...((el?.ueea ?? 0) > 0 ? [{ libelle: LIBELLES_ECOLES.ueea, eleves: el?.ueea ?? null }] : []),
+] : [];
+
 // Moyens de la collectivité : trois lignes (hors personnel, personnel compris, contribution au privé), moyennes France seules.
-const niveauBudget = niveauDe(f.famille);
-const budget = (niveauBudget === "colleges" ? f.budget.colleges : f.budget.lycees) ?? null;
+// Aucun pour une école (lot 4) : `niveauDe` ne prend qu'une famille du second degré.
+const niveauBudget = ecole ? null : niveauDe(f.famille);
+const budget = ecole ? null : (niveauBudget === "colleges" ? f.budget.colleges : f.budget.lycees) ?? null;
 const exBudget = budget?.exercices.at(-1);
 const moyBudget = exBudget ? f.budget.france.find((m) => m.niveau === niveauBudget)?.exercices.find((x) => x.exercice === exBudget.exercice) : undefined;
 const renvoiBudget = renvoi(exBudget?.source);
@@ -94,6 +117,7 @@ const nd = (v: number | null) => (v === null ? "n. d." : entier(v));
 <div class="a4" aria-hidden="true">
   <div class="hd">
     <div>
+      {ecole && <div class="m"><b>{LIBELLES_ECOLES.ficheA4}</b></div>}
       <div class="t">{f.nom}</div>
       <div class="m">
         <b>{SECTEURS[f.secteur]}</b>{contrat && ` · ${contrat}`} · {FAMILLES[f.famille]}{f.ep && ` · ${f.ep}`}{f.segpa && " · SEGPA"}{f.ulis && " · ULIS"} · UAI <span class="num">{f.uai}</span>
@@ -114,7 +138,7 @@ const nd = (v: number | null) => (v === null ? "n. d." : entier(v));
       <thead>
         <tr class="grp"><th></th><th></th><th colspan="2">{f.depLibelle}</th><th colspan="2">{academie(f.acaLibelle)}</th><th colspan="2">France</th></tr>
         <tr>
-          <th>Indicateur</th><th>Établissement</th>
+          <th>Indicateur</th><th>{ecole ? "École" : "Établissement"}</th>
           {COLONNES.map(([, s]) => <th><span class={`sym ${s === "public" ? "pub" : "pri"}`}></span>{s === "public" ? "public" : "privé s. c."}</th>)}
         </tr>
       </thead>
@@ -124,6 +148,13 @@ const nd = (v: number | null) => (v === null ? "n. d." : entier(v));
           <td class="n me">{iEleves.mesure.valeur !== null ? entier(iEleves.mesure.valeur) : "n. d."}</td>
           <td class="hist" colspan="6">{iEleves.historique.slice(0, -1).slice(-4).map(([a, v]) => `${a} : ${entier(v)}`).join(" · ")}</td>
         </tr>
+        {ecole && (
+          <tr>
+            <td>{LIBELLES_ECOLES.classes} {renvoiClasses && <sup>{renvoiClasses}</sup>}</td>
+            <td class={`n me${cl?.total ? "" : " np"}`}>{cl?.total ? entier(cl.total) : "n. d."}</td>
+            <td class="hist" colspan="6">{(cl?.historique ?? []).slice(0, -1).slice(-4).map(([a, , c]) => `${a} : ${c ? entier(c) : "n. d."}`).join(" · ")}</td>
+          </tr>
+        )}
         {lignes.map(({ code, libelle, i, renvoi }) => {
           const e = etab(code, i.mesure);
           return (
@@ -137,11 +168,13 @@ const nd = (v: number | null) => (v === null ? "n. d." : entier(v));
             </tr>
           );
         })}
-        <tr>
-          <td>Écart-type de l'IPS {renvoi(ecartType.mesure.source) && <sup>{renvoi(ecartType.mesure.source)}</sup>}</td>
-          <td class="n me">{ecartType.mesure.valeur !== null ? nombre(ecartType.mesure.valeur) : "n. d."}</td>
-          <td colspan="6"></td>
-        </tr>
+        {ecartType && (
+          <tr>
+            <td>Écart-type de l'IPS {renvoi(ecartType.mesure.source) && <sup>{renvoi(ecartType.mesure.source)}</sup>}</td>
+            <td class="n me">{ecartType.mesure.valeur !== null ? nombre(ecartType.mesure.valeur) : "n. d."}</td>
+            <td colspan="6"></td>
+          </tr>
+        )}
         {lignesBudget.map((l) => (
           <tr>
             <td>{l.libelle} ({l.unite}) <sup>{renvoiBudget}</sup></td>
@@ -152,7 +185,7 @@ const nd = (v: number | null) => (v === null ? "n. d." : entier(v));
               : <><td></td><td class="n">{moyenneBudget(l.moy)}</td></>}
           </tr>
         ))}
-        {!budget && (
+        {!ecole && !budget && (
           <tr>
             <td>{LIBELLES_BUDGET.titre}</td>
             <td class="n me np">n. d.</td>
@@ -192,7 +225,44 @@ const nd = (v: number | null) => (v === null ? "n. d." : entier(v));
     </div>
   )}
 
-  <div class="two">
+  {ecole && (
+    <div class="two">
+      <div>
+        <h3>Élèves par niveau {renvoiEleves && <sup>{renvoiEleves}</sup>}</h3>
+        <table>
+          <thead><tr><th>Niveau</th><th>Élèves</th></tr></thead>
+          <tbody>
+            {[...niveaux, ...lignesSpeciales].map((n) => <tr><td>{n.libelle}</td><td class="n">{nd(n.eleves)}</td></tr>)}
+            <tr><td><b>Total</b></td><td class="n"><b>{nd(el?.total ?? null)}</b></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <h3>Type des classes {renvoiTypes && <sup>{renvoiTypes}</sup>}</h3>
+        <table>
+          <tbody>
+            {cl?.types?.length ? ([[LIBELLES_ECOLES.unNiveau, 1], [LIBELLES_ECOLES.plusieursNiveaux, 2]] as const).map(([titre, k]) => {
+              const ts = cl.types!.filter((t) => (k === 1 ? t.niveaux === 1 : t.niveaux > 1));
+              return ts.length > 0 && (
+                <>
+                  <tr><td><b>{titre}</b></td><td class="n"><b>{entier(ts.reduce((a, t) => a + t.classes, 0))}</b></td></tr>
+                  {ts.map((t) => <tr><td>{libelleTypeClasse(t.libelle)}</td><td class="n">{entier(t.classes)}</td></tr>)}
+                </>
+              );
+            }) : <tr><td>Typologie des classes</td><td class="n np">n. d.</td></tr>}
+          </tbody>
+        </table>
+        <h3>Personnels {renvoiPersonnels && <sup>{renvoiPersonnels}</sup>}</h3>
+        <table>
+          <tbody>
+            {present("etp_enseignants") && <tr><td>ETP enseignants</td><td class={`n${etp("etp_enseignants").abs ? " np" : ""}`}>{etp("etp_enseignants").t}</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )}
+
+  {!ecole && <div class="two">
     <div>
       <h3>Élèves par niveau {renvoiEleves && <sup>{renvoiEleves}</sup>}</h3>
       <table>
@@ -216,7 +286,7 @@ const nd = (v: number | null) => (v === null ? "n. d." : entier(v));
         </tbody>
       </table>
     </div>
-  </div>
+  </div>}
 
   {f.voisins && f.voisins.length > 0 && (
     <div>
@@ -249,7 +319,7 @@ const nd = (v: number | null) => (v === null ? "n. d." : entier(v));
       ))}
     </ol>
     <div>
-      « non publié » : {LIBELLES.nonPubliePrive} (la DEPP ne publie pas les ETP de vie scolaire des établissements privés sous contrat).
+      {!ecole && <>« non publié » : {LIBELLES.nonPubliePrive} (la DEPP ne publie pas les ETP de vie scolaire des établissements privés sous contrat).{" "}</>}
       « n. d. » : {LIBELLES.nonDisponible}. {LIBELLES.aucunCommentaire}{" "}
       Méthode : {CONFIG.SITE_URL}/methode/
     </div>

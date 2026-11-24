@@ -3,6 +3,6 @@ import type { APIRoute } from "astro";
 import { estEcole } from "@obs/shared/libelles";
 import { lireIndex } from "../lib/donnees";
 
-// Écoles retirées de la recherche jusqu'à la tâche 10 du plan phase Écoles (leurs pages n'existent pas encore).
+// Écoles retirées de la recherche jusqu'à la tâche 10 du plan phase Écoles (recherche des écoles), bien que leurs pages existent.
 export const GET: APIRoute = () =>
   new Response(JSON.stringify(lireIndex().filter((e) => !estEcole(e.f))), { headers: { "Content-Type": "application/json; charset=utf-8" } });

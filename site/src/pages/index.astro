@@ -10,7 +10,7 @@ const france = lireFrance();
 const sources = Object.values(lireSources())
   .filter((s) => s.actuelle)
   .sort((a, b) => b.actuelle!.collecteLe.localeCompare(a.actuelle!.collecteLe));
-// Collèges et lycées seulement, jusqu'à la tâche 9 du plan phase Écoles (pages des écoles).
+// Collèges et lycées seulement, jusqu'à la tâche 10 du plan phase Écoles (recherche des écoles).
 const actifs = lireIndex().filter((e) => !e.x && !estEcole(e.f)).length;
 const f = france.familles;
 const compte = (cles: (keyof typeof f)[]) => {

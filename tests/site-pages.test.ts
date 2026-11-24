@@ -99,11 +99,11 @@ describe("accueil et recherche", () => {
     expect(idx.find((e) => e.u === "0440004D")).toBeUndefined();
   });
 
-  test("écoles : ni page, ni recherche, ni plan du site (jusqu'aux tâches 9 et 10 du plan phase Écoles)", () => {
+  test("écoles : page et plan du site, mais pas encore de recherche (jusqu'à la tâche 10 du plan phase Écoles)", () => {
     const idx = JSON.parse(page("recherche.json")) as EntreeIndex[];
     expect(idx.filter((e) => estEcole(e.f))).toEqual([]);
-    expect(() => page("etablissement/0440201A")).toThrow(/page absente/);
-    expect(page("sitemap.xml")).not.toContain("/etablissement/0440201A/");
+    expect(page("etablissement/0440201A")).toContain("<h1>École maternelle Les Lilas</h1>");
+    expect(page("sitemap.xml")).toContain("/etablissement/0440201A/");
   });
 });
 

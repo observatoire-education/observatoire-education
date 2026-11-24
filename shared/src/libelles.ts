@@ -21,12 +21,15 @@ export const LIBELLES = {
     return `Cet établissement n'apparaît plus dans l'Annuaire de l'éducation depuis le ${j}/${m}/${a}.`;
   },
   ferme: (isoDate: string): string => `Fermé le ${jjmmaaaa(isoDate)}`,
+  /** Fermeture d'une école (accord au féminin). */
+  fermee: (isoDate: string): string => `Fermée le ${jjmmaaaa(isoDate)}`,
   correction: (millesime: string, isoDate: string): string => `Millésime ${millesime} corrigé par le producteur le ${jjmmaaaa(isoDate)}`,
   versionPrecedente: "version précédente",
   versionCorrigee: "version corrigée",
   successeur: "Successeur : ",
-  succedeA: (nom: string, uai: string, isoDate: string | null): string =>
-    `Succède à ${nom} (${uai})${isoDate ? `, fermé le ${jjmmaaaa(isoDate)}` : ""}`,
+  /** `feminin` : le prédécesseur est une école (« fermée le »). */
+  succedeA: (nom: string, uai: string, isoDate: string | null, feminin = false): string =>
+    `Succède à ${nom} (${uai})${isoDate ? `, ${feminin ? "fermée" : "fermé"} le ${jjmmaaaa(isoDate)}` : ""}`,
 } as const;
 
 export const LIBELLES_STATUT: Record<Exclude<Statut, "ok">, string> = {
@@ -70,6 +73,25 @@ export function estEcole(f: Famille): f is FamilleEcole {
 /** Vrai pour un collège, un lycée ou un EREA. */
 export function estSecondDegre(f: Famille): f is FamilleSecondDegre {
   return (FAMILLES_SECOND_DEGRE as readonly Famille[]).includes(f);
+}
+
+/** Libellés de la fiche école (lot 1). */
+export const LIBELLES_ECOLES = {
+  derniereRentree: (rentree: number): string => `Rentrée ${rentree}, dernière publiée`,
+  elevesParClasse: "Élèves par classe",
+  classes: "Classes",
+  unNiveau: "Classes à un niveau",
+  plusieursNiveaux: "Classes à plusieurs niveaux",
+  ipsNonPublie: "IPS non publié pour cette école",
+  ficheA4: "Fiche pour le conseil d'école",
+  preelementaire: "Préélémentaire",
+  ulis: "ULIS",
+  ueea: "UEEA",
+} as const;
+
+/** « Preel-CP » (typologie des classes) → « Préélémentaire-CP ». */
+export function libelleTypeClasse(brut: string): string {
+  return brut.split("-").map((n) => (n === "Preel" ? LIBELLES_ECOLES.preelementaire : n)).join("-");
 }
 
 export const SECTEURS: Record<Secteur, string> = {

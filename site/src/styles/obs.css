@@ -140,6 +140,10 @@ i.mk.pri { border:2.5px solid var(--pri); border-radius:50%; width:5px; height:5
 .couv { display:block; font-size:12px; color:var(--muted); margin-top:4px; font-family:var(--sans); }
 .kpis .c span { display:block; }
 .kpis .na { font-size:13px; padding:4px 0; }
+/* Fiche école : classes partagées plutôt que des styles en ligne (budget de poids de la page). */
+.ecole-v { font-size:24px; font-weight:650; margin:4px 0 8px; }
+.ecole-note { font-size:12px; color:var(--muted); margin:6px 0 0; }
+.ecole-sep { margin-top:14px; }
 .card + .card { margin-top:0; }
 svg[role="img"] { display:block; max-width:100%; height:auto; }
 svg.plot { background:transparent; color:var(--muted); font-family:var(--mono); font-size:11px; overflow:visible; }

@@ -6,8 +6,8 @@ import { LIBELLES } from "@obs/shared/libelles";
 import type { Repartition } from "@obs/shared/types";
 import { texteCouverture } from "../lib/affichage";
 
-interface Props { r: Repartition; titre?: string; france?: boolean }
-const { r, titre, france = true } = Astro.props;
+interface Props { r: Repartition; titre?: string; france?: boolean; /** Libellé de la première ligne (une école : « Cette école »). */ libelle?: string }
+const { r, titre, france = true, libelle = "Cet établissement" } = Astro.props;
 // Teintes en classes CSS (.t{n}-{i} dans obs.css) : pas de style répété dans chaque page.
 const n = r.categories.length;
 const teinte = (i: number) => `t${n}-${i}`;
@@ -15,7 +15,7 @@ const largeur = (p: number) => `width:${Math.round(p * 100) / 100}%`;
 const ref = (niveau: "departement" | "france", secteur: "public" | "prive_sous_contrat") =>
   r.references.find((x) => x.niveau === niveau && x.secteur === secteur)!;
 const lignes = [
-  { l: "Cet établissement", k: "me", parts: r.parts, na: r.statut === "ok" ? null : (texteCouverture(r) ?? LIBELLES.nonDisponible) },
+  { l: libelle, k: "me", parts: r.parts, na: r.statut === "ok" ? null : (texteCouverture(r) ?? LIBELLES.nonDisponible) },
   { l: "Dép. public", k: "pub", parts: ref("departement", "public").parts, na: LIBELLES.nonDisponible },
   { l: "Dép. privé s. c.", k: "pri", parts: ref("departement", "prive_sous_contrat").parts, na: LIBELLES.nonDisponible },
   ...(france ? [

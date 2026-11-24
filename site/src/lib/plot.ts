@@ -3,7 +3,7 @@
 import * as Plot from "@observablehq/plot";
 import { parseHTML } from "linkedom";
 import type { AnneeSegregation, ExerciceBudget, Nuage, PointNuage } from "@obs/shared/donnees";
-import type { PointIps } from "@obs/shared/types";
+import type { Classes, PointIps } from "@obs/shared/types";
 import { FINE, nombre } from "@obs/shared/format";
 import { LIBELLES_BUDGET, LIBELLES_NUAGES, LIBELLES_SEGREGATION, SECTEURS } from "@obs/shared/libelles";
 import { vaSignee } from "./resultats";
@@ -273,4 +273,60 @@ export function svgSegregation(annees: AnneeSegregation[]): string {
   });
   const decrit = (nom: string, s: typeof ensemble) => `${nom} : ${s.map((d) => `${d.annee} ${d.v === null ? "non disponible" : nombre(d.v, 3)}`).join(", ")}`;
   return svg(p, `Évolution de l'indice d'entropie. ${decrit(LIBELLES_SEGREGATION.indices.ensemble, ensemble)} ; ${decrit(LIBELLES_SEGREGATION.indices.publicPrive, publicPrive)}`);
+}
+
+/**
+ * Élèves et classes d'une école sur toute la série : élèves en trait plein (axe de gauche), classes en pointillé
+ * (axe de droite, ramené à l'échelle des élèves) ; les ouvertures et fermetures de classes se lisent sur la marche.
+ * Une valeur absente, ou 0 classe, fait un trou dans la ligne, jamais un zéro. Chaîne vide sans aucune valeur.
+ */
+export function svgElevesClasses(historique: Classes["historique"]): string {
+  const eleves = historique.map(([annee, e]) => ({ annee, v: e }));
+  const nbClasses = historique.map(([annee, , c]) => ({ annee, n: c === 0 ? null : c }));
+  const ve = eleves.flatMap((d) => (d.v === null ? [] : [d.v]));
+  const vc = nbClasses.flatMap((d) => (d.n === null ? [] : [d.n]));
+  if (ve.length === 0 && vc.length === 0) return "";
+  const maxE = Math.max(1, ...ve);
+  const maxC = Math.max(1, ...vc);
+  const k = maxE / maxC; // facteur d'échelle des classes vers l'axe des élèves
+  const classes = nbClasses.map((d) => ({ annee: d.annee, v: d.n === null ? null : d.n * k }));
+  const pas = Math.max(1, Math.ceil(maxC / 4));
+  const ticksClasses: number[] = [];
+  for (let c = 0; c <= maxC; c += pas) ticksClasses.push(c * k);
+  const annees = historique.map(([a]) => a);
+  const graduations = annees.length > 6 ? annees.filter((_, i) => (annees.length - 1 - i) % 2 === 0) : annees;
+  // Ronds seulement pour la dernière rentrée et pour un point isolé (sans voisin, la ligne ne le montrerait pas) :
+  // une série de quinze rentrées reste légère.
+  const ronds = (s: { v: number | null }[]) => s.filter((d, i) =>
+    d.v !== null && (i === s.length - 1 || ((s[i - 1]?.v ?? null) === null && (s[i + 1]?.v ?? null) === null)));
+  const p = Plot.plot({
+    document, width: 320, height: 130, marginLeft: 34, marginRight: 28, marginTop: 10, style: STYLE,
+    x: {
+      domain: annees.length > 1 ? [annees[0]!, annees.at(-1)!] : [annees[0]! - 1, annees[0]! + 1],
+      ticks: graduations, tickFormat: (a: number) => String(a), label: null, tickSize: 0,
+    },
+    y: { domain: [0, maxE * 1.1], axis: null },
+    marks: [
+      Plot.gridY({ ticks: 3 }),
+      Plot.axisY({ anchor: "left", ticks: 3, tickFormat: (d: number) => nombre(d, 0), label: null, tickSize: 0 }),
+      Plot.axisY(ticksClasses, { anchor: "right", tickFormat: (d: number) => nombre(d / k, 0), label: null, tickSize: 0 }),
+      // Plot sépare la ligne aux valeurs null : le trou n'est jamais comblé.
+      Plot.line(eleves, { x: "annee", y: "v", stroke: "var(--me)", strokeWidth: 2.5 }),
+      Plot.dot(ronds(eleves), { x: "annee", y: "v", r: 3, fill: "var(--me)" }),
+      Plot.line(classes, { x: "annee", y: "v", stroke: "var(--ink)", strokeWidth: 2, strokeDasharray: "4 3", curve: "step" }),
+      Plot.dot(ronds(classes), { x: "annee", y: "v", r: 2.5, fill: "var(--ink)" }),
+    ],
+  });
+  // Description : les élèves rentrée par rentrée, les classes par périodes de même nombre (« 8 de 2011 à 2018 »).
+  const val = (n: number | null) => (n === null ? "non disponible" : nombre(n, 0));
+  const periodes: { n: number | null; de: number; a: number }[] = [];
+  for (const d of nbClasses) {
+    const der = periodes.at(-1);
+    if (der && der.n === d.n) der.a = d.annee;
+    else periodes.push({ n: d.n, de: d.annee, a: d.annee });
+  }
+  const aria = `Élèves : ${eleves.map((d) => `${d.annee} ${val(d.v)}`).join(", ")}. Classes : ${
+    periodes.map((x) => `${val(x.n)} ${x.de === x.a ? `en ${x.de}` : `de ${x.de} à ${x.a}`}`).join(", ")}`;
+  // La marche répète chaque sommet (« L43.2,18.1L43.2,18.1 ») : un seul suffit.
+  return svg(p, aria, 1).replace(/(L[\d.]+,[\d.]+)\1+/g, "$1");
 }

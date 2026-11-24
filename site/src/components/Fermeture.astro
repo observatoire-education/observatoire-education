@@ -1,16 +1,19 @@
 ---
 // Fermeture officielle, successeurs et prédécesseurs d'un établissement (en-tête de fiche et A4).
-import { LIBELLES } from "@obs/shared/libelles";
+// Une école ferme au féminin (« Fermée le … ») ; ses successeurs et prédécesseurs sont des écoles.
+import { estEcole, LIBELLES } from "@obs/shared/libelles";
 import type { Fiche } from "@obs/shared/types";
 
 interface Props { f: Fiche; gras?: boolean }
 const { f, gras = false } = Astro.props;
 const lien = (uai: string) => `/etablissement/${uai}/`;
 const visible = f.fermeLe !== null || f.successeurs.length > 0 || f.predecesseurs.length > 0;
+const ecole = estEcole(f.famille);
+const ferme = f.fermeLe === null ? "" : ecole ? LIBELLES.fermee(f.fermeLe) : LIBELLES.ferme(f.fermeLe);
 ---
 {visible && (
   <div class={gras ? "fermeture m" : "fermeture"}>
-    {f.fermeLe !== null && <p class="ferme">{gras ? <b>{LIBELLES.ferme(f.fermeLe)}</b> : LIBELLES.ferme(f.fermeLe)}</p>}
+    {f.fermeLe !== null && <p class="ferme">{gras ? <b>{ferme}</b> : ferme}</p>}
     {f.successeurs.length > 0 && (
       <p class="successeurs">{LIBELLES.successeur}{f.successeurs.map((s, i) => (
         <Fragment>{i > 0 && ", "}<a href={lien(s.uai)}>{s.nom} ({s.uai})</a></Fragment>
@@ -18,7 +21,7 @@ const visible = f.fermeLe !== null || f.successeurs.length > 0 || f.predecesseur
     )}
     {f.predecesseurs.map((p) => {
       // Le libellé fixe est découpé autour du lien « {nom} ({UAI}) ».
-      const [avant, apres] = LIBELLES.succedeA(p.nom, p.uai, p.fermeLe).split(`${p.nom} (${p.uai})`);
+      const [avant, apres] = LIBELLES.succedeA(p.nom, p.uai, p.fermeLe, ecole).split(`${p.nom} (${p.uai})`);
       return <p class="predecesseur">{avant}<a href={lien(p.uai)}>{p.nom} ({p.uai})</a>{apres}</p>;
     })}
   </div>
