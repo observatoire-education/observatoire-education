@@ -9,7 +9,7 @@ import { assemblerFiches, type RapportSuccesseurs } from "../pipeline/src/fiches
 import {
   appliquerManuels, attacherSuccesseurs, deduireSuccesseurs, type Lien, type Manuels, verifierCycles,
 } from "../pipeline/src/successeurs.ts";
-import { cheminsFixtures, FIXTURES, identiteTest, manifestTest } from "./aide.ts";
+import { cheminsFixtures, dbTest, FIXTURES, identiteTest, manifestTest } from "./aide.ts";
 
 const dossier = await mkdtemp(join(tmpdir(), "obs-successeurs-"));
 afterAll(() => rm(dossier, { recursive: true, force: true }));
@@ -51,6 +51,52 @@ describe("déduction", () => {
   test("chaîne : A pointe vers B seulement, B vers C", () => {
     expect(vers("0440141A")).toEqual(["0440142B:1"]);
     expect(vers("0440142B")).toEqual(["0440143C:1"]);
+  });
+
+  test("une maternelle fermée n'a jamais une élémentaire seule pour successeur", () => {
+    expect(vers("0440151A")).toEqual([]);
+    expect(ambigus.map((a) => a.de)).not.toContain("0440151A");
+  });
+});
+
+describe("écoles fermées", () => {
+  const maintenant = new Date("2026-11-23T02:17:00Z");
+
+  test("famille d'après la nature, secteur d'après les sources des écoles", async () => {
+    const lignes = await db.sql<{ uai: string; famille: string | null }>(
+      "select uai, famille from fermes where uai in ('0440151A', '0440161A') order by uai");
+    expect(lignes).toEqual([{ uai: "0440151A", famille: "maternelle" }, { uai: "0440161A", famille: "elementaire" }]);
+    const base = await dbTest();
+    // La liste des fermés ne donne pas le secteur des écoles (« - ») : effectifs_ecoles le donne en capitales.
+    expect(await base.sql("select uai, secteur from secteur_cites where uai in ('0440106F', '0440107G', '0440109K') order by uai")).toEqual([
+      { uai: "0440106F", secteur: "public" }, { uai: "0440107G", secteur: "public" }, { uai: "0440109K", secteur: "public" },
+    ]);
+  });
+
+  test("fusion : la maternelle et l'élémentaire fermées ont pour successeur la primaire ouverte le même jour", async () => {
+    const r = await deduireSuccesseurs(await dbTest());
+    const de = (uai: string) => r.liens.filter((l) => l.de === uai).map((l) => `${l.vers}:${l.regle}`);
+    expect(de("0440107G")).toEqual(["0440108H:1"]);
+    expect(de("0440109K")).toEqual(["0440108H:1"]);
+    expect(de("0440106F")).toEqual([]);
+  });
+
+  test("fiche historique d'une école citée par effectifs_ecoles ; prédécesseurs de la primaire", async () => {
+    const fiches = await assemblerFiches(await dbTest(), manifestTest(dossier), {}, maintenant);
+    const f = (uai: string) => fiches.find((x) => x.uai === uai);
+    expect(f("0440106F")).toMatchObject({ famille: "elementaire", secteur: "public", fermeLe: "2016-07-05" });
+    expect(f("0440107G")).toMatchObject({ famille: "maternelle", fermeLe: "2019-07-04" });
+    expect(f("0440107G")!.successeurs.map((s) => s.uai)).toEqual(["0440108H"]);
+    expect(f("0440108H")!.predecesseurs).toEqual([
+      { uai: "0440107G", nom: "École maternelle des Tilleuls", fermeLe: "2019-07-04" },
+      { uai: "0440109K", nom: "École élémentaire des Tilleuls", fermeLe: "2019-07-04" },
+    ]);
+  });
+
+  test("une école fermée que rien ne cite n'a pas de fiche", async () => {
+    const fiches = await assemblerFiches(db, manifestTest(dossier), {}, maintenant);
+    expect(fiches.map((x) => x.uai)).not.toContain("0440161A");
+    expect(fiches.map((x) => x.uai)).not.toContain("0440151A");
   });
 });
 

@@ -114,9 +114,15 @@ describe("écoles", () => {
   });
 
   test("une fiche par école ouverte, avec sa famille", () => {
-    expect(Object.fromEntries(fiches.filter((f) => estEcole(f.famille)).map((f) => [f.uai, f.famille]))).toEqual({
+    expect(Object.fromEntries(fiches.filter((f) => estEcole(f.famille) && f.fermeLe === null).map((f) => [f.uai, f.famille]))).toEqual({
       "0440104D": "elementaire", "0440105E": "maternelle", "0440108H": "primaire",
       "0440201A": "maternelle", "0440202B": "elementaire", "0440203C": "primaire",
+    });
+  });
+
+  test("une fiche historique par école fermée citée, famille d'après la nature", () => {
+    expect(Object.fromEntries(fiches.filter((f) => estEcole(f.famille) && f.fermeLe !== null).map((f) => [f.uai, f.famille]))).toEqual({
+      "0440106F": "elementaire", "0440107G": "maternelle", "0440109K": "elementaire",
     });
   });
 
@@ -170,7 +176,7 @@ describe("fiches", () => {
     expect(fiches.map((f) => f.uai)).toEqual([
       "0350001A", "0350002B", "0350003C", "0350004D", "0350005E", "0350011L", "0350012M", "0350013N", "0350014P", "0350015R",
       "0440001A", "0440002B", "0440003C", "0440005E", "0440006F", "0440007G", "0440020P", "0440021R", "0440023T", "0440099Z", "0440101A", "0440102B", "0440103C",
-      "0440104D", "0440105E", "0440108H", "0440200E", "0440201A", "0440202B", "0440203C",
+      "0440104D", "0440105E", "0440106F", "0440107G", "0440108H", "0440109K", "0440200E", "0440201A", "0440202B", "0440203C",
       "0750701C", "0751501A", "0751502B", "6200001F", "9711023K", "9750001C", "9770001G",
     ]);
   });
@@ -358,7 +364,7 @@ describe("registre des pages", () => {
     expect(apres["0440001A"]).toEqual({ premiere: "2026-01-01", identite: expect.objectContaining({ nom: "Collège Jules-Verne" }) });
     expect(apres["0440002B"]!.premiere).toBe("2026-11-23");
     expect(apres["0440099Z"]).toMatchObject({ disparuLe: "2020-08-31", identite: { nom: "Collège Disparu" } });
-    expect(Object.keys(apres)).toHaveLength(37); // + 5 fiches historiques + 10 d'Ille-et-Vilaine (nuages) + 6 écoles
+    expect(Object.keys(apres)).toHaveLength(40); // + 5 fiches historiques + 10 d'Ille-et-Vilaine (nuages) + 6 écoles + 3 écoles fermées
   });
 
   test("lecture et écriture : une ligne par UAI, triée", async () => {
@@ -367,7 +373,7 @@ describe("registre des pages", () => {
     const r = mettreAJourRegistre({}, fiches, "2026-11-23");
     ecrireRegistre(chemin, r);
     const texte = await Bun.file(chemin).text();
-    expect(texte.split("\n")).toHaveLength(37 + 3); // accolades, 37 entrées (dont 6 écoles), fin de fichier
+    expect(texte.split("\n")).toHaveLength(40 + 3); // accolades, 40 entrées (dont 6 écoles et 3 écoles fermées), fin de fichier
     expect(texte.indexOf("0440001A")).toBeLessThan(texte.indexOf("6200001F"));
     expect(lireRegistre(chemin)).toEqual(r);
   });
@@ -382,7 +388,7 @@ describe("export des données du site", () => {
     expect(f.nom).toBe("Collège Jules-Verne");
 
     const index: EntreeIndex[] = await Bun.file(join(sortie, "index.json")).json();
-    expect(index).toHaveLength(37); // dont 6 écoles : l'index des données les contient, seules les routes du site les retirent
+    expect(index).toHaveLength(40); // dont 6 écoles et 3 écoles fermées : l'index des données les contient, seules les routes du site les retirent
     expect(index[0]).toEqual({ u: "0350001A", n: "Collège Les Ajoncs", c: "Rennes", d: "35", f: "college", s: "public" });
 
     const dep: DonneesTerritoire = await Bun.file(join(sortie, "departements", "44.json")).json();

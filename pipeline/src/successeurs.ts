@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Fiche } from "@obs/shared/types";
 import type { Db } from "./db.ts";
-import { FAMILLES_VOISINES } from "./fiches.ts";
+import { FAMILLES_COMPATIBLES_ECOLES, FAMILLES_VOISINES } from "./fiches.ts";
 
 export interface Lien {
   de: string;
@@ -75,7 +75,8 @@ order by de, regle, vers`;
  * signalé ambigu et la règle suivante n'est pas essayée.
  */
 export async function deduireSuccesseurs(db: Db): Promise<{ liens: Lien[]; ambigus: Ambigu[] }> {
-  const compat = Object.entries(FAMILLES_VOISINES)
+  // second degré : familles voisines ; écoles : familles compatibles (une maternelle ne passe jamais à une élémentaire seule)
+  const compat = [...Object.entries(FAMILLES_VOISINES), ...Object.entries(FAMILLES_COMPATIBLES_ECOLES)]
     .flatMap(([a, bs]) => bs.map((b) => `('${a}', '${b}')`))
     .join(", ");
   const lignes = await db.sql<{ de: string; vers: string; regle: 1 | 2 }>(CANDIDATS_SQL.replace("%COMPAT%", compat));

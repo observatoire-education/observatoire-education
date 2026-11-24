@@ -15,7 +15,8 @@ where rentree is not null
 group by uai;
 
 -- Secteur déclaré par les sources qui citent l'établissement (la liste des fermés ne le donne pas : « - »).
--- La millésime le plus récent l'emporte. Valeurs : public / privé sous contrat, ou PU / PR pour l'IVAC.
+-- Le millésime le plus récent l'emporte. Valeurs : public / privé sous contrat (en capitales dans les effectifs
+-- des écoles), ou PU / PR pour l'IVAC.
 create or replace table secteur_cites as
 select uai, arg_max(secteur, millesime) as secteur
 from (
@@ -30,6 +31,9 @@ from (
     union all select uai, rentree_scolaire, secteur from src_ips_erea
     union all select uai, annee, secteur from src_ival_gt
     union all select uai, annee, secteur from src_ival_pro
+    union all select numero_ecole, rentree_scolaire, secteur from src_effectifs_ecoles
+    union all select uai, rentree_scolaire, secteur from src_ips_ecoles_2016
+    union all select uai, rentree_scolaire, secteur from src_ips_ecoles
   )
   union all
   select upper(trim(uai)), session(session),
@@ -50,7 +54,13 @@ from (
     upper(trim(f.numero_uai)) as uai,
     trim(f.appellation_officielle) as nom,
     upper(trim(f.nature_uai_libe)) as nature,
-    famille(f.nature_uai_libe, case when upper(trim(f.nature_uai_libe)) like 'LYCEE%' then t.type_lycee end) as famille,
+    -- une école fermée n'est plus dans l'annuaire : sa famille vient de la nature (jamais primaire)
+    coalesce(
+      famille(f.nature_uai_libe, case when upper(trim(f.nature_uai_libe)) like 'LYCEE%' then t.type_lycee end),
+      case
+        when upper(trim(f.nature_uai_libe)) like 'ECOLE MATERNELLE%' then 'maternelle'
+        when upper(trim(f.nature_uai_libe)) like 'ECOLE ELEMENTAIRE%' or upper(trim(f.nature_uai_libe)) like 'ECOLE DE NIVEAU ELEMENTAIRE%' then 'elementaire'
+      end) as famille,
     -- la liste des fermés donne « - » : le secteur vient alors des sources qui citent l'UAI (DEPP : privé sous contrat seulement)
     coalesce(case trim(f.secteur_public_prive_libe) when 'Public' then 'public' when 'Privé' then 'prive_sous_contrat' end, s.secteur) as secteur,
     try_cast(left(trim(f.date_ouverture::varchar), 10) as date) as date_ouverture,
@@ -74,7 +84,7 @@ where regexp_matches(uai, '^[0-9]{7}[A-Z]$')
 qualify row_number() over (partition by uai order by date_fermeture desc nulls last) = 1
 order by uai;
 
--- UAI citées par une source historique (IPS, valeur ajoutée des collèges, résultats des lycées).
+-- UAI citées par une source historique (IPS, valeur ajoutée des collèges, résultats des lycées, effectifs des écoles).
 create or replace table cites as
 select distinct uai from (
   select upper(trim(uai)) as uai from src_ips_colleges_2016
@@ -86,6 +96,9 @@ select distinct uai from (
   union all select upper(trim(uai)) from src_ivac
   union all select upper(trim(uai)) from src_ival_gt
   union all select upper(trim(uai)) from src_ival_pro
+  union all select upper(trim(numero_ecole)) from src_effectifs_ecoles
+  union all select upper(trim(uai)) from src_ips_ecoles_2016
+  union all select upper(trim(uai)) from src_ips_ecoles
 )
 where uai is not null
 order by uai;

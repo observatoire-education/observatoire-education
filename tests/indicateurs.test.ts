@@ -3,7 +3,8 @@ import { CODES_INDICATEURS } from "@obs/shared/libelles";
 import { calculerIndicateurs, INDICATEURS_ECOLES, SEUIL_COUVERTURE } from "../pipeline/src/indicateurs.ts";
 import { dbTest, indic, repart, repartitionsDe } from "./aide.ts";
 
-const ECOLES = ["0440104D", "0440105E", "0440108H", "0440201A", "0440202B", "0440203C"];
+// écoles ouvertes, puis écoles fermées (fiches historiques)
+const ECOLES = ["0440104D", "0440105E", "0440108H", "0440201A", "0440202B", "0440203C", "0440106F", "0440107G", "0440109K"];
 
 describe("indicateurs situés", () => {
   test("IPS et moyennes de la source", async () => {
@@ -92,7 +93,7 @@ describe("indicateurs situés", () => {
 
   test("chaque établissement a les indicateurs de sa famille, dans l'ordre", async () => {
     const tous = await calculerIndicateurs(await dbTest());
-    expect(tous.size).toBe(37); // 25 actifs + 5 historiques sans registre, + 6 écoles
+    expect(tous.size).toBe(40); // 25 actifs + 5 historiques sans registre, + 6 écoles, + 3 écoles fermées
     const secondDegre = CODES_INDICATEURS.filter((c) => c !== "eleves_par_classe");
     expect(secondDegre).toHaveLength(16);
     for (const [uai, liste] of tous) {
