@@ -21,7 +21,8 @@ import {
 } from "../../lib/affichage";
 import { lireFiche, lireIndex } from "../../lib/donnees";
 import { niveauDe } from "../../lib/budget";
-import { domaine, svgBarres, svgCourbe, svgPoints } from "../../lib/plot";
+import { aPointCalcule, domaine, seriesReferencesIps, svgBarres, svgCourbe, svgPoints } from "../../lib/plot";
+import LegendeCourbeIps from "../../components/LegendeCourbeIps.astro";
 
 export function getStaticPaths() {
   return lireIndex().map((e) => ({ params: { uai: e.u } }));
@@ -177,7 +178,16 @@ const franceBudget = f.budget.france.find((m) => m.niveau === niveauBudget);
       </div>
       <div class="card">
         <div class="lab"><span>Évolution de l'IPS</span><span class="yr">{iIps.historique.length ? `${iIps.historique[0]![0]} → ${iIps.historique.at(-1)![0]}` : ""}</span></div>
-        {iIps.historique.length > 1 && <Fragment set:html={svgCourbe(iIps.historique, [], [])} />}
+        {iIps.historique.length > 1 && (() => {
+          const refs = iIps.referencesHistoriques ?? [];
+          const r = seriesReferencesIps(refs);
+          return (
+            <>
+              <Fragment set:html={svgCourbe(iIps.historique, r.publique, r.privee, r.calculees)} />
+              <LegendeCourbeIps etablissement departementale={refs.length > 0} calcule={aPointCalcule(refs)} />
+            </>
+          );
+        })()}
         <table class="cmp mini-t" style="margin-top:8px">
           <thead><tr><th>Écart (moyenne)</th><th class="n">public</th><th class="n">privé s. c.</th></tr></thead>
           <tbody>

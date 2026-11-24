@@ -3,6 +3,7 @@
 import * as Plot from "@observablehq/plot";
 import { parseHTML } from "linkedom";
 import type { ExerciceBudget } from "@obs/shared/donnees";
+import type { PointIps } from "@obs/shared/types";
 import { nombre } from "@obs/shared/format";
 import { LIBELLES_BUDGET } from "@obs/shared/libelles";
 
@@ -69,24 +70,64 @@ export function svgBarres(serie: [number, number][]): string {
   return svg(p, `Évolution : ${d.map((x) => `${x.annee} ${nombre(x.v, 0)}`).join(", ")}`);
 }
 
-/** Courbe de l'historique de l'établissement, avec les moyennes publique et privée si elles sont fournies. */
-export function svgCourbe(serie: [number, number][], publique: [number, number][], privee: [number, number][]): string {
-  const pts = (s: [number, number][], k: string) => s.map(([annee, v]) => ({ annee, v, k }));
-  const tout = [...pts(serie, "me"), ...pts(publique, "pub"), ...pts(privee, "pri")];
-  const valeurs = tout.map((x) => x.v);
-  const annees = [...new Set(tout.map((x) => x.annee))].sort();
+/** Séries de références (public, privé) et rentrées calculées, tirées de points d'IPS. Une valeur absente reste `null`. */
+export function seriesReferencesIps(points: PointIps[]): { publique: [number, number | null][]; privee: [number, number | null][]; calculees: number[] } {
+  return {
+    publique: points.map((p) => [p.rentree, p.public]),
+    privee: points.map((p) => [p.rentree, p.prive]),
+    calculees: points.filter((p) => p.calculee).map((p) => p.rentree),
+  };
+}
+
+/** Vrai si au moins un point de référence est une moyenne calculée par l'observatoire (valeur présente). */
+export function aPointCalcule(points: PointIps[]): boolean {
+  return points.some((p) => p.calculee && (p.public !== null || p.prive !== null));
+}
+
+/**
+ * Courbe de l'historique de l'établissement (`serie`, éventuellement vide), avec les moyennes publique et privée
+ * si elles sont fournies. Une valeur `null` fait un trou dans la ligne, jamais un zéro. `calculees` : rentrées
+ * dont les points de référence sont des moyennes calculées par l'observatoire (rond creux ; plein sinon).
+ */
+export function svgCourbe(
+  serie: [number, number][],
+  publique: [number, number | null][],
+  privee: [number, number | null][],
+  calculees: number[] = [],
+): string {
+  const pts = (s: [number, number | null][], k: string) => s.map(([annee, v]) => ({ annee, v, k }));
+  const pub = pts(publique, "pub");
+  const pri = pts(privee, "pri");
+  const me = pts(serie, "me");
+  const definis = [...me, ...pub, ...pri].filter((x) => x.v !== null);
+  if (definis.length === 0) return "";
+  const valeurs = definis.map((x) => x.v!);
+  const annees = [...new Set([...me, ...pub, ...pri].map((x) => x.annee))].sort((a, b) => a - b);
+  // Au-delà de six rentrées : une étiquette sur deux, en comptant depuis la dernière (largeur 320).
+  const graduations = annees.length > 6 ? annees.filter((_, i) => (annees.length - 1 - i) % 2 === 0) : annees;
+  const calculee = new Set(calculees);
+  const plein = (d: { annee: number; v: number | null }) => d.v !== null && !calculee.has(d.annee);
+  const creux = (d: { annee: number; v: number | null }) => d.v !== null && calculee.has(d.annee);
   const p = Plot.plot({
     document, width: 320, height: 110, marginLeft: 34, marginRight: 12, marginTop: 10, style: STYLE,
-    x: { domain: [Math.min(...annees), Math.max(...annees)], ticks: annees, tickFormat: (a: number) => String(a), label: null },
+    x: { domain: [Math.min(...annees), Math.max(...annees)], ticks: graduations, tickFormat: (a: number) => String(a), label: null },
     y: { domain: [Math.min(...valeurs) - 4, Math.max(...valeurs) + 4], label: null, ticks: 3, grid: true, tickFormat: (d: number) => nombre(d, 0) },
     marks: [
-      Plot.line(pts(publique, "pub"), { x: "annee", y: "v", stroke: "var(--pub)", strokeWidth: 2 }),
-      Plot.line(pts(privee, "pri"), { x: "annee", y: "v", stroke: "var(--pri)", strokeWidth: 2, strokeDasharray: "4 3" }),
-      Plot.line(pts(serie, "me"), { x: "annee", y: "v", stroke: "var(--me)", strokeWidth: 2.5 }),
-      Plot.dot(pts(serie, "me"), { x: "annee", y: "v", r: 3, fill: "var(--me)" }),
+      Plot.line(pub, { x: "annee", y: "v", stroke: "var(--pub)", strokeWidth: 2 }),
+      Plot.line(pri, { x: "annee", y: "v", stroke: "var(--pri)", strokeWidth: 2, strokeDasharray: "4 3" }),
+      Plot.dot(pub.filter(plein), { x: "annee", y: "v", r: 2.5, fill: "var(--pub)" }),
+      Plot.dot(pub.filter(creux), { x: "annee", y: "v", r: 3, fill: "var(--surface)", stroke: "var(--pub)", strokeWidth: 1.5 }),
+      Plot.dot(pri.filter(plein), { x: "annee", y: "v", r: 2.5, fill: "var(--pri)" }),
+      Plot.dot(pri.filter(creux), { x: "annee", y: "v", r: 3, fill: "var(--surface)", stroke: "var(--pri)", strokeWidth: 1.5 }),
+      Plot.line(me, { x: "annee", y: "v", stroke: "var(--me)", strokeWidth: 2.5 }),
+      Plot.dot(me, { x: "annee", y: "v", r: 3, fill: "var(--me)" }),
     ],
   });
-  return svg(p, `Évolution : ${serie.map(([a, v]) => `${a} ${nombre(v)}`).join(", ")}`);
+  const decrit = (nom: string, s: typeof pub) => `${nom} : ${s.map((d) => `${d.annee} ${d.v === null ? "non disponible" : nombre(d.v)}`).join(", ")}`;
+  const aria = me.length
+    ? `Évolution : ${serie.map(([a, v]) => `${a} ${nombre(v)}`).join(", ")}`
+    : `Évolution : ${[decrit("public", pub), decrit("privé sous contrat", pri)].join(" ; ")}`;
+  return svg(p, aria);
 }
 
 /** Domaine arrondi à la dizaine qui contient toutes les valeurs, avec une marge. */

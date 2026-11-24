@@ -34,6 +34,36 @@ describe("fiche établissement", () => {
     expect(texte("etablissement/0440001A")).toContain("moyennes publiées par la DEPP");
   });
 
+  /** Cartes « Évolution de l'IPS » d'une page : [carte, ronds creux, ronds pleins, ronds de la ligne de l'établissement]. */
+  const courbesIps = (chemin: string) =>
+    [...doc(chemin).querySelectorAll(".card")].filter((c) => c.querySelector(".lab")?.textContent?.startsWith("Évolution de l'IPS")).map((carte) => {
+      const ronds = [...carte.querySelectorAll("svg circle")];
+      const groupe = (r: Element) => r.parentElement!.getAttribute("fill") ?? "";
+      return { carte, creux: ronds.filter((r) => groupe(r) === "var(--surface)").length, me: ronds.filter((r) => groupe(r) === "var(--me)").length, tous: ronds.length };
+    });
+
+  test("fiche : courbe de l'IPS de 2016 à 2025, références départementales", () => {
+    const [c] = courbesIps("etablissement/0440001A");
+    const t = c!.carte.textContent!.replace(/\s+/g, " ");
+    expect(c!.carte.querySelector(".yr")!.textContent).toBe("2016 → 2025");
+    expect(c!.carte.querySelector("svg")!.getAttribute("aria-label")).toBe("Évolution : 2016 94,0, 2017 94,5, 2018 95,0, 2019 95,5, 2020 96,0, 2021 96,5, 2022 91,5, 2023 93,5, 2024 93,0, 2025 92,4");
+    expect(c!.me).toBe(10);
+    expect(c!.carte.querySelector("svg g[stroke='var(--pub)']")).not.toBeNull();
+    expect(c!.carte.querySelector("svg g[stroke='var(--pri)']")).not.toBeNull();
+    expect(t).toContain("établissement · moyenne départementale public · privé s. c.");
+    // Étiquettes des rentrées : une sur deux au-delà de six, la dernière toujours écrite.
+    const annees = [...c!.carte.querySelectorAll("svg g[text-anchor=middle] text, svg g[font-variant] text")].map((x) => x.textContent!.trim()).filter((x) => /^20\d\d$/.test(x));
+    expect(annees).toContain("2025");
+    expect(annees.length).toBeLessThanOrEqual(5);
+  });
+
+  test("rentrée calculée signalée : rond creux et légende, rond plein pour une valeur publiée", () => {
+    const [c] = courbesIps("etablissement/0440001A");
+    expect(c!.creux).toBeGreaterThan(0);
+    expect(c!.tous - c!.me - c!.creux).toBeGreaterThan(0);
+    expect(c!.carte.textContent!).toContain("○ moyenne calculée par l'observatoire");
+  });
+
   test("sans GPS : voisins non calculables, pas de bouton carte", () => {
     expect(texte("etablissement/0440005E")).toContain("Voisins non calculables (coordonnées absentes)");
     expect(doc("etablissement/0440005E").querySelector("#afficher-carte")).toBeNull();

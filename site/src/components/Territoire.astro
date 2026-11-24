@@ -10,7 +10,7 @@ import type { Comparaison, Famille, Niveau, Secteur } from "@obs/shared/types";
 import Base from "../layouts/Base.astro";
 import { anneeScolaire, formater } from "../lib/affichage";
 import { communesDisponibles, lireFrance, lireSources, lireTerritoire } from "../lib/donnees";
-import { domaine, svgDistribution, svgPoints } from "../lib/plot";
+import { aPointCalcule, domaine, seriesReferencesIps, svgCourbe, svgDistribution, svgPoints } from "../lib/plot";
 import { famillesDe, nomFamille, partPrive, pluriel } from "../lib/territoire";
 import Absence from "./Absence.astro";
 import { absenceBudget, motifAbsenceTerritoire, niveauDe } from "../lib/budget";
@@ -18,6 +18,7 @@ import Ariane from "./Ariane.astro";
 import BlocBudget from "./BlocBudget.astro";
 import CarteTerritoire from "./CarteTerritoire.astro";
 import Cellule from "./Cellule.astro";
+import LegendeCourbeIps from "./LegendeCourbeIps.astro";
 import ListeEtablissements from "./ListeEtablissements.astro";
 import ListeTerritoires from "./ListeTerritoires.astro";
 import TableauBudget from "./TableauBudget.astro";
@@ -193,6 +194,20 @@ const badges = [
             </div>
           </div>
         )}
+
+        {s.ipsHistorique.length >= 2 && (() => {
+          const r = seriesReferencesIps(s.ipsHistorique);
+          const rentrees = s.ipsHistorique.map((p) => p.rentree);
+          return (
+            <div class="cols2" style="margin-top:14px">
+              <div class="card">
+                <div class="lab"><span>Évolution de l'IPS moyen</span><span class="yr">{Math.min(...rentrees)} → {Math.max(...rentrees)}</span></div>
+                <Fragment set:html={svgCourbe([], r.publique, r.privee, r.calculees)} />
+                <LegendeCourbeIps calcule={aPointCalcule(s.ipsHistorique)} />
+              </div>
+            </div>
+          );
+        })()}
 
         {avecBudget(f) && (() => {
           const nb = niveauDe(f);

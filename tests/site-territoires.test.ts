@@ -128,3 +128,35 @@ describe("titre de liste d'une commune", () => {
     expect(titres.some((t) => /^Les [2-9] /.test(t))).toBe(true);
   });
 });
+
+describe("évolution de l'IPS moyen", () => {
+  const courbes = (chemin: string) =>
+    [...doc(chemin).querySelectorAll(".card")].filter((c) => c.querySelector(".lab")?.textContent?.startsWith("Évolution de l'IPS moyen"));
+  const ronds = (carte: Element, couleur: string) => [...carte.querySelectorAll("svg circle")].filter((r) => r.parentElement!.getAttribute("stroke") === couleur || r.parentElement!.getAttribute("fill") === couleur);
+
+  test("page département : courbe de l'IPS moyen par famille, un trou pour une année sans valeur", () => {
+    const [college] = courbes("departement/44");
+    expect(college!.querySelector(".yr")!.textContent).toBe("2016 → 2025");
+    expect(college!.querySelector("svg")!.getAttribute("aria-label")).toContain("privé sous contrat : 2016 non disponible");
+    expect(college!.textContent).toContain("moyenne public · privé s. c.");
+    expect(college!.textContent).not.toContain("établissement ·");
+    // Le privé n'a que 4 valeurs : jamais de point à 0 pour les années manquantes.
+    expect(ronds(college!, "var(--pri)")).toHaveLength(4);
+    expect(college!.querySelector("svg")!.outerHTML).not.toMatch(/NaN/);
+  });
+
+  test("page commune : courbe calculée", () => {
+    const [c] = courbes("commune/44109");
+    expect(c).toBeDefined();
+    expect(c!.textContent).toContain("○ moyenne calculée par l'observatoire");
+    expect([...c!.querySelectorAll("svg circle")].some((r) => r.parentElement!.getAttribute("fill") === "var(--surface)")).toBe(true);
+  });
+
+  test("moins de deux rentrées : pas de carte", () => {
+    // La famille sans historique suffisant n'affiche pas la carte : chaque carte présente au moins deux rentrées.
+    for (const c of [...courbes("departement/44"), ...courbes("region/52")]) {
+      const [a, b] = c.querySelector(".yr")!.textContent!.split(" → ").map(Number);
+      expect(b! - a!).toBeGreaterThanOrEqual(1);
+    }
+  });
+});
