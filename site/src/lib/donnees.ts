@@ -32,5 +32,12 @@ export const departementsDisponibles = (): string[] => codes("departements");
 export const regionsDisponibles = (): string[] => codes("regions");
 export const academiesDisponibles = (): string[] => codes("academies");
 let communes: Set<string> | undefined;
-/** Communes ayant une page (au moins SEUIL_COMMUNE établissements, décidé par le pipeline). */
+/** Communes ayant une page (au moins SEUIL_COMMUNE collèges et lycées, ou une école depuis 2012 ; décidé par le pipeline). */
 export const communesDisponibles = (): Set<string> => (communes ??= new Set(codes("communes")));
+let avecCsv: Set<string> | undefined;
+/**
+ * Communes qui ont leur `etablissements.csv` : celles retenues pour le second degré (au moins SEUIL_COMMUNE collèges
+ * et lycées), listées par leur département. Les autres pages commune renvoient au CSV du département (spec, 6.7).
+ */
+export const communesAvecCsv = (): Set<string> =>
+  (avecCsv ??= new Set(departementsDisponibles().flatMap((dep) => lireTerritoire({ niveau: "departement", code: dep }).communes.map((c) => c.code))));

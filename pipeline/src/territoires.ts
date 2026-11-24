@@ -2,15 +2,18 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import type {
-  BudgetCollectivite, BudgetTerritoire, CarteDonnees, DonneesFrance, DonneesTerritoire, IpsMoyens, LigneListe, LigneTerritoire, MoyenneTerritoire,
-  ParSecteur, RefTerritoire, SyntheseFamille, ValeurCarte,
+  BudgetCollectivite, BudgetTerritoire, CarteDonnees, DonneesFrance, DonneesTerritoire, EcoleFermee, EcolesCommune, IpsMoyens, LigneListe,
+  LigneTerritoire, MoyenneTerritoire, ParSecteur, RefTerritoire, SyntheseFamille, ValeurCarte,
 } from "@obs/shared/donnees";
 import { collectiviteDe, type NiveauBudget, REGIONS, regionDe } from "@obs/shared/collectivites";
-import { CODES_INDICATEURS, estSecondDegre, INDICATEURS } from "@obs/shared/libelles";
+import { CODES_INDICATEURS, estEcole, estSecondDegre, FAMILLES_ECOLES, INDICATEURS } from "@obs/shared/libelles";
 import { communeDeRattachement, LIBELLES_PLM, SEUIL_COMMUNE } from "@obs/shared/territoires";
-import type { Famille, Fiche, Indicateur, Mesure, Niveau, Secteur, SourceId } from "@obs/shared/types";
+import type { Famille, Fiche, Identite, Indicateur, Mesure, Niveau, Secteur, SourceId } from "@obs/shared/types";
 import type { Manifest } from "./archive.ts";
 import type { Budgets } from "./budget-eleves.ts";
+import { centreCommune, chargerCommunes, type TableCommunes } from "./communes.ts";
+import { ecolesProchesDesPoints } from "./ecoles.ts";
+import { lignesEcoles, rentreesEcoles } from "./fiches.ts";
 import { collectivitesCorrigees, correctionEnVigueur, type EntreeCorrection, resoudreCorrection } from "./corrections.ts";
 import type { Db } from "./db.ts";
 import { depCanonique } from "./normalise.ts";
@@ -141,6 +144,133 @@ export function communesRetenues(actives: Fiche[]): Map<string, Fiche[]> {
   return new Map([...groupes].filter(([, g]) => new Set(g.map((f) => f.uai)).size >= SEUIL_COMMUNE));
 }
 
+// --- Écoles des communes (spec, section 6.7) ---
+
+/** Écoles d'une commune d'aujourd'hui, avec ce qu'il faut pour écrire sa page si elle n'en a pas pour le second degré. */
+export interface EcolesDUneCommune {
+  /** Nom de la commune en vigueur (Code officiel géographique), sinon celui de ses écoles. */
+  libelle: string;
+  dep: { code: string; libelle: string };
+  aca: { code: string; libelle: string };
+  ecoles: EcolesCommune;
+}
+
+/** Une école fermée depuis 2012 de la liste des fermés, avant son rangement sous une commune d'aujourd'hui. */
+interface LigneFermee {
+  uai: string; nom: string; famille: Famille; ferme: string; code: string; commune: string;
+  dep: string; dep_libelle: string; aca: string; aca_libelle: string; fiche: boolean;
+}
+
+const enSql = (fs: readonly string[]) => fs.map((f) => `'${f}'`).join(", ");
+const plusFrequent = <T>(valeurs: T[], cle: (v: T) => string): T | undefined => {
+  const n = Map.groupBy(valeurs, cle);
+  return [...n.values()].sort((a, b) => b.length - a.length || cle(a[0]!).localeCompare(cle(b[0]!)))[0]?.[0];
+};
+
+/**
+ * Écoles de chaque commune d'aujourd'hui qui a, ou a eu depuis 2012, au moins une école : écoles ouvertes (fiches
+ * actives), écoles fermées (liste des fermés), rangées sous la commune en vigueur (`TableCommunes.actuelle` : commune
+ * nouvelle, ville de Paris, Lyon ou Marseille). Aucune entrée pour un code disparu.
+ *
+ * Communes déléguées : l'Annuaire range les écoles ouvertes d'une commune nouvelle sous le code de la commune
+ * nouvelle (vérifié le 2026-11-24 sur Sèvremoine et Chemillé-en-Anjou ; seule l'adresse, en texte libre, nomme
+ * parfois l'ancienne commune). Les parties ne listent donc que les écoles fermées, d'après le code de la liste des
+ * fermés ; pas de partie pour le chef-lieu, dont le code est aussi celui de la commune nouvelle.
+ */
+export async function ecolesDesCommunes(db: Db, actives: Fiche[], table?: TableCommunes): Promise<Map<string, EcolesDUneCommune>> {
+  table ??= await chargerCommunes(db);
+  const t = table;
+  const ouvertes = actives.filter((f) => estEcole(f.famille) && f.disparuLe === null);
+  const identites = new Map<string, Identite>(ouvertes.map((f) => [f.uai, f]));
+  const indicateurs = new Map(ouvertes.map((f) => [f.uai, f.indicateurs]));
+  const rentrees = rentreesEcoles(identites, indicateurs);
+  const lignes = lignesEcoles(identites, indicateurs, rentrees);
+  const rentreeEleves = rentrees.eleves?.rentree ?? null;
+
+  const fermes = await db.sql<LigneFermee>(`
+    select uai, nom, famille, date_fermeture::varchar as ferme, code_commune as code, commune, dep, dep_libelle, aca, aca_libelle,
+      uai in (select uai from disparus) as fiche
+    from fermes
+    where famille in (${enSql(FAMILLES_ECOLES)}) and date_fermeture >= date '2012-01-01' and nullif(code_commune, '') is not null
+      and uai not in (select uai from etablissements)`);
+  // Élèves et classes par commune d'alors et par rentrée ; une école sans nombre rend le total inconnu.
+  const series = await db.sql<{ code: string; rentree: number; eleves: number | null; sans_eleves: number; classes: number | null; sans_classes: number }>(`
+    select c.code, h.rentree, sum(h.eleves)::integer as eleves, count(*) filter (where h.eleves is null)::integer as sans_eleves,
+      sum(h.classes)::integer as classes, count(*) filter (where h.classes is null)::integer as sans_classes
+    from classes_historique h
+    join (
+      select uai, code_commune as code from etablissements
+      union all
+      select uai, code_commune from fermes where uai not in (select uai from etablissements)
+    ) c using (uai)
+    where h.source = 'effectifs_ecoles' and nullif(c.code, '') is not null
+    group by all`);
+
+  const ouvertesPar = Map.groupBy(ouvertes, (f) => t.actuelle(f.codeCommune));
+  const fermeesPar = Map.groupBy(fermes, (l) => t.actuelle(l.code));
+  const historiques = new Map<string, Map<number, { eleves: number; classes: number; sansEleves: boolean; sansClasses: boolean }>>();
+  for (const s of series) {
+    const code = t.actuelle(s.code);
+    const parRentree = historiques.get(code) ?? new Map();
+    historiques.set(code, parRentree);
+    const x = parRentree.get(s.rentree) ?? { eleves: 0, classes: 0, sansEleves: false, sansClasses: false };
+    x.eleves += s.eleves ?? 0;
+    x.classes += s.classes ?? 0;
+    x.sansEleves ||= s.sans_eleves > 0;
+    x.sansClasses ||= s.sans_classes > 0;
+    parRentree.set(s.rentree, x);
+  }
+
+  const resultat = new Map<string, EcolesDUneCommune>();
+  const sansEcole: { id: string; lat: number; lon: number }[] = [];
+  for (const code of [...new Set([...ouvertesPar.keys(), ...fermeesPar.keys()])].sort()) {
+    const fo = ouvertesPar.get(code) ?? [];
+    const ff = fermeesPar.get(code) ?? [];
+    const ecoles = fo.map((f) => {
+      const c = f.classes?.historique.find(([r]) => r === rentreeEleves)?.[2] ?? null;
+      return { ...lignes.get(f.uai)!, classes: c ? c : null, ep: f.ep }; // 0 classe : absence, jamais un zéro
+    }).sort((a, b) => parNom(a, b) || a.uai.localeCompare(b.uai));
+    const fermees = new Map(ff
+      .sort((a, b) => a.ferme.localeCompare(b.ferme) || a.nom.localeCompare(b.nom, "fr") || a.uai.localeCompare(b.uai))
+      .map((l): [LigneFermee, EcoleFermee] => [l, {
+        uai: l.uai, nom: l.nom, fermeLe: l.ferme, famille: l.famille,
+        ...(communeDeRattachement(l.code) === code ? {} : { ancienneCommune: l.commune }),
+        ...(l.fiche ? {} : { sansFiche: true as const }),
+      }]));
+    const deleguees = t.deleguees(code)
+      .filter((d) => d.code !== code)
+      .map((d) => ({ ...d, fermees: [...fermees].filter(([l]) => l.code === d.code).map(([, e]) => e) }))
+      .filter((d) => d.fermees.length > 0);
+    const historique = [...(historiques.get(code) ?? new Map())]
+      .sort((a, b) => a[0] - b[0])
+      .map(([r, x]): [number, number | null, number | null] => [r, x.sansEleves ? null : x.eleves, x.sansClasses || x.classes === 0 ? null : x.classes]);
+    const plusDEcoleDepuis = ecoles.length ? null : Math.max(...ff.map((l) => Number(l.ferme.slice(0, 4))));
+    if (plusDEcoleDepuis !== null) {
+      const centre = centreCommune(code);
+      if (centre) sansEcole.push({ id: code, ...centre });
+    }
+    const fermee = ff.find((l) => l.dep && l.aca) ?? ff[0]!;
+    const territoire = fo[0]
+      ? { dep: { code: fo[0].dep, libelle: fo[0].depLibelle }, aca: { code: fo[0].aca, libelle: fo[0].acaLibelle } }
+      : { dep: { code: fermee.dep, libelle: fermee.dep_libelle }, aca: { code: fermee.aca, libelle: fermee.aca_libelle } };
+    const nomEcoles = plusFrequent([...fo.map((f) => f.commune), ...ff.map((l) => l.commune)], (n) => n)!;
+    resultat.set(code, {
+      libelle: code in LIBELLES_PLM ? LIBELLES_PLM[code as keyof typeof LIBELLES_PLM] : (t.nom(code) ?? nomEcoles),
+      ...territoire,
+      ecoles: {
+        ecoles, rentrees: { eleves: rentreeEleves, ips: rentrees.ips?.rentree ?? null }, historique,
+        fermees: [...fermees.values()], plusDEcoleDepuis, deleguees, plusProches: null,
+        points: fo.flatMap((f) => f.lat !== null && f.lon !== null
+          ? [{ uai: f.uai, nom: f.nom, lat: f.lat, lon: f.lon, secteur: f.secteur, eleves: lignes.get(f.uai)!.eleves }]
+          : []),
+      },
+    });
+  }
+  // Communes sans école : écoles les plus proches du centre, toutes en une fois.
+  for (const [code, p] of await ecolesProchesDesPoints(db, sansEcole, rentreeEleves)) resultat.get(code)!.ecoles.plusProches = p;
+  return resultat;
+}
+
 /** Écarts tolérés entre la moyenne pondérée par les élèves et la moyenne départementale publiée par la DEPP. */
 export const SEUILS_PONDERATION = { mediane: 0.2, p90: 1.0 };
 
@@ -234,7 +364,11 @@ export async function exporterTerritoires(
   actives: Fiche[], db: Db, sortie: string, rentree: number | null, budgets: Budgets = BUDGETS_VIDES,
   corrections: EntreeCorrection[] = [], manifest?: Manifest,
 ): Promise<void> {
-  actives = secondDegre(actives); // aucune école sur les pages de territoire
+  // Écoles des communes (pages commune) et des départements (CSV), avant de ne garder que le second degré.
+  const ecolesCommunes = await ecolesDesCommunes(db, actives);
+  const ecolesParDep = Map.groupBy(actives.filter((f) => estEcole(f.famille)), (f) => f.dep);
+  const lignesDep = lignesEcoles(new Map(actives.map((f) => [f.uai, f])), new Map(actives.map((f) => [f.uai, f.indicateurs])));
+  actives = secondDegre(actives); // aucune école dans les synthèses de territoire
   for (const d of ["regions", "departements", "academies", "communes"]) await mkdir(join(sortie, d), { recursive: true });
   const ipsHistorique = await calculerIpsHistorique(db);
   const rentreeIps = await derniereRentreeIps(db);
@@ -379,6 +513,23 @@ export async function exporterTerritoires(
       familles: familles(groupe, (_, g) => calculee(g), { liste: true, niveaux: null, territoire: ["commune", code] }),
       horsContrat: horsContrat((l) => communeDeRattachement(l.code_commune) === code),
       enfants: [], communes: [], carte: points(groupe),
+      ...(ecolesCommunes.has(code) ? { ecoles: ecolesCommunes.get(code)!.ecoles } : {}),
+    };
+    await ecrireJson(join(sortie, "communes", `${code}.json`), donnees);
+  }
+  // Communes qui ont, ou ont eu depuis 2012, une école, sans page pour le second degré : page des écoles seulement.
+  for (const [code, c] of ecolesCommunes) {
+    if (communes.has(code)) continue;
+    const region = regionDe(c.dep.code);
+    const donnees: DonneesTerritoire = {
+      budget: { collectivites: [], france: [] },
+      ref: { niveau: "commune", code, libelle: c.libelle },
+      parents: [
+        FRANCE, ...(region ? [refRegion(region)] : []), { niveau: "academie", code: c.aca.code, libelle: c.aca.libelle },
+        { niveau: "departement", code: c.dep.code, libelle: c.dep.libelle },
+      ],
+      rentree, familles: {}, horsContrat: 0, enfants: [], communes: [], carte: { genre: "points", points: [] },
+      ecoles: c.ecoles,
     };
     await ecrireJson(join(sortie, "communes", `${code}.json`), donnees);
   }
@@ -397,6 +548,7 @@ export async function exporterTerritoires(
       enfants: [], communes: (communesParDep.get(dep) ?? []).sort(parLibelle), carte: points(groupe),
       ...nuagesDe(groupe),
       ...(segregation.has(dep) ? { segregation: segregation.get(dep)! } : {}),
+      listeEcoles: (ecolesParDep.get(dep) ?? []).map((f) => ({ ...lignesDep.get(f.uai)!, ep: f.ep })).sort((a, b) => parNom(a, b) || a.uai.localeCompare(b.uai)),
     };
     await ecrireJson(join(sortie, "departements", `${dep}.json`), donnees);
   }

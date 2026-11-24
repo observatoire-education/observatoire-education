@@ -147,6 +147,26 @@ export const LIBELLES_ECOLES_PROCHES = {
   sansCoordonnees: "Coordonnées de l'école non publiées",
 } as const;
 
+/**
+ * Écoles d'une page commune (spec, section 6.7). « Plus d'école à {commune déléguée} depuis {année} » n'est pas
+ * affiché : l'Annuaire range les écoles ouvertes d'une commune nouvelle sous son code, pas sous celui de leur commune
+ * déléguée, et la phrase pourrait être fausse. Chaque commune déléguée a la liste de ses écoles fermées.
+ */
+export const LIBELLES_COMMUNE_ECOLES = {
+  titre: "Écoles de la commune",
+  plusDEcoleDepuis: (annee: number): string => `Plus d'école dans la commune depuis ${annee}`,
+  fermees: "Écoles fermées depuis 2012",
+  fermeesDeleguee: (deleguee: string): string => `${deleguee} : écoles fermées`,
+  evolution: "Élèves et classes des écoles de la commune",
+  carte: "Écoles",
+  horsCarte: "Écoles non représentées sur la carte (hors du contour de la commune) :",
+  csvDepartement: "Télécharger les écoles du département (CSV)",
+  titreProches: "Écoles les plus proches",
+  /** Depuis le centre d'une commune sans école : pas d'« autre » école. */
+  aucuneAMoinsDe: (km: number): string => `Aucune école à moins de ${km} km`,
+  noteProches: "Distances mesurées depuis le centre de la commune.",
+} as const;
+
 /** « Preel-CP » (typologie des classes) → « Préélémentaire-CP ». */
 export function libelleTypeClasse(brut: string): string {
   return brut.split("-").map((n) => (n === "Preel" ? LIBELLES_ECOLES.preelementaire : n)).join("-");

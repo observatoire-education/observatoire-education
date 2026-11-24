@@ -482,12 +482,16 @@ describe("export des données du site", () => {
     expect(dep.familles.college!.liste.map((l) => l.uai)).not.toContain("0440099Z");
   });
 
-  test("commune sous le seuil : pas de page, absente du département", async () => {
+  test("commune sous le seuil : pas de page du second degré, absente du département (pas de CSV)", async () => {
     const sortie = join(await temporaire(), "data");
     const deux = fiches.filter((f) => f.dep === "44" && f.disparuLe === null).slice(0, 2);
     expect(deux.every((f) => f.codeCommune === "44109")).toBe(true);
     await exporterTerritoires(deux, db, sortie, 2025);
-    expect(await Bun.file(join(sortie, "communes", "44109.json")).exists()).toBe(false);
+    // Nantes a eu des écoles depuis 2012 (fermées, dans la liste des fermés) : page de ses écoles seulement.
+    const nantes: DonneesTerritoire = await Bun.file(join(sortie, "communes", "44109.json")).json();
+    expect(nantes.familles).toEqual({});
+    expect(nantes.ecoles!.ecoles).toEqual([]); // aucune école ouverte parmi les fiches exportées
+    expect(nantes.ecoles!.fermees.map((f) => f.uai)).toEqual(["0440110M", "0440109K", "0440107G"]);
     const dep: DonneesTerritoire = await Bun.file(join(sortie, "departements", "44.json")).json();
     expect(dep.communes).toEqual([]);
   });

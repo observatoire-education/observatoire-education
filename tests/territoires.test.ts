@@ -1,9 +1,15 @@
-import { describe, expect, test } from "bun:test";
+import { beforeAll, describe, expect, test } from "bun:test";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { cheminTerritoire, communeDeRattachement } from "@obs/shared/territoires";
 import type { Fiche, Identite, Indicateur } from "@obs/shared/types";
-import { communesRetenues, libelleListe, controlerPonderation, moyennePonderee, verifierPonderation } from "../pipeline/src/territoires.ts";
+import { assemblerFiches } from "../pipeline/src/fiches.ts";
+import {
+  communesRetenues, ecolesDesCommunes, type EcolesDUneCommune, libelleListe, controlerPonderation, moyennePonderee, verifierPonderation,
+} from "../pipeline/src/territoires.ts";
 import { partPrive } from "../site/src/lib/territoire.ts";
-import { identiteTest } from "./aide.ts";
+import { dbTest, FIXTURES, identiteTest, manifestTest } from "./aide.ts";
 
 describe("libellé de commune", () => {
   const fiche = (codeCommune: string, commune: string) =>
@@ -126,5 +132,75 @@ describe("part du privé d'un territoire", () => {
     expect(partPrive({ public: 500, prive: null }, false)).toBeNull();
     expect(partPrive({ public: null, prive: null }, true)).toBeNull();
     expect(partPrive({ public: 300, prive: 100 })).toBe(25);
+  });
+});
+
+describe("écoles des communes (pages commune étendues)", () => {
+  let parCommune: Map<string, EcolesDUneCommune>;
+  beforeAll(async () => {
+    const db = await dbTest();
+    const dossier = await mkdtemp(join(tmpdir(), "obs-territoires-"));
+    const fiches = await assemblerFiches(db, manifestTest(dossier), {}, new Date("2026-11-23T02:17:00Z"));
+    const avant = process.env.OBS_CONTOURS;
+    process.env.OBS_CONTOURS = join(FIXTURES, "contours");
+    try {
+      parCommune = await ecolesDesCommunes(db, fiches.filter((f) => f.disparuLe === null));
+    } finally {
+      if (avant === undefined) delete process.env.OBS_CONTOURS;
+      else process.env.OBS_CONTOURS = avant;
+      await rm(dossier, { recursive: true, force: true });
+    }
+  });
+
+  test("une entrée par commune d'aujourd'hui qui a ou a eu une école depuis 2012 ; aucune pour un code disparu", () => {
+    expect([...parCommune.keys()].sort()).toEqual(["44109", "44150", "44903"]);
+  });
+
+  test("Saint-Aubin : écoles ouvertes, jamais « plus d'école » ; Le Moulin a sa partie, avec son école fermée", () => {
+    const c = parCommune.get("44150")!;
+    expect(c.libelle).toBe("Saint-Aubin");
+    expect(c.dep).toEqual({ code: "44", libelle: "Loire-Atlantique" });
+    const e = c.ecoles;
+    expect(e.plusDEcoleDepuis).toBeNull();
+    expect(e.plusProches).toBeNull();
+    expect(e.ecoles.map((x) => [x.uai, x.classes])).toEqual([["0440104D", 1], ["0440105E", null]]); // 0 classe : absence
+    const moulin = { uai: "0440106F", nom: "École élémentaire du Moulin", fermeLe: "2016-07-05", famille: "elementaire" as const, ancienneCommune: "Le Moulin" };
+    expect(e.fermees).toEqual([moulin]);
+    // pas de partie pour le chef-lieu (même code que la commune nouvelle) : ce code ne dit pas de quelle commune déléguée vient l'école
+    expect(e.deleguees).toEqual([{ code: "44999", nom: "Le Moulin", fermees: [moulin] }]);
+    expect(e.rentrees).toEqual({ eleves: 2025, ips: 2024 });
+  });
+
+  test("historique de la commune : somme des écoles, ouvertes et fermées, par rentrée", () => {
+    expect(parCommune.get("44150")!.ecoles.historique).toEqual([
+      [2014, 70, 3], [2015, 70, 3],
+      [2019, 55, 3], [2020, 55, 3], [2021, 55, 3], [2022, 55, 3], [2023, 55, 3], [2024, 55, 3], [2025, 55, 1],
+    ]);
+  });
+
+  test("Val-de-l'Erdre : plus d'école depuis 2018, école fermée sans fiche avec son ancienne commune, écoles proches depuis le centre", () => {
+    const c = parCommune.get("44903")!;
+    expect(c.libelle).toBe("Val-de-l'Erdre");
+    const e = c.ecoles;
+    expect(e.ecoles).toEqual([]);
+    expect(e.plusDEcoleDepuis).toBe(2018);
+    expect(e.fermees).toEqual([
+      { uai: "0440111N", nom: "École maternelle des Landes", fermeLe: "2018-07-06", famille: "maternelle", ancienneCommune: "Les Landes", sansFiche: true },
+    ]);
+    expect(e.deleguees).toEqual([]);
+    // centre du contour (carré de test) : 47,25 ; −1,25. L'école du Bourg, la plus proche, est à plus de 10 km.
+    expect(e.plusProches!.liste[0]!.uai).toBe("0440104D");
+    expect(e.plusProches!.aucuneAMoinsDe).toBe(10);
+    expect(e.points).toEqual([]);
+  });
+
+  test("Nantes : écoles fermées triées par date ; points de la carte des écoles", () => {
+    const e = parCommune.get("44109")!.ecoles;
+    expect(e.fermees.map((f) => [f.uai, f.fermeLe])).toEqual([
+      ["0440110M", "2013-07-05"], ["0440109K", "2019-07-04"], ["0440107G", "2019-07-04"],
+    ]);
+    expect(e.fermees.every((f) => f.ancienneCommune === undefined)).toBe(true);
+    expect(e.plusDEcoleDepuis).toBeNull();
+    expect(e.points.map((p) => p.uai).sort()).toEqual(["0440108H", "0440201A", "0440202B", "0440203C"]);
   });
 });

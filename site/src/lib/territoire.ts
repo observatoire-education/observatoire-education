@@ -2,8 +2,8 @@
 import { comparerCollectivites, type NiveauBudget } from "@obs/shared/collectivites";
 import type { BudgetCollectivite, DonneesTerritoire, LigneListe, LigneTerritoire, SyntheseFamille } from "@obs/shared/donnees";
 import { entier } from "@obs/shared/format";
-import { FAMILLES, FAMILLES_SECOND_DEGRE } from "@obs/shared/libelles";
-import type { Famille, FamilleSecondDegre, ResumeResultat } from "@obs/shared/types";
+import { FAMILLES, FAMILLES_ECOLES, FAMILLES_SECOND_DEGRE } from "@obs/shared/libelles";
+import type { Famille, FamilleSecondDegre, LigneEcole, ResumeResultat } from "@obs/shared/types";
 
 /** Familles des pages de territoire : second degré seulement (les écoles n'y figurent pas). */
 export const ORDRE_FAMILLES: FamilleSecondDegre[] = [...FAMILLES_SECOND_DEGRE];
@@ -75,13 +75,21 @@ export function csvTerritoire(d: DonneesTerritoire): string {
       e.ecartIpsColleges,
     ]));
   }
-  return csv(COLONNES_CSV, famillesDe(d).flatMap(([famille, s]) =>
+  const secondDegre = famillesDe(d).flatMap(([famille, s]) =>
     s.liste.map((l: LigneListe) => [
       l.uai, l.nom, famille, l.secteur, l.commune, l.ep, l.eleves, l.elevesParEtpEns,
       l.elevesParEtpVs ?? (l.statutVs === "non_publie_prive" ? "non_publie_prive" : null),
       l.partEnseignantes, l.ips, ...colonnesReussite(l.reussite),
     ]),
-  ));
+  );
+  // Écoles ouvertes (commune : celles de sa page ; département : toutes), après le second degré, par famille puis par
+  // nom ; les colonnes sans objet pour une école restent vides.
+  const ecoles: (LigneEcole & { ep: string | null })[] = d.ref.niveau === "commune" ? (d.ecoles?.ecoles ?? []) : (d.listeEcoles ?? []);
+  const lignesEcoles = FAMILLES_ECOLES.flatMap((famille) =>
+    ecoles.filter((e) => e.famille === famille).map((e) => [
+      e.uai, e.nom, famille, e.secteur, e.commune, e.ep, e.eleves, null, null, null, e.ips, ...colonnesReussite([]),
+    ]));
+  return csv(COLONNES_CSV, [...secondDegre, ...lignesEcoles]);
 }
 
 /**

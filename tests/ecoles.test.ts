@@ -1,10 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { CODES_INDICATEURS, INDICATEURS, LIBELLES_ECOLES_PROCHES as LP, RAYON_ECOLES_PROCHES_KM } from "@obs/shared/libelles";
+import {
+  CODES_INDICATEURS, INDICATEURS, LIBELLES_COMMUNE_ECOLES, LIBELLES_ECOLES_PROCHES as LP, RAYON_ECOLES_PROCHES_KM,
+} from "@obs/shared/libelles";
 import type { Db } from "../pipeline/src/db.ts";
 import { connexion } from "../pipeline/src/duck.ts";
 import { calculerEleves } from "../pipeline/src/eleves.ts";
 import {
-  calculerClasses, calculerEcolesProches, DEPUIS, rentreeEffectifsEcoles, SEUILS_ISOLEMENT_KM, seuilIsolement,
+  calculerClasses, calculerEcolesProches, DEPUIS, ecolesProchesDesPoints, rentreeEffectifsEcoles, SEUILS_ISOLEMENT_KM, seuilIsolement,
 } from "../pipeline/src/ecoles.ts";
 import { distanceKm, FAMILLES_COMPATIBLES_ECOLES } from "../pipeline/src/fiches.ts";
 import { calculerIndicateurs, calculerRepartitions } from "../pipeline/src/indicateurs.ts";
@@ -103,6 +105,21 @@ describe("écoles les plus proches", () => {
     expect((await calculerEcolesProches(db, { lat: 45, lon: 2 })).get(DEPUIS)).toEqual({
       liste: [], plusProcheMaternelle: null, plusProcheElementaire: null, aucuneAMoinsDe: 50,
     });
+  });
+
+  test("plusieurs points d'un coup (centres des communes sans école) : mêmes résultats qu'un point à la fois", async () => {
+    const points = [
+      { id: "bourg", lat: 47.35, lon: -1.4 }, { id: "a2km", lat: 47.38, lon: -1.4 }, { id: "a5km", lat: 47.41, lon: -1.4 },
+      { id: "loin", lat: 45, lon: 2 },
+    ];
+    const lot = await ecolesProchesDesPoints(db, points);
+    expect([...lot.keys()]).toEqual(["bourg", "a2km", "a5km", "loin"]);
+    for (const p of points) expect(lot.get(p.id)).toEqual((await calculerEcolesProches(db, p)).get(DEPUIS)!);
+    expect((await ecolesProchesDesPoints(db, [])).size).toBe(0);
+  });
+
+  test("phrase d'une commune : « Aucune école à moins de n km », sans « autre »", () => {
+    expect(LIBELLES_COMMUNE_ECOLES.aucuneAMoinsDe(10)).toBe("Aucune école à moins de 10 km");
   });
 
   test("élèves et classes de la rentrée demandée seulement (celle du titre de colonne)", async () => {

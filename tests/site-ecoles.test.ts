@@ -1,8 +1,10 @@
 import { beforeAll, describe, expect, test } from "bun:test";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { LIBELLES_RATTACHEMENTS as LR } from "@obs/shared/libelles";
 import { mentionMoyennesA4 } from "../site/src/lib/affichage.ts";
 import { svgElevesClasses } from "../site/src/lib/plot.ts";
-import { doc, octets, page, siteTest, texte } from "./site.ts";
+import { DIST_TEST, doc, octets, page, siteTest, texte } from "./site.ts";
 
 beforeAll(async () => {
   await siteTest();
@@ -329,5 +331,101 @@ describe("libellés des rattachements", () => {
     expect(LR.titrePial("legt", "Lycée Guist'hau")).toBe("PIAL du lycée général et technologique Lycée Guist'hau");
     expect(LR.titrePial("elementaire", "École élémentaire du Bourg")).toBe("PIAL de l'école élémentaire du Bourg");
     expect(LR.titrePial("erea", "EREA Les Pins")).toBe("PIAL de l'EREA Les Pins");
+  });
+});
+
+const existe = (chemin: string) => existsSync(join(DIST_TEST, chemin));
+
+describe("pages commune étendues", () => {
+  test("une page pour chaque commune d'aujourd'hui qui a ou a eu une école ; aucune pour le code disparu 44999", () => {
+    expect(existe("commune/44150/index.html")).toBe(true); // écoles ouvertes
+    expect(existe("commune/44903/index.html")).toBe(true); // seulement une école fermée (ancienne commune 44901)
+    expect(existe("commune/44999/index.html")).toBe(false);
+    expect(existe("commune/44901/index.html")).toBe(false);
+    for (const c of ["44150", "44903"]) expect(page("sitemap.xml")).toContain(`/commune/${c}/</loc>`);
+  });
+
+  test("Saint-Aubin (44150) : ses écoles, jamais « Plus d'école dans la commune », les écoles fermées de Le Moulin", () => {
+    const d = doc("commune/44150");
+    const t = texte("commune/44150");
+    expect(t).not.toContain("Plus d'école dans la commune");
+    // écoles ouvertes de la commune nouvelle non rattachables à leur commune déléguée : rien n'est affirmé pour Le Moulin
+    expect(t).not.toContain("Plus d'école à");
+    const b = d.querySelector("#ecoles")!;
+    expect(propre(b.querySelector("h2")?.textContent)).toBe("Écoles de la commune");
+    expect(propre(b.textContent)).toContain("2 écoles publiques, 0 privée sous contrat");
+    expect([...b.querySelectorAll("thead th")].map((x) => propre(x.textContent))).toEqual(["École", "Nature", "Secteur", "Élèves 2025", "Classes 2025", "IPS 2024"]);
+    const lignes = [...b.querySelectorAll("tbody tr")].map((r) => [...r.querySelectorAll("td")].map((x) => propre(x.textContent)));
+    expect(lignes).toEqual([
+      ["École élémentaire du Bourg", "École élémentaire", "Public", "10", "1", "non publié"],
+      ["École maternelle des Prés", "École maternelle", "Public", "45", "non publié", "non publié"],
+    ]);
+    const f = d.querySelector("#ecoles-fermees")!;
+    expect(propre(f.querySelector("h2")?.textContent)).toBe("Écoles fermées depuis 2012");
+    expect(propre(f.querySelector("h3")?.textContent)).toBe("Le Moulin : écoles fermées");
+    expect(propre(f.textContent)).toContain("École élémentaire du Moulin · Fermée le 05/07/2016");
+    expect(liens(f)).toEqual(["/etablissement/0440106F/"]);
+    expect(d.querySelector("#ecoles-proches")).toBeNull();
+  });
+
+  test("évolution des élèves et des classes de la commune ; carte des écoles (plein : public, anneau : privé)", () => {
+    const b = doc("commune/44150").querySelector("#ecoles")!;
+    const svgs = [...b.querySelectorAll("svg")].map((s) => s.getAttribute("aria-label") ?? "");
+    expect(svgs[0]).toStartWith("Élèves : 2014 70, 2015 70, 2019 55,");
+    expect(svgs[1]).toStartWith("Carte des écoles : 1 point");
+    const nantes = doc("commune/44109").querySelector("#ecoles")!;
+    const titres = (s: string) => [...nantes.querySelectorAll(`${s} circle title`)].map((x) => propre(x.textContent));
+    expect(titres('g[fill="none"][stroke="var(--pri)"]')).toEqual(["École primaire Sainte-Marie"]); // privée : anneau
+    expect(titres('g[fill="var(--pub)"]').sort()).toEqual(["École maternelle Les Lilas", "École primaire des Tilleuls", "École élémentaire Jules-Ferry"]);
+  });
+
+  test("commune sans école ouverte (44903) : « Plus d'école dans la commune depuis 2018 », écoles fermées nommées, plus proches depuis le centre", () => {
+    const d = doc("commune/44903");
+    const t = texte("commune/44903");
+    expect(propre(d.querySelector("h1")?.textContent)).toBe("Val-de-l'Erdre");
+    expect(t).toContain("Plus d'école dans la commune depuis 2018");
+    const f = d.querySelector("#ecoles-fermees")!;
+    expect(propre(f.textContent)).toContain("École maternelle des Landes (Les Landes) · Fermée le 06/07/2018");
+    expect(f.querySelector("a")).toBeNull(); // pas de fiche pour cette école
+    const p = d.querySelector("#ecoles-proches")!;
+    expect(propre(p.querySelector("h2")?.textContent)).toBe("Écoles les plus proches");
+    const tp = propre(p.textContent);
+    expect(tp).toContain("Aucune école à moins de 10 km");
+    expect(tp).not.toContain("Aucune autre école");
+    expect(tp).toContain("Distances mesurées depuis le centre de la commune.");
+    expect(liens(p.querySelector("tbody"))[0]).toBe("/etablissement/0440104D/");
+    // pas de collège ni de lycée : ni bloc du second degré, ni « 0 établissements »
+    expect(t).not.toContain("établissements");
+    expect(t).not.toContain("Privé hors contrat");
+  });
+
+  test("CSV : pas de CSV pour une nouvelle page commune, lien vers celui du département, qui contient les écoles", () => {
+    expect(existe("commune/44150/etablissements.csv")).toBe(false);
+    expect(existe("commune/44903/etablissements.csv")).toBe(false);
+    for (const c of ["44150", "44903"]) {
+      expect(doc(`commune/${c}`).querySelector('a[href="/departement/44/etablissements.csv"]')).not.toBeNull();
+      expect(doc(`commune/${c}`).querySelector(`a[href="/commune/${c}/etablissements.csv"]`)).toBeNull();
+    }
+    const dep = page("departement/44/etablissements.csv");
+    expect(dep).toContain("0440104D;École élémentaire du Bourg;elementaire;public;Saint-Aubin;");
+    expect(dep).not.toContain("0440106F"); // fermée
+    expect(dep).toContain("0440202B;École élémentaire Jules-Ferry;elementaire;public;Nantes;REP;196;"); // éducation prioritaire
+    // CSV d'une commune du second degré : URL gardée, enrichi des écoles de la commune
+    const nantes = page("commune/44109/etablissements.csv");
+    expect(nantes).toContain("0440201A;École maternelle Les Lilas;maternelle;public;Nantes;");
+    expect(nantes).not.toContain("0440104D");
+  });
+
+  test("pages commune du second degré : contenu existant gardé, bloc des écoles ajouté avant les sources", () => {
+    const d = doc("commune/44109");
+    const ids = [...d.querySelectorAll("main section")].map((s) => s.id);
+    expect(ids.slice(-3)).toEqual(["ecoles", "ecoles-fermees", ""]); // puis la section « Sources »
+    expect(d.querySelector('a[href="/commune/44109/etablissements.csv"]')).not.toBeNull();
+    expect(propre(d.querySelector("#ecoles-fermees")!.textContent)).toContain("École maternelle des Peupliers · Fermée le 05/07/2013");
+  });
+
+  test("poids : une nouvelle page commune fait 15 000 octets au plus", () => {
+    expect(octets("commune/44150")).toBeLessThanOrEqual(15_000);
+    expect(octets("commune/44903")).toBeLessThanOrEqual(15_000);
   });
 });

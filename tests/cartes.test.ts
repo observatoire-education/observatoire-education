@@ -19,7 +19,7 @@ describe("contours", () => {
 
   test("les communes d'un département", () => {
     const c = communesDuDepartement("44");
-    expect(c.features).toHaveLength(2);
+    expect(c.features).toHaveLength(3); // Nantes, 44020 et Val-de-l'Erdre (44903)
     expect(c.features.every((f) => f.properties?.dep === "44")).toBe(true);
     expect(communesDuDepartement("2A").features).toHaveLength(0);
   });

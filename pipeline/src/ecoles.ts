@@ -157,15 +157,29 @@ export async function rentreeEffectifsEcoles(db: Db): Promise<number | null> {
 export async function calculerEcolesProches(
   db: Db, depuis?: { lat: number; lon: number }, rentree?: number | null,
 ): Promise<Map<string, EcolesProches | null>> {
-  const ecoles = depuis
-    ? []
-    : await db.sql<{ uai: string; famille: FamilleEcole; lat: number | null; lon: number | null }>(
-        `select uai, famille, lat, lon from etablissements where famille in (${enSql(FAMILLES_ECOLES)}) order by uai`,
-      );
-  const points: PointDepart[] = depuis
-    ? [{ id: DEPUIS, lat: depuis.lat, lon: depuis.lon, famille: null }]
-    : ecoles.filter((e) => e.lat !== null && e.lon !== null).map((e) => ({ id: e.uai, lat: e.lat!, lon: e.lon!, famille: e.famille }));
+  if (depuis) return new Map([[DEPUIS, (await ecolesProchesDesPoints(db, [{ id: DEPUIS, lat: depuis.lat, lon: depuis.lon }], rentree)).get(DEPUIS)!]]);
+  const ecoles = await db.sql<{ uai: string; famille: FamilleEcole; lat: number | null; lon: number | null }>(
+    `select uai, famille, lat, lon from etablissements where famille in (${enSql(FAMILLES_ECOLES)}) order by uai`,
+  );
+  const points: PointDepart[] = ecoles
+    .filter((e) => e.lat !== null && e.lon !== null)
+    .map((e) => ({ id: e.uai, lat: e.lat!, lon: e.lon!, famille: e.famille }));
+  const proches = await prochesDe(db, points, rentree);
+  return new Map(ecoles.map((e) => [e.uai, proches.get(e.uai) ?? null]));
+}
 
+/**
+ * Écoles les plus proches de plusieurs points (centres des communes sans école), en deux requêtes pour tous les points :
+ * comme `calculerEcolesProches` avec `depuis`, une entrée par identifiant de point.
+ */
+export async function ecolesProchesDesPoints(
+  db: Db, points: { id: string; lat: number; lon: number }[], rentree?: number | null,
+): Promise<Map<string, EcolesProches>> {
+  if (points.length === 0) return new Map();
+  return prochesDe(db, points.map((p) => ({ id: p.id, lat: p.lat, lon: p.lon, famille: null })), rentree);
+}
+
+async function prochesDe(db: Db, points: PointDepart[], rentree?: number | null): Promise<Map<string, EcolesProches>> {
   // Élèves et classes de la rentrée affichée seulement (une rentrée plus ancienne n'est pas montrée).
   const r = rentree === undefined ? await rentreeEffectifsEcoles(db) : rentree;
   const chiffres = new Map(
@@ -203,7 +217,5 @@ export async function calculerEcolesProches(
   const aReprendre = points.filter((p) => !complet(proches.get(p.id)!));
   const seconde = await lignesProches(db, aReprendre, RAYON_ECOLES_PROCHES_KM);
   for (const p of aReprendre) proches.set(p.id, resume(seconde.get(p.id) ?? []));
-
-  if (depuis) return new Map([[DEPUIS, proches.get(DEPUIS)!]]);
-  return new Map(ecoles.map((e) => [e.uai, proches.get(e.uai) ?? null]));
+  return proches;
 }

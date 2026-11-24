@@ -10,6 +10,8 @@ export interface TableCommunes {
   actuelle(code: string): string;
   /** Communes déléguées (et associées) d'une commune en vigueur, triées par nom ; vide s'il n'y en a pas. */
   deleguees(code: string): { code: string; nom: string }[];
+  /** Nom d'une commune en vigueur (Code officiel géographique) ; null si le code n'en est pas une. */
+  nom(code: string): string | null;
 }
 
 interface Mouvement {
@@ -36,7 +38,8 @@ export async function chargerCommunes(db: Db): Promise<TableCommunes> {
      order by le desc, ap`,
   );
 
-  const enVigueur = new Set(communes.filter((c) => c.typecom === "COM").map((c) => c.com));
+  const noms = new Map(communes.filter((c) => c.typecom === "COM").map((c) => [c.com, c.nom]));
+  const enVigueur = new Set(noms.keys());
   const parents = new Map<string, string>();
   const deleguees = new Map<string, { code: string; nom: string }[]>();
   for (const c of communes) {
@@ -76,6 +79,7 @@ export async function chargerCommunes(db: Db): Promise<TableCommunes> {
       return c;
     },
     deleguees: (code) => (deleguees.get(code) ?? []).map((d) => ({ ...d })),
+    nom: (code) => noms.get(code) ?? null,
   };
 }
 

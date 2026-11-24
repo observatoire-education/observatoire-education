@@ -4,18 +4,21 @@
 // (tableau 6.1 de la spécification de la phase 2).
 import type { DonneesTerritoire, IpsMoyens, NiveauTerritoire } from "@obs/shared/donnees";
 import { date, entier, libelleMillesime, nombre, part } from "@obs/shared/format";
-import { academie, type CodeIndicateur, FAMILLES_PLURIEL, INDICATEURS, LIBELLES, LIBELLES_BUDGET, LIBELLES_SEGREGATION } from "@obs/shared/libelles";
+import {
+  academie, type CodeIndicateur, FAMILLES_PLURIEL, INDICATEURS, LIBELLES, LIBELLES_BUDGET, LIBELLES_COMMUNE_ECOLES, LIBELLES_SEGREGATION,
+} from "@obs/shared/libelles";
 import { cheminTerritoire, communeDeRattachement, LIBELLES_PLM } from "@obs/shared/territoires";
-import type { Comparaison, Famille, Niveau, Secteur } from "@obs/shared/types";
+import type { Comparaison, Famille, Niveau, Secteur, SourceId } from "@obs/shared/types";
 import Base from "../layouts/Base.astro";
 import { anneeScolaire, formater } from "../lib/affichage";
-import { communesDisponibles, lireFrance, lireSources, lireTerritoire } from "../lib/donnees";
+import { communesAvecCsv, communesDisponibles, lireFrance, lireSources, lireTerritoire } from "../lib/donnees";
 import { aPointCalcule, domaine, seriesReferencesIps, svgCourbe, svgDistribution, svgPoints } from "../lib/plot";
 import { famillesDe, nomFamille, partPrive, pluriel } from "../lib/territoire";
 import Absence from "./Absence.astro";
 import { absenceBudget, motifAbsenceTerritoire, niveauDe } from "../lib/budget";
 import Ariane from "./Ariane.astro";
 import BlocBudget from "./BlocBudget.astro";
+import BlocEcolesCommune from "./BlocEcolesCommune.astro";
 import BlocSegregation from "./BlocSegregation.astro";
 import CarteTerritoire from "./CarteTerritoire.astro";
 import Cellule from "./Cellule.astro";
@@ -32,8 +35,12 @@ const chemin = cheminTerritoire(d.ref);
 const aca = niveau === "academie" ? d.ref : d.parents.find((p) => p.niveau === "academie");
 const dep = d.parents.find((p) => p.niveau === "departement");
 const france = lireFrance();
-const sources = Object.values(lireSources()).filter((s) => s.actuelle);
 const familles = famillesDe(d);
+/** Commune sans page pour le second degré (spec, 6.7) : page de ses écoles seulement, plus légère. */
+const seulementEcoles = niveau === "commune" && familles.length === 0;
+/** Sources d'une page des écoles seulement : celles de ses blocs (toutes les sources sur les autres pages). */
+const SOURCES_ECOLES = new Set<SourceId>(["annuaire", "fermes", "effectifs_ecoles", "ips_ecoles_2016", "ips_ecoles", "cog_communes", "cog_mouvements"]);
+const sources = Object.values(lireSources()).filter((s) => s.actuelle && (!seulementEcoles || SOURCES_ECOLES.has(s.id)));
 const total = familles.reduce((a, [, s]) => a + s.compte.public + s.compte.prive, 0);
 const academies = d.academies ?? [];
 /** Premier onglet de lycées : le bloc des moyens des régions n'y figure qu'une fois, pas à chaque famille. */
@@ -59,6 +66,8 @@ const lieu =
 const csv =
   niveau === "france" ? { href: `${chemin}academies.csv`, texte: "Télécharger les académies (CSV)" }
   : niveau === "academie" || niveau === "region" ? { href: `${chemin}departements.csv`, texte: "Télécharger les départements (CSV)" }
+  : niveau === "commune" && dep && !communesAvecCsv().has(d.ref.code)
+    ? { href: `${cheminTerritoire(dep)}etablissements.csv`, texte: LIBELLES_COMMUNE_ECOLES.csvDepartement }
   : { href: `${chemin}etablissements.csv`, texte: "Télécharger la liste (CSV)" };
 const libelleNiveau = (n: Niveau) => (n === "departement" ? (dep ?? d.ref).libelle : n === "academie" ? academie(aca?.libelle ?? "") : "France");
 const enteteNiveau = (n: Niveau) => (n === "departement" ? "Dép." : n === "academie" ? "Académie" : "France");
@@ -105,7 +114,7 @@ const titreListe = (f: Famille, n: number) =>
 const badges = [
   ...(niveau === "departement" || niveau === "commune") && aca ? [academie(aca.libelle)] : [],
   ...(niveau === "commune" && dep ? [dep.libelle] : []),
-  `${entier(total)} établissements`,
+  ...(seulementEcoles ? [] : [`${entier(total)} établissements`]),
   ...(niveau === "departement" ? [`${communes.filter((c) => c.n !== null).length} communes avec un collège ou un lycée`] : []),
   ...(niveau === "academie" || niveau === "region" ? [pluriel(d.enfants.length, "département")] : []),
   ...(niveau === "region" ? [pluriel(academies.length, "académie")] : []),
@@ -113,7 +122,7 @@ const badges = [
 ];
 ---
 <Base titre={titre} chemin={chemin}
-  description={`Collèges et lycées publics et privés sous contrat ${lieu} : chiffres publics sourcés et datés.`}>
+  description={`${seulementEcoles ? "Écoles publiques et privées sous contrat" : "Collèges et lycées publics et privés sous contrat"} ${lieu} : chiffres publics sourcés et datés.`}>
   <Ariane parents={d.parents} />
   <h1>{nom}{niveau === "departement" && <> <span class="mute num" style="font-weight:400">{d.ref.code}</span></>}</h1>
   <div class="badges">{badges.map((b) => <span class="badge">{b}</span>)}</div>
@@ -121,22 +130,22 @@ const badges = [
     <button class="btn primary" type="button" id="imprimer">⎙ Imprimer / PDF</button>
     <a class="btn" href={csv.href} download>⬇ {csv.texte}</a>
   </div>
-  <div class="kpis">
+  {!seulementEcoles && <div class="kpis">
     {familles.map(([f, s]) => (
       <div><div class="k">{FAMILLES_PLURIEL[f]}</div><div class="v">{entier(s.compte.public + s.compte.prive)}</div>
         <div class="c"><span class="p">{entier(s.compte.public)} publics</span> · <span class="q">{entier(s.compte.prive)} privés s. c.</span></div></div>
     ))}
     <div><div class="k">Privé hors contrat</div><div class="v">{entier(d.horsContrat)} étab.</div><div class="c" style="font-family:var(--sans)">{LIBELLES.nonCouvert}</div></div>
-  </div>
+  </div>}
 
-  <section>
+  {!seulementEcoles && <section>
     <h2>Carte</h2>
     <CarteTerritoire carte={d.carte} ref={d.ref} rentree={d.rentree} budget={niveau === "france" ? lireFrance().carteBudget : null} />
-  </section>
+  </section>}
 
-  <nav class="tabs" aria-label="Types d'établissement">
+  {!seulementEcoles && <nav class="tabs" aria-label="Types d'établissement">
     {familles.map(([f]) => <a href={`#${f}`}>{FAMILLES_PLURIEL[f]}</a>)}
-  </nav>
+  </nav>}
 
   {familles.map(([f, s]) => {
     const ips = s.moyennes.find((m) => m.code === "ips");
@@ -318,6 +327,8 @@ const badges = [
       })}</div>
     </section>
   )}
+
+  {d.ecoles && <BlocEcolesCommune e={d.ecoles} commune={d.ref} />}
 
   <section>
     <h2>Sources</h2>

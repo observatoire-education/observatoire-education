@@ -84,7 +84,15 @@ export function siteTest(): Promise<string> {
         modified: "2026-11-01T00:00:00Z", collecteLe: "2026-11-22T02:17:00Z", lignes: 10, requete: requeteTest(s.id, s.datasetId),
       });
     }
-    await exporter(fiches, db, manifest, DONNEES_TEST, corrections);
+    // Centres des communes (écoles les plus proches d'une commune sans école) : contours de test, comme le site.
+    const contours = process.env.OBS_CONTOURS;
+    process.env.OBS_CONTOURS = CONTOURS_TEST;
+    try {
+      await exporter(fiches, db, manifest, DONNEES_TEST, corrections);
+    } finally {
+      if (contours === undefined) delete process.env.OBS_CONTOURS;
+      else process.env.OBS_CONTOURS = contours;
+    }
     const p = Bun.spawn(["bun", "run", "astro", "build"], {
       cwd: join(RACINE, "site"),
       env: { ...process.env, OBS_DATA: DONNEES_TEST, OBS_DIST: DIST_TEST, OBS_CONFIG: CONFIG_TEST, OBS_CONTOURS: CONTOURS_TEST },

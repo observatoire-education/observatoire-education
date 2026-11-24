@@ -1,10 +1,11 @@
-// Liste des établissements d'une commune en CSV, générée au build.
+// Liste des établissements d'une commune en CSV, générée au build : communes retenues pour le second degré seulement
+// (les autres pages commune renvoient au CSV de leur département, plafond de fichiers oblige).
 import type { APIRoute } from "astro";
-import { communesDisponibles, lireTerritoire } from "../../../lib/donnees";
+import { communesAvecCsv, lireTerritoire } from "../../../lib/donnees";
 import { csvTerritoire } from "../../../lib/territoire";
 
 export function getStaticPaths() {
-  return [...communesDisponibles()].map((insee) => ({ params: { insee } }));
+  return [...communesAvecCsv()].map((insee) => ({ params: { insee } }));
 }
 
 export const GET: APIRoute = ({ params }) =>

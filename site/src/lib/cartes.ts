@@ -171,9 +171,11 @@ export function notesCarteBudget(valeurs: ValeursBudget, libelleDep: (dep: strin
   return notes;
 }
 
+/** `objet` : ce que montrent les points, dans le texte de la carte (« établissements », « écoles »). */
 export function svgCartePoints(
   points: PointCarte[],
   fond: { territoire: Fond | null; mailles: Fonds | null },
+  objet = "établissements",
 ): { svg: string; absents: string[] } {
   let absents: string[] = [];
   let dessines = points;
@@ -210,7 +212,7 @@ export function svgCartePoints(
     ...rayon,
     marks,
   });
-  return { svg: svg(p, `Carte des établissements : ${dessines.length} points, public en plein, privé sous contrat en anneau`), absents };
+  return { svg: svg(p, `Carte des ${objet} : ${dessines.length} point${dessines.length > 1 ? "s" : ""}, public en plein, privé sous contrat en anneau`), absents };
 }
 
 /** Rampe, bornes et case « non disponible » de la vue. */

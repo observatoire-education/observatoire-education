@@ -1,0 +1,94 @@
+---
+// Écoles d'une page commune (spec, section 6.7) : écoles ouvertes (nature, secteur, élèves, classes, IPS), triées par
+// nom ; élèves et classes de la commune par rentrée ; carte des écoles (plein : public, anneau : privé sous contrat) ;
+// écoles fermées depuis 2012, avec une partie par commune déléguée qui en a ; écoles les plus proches du centre de la
+// commune quand elle n'en a plus. Aucune phrase « Plus d'école à {commune déléguée} » : l'Annuaire range les écoles
+// ouvertes d'une commune nouvelle sous son code, la phrase pourrait être fausse.
+import type { EcolesCommune, RefTerritoire } from "@obs/shared/donnees";
+import { entier } from "@obs/shared/format";
+import { FAMILLES, LIBELLES, LIBELLES_COMMUNE_ECOLES as LC, LIBELLES_RATTACHEMENTS as LR, SECTEURS } from "@obs/shared/libelles";
+import { svgCartePoints } from "../lib/cartes";
+import { contourCommune } from "../lib/contours";
+import { valeur } from "../lib/affichage";
+import { svgElevesClasses } from "../lib/plot";
+import BlocEcolesProches from "./BlocEcolesProches.astro";
+import Cellule from "./Cellule.astro";
+
+interface Props { e: EcolesCommune; commune: RefTerritoire }
+const { e, commune } = Astro.props;
+const titre = (libelle: string, rentree: number | null) => (rentree ? `${libelle} ${rentree}` : libelle);
+const publiques = e.ecoles.filter((x) => x.secteur === "public").length;
+const courbe = svgElevesClasses(e.historique);
+const rentrees = e.historique.map(([r]) => r);
+const carte = e.points.length ? svgCartePoints(e.points, { territoire: contourCommune(commune.code), mailles: null }, "écoles") : null;
+const noms = new Map(e.points.map((p) => [p.uai, p.nom]));
+// Écoles fermées de la commune hors des parties des communes déléguées (qui les nomment déjà).
+const dansUnePartie = new Set(e.deleguees.flatMap((d) => d.fermees.map((f) => f.uai)));
+const fermeesCommune = e.fermees.filter((f) => !dansUnePartie.has(f.uai));
+---
+<section id="ecoles">
+  <h2>{LC.titre}</h2>
+  <div class="card">
+    {e.plusDEcoleDepuis !== null && <p><strong>{LC.plusDEcoleDepuis(e.plusDEcoleDepuis)}</strong></p>}
+    {e.ecoles.length > 0 && (
+      <>
+        <p>{LR.decompte(publiques, e.ecoles.length - publiques)}</p>
+        <div class="table-wrap">
+          <table class="mini-t">
+            <thead><tr><th>École</th><th>Nature</th><th>Secteur</th><th class="n">{titre("Élèves", e.rentrees.eleves)}</th><th class="n">{titre("Classes", e.rentrees.eleves)}</th><th class="n">{titre("IPS", e.rentrees.ips)}</th></tr></thead>
+            <tbody>
+              {e.ecoles.map((x) => (
+                <tr>
+                  <td><a href={`/etablissement/${x.uai}/`}>{x.nom}</a></td>
+                  <td>{FAMILLES[x.famille]}</td>
+                  <td><span class={`sect ${x.secteur === "public" ? "pub" : "pri"}`}>{x.secteur === "public" ? SECTEURS.public : "Privé s. c."}</span></td>
+                  <td class="n"><Cellule texte={x.eleves === null ? LR.nonPublie : entier(x.eleves)} absent={x.eleves === null} /></td>
+                  <td class="n"><Cellule texte={x.classes === null ? LR.nonPublie : entier(x.classes)} absent={x.classes === null} /></td>
+                  <td class="n"><Cellule texte={x.ips === null ? LR.nonPublie : valeur("ips", { valeur: x.ips, statut: "ok", source: null, rentree: null })} absent={x.ips === null} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </>
+    )}
+  </div>
+  {(courbe || carte) && (
+    <div class="cols2" style="margin-top:14px">
+      {courbe && (
+        <div class="card">
+          <div class="lab"><span>{LC.evolution}</span><span class="yr">{Math.min(...rentrees)} → {Math.max(...rentrees)}</span></div>
+          <Fragment set:html={courbe} />
+          <div class="legend"><span class="me">élèves (axe de gauche)</span><span>- - - classes (axe de droite)</span></div>
+        </div>
+      )}
+      {carte && (
+        <div class="card">
+          <div class="lab"><span>{LC.carte}</span>{e.rentrees.eleves && <span class="yr">{e.rentrees.eleves}</span>}</div>
+          <Fragment set:html={carte.svg} />
+          <div class="legend"><span class="sect pub">public</span><span class="sect pri">privé sous contrat</span><span>taille selon le nombre d'élèves</span></div>
+          {carte.absents.length > 0 && <p class="src">{LC.horsCarte} {carte.absents.map((u) => noms.get(u) ?? u).join(", ")}</p>}
+        </div>
+      )}
+    </div>
+  )}
+</section>
+{e.fermees.length > 0 && (
+  <section id="ecoles-fermees">
+    <h2>{LC.fermees}</h2>
+    {fermeesCommune.length > 0 && (
+      <div class="card"><ul>
+        {fermeesCommune.map((f) => <li>{f.sansFiche ? f.nom : <a href={`/etablissement/${f.uai}/`}>{f.nom}</a>}{f.ancienneCommune && ` (${f.ancienneCommune})`} · {LIBELLES.fermee(f.fermeLe!)}</li>)}
+      </ul></div>
+    )}
+    {e.deleguees.map((d) => (
+      <>
+        <h3 class="sous-titre">{LC.fermeesDeleguee(d.nom)}</h3>
+        <div class="card"><ul>
+          {d.fermees.map((f) => <li>{f.sansFiche ? f.nom : <a href={`/etablissement/${f.uai}/`}>{f.nom}</a>} · {LIBELLES.fermee(f.fermeLe!)}</li>)}
+        </ul></div>
+      </>
+    ))}
+  </section>
+)}
+{e.plusProches && <BlocEcolesProches p={e.plusProches} rentree={e.rentrees.eleves} commune={true} />}

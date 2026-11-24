@@ -43,7 +43,7 @@ describe("page département", () => {
     expect(lignes.find((l) => l.startsWith("0440002B"))).toContain(";non_publie_prive;");
     // Résultats du collège Saint-Exemple : brevet, session 2025, 60 % et +1 ; colonnes du bac vides.
     expect(lignes.find((l) => l.startsWith("0440002B"))!.split(";").slice(-9)).toEqual(["2025", "60", "1", "", "", "", "", "", ""]);
-    expect(lignes).toHaveLength(1 + 8); // 8 établissements actifs dans le 44
+    expect(lignes).toHaveLength(1 + 8 + 6); // 8 établissements actifs du second degré dans le 44, puis 6 écoles ouvertes
   });
 
   test("pas de page disparue dans les listes, Corse générée", () => {

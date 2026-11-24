@@ -1,7 +1,9 @@
 // Format des fichiers de données produits par le pipeline (site/data/) et lus par le site.
 import type { IdCollectivite, NiveauBudget } from "./collectivites.ts";
 import type { CodeIndicateur } from "./libelles.ts";
-import type { Comparaison, Correction, Famille, PointIps, ResumeResultat, Secteur, SourceId, Statut } from "./types.ts";
+import type {
+  Comparaison, Correction, EcolesProches, Famille, LienEtab, LigneEcole, PointIps, ResumeResultat, Secteur, SourceId, Statut,
+} from "./types.ts";
 
 /** Une entrée de `index.json` (et de la recherche) : clés courtes. */
 export interface EntreeIndex {
@@ -132,7 +134,49 @@ export interface AnneeSegregation {
   contributions: { public: number | null; prive: number | null; publicPrive: number | null };
 }
 
+/** Une école fermée depuis 2012, rangée sous la commune d'aujourd'hui. */
+export interface EcoleFermee extends LienEtab {
+  famille: Famille;
+  /** Nom de la commune de l'école quand elle portait un autre code que la commune d'aujourd'hui (commune fusionnée). */
+  ancienneCommune?: string;
+  /** L'école n'a pas de fiche (citée par aucune source chiffrée) : nommée, sans lien. */
+  sansFiche?: true;
+}
+
+/**
+ * Commune déléguée d'une commune nouvelle et ses écoles fermées (code de la liste des établissements fermés). Les
+ * écoles ouvertes n'y sont pas : l'Annuaire les range sous le code de la commune nouvelle (écart à la spec, 6.7).
+ */
+export interface PartieDeleguee { code: string; nom: string; fermees: EcoleFermee[] }
+
+/** Une école ouverte d'une page commune : classes de la rentrée des élèves (null si non publiées ou 0), éducation prioritaire. */
+export interface LigneEcoleCommune extends LigneEcole { classes: number | null; ep: string | null }
+
+/** Écoles d'une page commune (spec, section 6.7). */
+export interface EcolesCommune {
+  /** Ouvertes, triées par nom ; classes de la rentrée des élèves (null si non publiées ou 0). */
+  ecoles: LigneEcoleCommune[];
+  /** Rentrées des colonnes Élèves (et Classes) et IPS. */
+  rentrees: { eleves: number | null; ips: number | null };
+  /** [rentrée, élèves, classes] de la commune : somme de ses écoles, ouvertes et fermées (effectifs des écoles). */
+  historique: [number, number | null, number | null][];
+  /** Depuis 2012, par date. */
+  fermees: EcoleFermee[];
+  /** null si la commune a une école ouverte. */
+  plusDEcoleDepuis: number | null;
+  /** Communes déléguées (hors chef-lieu) qui ont des écoles fermées ; vide si la commune n'est pas une commune nouvelle. */
+  deleguees: PartieDeleguee[];
+  /** Seulement si la commune n'a plus d'école : depuis le centre de son contour (null sans contour). */
+  plusProches: EcolesProches | null;
+  /** Écoles ouvertes qui ont des coordonnées (carte). */
+  points: PointCarte[];
+}
+
 export interface DonneesTerritoire {
+  /** Pages commune : écoles de la commune ; absent si elle n'a ni n'a eu d'école depuis 2012. */
+  ecoles?: EcolesCommune;
+  /** Pages département : écoles ouvertes, pour le CSV (triées par nom). */
+  listeEcoles?: (LigneEcole & { ep: string | null })[];
   ref: RefTerritoire;
   /** Du plus large au plus proche ; [] pour la France. */
   parents: RefTerritoire[];
