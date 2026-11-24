@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { DonneesTerritoire } from "@obs/shared/donnees";
-import { csvTerritoire } from "../site/src/lib/territoire.ts";
+import { csvTerritoire, nomFamille } from "../site/src/lib/territoire.ts";
 
 const dep = (nom: string, commune = "Nantes"): DonneesTerritoire => ({
   ref: { niveau: "departement", code: "44", libelle: "Loire-Atlantique" },
@@ -10,7 +10,7 @@ const dep = (nom: string, commune = "Nantes"): DonneesTerritoire => ({
     college: {
       compte: { public: 1, prive: 0 }, eleves: { public: 10, prive: null }, ipsMoyen: { public: 100, prive: null, calculee: false },
       distributionIps: { public: [], prive: [], bornes: [] }, moyennes: [],
-      liste: [{ uai: "0440001A", nom, secteur: "public", commune, ep: null, eleves: 10, elevesParEtpEns: -1.5,
+      liste: [{ uai: "0440001A", nom, secteur: "public", commune, codeCommune: "44109", ep: null, eleves: 10, elevesParEtpEns: -1.5,
         elevesParEtpVs: null, statutVs: "non_disponible", partEnseignantes: null, ips: 100 }],
     },
   },
@@ -51,5 +51,16 @@ describe("CSV des territoires", () => {
     expect(lignes[1]).toBe("44;Loire-Atlantique;4;2;3090;600;16.3;");
     expect(lignes[2]).toBe("49;'=Maine-et-Loire;1;0;;;;-2.5");
     expect(lignes).toHaveLength(3);
+  });
+});
+
+describe("nom des familles dans les phrases", () => {
+  test("singulier et pluriel en minuscules, sauf le sigle EREA", () => {
+    expect(nomFamille("college", 1)).toBe("collège");
+    expect(nomFamille("college", 2)).toBe("collèges");
+    expect(nomFamille("legt", 1)).toBe("lycée général et technologique");
+    expect(nomFamille("lp", 3)).toBe("lycées professionnels");
+    expect(nomFamille("erea", 1)).toBe("EREA");
+    expect(nomFamille("erea", 2)).toBe("EREA");
   });
 });

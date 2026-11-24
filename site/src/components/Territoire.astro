@@ -4,14 +4,14 @@
 // (tableau 6.1 de la spécification de la phase 2).
 import type { DonneesTerritoire, IpsMoyens, NiveauTerritoire } from "@obs/shared/donnees";
 import { date, entier, nombre, part } from "@obs/shared/format";
-import { academie, type CodeIndicateur, FAMILLES, FAMILLES_PLURIEL, INDICATEURS, LIBELLES } from "@obs/shared/libelles";
-import { cheminTerritoire } from "@obs/shared/territoires";
+import { academie, type CodeIndicateur, FAMILLES_PLURIEL, INDICATEURS, LIBELLES } from "@obs/shared/libelles";
+import { cheminTerritoire, communeDeRattachement, LIBELLES_PLM } from "@obs/shared/territoires";
 import type { Comparaison, Famille, Niveau, Secteur } from "@obs/shared/types";
 import Base from "../layouts/Base.astro";
 import { anneeScolaire, formater } from "../lib/affichage";
-import { communesDisponibles, lireFrance, lireSources } from "../lib/donnees";
+import { communesDisponibles, lireFrance, lireSources, lireTerritoire } from "../lib/donnees";
 import { domaine, svgDistribution, svgPoints } from "../lib/plot";
-import { famillesDe } from "../lib/territoire";
+import { famillesDe, nomFamille } from "../lib/territoire";
 import Absence from "./Absence.astro";
 import Ariane from "./Ariane.astro";
 import CarteTerritoire from "./CarteTerritoire.astro";
@@ -76,16 +76,20 @@ const ipsCalcule = (f: Famille, ips: IpsMoyens, compte: number, s: "public" | "p
   const v = ips[s];
   if (v !== null) return { t: nombre(v), n: ips.n?.[s] ?? null };
   if (compte > 0) return { t: LIBELLES.nonDisponible, n: null };
-  return { t: `Aucun ${FAMILLES[f].toLowerCase()} ${s === "public" ? "public" : "privé"} dans la commune`, n: null };
+  return { t: `Aucun ${nomFamille(f, 1)} ${s === "public" ? "public" : "privé"} dans la commune`, n: null };
 };
+/** Commune : moyennes d'IPS publiées par la DEPP pour son département, en repère. */
+const ipsDepartement = niveau === "commune" && dep ? lireTerritoire(dep).familles : {};
 
-// Communes (département) : une puce par commune de la liste ; un lien quand la commune a sa page.
-const pages = new Map(d.communes.filter((c) => communesDisponibles().has(c.code)).map((c) => [c.libelle, c]));
+// Communes (département) : une puce par commune de la liste (arrondissements rattachés à leur ville),
+// reconnue par son code INSEE ; un lien quand la commune a sa page.
+const pages = new Map(d.communes.filter((c) => communesDisponibles().has(c.code)).map((c) => [c.code, c]));
+const libellePlm = (code: string): string | undefined => LIBELLES_PLM[code as keyof typeof LIBELLES_PLM];
 const communes = niveau === "departement"
-  ? [...Map.groupBy(familles.flatMap(([, s]) => s.liste), (l) => l.commune)]
-    .map(([c, l]) => ({ c, n: l.length as number | null, page: pages.get(c) }))
+  ? [...Map.groupBy(familles.flatMap(([, s]) => s.liste), (l) => communeDeRattachement(l.codeCommune))]
+    .map(([code, l]) => ({ code, c: pages.get(code)?.libelle ?? libellePlm(code) ?? l[0]!.commune, n: l.length as number | null, page: pages.get(code) }))
   : [];
-for (const [libelle, page] of pages) if (!communes.some((x) => x.c === libelle)) communes.push({ c: libelle, n: null, page });
+for (const [code, page] of pages) if (!communes.some((x) => x.code === code)) communes.push({ code, c: page.libelle, n: null, page });
 communes.sort((a, b) => a.c.localeCompare(b.c, "fr"));
 const badges = [
   ...(niveau === "departement" || niveau === "commune") && aca ? [academie(aca.libelle)] : [],
@@ -139,15 +143,21 @@ const badges = [
             <div class="c"><span class="p">{s.eleves.public === null ? LIBELLES.nonDisponible : entier(s.eleves.public)}</span> · <span class="q">{s.eleves.prive === null ? LIBELLES.nonDisponible : entier(s.eleves.prive)}</span></div></div>
           <div><div class="k">Part des élèves dans le privé s. c.</div><div class="v">{partPrive(s.eleves) === null ? "—" : part(partPrive(s.eleves))}</div>
             <div class="c">{pf && partPrive(pf.eleves) !== null && <>France : {part(partPrive(pf.eleves))}</>}</div></div>
-          {s.ipsMoyen.calculee ? (() => {
-            const pub = ipsCalcule(f, s.ipsMoyen, s.compte.public, "public"); const pri = ipsCalcule(f, s.ipsMoyen, s.compte.prive, "prive");
-            return (
-              <div><div class="k">IPS moyen</div>
-                <div class="c"><span class="p">public : {pub.t}</span>{pub.n !== null && <> ({entier(pub.n)} {pub.n > 1 ? FAMILLES_PLURIEL[f].toLowerCase() : FAMILLES[f].toLowerCase()})</>}</div>
-                <div class="c"><span class="q">privé s. c. : {pri.t}</span>{pri.n !== null && <> ({entier(pri.n)} {pri.n > 1 ? FAMILLES_PLURIEL[f].toLowerCase() : FAMILLES[f].toLowerCase()})</>}</div>
-                <div class="c" style="font-family:var(--sans)">moyenne calculée par l'observatoire</div></div>
-            );
-          })() : (
+          {s.ipsMoyen.calculee ? (
+            <div class="ips-calcule"><div class="k">IPS moyen</div>
+              {(["public", "prive"] as const).map((sec) => {
+                const v = ipsCalcule(f, s.ipsMoyen, sec === "public" ? s.compte.public : s.compte.prive, sec);
+                const repere = ipsDepartement[f]?.ipsMoyen[sec] ?? null;
+                return (
+                  <div class="ips-secteur">
+                    <div class="c"><span class={sec === "public" ? "p" : "q"}>{sec === "public" ? "public" : "privé s. c."} : {v.t}</span></div>
+                    {v.n !== null && <div class="c mention">moyenne calculée par l'observatoire · {entier(v.n)} {nomFamille(f, v.n)}</div>}
+                    {dep && repere !== null && <div class="c mention">repère DEPP · {dep.libelle} : {nombre(repere)}</div>}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
             <div><div class="k">IPS moyen</div>
               <div class="v" style="font-size:20px;padding-top:6px"><span style="color:var(--pub-ink)">{nombre(s.ipsMoyen.public)}</span> · <span style="color:var(--pri-ink)">{nombre(s.ipsMoyen.prive)}</span></div>
               <div class="c">public · privé s. c. (DEPP)</div></div>
@@ -202,7 +212,7 @@ const badges = [
 
         {avecEtablissements && (
           <>
-            <h3 class="sous-titre">Les {entier(s.liste.length)} {FAMILLES_PLURIEL[f].toLowerCase()}</h3>
+            <h3 class="sous-titre">Les {entier(s.liste.length)} {nomFamille(f, s.liste.length)}</h3>
             <ListeEtablissements famille={f} liste={s.liste} />
           </>
         )}

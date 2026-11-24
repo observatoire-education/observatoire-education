@@ -30,7 +30,7 @@ export const parNom = (a: { nom: string }, b: { nom: string }) => a.nom.localeCo
 export function ligneListe(f: Fiche): LigneListe {
   const vs = valeur(f, "eleves_par_etp_vs");
   return {
-    uai: f.uai, nom: f.nom, secteur: f.secteur, commune: f.commune, ep: f.ep,
+    uai: f.uai, nom: f.nom, secteur: f.secteur, commune: f.commune, codeCommune: f.codeCommune, ep: f.ep,
     eleves: ok(valeur(f, "eleves")),
     elevesParEtpEns: ok(valeur(f, "eleves_par_etp_ens")),
     elevesParEtpVs: ok(vs),

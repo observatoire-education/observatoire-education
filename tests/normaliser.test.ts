@@ -97,8 +97,8 @@ describe("tables canoniques", () => {
   test("périmètre et Corse", async () => {
     const r = await db.sql<{ uai: string; dep: string }>("select uai, dep from etablissements order by uai");
     expect(r.map((x) => x.uai)).toEqual([
-      "0440001A", "0440002B", "0440003C", "0440005E", "0440006F", "0440007G", "6200001F",
-      "9711023K", "9750001C", "9770001G",
+      "0440001A", "0440002B", "0440003C", "0440005E", "0440006F", "0440007G", "0750701C", "0751501A", "0751502B",
+      "6200001F", "9711023K", "9750001C", "9770001G",
     ]);
     expect(r.find((x) => x.uai === "6200001F")!.dep).toBe("2A");
   });

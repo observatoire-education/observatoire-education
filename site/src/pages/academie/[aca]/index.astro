@@ -1,0 +1,12 @@
+---
+// Page académie : le gabarit de territoire, avec la carte et la liste de ses départements.
+import Territoire from "../../../components/Territoire.astro";
+import { academiesDisponibles, lireTerritoire } from "../../../lib/donnees";
+
+export function getStaticPaths() {
+  return academiesDisponibles().map((aca) => ({ params: { aca } }));
+}
+
+const d = lireTerritoire({ niveau: "academie", code: Astro.params.aca! });
+---
+<Territoire d={d} />

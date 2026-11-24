@@ -1,22 +1,30 @@
 ---
 // En-tête de fiche : fil d'Ariane (seuls les maillons dont la page existe sont des liens),
 // nom, pastilles, mention de disparition, sites multiples, actions.
-import { academie, CONTRATS, FAMILLES, LIBELLES, SECTEURS } from "@obs/shared/libelles";
+import type { RefTerritoire } from "@obs/shared/donnees";
+import { CONTRATS, FAMILLES, LIBELLES, SECTEURS } from "@obs/shared/libelles";
+import { communeDeRattachement, LIBELLES_PLM } from "@obs/shared/territoires";
 import type { Fiche } from "@obs/shared/types";
 import { lienPermanent } from "../lib/config";
+import { communesDisponibles } from "../lib/donnees";
+import Ariane from "./Ariane.astro";
 
 interface Props { f: Fiche }
 const { f } = Astro.props;
 const prive = f.secteur === "prive_sous_contrat";
 const contrat = f.contrat ? (CONTRATS[f.contrat] ?? f.contrat) : null;
 const url = lienPermanent(`/etablissement/${f.uai}/`);
+// Maillon commune : la ville pour un arrondissement de Paris, Lyon ou Marseille qui a sa page.
+const codeCommune = communeDeRattachement(f.codeCommune);
+const plm = communesDisponibles().has(codeCommune) ? LIBELLES_PLM[codeCommune as keyof typeof LIBELLES_PLM] : undefined;
+const parents: RefTerritoire[] = [
+  { niveau: "france", code: "FR", libelle: "France" },
+  { niveau: "academie", code: f.aca, libelle: f.acaLibelle },
+  { niveau: "departement", code: f.dep, libelle: f.depLibelle },
+  { niveau: "commune", code: codeCommune, libelle: plm ?? f.commune },
+];
 ---
-<nav class="crumb" aria-label="Fil d'Ariane">
-  <span>France</span><span class="sep">›</span>
-  <span>{academie(f.acaLibelle)}</span><span class="sep">›</span>
-  <a href={`/departement/${f.dep}/`}>{f.depLibelle}</a><span class="sep">›</span>
-  <span>{f.commune}</span>
-</nav>
+<Ariane parents={parents} />
 <h1>{f.nom}</h1>
 <div class="badges">
   <span class={`badge ${prive ? "pri" : "pub"}`}>{SECTEURS[f.secteur]}</span>

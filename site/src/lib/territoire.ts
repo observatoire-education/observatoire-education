@@ -1,11 +1,25 @@
 // Aides des pages de territoire (France, académie, département, commune) : synthèses, lignes de liste, CSV.
 import type { DonneesTerritoire, LigneListe, LigneTerritoire, SyntheseFamille } from "@obs/shared/donnees";
+import { FAMILLES } from "@obs/shared/libelles";
 import type { Famille } from "@obs/shared/types";
 
 export const ORDRE_FAMILLES: Famille[] = ["college", "legt", "lpo", "lp", "erea"];
 
 export const famillesDe = (d: DonneesTerritoire): [Famille, SyntheseFamille][] =>
   ORDRE_FAMILLES.flatMap((f) => (d.familles[f] ? [[f, d.familles[f]!] as [Famille, SyntheseFamille]] : []));
+
+/** Pluriel des familles dans une phrase (« 2 lycées professionnels ») ; le sigle EREA est invariable. */
+const PLURIEL: Record<Famille, string> = {
+  college: "collèges",
+  legt: "lycées généraux et technologiques",
+  lpo: "lycées polyvalents",
+  lp: "lycées professionnels",
+  erea: "EREA",
+};
+
+/** Nom d'une famille dans une phrase : en minuscules, au singulier ou au pluriel selon n ; EREA reste un sigle. */
+export const nomFamille = (f: Famille, n: number): string =>
+  f === "erea" ? FAMILLES.erea : n > 1 ? PLURIEL[f] : FAMILLES[f].toLowerCase();
 
 /** Valeur de tri d'une cellule numérique (vide si absente : triée en dernier). */
 export const valeurTri = (v: number | null): string => (v === null ? "" : String(Math.round(v * 100) / 100));

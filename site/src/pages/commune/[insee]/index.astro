@@ -1,0 +1,13 @@
+---
+// Page commune (au moins SEUIL_COMMUNE établissements) : bandeau avec les IPS moyens calculés par
+// l'observatoire, carte des établissements et leur liste.
+import Territoire from "../../../components/Territoire.astro";
+import { communesDisponibles, lireTerritoire } from "../../../lib/donnees";
+
+export function getStaticPaths() {
+  return [...communesDisponibles()].map((insee) => ({ params: { insee } }));
+}
+
+const d = lireTerritoire({ niveau: "commune", code: Astro.params.insee! });
+---
+<Territoire d={d} />

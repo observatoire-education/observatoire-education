@@ -18,6 +18,8 @@ export interface LigneListe {
   nom: string;
   secteur: Secteur;
   commune: string;
+  /** Code INSEE de la commune (ou de l'arrondissement pour Paris, Lyon et Marseille). */
+  codeCommune: string;
   ep: string | null;
   eleves: number | null;
   elevesParEtpEns: number | null;

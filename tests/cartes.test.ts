@@ -29,7 +29,7 @@ describe("contours", () => {
   });
 });
 
-const { svgCarteDepartements, svgCartePoints, legendeCarte } = await import("../site/src/lib/cartes.ts");
+const { DOMAINE, svgCarteDepartements, svgCartePoints, legendeCarte } = await import("../site/src/lib/cartes.ts");
 const INTERDIT = /\b(rang|classement|top|meilleur|meilleure|meilleurs|meilleures|pire|pires)\b|<script/i;
 const valeurs = [
   { dep: "44", partPrive: 41.2, ecartIpsColleges: 15 },
@@ -60,6 +60,17 @@ describe("cartes", () => {
     const { svg, absents } = svgCarteDepartements([...valeurs, { dep: "975", partPrive: 1, ecartIpsColleges: 1 }], "prive", { encartsDrom: true });
     expect(absents).toEqual(["975"]);
     expect(svg.match(/<svg/g)).toHaveLength(1);
+  });
+
+  test("encarts DROM : métropole et encarts rendus séparément", () => {
+    const r = svgCarteDepartements(valeurs, "prive", { encartsDrom: true });
+    expect(r.metropole.match(/<svg/g)).toHaveLength(1);
+    expect(r.encarts).toEqual([]);
+    expect(r.svg).toBe(r.metropole + r.encarts.map((e) => e.svg).join(""));
+  });
+
+  test("domaines des rampes exportés", () => {
+    expect(DOMAINE).toEqual({ prive: [0, 50], ecart_ips: [0, 40] });
   });
 
   test("valeurs hors domaine bornées sans erreur", () => {

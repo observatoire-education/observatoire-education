@@ -20,7 +20,8 @@ const TEINTE: Record<VueCarte, [string, string]> = {
   prive: ["var(--pri-soft)", "var(--pri-ink)"],
   ecart_ips: ["var(--pub-soft)", "var(--pub-ink)"],
 };
-const DOMAINE: Record<VueCarte, [number, number]> = { prive: [0, 50], ecart_ips: [0, 40] };
+/** Domaines fixes des rampes, pour comparer les pages entre elles. */
+export const DOMAINE: Record<VueCarte, [number, number]> = { prive: [0, 50], ecart_ips: [0, 40] };
 const UNITE: Record<VueCarte, string> = { prive: " %", ecart_ips: " points" };
 const STYLE = { background: "transparent", color: "var(--muted)", overflow: "visible" };
 
@@ -61,7 +62,7 @@ export function svgCarteDepartements(
   valeurs: ValeurCarte[],
   vue: VueCarte,
   opts: { encartsDrom: boolean },
-): { svg: string; absents: string[] } {
+): { svg: string; absents: string[]; metropole: string; encarts: { code: string; svg: string }[] } {
   const parCode = new Map(valeurs.map((v) => [v.dep, v]));
   const connus = new Map(contoursDepartements().features.map((f) => [f.properties.code, f]));
   const absents = valeurs.map((v) => v.dep).filter((d) => !connus.has(d));
@@ -85,16 +86,18 @@ export function svgCarteDepartements(
   };
   const presents = valeurs.map((v) => connus.get(v.dep)).filter((f): f is Fond => !!f);
   const aria = `Carte par département : ${TITRE[vue]}`;
+  const conique = { type: "conic-conformal", parallels: [44, 49], rotate: [-3, 0] };
   if (!opts.encartsDrom) {
-    return { svg: dessiner(presents, { type: "conic-conformal", parallels: [44, 49], rotate: [-3, 0] }, 560, 560, aria), absents };
+    const svg = dessiner(presents, conique, 560, 560, aria);
+    return { svg, absents, metropole: svg, encarts: [] };
   }
-  const metropole = presents.filter((f) => !f.properties.code.startsWith("97"));
-  const sorties = [dessiner(metropole, { type: "conic-conformal", parallels: [44, 49], rotate: [-3, 0] }, 560, 560, aria)];
+  const metropole = dessiner(presents.filter((f) => !f.properties.code.startsWith("97")), conique, 560, 560, aria);
+  const encarts: { code: string; svg: string }[] = [];
   for (const code of DROM) {
     const f = connus.get(code);
-    if (f && parCode.has(code)) sorties.push(dessiner([f], { type: "mercator" }, 120, 120, `${aria} : département ${code}`));
+    if (f && parCode.has(code)) encarts.push({ code, svg: dessiner([f], { type: "mercator" }, 120, 120, `${aria} : département ${code}`) });
   }
-  return { svg: sorties.join(""), absents };
+  return { svg: metropole + encarts.map((e) => e.svg).join(""), absents, metropole, encarts };
 }
 
 export function svgCartePoints(

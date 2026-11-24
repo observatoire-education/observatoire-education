@@ -6,7 +6,7 @@
 import type { CarteDonnees, RefTerritoire } from "@obs/shared/donnees";
 import { LIBELLES } from "@obs/shared/libelles";
 import { anneeScolaire } from "../lib/affichage";
-import { legendeCarte, svgCarteDepartements, svgCartePoints, type VueCarte } from "../lib/cartes";
+import { DOMAINE, legendeCarte, svgCarteDepartements, svgCartePoints, type VueCarte } from "../lib/cartes";
 import { communesDuDepartement, contourCommune, contourDepartement } from "../lib/contours";
 import { lireFrance } from "../lib/donnees";
 import Absence from "./Absence.astro";
@@ -14,8 +14,6 @@ import Absence from "./Absence.astro";
 interface Props { carte: CarteDonnees; ref: RefTerritoire; rentree?: number | null }
 const { carte, ref, rentree = null } = Astro.props;
 
-/** Domaines fixes des rampes (les mêmes que dans lib/cartes.ts), pour comparer les pages entre elles. */
-const DOMAINES: Record<VueCarte, [number, number]> = { prive: [0, 50], ecart_ips: [0, 40] };
 const VUES: { vue: VueCarte; id: string; libelle: string }[] = [
   { vue: "prive", id: "vue-carte-prive", libelle: "Part des élèves dans le privé sous contrat" },
   { vue: "ecart_ips", id: "vue-carte-ecart", libelle: "Écart d'IPS moyen privé − public des collèges" },
@@ -38,10 +36,7 @@ if (carte.genre === "points") {
   departements = VUES.map((v) => {
     const r = svgCarteDepartements(carte.valeurs, v.vue, { encartsDrom: ref.niveau === "france" });
     absents = r.absents.map((dep) => libellesDep.get(dep) ?? dep);
-    // Avec encarts : le SVG de la métropole, puis un SVG par DROM (aria-label « … : département 971 »).
-    const [metropole = "", ...autres] = r.svg.split(/(?=<svg[\s>])/);
-    const encarts = autres.map((svg) => ({ code: /département (\w+)"/.exec(svg)?.[1] ?? "", svg }));
-    return { ...v, metropole, encarts };
+    return { ...v, metropole: r.metropole, encarts: r.encarts };
   });
 }
 const annee = rentree === null ? null : anneeScolaire(rentree);
@@ -60,12 +55,15 @@ const annee = rentree === null ? null : anneeScolaire(rentree);
   {carte.genre === "departements" && (
     departements.length ? (
       <div class="card carte-vues">
-        {departements.map((v, i) => (
-          <>
-            <input class="vue-radio visuel-masque" type="radio" name="vue-carte" id={v.id} checked={i === 0} />
-            <label class="chip vue-choix" for={v.id}>{v.libelle}</label>
-          </>
-        ))}
+        <fieldset class="vues-carte">
+          <legend class="visuel-masque">Vue de la carte</legend>
+          {departements.map((v, i) => (
+            <>
+              <input class="vue-radio visuel-masque" type="radio" name="vue-carte" id={v.id} checked={i === 0} />
+              <label class="chip vue-choix" for={v.id}>{v.libelle}</label>
+            </>
+          ))}
+        </fieldset>
         {departements.map((v) => (
           <figure class={`vue ${v.id}`}>
             <Fragment set:html={v.metropole} />
@@ -77,7 +75,7 @@ const annee = rentree === null ? null : anneeScolaire(rentree);
               </div>
             )}
             <figcaption>
-              <Fragment set:html={legendeCarte(v.vue, DOMAINES[v.vue])} />
+              <Fragment set:html={legendeCarte(v.vue, DOMAINE[v.vue])} />
               <div class="src">
                 {v.vue === "prive"
                   ? "Élèves des collèges et des lycées publics et privés sous contrat"

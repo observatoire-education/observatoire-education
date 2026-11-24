@@ -247,7 +247,8 @@ a.chip { display:inline-flex; align-items:center; text-decoration:none; cursor:p
 .carte-vues .vue-radio:checked + .vue-choix { background:var(--ink); color:var(--bg); border-color:var(--ink); }
 .carte-vues .vue-radio:focus-visible + .vue-choix { outline:2px solid var(--ink); outline-offset:2px; }
 .carte-vues figure { margin:0; }
-#vue-carte-prive:checked ~ .vue-carte-ecart, #vue-carte-ecart:checked ~ .vue-carte-prive { display:none; }
+.carte-vues .vues-carte { border:0; margin:0; padding:0; min-width:0; }
+.carte-vues:has(#vue-carte-prive:checked) .vue-carte-ecart, .carte-vues:has(#vue-carte-ecart:checked) .vue-carte-prive { display:none; }
 .carte-vues .encarts { display:flex; flex-wrap:wrap; gap:10px 16px; margin-top:8px; }
 .carte-vues .encart { width:120px; text-align:center; font-size:12px; color:var(--muted); }
 .carte-vues .encart svg { max-height:120px; }
@@ -259,3 +260,5 @@ a.chip { display:inline-flex; align-items:center; text-decoration:none; cursor:p
   .carte-vues .vue-choix { display:none; }
   .carte-vues .vue { display:block !important; break-inside:avoid; margin-bottom:6mm; }
 }
+.ips-calcule .ips-secteur + .ips-secteur { margin-top:6px; }
+.kpis .c.mention { font-family:var(--sans); }

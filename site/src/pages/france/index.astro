@@ -1,0 +1,6 @@
+---
+// Page France : le gabarit de territoire, avec la carte des départements et la liste des académies.
+import Territoire from "../../components/Territoire.astro";
+import { lireFrance } from "../../lib/donnees";
+---
+<Territoire d={lireFrance()} />
