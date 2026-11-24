@@ -1,2 +1,11 @@
 session,uai,secteur,nb_candidats_g,taux_de_reussite_g,va_du_taux_de_reussite_g,nb_candidats_p,taux_de_reussite_p,note_a_l_ecrit_g,va_de_la_note_g,note_a_l_ecrit_p,taux_d_acces_6eme_3eme,nb_mentions_ab_g,nb_mentions_b_g,nb_mentions_tb_g
 2022,0440023T,PR,20,90,2,,,,,,,,,
+2021,0440001A,PU,90,85,1,,,,,,,,,
+2022,0440001A,PU,95,84,1,12,55,11.8,0.5,9.1,96,20,15,5
+2023,0440001A,PU,98,86,2,11,58,12.0,0.7,9.3,97,21,16,6
+2024,0440001A,PU,99,88,1,10,59,12.1,0.2,9.4,97,22,17,6
+2025,0440001A,PU,100,80,3,10,60,12.3,0.4,9.5,98,25,18,7
+2025,0440005E,PU,50,70,-2,,,11.5,-0.3,,95,10,8,2
+2025,0440002B,PR,20,60,1,,,10.5,0.1,,99,4,3,1
+2025,0440007G,PR,40,,.,,,ND,,,,,,
+2025,0449999X,PU,30,75,0,,,,,,,,,

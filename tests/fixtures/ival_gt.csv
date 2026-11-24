@@ -1,3 +1,11 @@
 annee,uai,secteur,presents_total,taux_reu_total,va_reu_total,taux_acces_2nde,va_acces_2nde,taux_men_total,va_men_total
 2016,0440099Z,public,50,90,1,80,1,60,1
 2016,0440101A,public,40,85,1,75,1,50,1
+2019,0440103C,public,60,88,1,82,0,55,1
+2020,0440103C,public,62,90,2,83,1,57,0
+2021,0440103C,public,64,92,1,84,1,60,1
+2022,0440103C,public,66,91,0,85,0,58,-1
+2023,0440103C,public,68,93,1,86,1,61,2
+2024,0440103C,public,70,94,2,87,2,63,1
+2025,0440103C,public,72,92,3,88,1,62,2
+2025,0449999X,public,10,80,0,70,0,40,0
