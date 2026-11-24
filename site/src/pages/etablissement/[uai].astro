@@ -185,7 +185,7 @@ const franceBudget = f.budget.france.find((m) => m.niveau === niveauBudget);
           return (
             <>
               <Fragment set:html={svgCourbe(iIps.historique, r.publique, r.privee, r.calculees)} />
-              <LegendeCourbeIps etablissement departementale={refs.length > 0} calcule={aPointCalcule(refs)} />
+              <LegendeCourbeIps etablissement rentrees={iIps.historique.map((p) => p[0])} departementale={refs.length > 0} calcule={aPointCalcule(refs)} />
             </>
           );
         })()}

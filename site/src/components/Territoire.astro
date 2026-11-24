@@ -210,7 +210,7 @@ const badges = [
               <div class="card">
                 <div class="lab"><span>Évolution de l'IPS moyen</span><span class="yr">{Math.min(...rentrees)} → {Math.max(...rentrees)}</span></div>
                 <Fragment set:html={svgCourbe([], r.publique, r.privee, r.calculees)} />
-                <LegendeCourbeIps calcule={aPointCalcule(s.ipsHistorique)} />
+                <LegendeCourbeIps rentrees={rentrees} calcule={aPointCalcule(s.ipsHistorique)} />
               </div>
             </div>
           );

@@ -155,4 +155,11 @@ describe("méthode et sources de la phase 4", () => {
     expect(d.body.textContent).toContain("rupture de série dès la rentrée 2022");
     expect(d.querySelector('a[href="/methode/#ips-ancien"]')).not.toBeNull();
   });
+
+  test("la rupture de l'IPS n'est dite que si la courbe traverse la rentrée 2022", () => {
+    // 2016 → 2018 : la courbe s'arrête avant la rupture ; 2024 → 2024 : un seul point, pas de courbe
+    expect(doc("etablissement/0440020P").body.textContent).not.toContain("rupture de série dès la rentrée 2022");
+    expect(doc("etablissement/0440001A").body.textContent).toContain("rupture de série dès la rentrée 2022");
+    expect(doc("departement/44").body.textContent).toContain("rupture de série dès la rentrée 2022");
+  });
 });

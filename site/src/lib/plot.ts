@@ -10,6 +10,8 @@ import { vaSignee } from "./resultats";
 
 const { document } = parseHTML("<!doctype html><html><body></body></html>");
 
+/** Même style, tel que Plot le sérialise dans l'attribut `style`. */
+const STYLE_CSS = "background:transparent;color:var(--muted);font-family:var(--mono);font-size:11px;overflow:visible";
 const STYLE = { background: "transparent", color: "var(--muted)", fontFamily: "var(--mono)", fontSize: "11px", overflow: "visible" };
 
 /** `decimales` : précision des coordonnées (cartes de territoires : 1, soit un dixième de pixel). */
@@ -20,6 +22,11 @@ export function svg(p: SVGSVGElement | HTMLElement, aria: string, decimales: 1 |
   el.removeAttribute("width");
   el.querySelector("style")?.remove(); // styles par défaut de Plot : remplacés par obs.css
   el.removeAttribute("class");
+  // Le style commun des graphiques vit dans obs.css (classe `plot`) : pas répété dans chaque SVG.
+  if (el.getAttribute("style") === STYLE_CSS) {
+    el.removeAttribute("style");
+    el.setAttribute("class", "plot");
+  }
   // Le SVG entier porte sa description (role="img") : les libellés des groupes internes sont superflus.
   for (const g of el.querySelectorAll("[aria-label]")) if (g !== el) g.removeAttribute("aria-label");
   // Coordonnées tronquées à `decimales` décimales.

@@ -2,10 +2,12 @@
 // Légende sous une courbe d'IPS : établissement (fiche seulement), moyennes public et privé, rond creux si une
 // moyenne est calculée par l'observatoire (jamais présenté comme une valeur publiée par la DEPP).
 import { LIBELLES_BUDGET, LIBELLES_IPS } from "@obs/shared/libelles";
-interface Props { etablissement?: boolean; calcule: boolean; departementale?: boolean }
-const { etablissement = false, calcule, departementale = false } = Astro.props;
+interface Props { etablissement?: boolean; calcule: boolean; departementale?: boolean; rentrees?: number[] }
+const { etablissement = false, calcule, departementale = false, rentrees = [] } = Astro.props;
+/** La mention de rupture n'a de sens que si la courbe traverse la rentrée 2022. */
+const traverse = rentrees.length > 0 && Math.min(...rentrees) < 2022 && Math.max(...rentrees) >= 2022;
 const moyenne = departementale ? "moyenne départementale" : "moyenne";
 ---
 <div class="legend">
   {etablissement && <><span class="me">établissement</span> · </>}<span class="sect pub">{moyenne} public</span> · <span class="sect pri">privé s. c.</span>{calcule && <> · <span class="mute">○ {LIBELLES_BUDGET.moyenne.calculee}</span></>}
-<br><a class="mute" href="/methode/#ips-ancien">{LIBELLES_IPS.rupture}</a></div>
+{traverse && <> · <a href="/methode/#ips-ancien">{LIBELLES_IPS.rupture}</a></>}</div>
