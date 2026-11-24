@@ -67,7 +67,7 @@ describe("voisinage", () => {
 describe("fiches", () => {
   test("une fiche par établissement du périmètre, triées par UAI", () => {
     expect(fiches.map((f) => f.uai)).toEqual([
-      "0440001A", "0440002B", "0440003C", "0440005E", "0440006F", "0440007G", "0440020P", "0440021R", "0440099Z", "0440101A", "0440102B", "0440103C",
+      "0440001A", "0440002B", "0440003C", "0440005E", "0440006F", "0440007G", "0440020P", "0440021R", "0440023T", "0440099Z", "0440101A", "0440102B", "0440103C",
       "0750701C", "0751501A", "0751502B", "6200001F", "9711023K", "9750001C", "9770001G",
     ]);
   });
@@ -148,6 +148,14 @@ describe("établissements fermés", () => {
     expect(fiche("0440001A").fermeLe).toBeNull();
   });
 
+  test("secteur des fermés : tiré des sources qui les citent (la liste donne « - »)", async () => {
+    expect(fiche("0440020P").secteur).toBe("public"); // IPS des collèges
+    expect(fiche("0440021R").secteur).toBe("public"); // IVAL seul
+    expect(fiche("0440023T")).toMatchObject({ secteur: "prive_sous_contrat", famille: "college", fermeLe: "2021-08-31" }); // IVAC « PR »
+    const [r] = await db.sql<{ secteur: string | null }>("select secteur from fermes where uai = '0440101A'");
+    expect(r!.secteur).toBe("public");
+  });
+
   test("UAI active aussi présente chez les fermés : ni fermeLe ni disparuLe", () => {
     expect(fiche("0440002B")).toMatchObject({ fermeLe: null, disparuLe: null });
   });
@@ -216,7 +224,7 @@ describe("registre des pages", () => {
     expect(apres["0440001A"]).toEqual({ premiere: "2026-01-01", identite: expect.objectContaining({ nom: "Collège Jules-Verne" }) });
     expect(apres["0440002B"]!.premiere).toBe("2026-11-23");
     expect(apres["0440099Z"]).toMatchObject({ disparuLe: "2020-08-31", identite: { nom: "Collège Disparu" } });
-    expect(Object.keys(apres)).toHaveLength(19); // + 4 fiches historiques
+    expect(Object.keys(apres)).toHaveLength(20); // + 5 fiches historiques
   });
 
   test("lecture et écriture : une ligne par UAI, triée", async () => {
@@ -225,7 +233,7 @@ describe("registre des pages", () => {
     const r = mettreAJourRegistre({}, fiches, "2026-11-23");
     ecrireRegistre(chemin, r);
     const texte = await Bun.file(chemin).text();
-    expect(texte.split("\n")).toHaveLength(19 + 3); // accolades, 19 entrées, fin de fichier
+    expect(texte.split("\n")).toHaveLength(20 + 3); // accolades, 20 entrées, fin de fichier
     expect(texte.indexOf("0440001A")).toBeLessThan(texte.indexOf("6200001F"));
     expect(lireRegistre(chemin)).toEqual(r);
   });
@@ -240,7 +248,7 @@ describe("export des données du site", () => {
     expect(f.nom).toBe("Collège Jules-Verne");
 
     const index: EntreeIndex[] = await Bun.file(join(sortie, "index.json")).json();
-    expect(index).toHaveLength(19);
+    expect(index).toHaveLength(20);
     expect(index[0]).toEqual({ u: "0440001A", n: "Collège Jules-Verne", c: "Nantes", d: "44", f: "college", s: "public" });
 
     const dep: DonneesTerritoire = await Bun.file(join(sortie, "departements", "44.json")).json();

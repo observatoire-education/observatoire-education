@@ -14,6 +14,31 @@ from (
 where rentree is not null
 group by uai;
 
+-- Secteur déclaré par les sources qui citent l'établissement (la liste des fermés ne le donne pas : « - »).
+-- La millésime le plus récent l'emporte. Valeurs : public / privé sous contrat, ou PU / PR pour l'IVAC.
+create or replace table secteur_cites as
+select uai, arg_max(secteur, millesime) as secteur
+from (
+  select upper(trim(uai)) as uai, rentree(rentree_scolaire) as millesime,
+    case lower(strip_accents(trim(secteur::varchar))) when 'public' then 'public' when 'prive sous contrat' then 'prive_sous_contrat' end as secteur
+  from (
+    select uai, rentree_scolaire, secteur from src_ips_colleges_2016
+    union all select uai, rentree_scolaire, secteur from src_ips_colleges_2022
+    union all select uai, rentree_scolaire, secteur from src_ips_lycees_2016
+    union all select uai, rentree_scolaire, secteur from src_ips_lycees_2022
+    union all select uai, rentree_scolaire, secteur from src_ips_erea_2016
+    union all select uai, rentree_scolaire, secteur from src_ips_erea
+    union all select uai, annee, secteur from src_ival_gt
+    union all select uai, annee, secteur from src_ival_pro
+  )
+  union all
+  select upper(trim(uai)), session(session),
+    case upper(trim(secteur::varchar)) when 'PU' then 'public' when 'PR' then 'prive_sous_contrat' end
+  from src_ivac
+)
+where millesime is not null and secteur is not null
+group by uai;
+
 -- Établissements fermés depuis 2012 (extrait filtré à la collecte) : une ligne par UAI, la fermeture la plus récente.
 create or replace table fermes as
 select
@@ -26,8 +51,8 @@ from (
     trim(f.appellation_officielle) as nom,
     upper(trim(f.nature_uai_libe)) as nature,
     famille(f.nature_uai_libe, case when upper(trim(f.nature_uai_libe)) like 'LYCEE%' then t.type_lycee end) as famille,
-    -- les sources DEPP ne couvrent que le privé sous contrat
-    case trim(f.secteur_public_prive_libe) when 'Public' then 'public' when 'Privé' then 'prive_sous_contrat' end as secteur,
+    -- la liste des fermés donne « - » : le secteur vient alors des sources qui citent l'UAI (DEPP : privé sous contrat seulement)
+    coalesce(case trim(f.secteur_public_prive_libe) when 'Public' then 'public' when 'Privé' then 'prive_sous_contrat' end, s.secteur) as secteur,
     try_cast(left(trim(f.date_ouverture::varchar), 10) as date) as date_ouverture,
     try_cast(left(trim(f.date_fermeture::varchar), 10) as date) as date_fermeture,
     trim(f.adresse_uai) as adresse,
@@ -42,6 +67,7 @@ from (
     nombre(f.longitude) as lon
   from src_fermes f
   left join type_lycee_ferme t on t.uai = upper(trim(f.numero_uai))
+  left join secteur_cites s on s.uai = upper(trim(f.numero_uai))
   where f.numero_uai is not null
 )
 where regexp_matches(uai, '^[0-9]{7}[A-Z]$')
@@ -77,7 +103,8 @@ where famille is not null and secteur is not null and date_fermeture is not null
 order by uai;
 
 create or replace table historiques_exclus as
-select uai, nature from historiques_candidats
+select uai, nature, famille is null as sans_famille, secteur is null as sans_secteur, date_fermeture is null as sans_date
+from historiques_candidats
 where famille is null or secteur is null or date_fermeture is null
 order by uai;
 

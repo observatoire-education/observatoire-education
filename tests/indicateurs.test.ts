@@ -90,7 +90,7 @@ describe("indicateurs situés", () => {
 
   test("chaque établissement a les seize indicateurs, dans l'ordre", async () => {
     const tous = await calculerIndicateurs(await dbTest());
-    expect(tous.size).toBe(19); // 14 actifs + 5 historiques sans registre
+    expect(tous.size).toBe(20); // 14 actifs + 5 historiques sans registre
     for (const liste of tous.values()) expect(liste.map((i) => i.code)).toEqual([...CODES_INDICATEURS]);
   });
 });

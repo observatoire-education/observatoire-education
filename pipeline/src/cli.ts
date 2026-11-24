@@ -91,8 +91,11 @@ async function data(): Promise<void> {
     "select motif, count(*)::integer as n from exclus group by motif order by n desc",
   )) console.log(`  exclus ${motif.padEnd(28)} ${n}`);
   const [{ n: historiques } = { n: 0 }] = await db.sql<{ n: number }>("select count(*)::integer as n from historiques");
-  const [{ n: sansFamille } = { n: 0 }] = await db.sql<{ n: number }>("select count(*)::integer as n from historiques_exclus");
-  console.log(`  ${historiques} fiche(s) historique(s) d'établissements fermés, ${sansFamille} fermé(s) cité(s) exclu(s) (famille, secteur ou date inconnus)`);
+  const [excl = { n: 0, famille: 0, secteur: 0, date: 0 }] = await db.sql<{ n: number; famille: number; secteur: number; date: number }>(
+    `select count(*)::integer as n, count(*) filter (where sans_famille)::integer as famille,
+       count(*) filter (where sans_secteur)::integer as secteur, count(*) filter (where sans_date)::integer as date
+     from historiques_exclus`);
+  console.log(`  ${historiques} fiche(s) historique(s) d'établissements fermés, ${excl.n} fermé(s) cité(s) exclu(s) (famille inconnue ${excl.famille}, secteur inconnu ${excl.secteur}, date inconnue ${excl.date})`);
   console.log(`  successeurs : ${successeurs.regle1} règle 1, ${successeurs.regle2} règle 2, ${successeurs.manuels} manuels, ${successeurs.ambigus} ambigus, ${successeurs.sansFiche} sans fiche`);
   const [{ n: inconnus } = { n: 0 }] = await db.sql<{ n: number }>("select count(*)::integer as n from budget_inconnus");
   console.log(`  ${inconnus} budget(s) de collectivité non identifiée dans les balances`);

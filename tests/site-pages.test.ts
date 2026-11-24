@@ -91,7 +91,7 @@ describe("accueil et recherche", () => {
 
   test("recherche.json : clés courtes", () => {
     const idx = JSON.parse(page("recherche.json")) as EntreeIndex[];
-    expect(idx.length).toBe(20); // 14 actifs + 2 pages du registre + 4 fiches historiques
+    expect(idx.length).toBe(21); // 14 actifs + 2 pages du registre + 5 fiches historiques
     expect(Object.keys(idx.find((e) => e.u === "0440001A")!).sort()).toEqual(["c", "d", "f", "n", "s", "u"]);
     expect(idx.find((e) => e.u === "0440004D")).toBeUndefined();
   });
