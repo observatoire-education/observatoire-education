@@ -8,7 +8,7 @@ import { assurerCache, collecter, type ClientSources } from "../pipeline/src/col
 import { DepotGithub, DepotLocal, type Lanceur } from "../pipeline/src/depot.ts";
 import { connexion, executer, lignes, litteral } from "../pipeline/src/duck.ts";
 import { ErreurParquetInvalide } from "../pipeline/src/ods.ts";
-import { SOURCES, type Source, sourceBudget, toutesSources } from "../pipeline/src/sources.ts";
+import { FILTRE_FERMES, SOURCES, type Source, sourceBudget, toutesSources } from "../pipeline/src/sources.ts";
 
 // --- Faux client : fabrique des Parquet avec DuckDB, sans réseau ---
 
@@ -217,7 +217,7 @@ describe("collecte", () => {
     await collecter(opts(fauxClient({}).client, { journal }));
     await collecter(opts(fauxClient({}).client, { journal }));
     const l = (await Bun.file(journal).text()).trim().split("\n").map((x) => JSON.parse(x));
-    expect(l).toHaveLength(48); // dix-huit sources et six exercices du budget, deux fois
+    expect(l).toHaveLength(60); // vingt-quatre sources et six exercices du budget, deux fois
     expect(l[0]).toMatchObject({ date: "2026-11-23T02:17:00.000Z", source: "annuaire" });
   });
 
@@ -321,7 +321,7 @@ describe("budget : exercices et découverte", () => {
   test("aucun jeu : aucune ligne de journal pour l'exercice", async () => {
     const j = await collecter(opts(fauxClient({}).client));
     expect(j.filter((l) => l.source === "budget_2026")).toEqual([]);
-    expect(j).toHaveLength(24);
+    expect(j).toHaveLength(30);
   });
 
   test("un extrait budget sans la colonne fonction est rejeté", async () => {
@@ -344,7 +344,7 @@ describe("cache local", () => {
     await collecter(opts(fauxClient({}).client));
     const cache = join(racine, "cache");
     const chemins = await assurerCache(manifest, depot, cache);
-    expect(Object.keys(chemins)).toHaveLength(24);
+    expect(Object.keys(chemins)).toHaveLength(30);
     await Bun.write(chemins.ips_lycees, "corrompu");
     const encore = await assurerCache(manifest, depot, cache);
     expect(await empreinte(encore.ips_lycees)).toBe(manifest.derniere("ips_lycees")!.sha256);
@@ -372,5 +372,17 @@ describe("dépôt GitHub", () => {
   test("échec de téléversement : erreur", async () => {
     const lanceur: Lanceur = async (args) => (args[1] === "upload" ? { code: 1, sortie: "HTTP 403" } : { code: 0, sortie: "" });
     await expect(new DepotGithub("org/depot", lanceur).publier("t", "/tmp/f.parquet")).rejects.toThrow(/403/);
+  });
+});
+
+describe("sources du premier degré", () => {
+  test("effectifs des écoles : millésime par rentrée, clé numero_ecole", () => {
+    expect(SOURCES.effectifs_ecoles.millesime).toEqual({ colonne: "rentree_scolaire", cles: ["numero_ecole"] });
+    expect(SOURCES.classes_ecoles.millesime).toEqual({ colonne: "annee", cles: ["uai", "type_classe"] });
+    expect(SOURCES.ecoles_ep.millesime).toEqual({ colonne: "rs", cles: ["uai"] });
+  });
+
+  test("le filtre des fermés couvre les écoles", () => {
+    expect(FILTRE_FERMES).toContain('nature_uai_libe like "ECOLE%"');
   });
 });

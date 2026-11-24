@@ -64,8 +64,8 @@ const parUai = (colonne: string, uai = "uai"): Source["millesime"] => ({ colonne
 /** Liste de noms de colonnes séparés par des virgules (un ou plusieurs textes). */
 const noms = (...textes: string[]): string[] => textes.flatMap((t) => t.split(","));
 
-/** Filtre ODSQL des établissements fermés : second degré, fermés depuis 2012. */
-export const FILTRE_FERMES = `date_fermeture >= date'2012-01-01' and (nature_uai_libe like "COLLEGE%" or nature_uai_libe like "LYCEE%" or nature_uai_libe like "ETAB REGIONAL%")`;
+/** Filtre ODSQL des établissements fermés : second degré et écoles, fermés depuis 2012. */
+export const FILTRE_FERMES = `date_fermeture >= date'2012-01-01' and (nature_uai_libe like "COLLEGE%" or nature_uai_libe like "LYCEE%" or nature_uai_libe like "ETAB REGIONAL%" or nature_uai_libe like "ECOLE%")`;
 
 const IPS_ETAB = ["rentree_scolaire", "uai", "secteur", "ips", "ecart_type_de_l_ips"];
 const IPS_LYCEES = noms(
@@ -105,6 +105,14 @@ export const SOURCES: Record<SourceId, Source> = {
       "hebergement",
       "etat",
       "multi_uai",
+      // premier degré (phase Écoles)
+      "ecole_maternelle",
+      "ecole_elementaire",
+      "pial",
+      "code_circonscription",
+      "nom_circonscription",
+      "rpi_concentre",
+      "rpi_disperse",
     ),
     true,
   ),
@@ -275,6 +283,68 @@ export const SOURCES: Record<SourceId, Source> = {
     ),
     false,
     parUai("annee", "dep"),
+  ),
+  // --- Phase Écoles : premier degré (champs vérifiés sur l'API le 2026-11-24) ---
+  effectifs_ecoles: source(
+    "effectifs_ecoles",
+    "fr-en-ecoles-effectifs-nb_classes",
+    "Effectifs d’élèves par école",
+    noms(
+      "rentree_scolaire,numero_ecole,secteur,nombre_total_classes,nombre_total_eleves",
+      "nombre_eleves_preelementaire_hors_ulis,nombre_eleves_elementaire_hors_ulis,nombre_eleves_ulis,nombre_eleves_ueea",
+      "nombre_eleves_cp_hors_ulis,nombre_eleves_ce1_hors_ulis,nombre_eleves_ce2_hors_ulis,nombre_eleves_cm1_hors_ulis,nombre_eleves_cm2_hors_ulis",
+    ),
+    false,
+    parUai("rentree_scolaire", "numero_ecole"),
+  ),
+  ips_ecoles_2016: source(
+    "ips_ecoles_2016",
+    "fr-en-ips_ecoles_v2",
+    "Indices de position sociale des écoles (2016-2021)",
+    ["rentree_scolaire", "uai", "secteur", "ips"],
+    false,
+    parUai("rentree_scolaire"),
+  ),
+  // Moyennes territoriales publiées avec chaque IPS (national, académique, départemental ; ensemble, public, privé).
+  ips_ecoles: source(
+    "ips_ecoles",
+    "fr-en-ips-ecoles-ap2022",
+    "Indices de position sociale des écoles (à partir de 2022)",
+    cols("rentree_scolaire", "uai", "secteur", "ips", "ips_{national,academique,departemental}{,_public,_prive}"),
+    false,
+    parUai("rentree_scolaire"),
+  ),
+  personnels_ecoles: source(
+    "personnels_ecoles",
+    "fr-en-indicateurs_personnels_etablissements1d",
+    "Les personnels dans les établissements du premier degré",
+    cols(
+      "annee_de_la_rentree_scolaire",
+      "secteur",
+      "identifiant_de_l_etablissement",
+      "etp_d_enseignants_hommes_et_femmes",
+      "etp_de_femmes_enseignantes",
+      "etp_d_enseignants_de_{moins_de_35_ans,35_a_moins_de_50_ans,50_ans_ou_plus}",
+      "etp_d_enseignants_ayant_une_anciennete_dans_l_etablissement_de_{moins_de_2_ans,2_ans_a_moins_de_5_ans,5_ans_a_moins_de_8_ans,8_ans_ou_plus}",
+    ),
+    false,
+    parUai("annee_de_la_rentree_scolaire", "identifiant_de_l_etablissement"),
+  ),
+  classes_ecoles: source(
+    "classes_ecoles",
+    "fr-en-typologie-des-classes-dans-les-etablissements-du-premier-degre_v2",
+    "Typologie des classes dans les établissements du premier degré",
+    ["annee", "uai", "libelle_secteur", "type_classe", "nb_classes"],
+    false,
+    { colonne: "annee", cles: ["uai", "type_classe"] },
+  ),
+  ecoles_ep: source(
+    "ecoles_ep",
+    "fr-en-ecoles-ep",
+    "Écoles éducation prioritaire",
+    ["rs", "uai", "appartep", "nbeleves", "nbclasses"],
+    false,
+    parUai("rs"),
   ),
 };
 

@@ -28,6 +28,12 @@ export type SourceId =
   | "ival_gt"
   | "ival_pro"
   | "segregation"
+  | "effectifs_ecoles"
+  | "ips_ecoles_2016"
+  | "ips_ecoles"
+  | "personnels_ecoles"
+  | "classes_ecoles"
+  | "ecoles_ep"
   | `budget_${number}`;
 
 /** Une valeur, son statut et son origine (source et rentrée de septembre). */

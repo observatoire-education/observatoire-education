@@ -32,8 +32,8 @@ afterAll(async () => {
 });
 
 describe("registre des sources", () => {
-  test("dix-huit sources, l'annuaire est le référentiel", () => {
-    expect(Object.keys(SOURCES)).toHaveLength(18);
+  test("vingt-quatre sources, l'annuaire est le référentiel", () => {
+    expect(Object.keys(SOURCES)).toHaveLength(24);
     expect(SOURCES.annuaire.referentiel).toBe(true);
     expect(Object.values(SOURCES).filter((s) => s.referentiel)).toHaveLength(1);
   });
@@ -117,7 +117,7 @@ describe("client Opendatasoft", () => {
       `https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-etablissements-fermes/exports/parquet?where=${encodeURIComponent(s.filtre!)}`,
     );
     expect(s.filtre).toBe(
-      `date_fermeture >= date'2012-01-01' and (nature_uai_libe like "COLLEGE%" or nature_uai_libe like "LYCEE%" or nature_uai_libe like "ETAB REGIONAL%")`,
+      `date_fermeture >= date'2012-01-01' and (nature_uai_libe like "COLLEGE%" or nature_uai_libe like "LYCEE%" or nature_uai_libe like "ETAB REGIONAL%" or nature_uai_libe like "ECOLE%")`,
     );
   });
 

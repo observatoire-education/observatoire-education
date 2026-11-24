@@ -111,6 +111,13 @@ describe("tables canoniques", () => {
       "0440004D": "prive_hors_contrat",
       "0440008H": "secteur_inconnu",
       "0440009J": "famille_inconnue",
+      // écoles : pas encore classées (tâche 5)
+      "0440104D": "type_hors_perimetre",
+      "0440105E": "type_hors_perimetre",
+      "0440108H": "type_hors_perimetre",
+      "0440201A": "type_hors_perimetre",
+      "0440202B": "type_hors_perimetre",
+      "0440203C": "type_hors_perimetre",
       "9870001A": "hors_perimetre_geographique",
       "../X/0440010K": "uai_invalide", // l'UAI sert à nommer des fichiers et des URL : format strict
     });
