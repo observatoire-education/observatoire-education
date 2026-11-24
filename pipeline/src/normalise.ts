@@ -46,6 +46,18 @@ export function depCanonique(code: string): string {
   return c;
 }
 
+/** Graphies de l'Annuaire corrigées, en minuscules → libellé affiché sur le site. */
+const LIBELLES_TERRITOIRE: Record<string, string> = {
+  "st-pierre-et-miquelon": "Saint-Pierre-et-Miquelon",
+  "saint pierre et miquelon": "Saint-Pierre-et-Miquelon",
+};
+
+/** Libellé de département ou d'académie : espaces retirés, graphie de Saint-Pierre-et-Miquelon unifiée. */
+export function libelleTerritoire(l: string | null): string | null {
+  const t = texte(l);
+  return t === null ? null : (LIBELLES_TERRITOIRE[t.toLowerCase()] ?? t);
+}
+
 /** Année de la rentrée de septembre : « 2025-2026 », « 2025 », « 2025-01-01 » → 2025. */
 export function rentree(v: unknown): number | null {
   const m = texte(v)?.match(/^(\d{4})/);
@@ -96,6 +108,12 @@ create or replace macro dep_canonique(c) as (
     when length(trim(c::varchar)) = 3 and starts_with(trim(c::varchar), '0') then upper(trim(c::varchar))[2:3]
     when length(trim(c::varchar)) = 1 then '0' || trim(c::varchar)
     else upper(trim(c::varchar))
+  end);
+
+create or replace macro libelle_territoire(l) as (
+  case lower(trim(l::varchar))
+${Object.entries(LIBELLES_TERRITOIRE).map(([k, v]) => `    when ${litteral(k)} then ${litteral(v)}`).join("\n")}
+    else trim(l::varchar)
   end);
 
 create or replace macro rentree(v) as (

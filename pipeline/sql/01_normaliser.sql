@@ -17,9 +17,9 @@ select
   trim(nom_commune) as commune,
   -- Saint-Barthélemy (977) et Saint-Martin (978) : rattachées à la Guadeloupe, comme dans les données de la DEPP
   case when dep_canonique(code_departement) in ('977', '978') then '971' else dep_canonique(code_departement) end as dep,
-  case when dep_canonique(code_departement) in ('977', '978') then 'Guadeloupe' else trim(libelle_departement) end as dep_libelle,
+  case when dep_canonique(code_departement) in ('977', '978') then 'Guadeloupe' else libelle_territoire(libelle_departement) end as dep_libelle,
   trim(code_academie::varchar) as aca,
-  trim(libelle_academie) as aca_libelle,
+  libelle_territoire(libelle_academie) as aca_libelle,
   nombre(latitude) as lat,
   nombre(longitude) as lon,
   case when trim(appartenance_education_prioritaire) in ('REP+', 'REP')

@@ -3,7 +3,7 @@
 import { date, entier, part } from "@obs/shared/format";
 import { academie, LIBELLES } from "@obs/shared/libelles";
 import Base from "../layouts/Base.astro";
-import { lireFrance, lireIndex, lireSources } from "../lib/donnees";
+import { communesDisponibles, lireFrance, lireIndex, lireSources, lireTerritoire } from "../lib/donnees";
 
 const france = lireFrance();
 const sources = Object.values(lireSources())
@@ -22,6 +22,11 @@ const colleges = compte(["college"]);
 const lycees = compte(["legt", "lpo", "lp"]);
 const erea = compte(["erea"]);
 const departements = france.academies.flatMap((a) => a.departements.map((d) => ({ d: d.dep, l: d.libelle, a: academie(a.libelle) })));
+// Communes qui ont une page (seuil décidé par le pipeline), repérées par leur département.
+const communes = france.academies.flatMap((a) => a.departements.flatMap((d) =>
+  lireTerritoire({ niveau: "departement", code: d.dep }).communes
+    .filter((c) => communesDisponibles().has(c.code))
+    .map((c) => ({ i: c.code, l: c.libelle, d: d.dep }))));
 const millions = (n: number) => (n >= 1e6 ? `${(n / 1e6).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} M` : entier(n));
 const derniereCollecte = sources[0]?.actuelle?.collecteLe;
 ---
@@ -50,9 +55,10 @@ const derniereCollecte = sources[0]?.actuelle?.collecteLe;
 
   <section>
     <h2>Parcourir par territoire</h2>
+    <p style="margin:0 0 10px"><a href="/france/">France entière</a></p>
     <div class="acad">
       {france.academies.map((a) => (
-        <div><b>{a.libelle}</b>{a.departements.map((d) => <a href={`/departement/${d.dep}/`}>{d.dep} {d.libelle}</a>)}</div>
+        <div><b><a href={`/academie/${a.aca}/`}>{a.libelle}</a></b>{a.departements.map((d) => <a href={`/departement/${d.dep}/`}>{d.dep} {d.libelle}</a>)}</div>
       ))}
     </div>
   </section>
@@ -75,6 +81,7 @@ const derniereCollecte = sources[0]?.actuelle?.collecteLe;
       </div>
     </section>
   </div>
+  <script type="application/json" id="communes" set:html={JSON.stringify(communes)} />
   <script type="application/json" id="departements" set:html={JSON.stringify(departements)} />
   <script is:inline src="/js/recherche.js" defer></script>
 </Base>

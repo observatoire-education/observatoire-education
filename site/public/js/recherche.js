@@ -1,9 +1,10 @@
 // Recherche de l'accueil : index chargé au premier focus (/recherche.json), insensible aux accents et à la casse,
-// sur le nom, la commune, l'UAI et le département. Établissements (au plus 20) et départements.
+// sur le nom, la commune, l'UAI et le département. Établissements (au plus 20), communes (au plus 20) et départements.
 (function () {
   var q = document.getElementById("q"), res = document.getElementById("res");
   if (!q || !res) return;
   var deps = JSON.parse((document.getElementById("departements") || {}).textContent || "[]");
+  var communes = JSON.parse((document.getElementById("communes") || {}).textContent || "[]");
   var nomDep = {}; deps.forEach(function (d) { nomDep[d.d] = d.l; });
   var familles = { college: "Collège", legt: "Lycée GT", lpo: "Lycée polyvalent", lp: "Lycée pro", erea: "EREA" };
   var index = null, chargement = null;
@@ -47,6 +48,8 @@
       .map(function (e) { return { e: e, p: score(e.k) }; })
       .sort(function (a, b) { return b.p - a.p || a.e.n.localeCompare(b.e.n, "fr"); })
       .map(function (x) { return x.e; });
+    var villes = communes.filter(function (c) { return ok(norm(c.l + " " + c.i + " " + (nomDep[c.d] || ""))); })
+      .sort(function (a, b) { return a.l.localeCompare(b.l, "fr"); });
     var trouves = deps.filter(function (d) { return ok(norm(d.l + " " + d.d + " " + d.a)); });
     var h = "";
     if (etabs.length) {
@@ -55,6 +58,12 @@
         return '<a href="/etablissement/' + chemin(e.u) + '/"><span>' + surligner(e.n, termes) + '</span><span class="u">' + echap(e.u) +
           '</span><span class="s"><span class="sect ' + (e.s === "public" ? "pub" : "pri") + '">' + (e.s === "public" ? "Public" : "Privé s. c.") +
           "</span> · " + echap(familles[e.f] || "") + " · " + surligner(e.c, termes) + (e.x ? " · page conservée" : "") + "</span></a>";
+      }).join("");
+    }
+    if (villes.length) {
+      h += '<div class="grp">Communes' + (villes.length > 20 ? " (20 premières sur " + villes.length + ", précisez la recherche)" : "") + "</div>";
+      h += villes.slice(0, 20).map(function (c) {
+        return '<a href="/commune/' + chemin(c.i) + '/"><span>' + surligner(c.l, termes) + '</span><span></span><span class="s">' + echap(c.d) + (nomDep[c.d] ? " · " + echap(nomDep[c.d]) : "") + "</span></a>";
       }).join("");
     }
     if (trouves.length) {

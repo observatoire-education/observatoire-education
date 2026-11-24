@@ -116,3 +116,15 @@ describe("page département : puces des communes", () => {
     expect(puces[0]!.textContent!.trim()).toBe("Paris · 3");
   });
 });
+
+describe("titre de liste d'une commune", () => {
+  test("un seul établissement : forme naturelle, jamais « Les 1 »", () => {
+    for (const c of ["commune/44109", "departement/44", "departement/75"]) {
+      const t = texte(c);
+      expect(t).not.toMatch(/Les 1 /);
+    }
+    const titres = ["departement/44", "departement/75", "commune/44109"].flatMap((c) => [...doc(c).querySelectorAll("h3.sous-titre")].map((h) => h.textContent!.trim()));
+    expect(titres.some((t) => /^Le (collège|lycée)/.test(t))).toBe(true);
+    expect(titres.some((t) => /^Les [2-9] /.test(t))).toBe(true);
+  });
+});

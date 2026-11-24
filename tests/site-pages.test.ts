@@ -67,7 +67,8 @@ describe("accueil et recherche", () => {
     const t = texte("index.html");
     expect(t).toContain("Les chiffres publics de chaque collège et lycée de France.");
     expect(t).toContain("Nantes");
-    expect([...d.querySelectorAll(".acad b")].some((b) => b.textContent!.includes("Nantes") && !b.querySelector("a"))).toBe(true);
+    expect(d.querySelector("a[href='/france/']")).not.toBeNull();
+    expect(d.querySelector(".acad b a[href='/academie/17/']")!.textContent).toContain("Nantes");
     expect(t).toContain("Sans palmarès");
     expect(t).toContain("non couvert par les statistiques publiques");
   });
@@ -77,6 +78,14 @@ describe("accueil et recherche", () => {
     const deps = JSON.parse(d.querySelector("script#departements")!.textContent!) as { d: string; l: string }[];
     expect(deps).toContainEqual(expect.objectContaining({ d: "44", l: "Loire-Atlantique" }));
     expect([...d.querySelectorAll("script[src]")].map((s) => s.getAttribute("src"))).toContain("/js/recherche.js");
+  });
+
+  test("accueil : communes avec page intégrées pour la recherche", () => {
+    const d = doc("index.html");
+    const json = d.querySelector("script#communes")!.textContent!;
+    const communes = JSON.parse(json) as { i: string; l: string; d: string }[];
+    expect(communes).toContainEqual({ i: "44109", l: "Nantes", d: "44" });
+    expect(json).not.toContain("2A004");
   });
 
   test("recherche.json : clés courtes", () => {
@@ -94,6 +103,9 @@ describe("sources, méthode, 404, sitemap", () => {
     expect(t).toContain("Indices de position sociale des collèges");
     expect(d.querySelector("a[href='https://github.com/org/depot/releases/download/archives-ips_colleges-2026/ips_colleges.parquet']")).not.toBeNull();
     expect(t).toContain("Licence Ouverte");
+    expect(t).toContain("ADMIN EXPRESS");
+    expect(t).toContain("dernière édition disponible au 24 novembre 2026");
+    expect(t).toContain("Licence Ouverte 2.0");
   });
 
   test("méthode : périmètre, moyennes, voisinage, absences, pages conservées", () => {
@@ -107,6 +119,37 @@ describe("sources, méthode, 404, sitemap", () => {
     expect(t).toContain("50 %");
   });
 
+  test("méthode : cartes, moyennes calculées, communes", () => {
+    const d = doc("methode");
+    const t = texte("methode");
+    for (const id of ["cartes", "moyennes-calculees", "communes"]) expect(d.getElementById(id)).not.toBeNull();
+    // Vue A : élèves connus seulement, sans zéro.
+    expect(t).toContain("Σ élèves privés / Σ élèves (public + privé)");
+    expect(t).toContain("établissements sans élèves publiés ne sont pas comptés");
+    // Vue B.
+    expect(t).toContain("dep_prive − dep_public");
+    expect(t).toContain("aca_prive − aca_public");
+    // Moyennes calculées et contrôle.
+    expect(t).toContain("moyenne calculée par l'observatoire");
+    expect(t).toContain("pondérée par les élèves");
+    expect(t).toContain("0,2");
+    expect(t).toContain("746");
+    // Communes.
+    expect(t).toContain("3 établissements");
+    expect(t).toContain("75056");
+    expect(t).toContain("69123");
+    expect(t).toContain("13055");
+  });
+
+  test("méthode : le périmètre cite Saint-Pierre-et-Miquelon dès l'introduction du paragraphe", () => {
+    const t = texte("methode");
+    const intro = t.slice(t.indexOf("Périmètre"), t.indexOf("Le privé hors contrat"));
+    expect(intro).toContain("Saint-Pierre-et-Miquelon");
+    expect(intro).toContain("Saint-Barthélemy");
+    expect(intro).toContain("Saint-Martin");
+    expect(intro).not.toContain("métropole et dans les départements d'outre-mer, tels");
+  });
+
   test("404 : redirection des UAI en minuscules", () => {
     const h = page("404.html");
     expect(h).toContain("toUpperCase");
@@ -118,6 +161,10 @@ describe("sources, méthode, 404, sitemap", () => {
     expect(s).toContain("/etablissement/0440001A/");
     expect(s).toContain("/departement/2A/");
     expect(s).toContain("/methode/");
+    expect(s).toContain("/france/");
+    expect(s).toContain("/academie/17/");
+    expect(s).toContain("/commune/44109/");
+    expect(s).not.toContain("/commune/2A004/");
     expect(s).toContain("<lastmod>2026-11-22</lastmod>");
   });
 });

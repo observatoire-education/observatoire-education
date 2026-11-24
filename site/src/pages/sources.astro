@@ -37,6 +37,11 @@ const ACTIONS: Record<string, string> = { inchange: "inchangé", telecharge: "no
       )}
     </section>
   ))}
+  <section id="contours">
+    <h2>Contours des territoires</h2>
+    <p style="margin:0 0 10px;font-size:14px">IGN · ADMIN EXPRESS COG CARTO, service WFS de la Géoplateforme (<a href="https://data.geopf.fr/wfs/ows">service</a>)</p>
+    <p class="mute">Contours des départements et des communes, simplifiés pour les cartes. Édition : dernière édition disponible au 24 novembre 2026 (le service n'indique pas l'année d'édition). Licence Ouverte 2.0.</p>
+  </section>
   <section>
     <h2>Collectes récentes</h2>
     {executions.length === 0 ? <p class="mute">Journal de collecte non disponible pour cette génération du site.</p> : (

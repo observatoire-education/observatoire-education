@@ -91,6 +91,9 @@ const communes = niveau === "departement"
   : [];
 for (const [code, page] of pages) if (!communes.some((x) => x.code === code)) communes.push({ code, c: page.libelle, n: null, page });
 communes.sort((a, b) => a.c.localeCompare(b.c, "fr"));
+/** « Les 3 collèges » ; pour un seul : « Le collège » (« L'EREA », élidé). */
+const titreListe = (f: Famille, n: number) =>
+  n === 1 ? (f === "erea" ? `L'${nomFamille(f, 1)}` : `Le ${nomFamille(f, 1)}`) : `Les ${entier(n)} ${nomFamille(f, n)}`;
 const badges = [
   ...(niveau === "departement" || niveau === "commune") && aca ? [academie(aca.libelle)] : [],
   ...(niveau === "commune" && dep ? [dep.libelle] : []),
@@ -212,7 +215,7 @@ const badges = [
 
         {avecEtablissements && (
           <>
-            <h3 class="sous-titre">Les {entier(s.liste.length)} {nomFamille(f, s.liste.length)}</h3>
+            <h3 class="sous-titre">{titreListe(f, s.liste.length)}</h3>
             <ListeEtablissements famille={f} liste={s.liste} />
           </>
         )}

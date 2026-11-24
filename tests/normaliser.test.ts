@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { depCanonique, famille, nombre, rentree, secteur } from "../pipeline/src/normalise.ts";
+import { depCanonique, famille, libelleTerritoire, nombre, rentree, secteur } from "../pipeline/src/normalise.ts";
 import { dbTest } from "./aide.ts";
 
 const db = await dbTest();
@@ -19,6 +19,18 @@ describe("fonctions de normalisation (TypeScript et SQL identiques)", () => {
     const attendu = ["01", "01", "01", "2A", "2A", "2B", "44", "971", "976", "44"];
     expect(cas.map(depCanonique)).toEqual(attendu);
     expect(await enSql((x) => `dep_canonique(${x})`, cas)).toEqual(attendu);
+  });
+
+  test("libellés de territoire : Saint-Pierre-et-Miquelon écrit à la française", async () => {
+    const cas = ["St-Pierre-et-Miquelon", "Saint Pierre et Miquelon", " Saint-Pierre-et-Miquelon ", "Loire-Atlantique", "Nantes"];
+    const attendu = ["Saint-Pierre-et-Miquelon", "Saint-Pierre-et-Miquelon", "Saint-Pierre-et-Miquelon", "Loire-Atlantique", "Nantes"];
+    expect(cas.map(libelleTerritoire)).toEqual(attendu);
+    expect(await enSql((x) => `libelle_territoire(${x})`, cas)).toEqual(attendu);
+    expect(await enSql((x) => `libelle_territoire(${x})`, [null])).toEqual([null]);
+    // La table normalisée applique la macro aux libellés de département et d'académie.
+    const sql = await Bun.file(new URL("../pipeline/sql/01_normaliser.sql", import.meta.url)).text();
+    expect(sql).toContain("libelle_territoire(libelle_departement)");
+    expect(sql).toContain("libelle_territoire(libelle_academie)");
   });
 
   test("rentrées", async () => {

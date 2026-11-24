@@ -8,7 +8,7 @@ import Base from "../layouts/Base.astro";
     <p class="mute">L'observatoire reproduit des données publiques. Il les croise par établissement, les situe par rapport à des moyennes et indique pour chaque chiffre sa source et son millésime. Il ne commente pas les chiffres et ne note aucun établissement.</p>
 
     <h2 id="perimetre">Périmètre</h2>
-    <p>Une page par collège, lycée (général et technologique, polyvalent, professionnel) et établissement régional d'enseignement adapté (EREA), public ou privé sous contrat, en métropole et dans les départements d'outre-mer, tels que les recense l'Annuaire de l'éducation.</p>
+    <p>Une page par collège, lycée (général et technologique, polyvalent, professionnel) et établissement régional d'enseignement adapté (EREA), public ou privé sous contrat, en métropole, dans les départements d'outre-mer (dont Saint-Barthélemy et Saint-Martin, avec la Guadeloupe) et à Saint-Pierre-et-Miquelon, tels que les recense l'Annuaire de l'éducation.</p>
     <ul>
       <li>Le <b>privé hors contrat</b> n'a pas de page : il est absent des statistiques publiques. Les pages de département en donnent le nombre, avec la mention « non couvert par les statistiques publiques ».</li>
       <li>Saint-Barthélemy et Saint-Martin figurent avec la Guadeloupe : anciennes communes de la Guadeloupe, collectivités d'outre-mer depuis 2007, elles restent rattachées au rectorat de Guadeloupe, et la DEPP les range dans le département de la Guadeloupe. Saint-Pierre-et-Miquelon a sa propre page de département. Les collectivités du Pacifique ne sont pas couvertes.</li>
@@ -29,6 +29,23 @@ import Base from "../layouts/Base.astro";
       <li>Les volumes (nombre d'élèves, ETP) ne sont pas comparés : ils dépendent de la taille de l'établissement.</li>
       <li>Les effectifs publiés ne comprennent pas les étudiants post-bac (BTS, classes préparatoires), alors que les ETP enseignants comprennent tous les enseignants de l'établissement. Dans un lycée qui accueille beaucoup d'étudiants post-bac, le nombre d'élèves par ETP enseignant est donc plus bas.</li>
     </ul>
+
+    <h2 id="moyennes-calculees">Moyennes calculées par l'observatoire</h2>
+    <p>Les moyennes de l'IPS d'un département, d'une académie et de la France sont celles que publie la DEPP, affichées telles quelles. Pour une commune, la DEPP n'en publie pas : l'observatoire calcule une moyenne <b>pondérée par les élèves</b>, indiquée « moyenne calculée par l'observatoire » avec le nombre d'établissements pris en compte. Seuls comptent les établissements de la famille et du secteur concernés dont l'IPS et le nombre d'élèves sont publiés.</p>
+    <p>Pour vérifier cette pondération, la même moyenne est calculée pour chaque département, famille et secteur, puis comparée à la moyenne que la DEPP publie pour ce département. La génération des données s'arrête si l'écart médian dépasse 0,2 point ou si le 90<sup>e</sup> centile des écarts dépasse 1,0 point. Mesure du 24 novembre 2026, sur 746 groupes (famille, département, secteur) : écart médian de 0,06 point, 90<sup>e</sup> centile de 0,53 point.</p>
+
+    <h2 id="cartes">Cartes</h2>
+    <p>Les pages de la France, des académies et des départements portent une carte à deux vues, choisies par des boutons ; à l'impression, les deux cartes sont imprimées. Chaque carte colore les territoires sur une rampe continue d'une seule teinte, sans libellé de valeur ni mise en valeur des extrêmes. Un territoire sans valeur est grisé et la légende dit « non disponible ». Les territoires sans contour dans les données de l'IGN sont listés sous la carte.</p>
+    <ul>
+      <li><b>Part des élèves dans le privé sous contrat</b> (rampe du clair au foncé de la teinte du privé) : Σ élèves privés / Σ élèves (public + privé), toutes familles, à la rentrée la plus récente, en pourcentage. Seuls les élèves connus à cette rentrée sont additionnés : les établissements sans élèves publiés ne sont pas comptés, ni dans le numérateur ni dans le dénominateur, et ne sont jamais remplacés par un zéro.</li>
+      <li><b>Écart d'IPS moyen privé − public des collèges</b> (rampe de la teinte du public) : dep_prive − dep_public, différence des moyennes publiées par la DEPP, en points ; pour une ligne d'académie, aca_prive − aca_public.</li>
+      <li>Sur la page d'une commune, la carte est un nuage de points : un point plein pour un établissement public, un anneau pour un établissement privé sous contrat, de rayon croissant avec le nombre d'élèves.</li>
+    </ul>
+    <p>Les contours viennent de l'IGN (<a href="/sources/#contours">ADMIN EXPRESS COG CARTO</a>) et sont simplifiés pour le web.</p>
+
+    <h2 id="communes">Communes</h2>
+    <p>Une commune a sa page à partir de 3 établissements actifs (codes UAI distincts), toutes familles et tous secteurs confondus. Le seuil est recalculé à chaque génération du site, si bien qu'une commune peut gagner ou perdre sa page d'une génération à l'autre. Sous le seuil, la commune apparaît dans la fiche de ses établissements sans lien.</p>
+    <p>Paris, Lyon et Marseille sont des communes entières : leurs arrondissements sont rattachés à la commune (75101 à 75120 : Paris, 75056 ; 69381 à 69389 : Lyon, 69123 ; 13201 à 13216 : Marseille, 13055) et n'ont pas de page distincte.</p>
 
     <h2 id="filles">Filles et garçons</h2>
     <p>La DEPP ne publie pas la répartition filles-garçons d'un niveau ou d'une voie lorsque l'un des deux sexes y est très peu représenté (secret statistique). La part de filles d'un établissement est alors calculée sur les seuls niveaux publiés, et la page indique la part des élèves sur laquelle elle porte. Si cette part est inférieure à 50 % des élèves, la part de filles est affichée « non disponible » et l'établissement n'entre pas dans les moyennes.</p>

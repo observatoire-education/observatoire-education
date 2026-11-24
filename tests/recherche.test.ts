@@ -4,10 +4,11 @@ import { parseHTML } from "linkedom";
 const SCRIPT = await Bun.file(new URL("../site/public/js/recherche.js", import.meta.url)).text();
 
 /** Exécute le vrai recherche.js dans un document linkedom, avec un index fourni. */
-async function rechercher(index: unknown[], saisie: string, deps: unknown[] = []) {
+async function rechercher(index: unknown[], saisie: string, deps: unknown[] = [], communes: unknown[] = []) {
   const { document } = parseHTML(`<!doctype html><html><body>
     <input id="q"><div id="res"></div>
-    <script type="application/json" id="departements">${JSON.stringify(deps)}</script></body></html>`);
+    <script type="application/json" id="departements">${JSON.stringify(deps)}</script>
+    <script type="application/json" id="communes">${JSON.stringify(communes)}</script></body></html>`);
   const fetchFaux = async () => ({ json: async () => structuredClone(index) });
   new Function("document", "location", "fetch", "URLSearchParams", SCRIPT)(
     document, { search: "", href: "" }, fetchFaux, URLSearchParams,
@@ -46,5 +47,20 @@ describe("recherche de l'accueil", () => {
     const res = await rechercher([entree("Lycée Arts & Métiers")], "metiers");
     expect(res.querySelector("a span")!.textContent).toBe("Lycée Arts & Métiers");
     expect(res.querySelector("mark")!.textContent).toBe("Métiers");
+  });
+
+  test("communes : groupe entre établissements et départements, accents et casse ignorés", async () => {
+    const res = await rechercher(
+      [entree("Collège Jules-Verne")], "NANTES",
+      [{ d: "44", l: "Loire-Atlantique", a: "Académie de Nantes" }],
+      [{ i: "44109", l: "Nantes", d: "44" }],
+    );
+    const titres = [...res.querySelectorAll(".grp")].map((g) => g.textContent);
+    expect(titres).toEqual(["Établissements", "Communes", "Départements"]);
+    const lien = res.querySelector("a[href='/commune/44109/']");
+    expect(lien).not.toBeNull();
+    expect(lien!.textContent).toContain("Nantes");
+    const sans = await rechercher([], "nante", [], [{ i: "44109", l: "Nantès", d: "44" }]);
+    expect(sans.querySelector("a[href='/commune/44109/']")).not.toBeNull();
   });
 });
