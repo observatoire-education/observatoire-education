@@ -91,7 +91,7 @@
 - `0440201A` « École maternelle Les Lilas », publique, Nantes (44109), 12 rue des Lilas, 4 classes ;
 - `0440202B` « École élémentaire Jules-Ferry », publique, Nantes, 3 bis rue Jules Ferry, 8 classes ;
 - `0440203C` « École primaire Sainte-Marie », privée sous contrat, Nantes, rue des Lilas sans numéro ;
-- `0440104D` « École primaire du Bourg », publique, Saint-Aubin (44150, commune entièrement rattachée au collège `0440001A`), 1 classe CP-CE1-CE2-CM1-CM2 ;
+- `0440104D` « École élémentaire du Bourg », publique, Saint-Aubin (44150, commune entièrement rattachée au collège `0440001A`), 1 classe CP-CE1-CE2-CM1-CM2 ;
 - `0440105E` « École maternelle des Prés », publique, Saint-Aubin, sans coordonnées ;
 - `0440106F` « École élémentaire du Moulin », publique, fermée le 2016-07-05, commune déléguée `44999` rattachée à la commune nouvelle `44150` ;
 - fusion : `0440107G` « École maternelle des Tilleuls » et `0440109K` « École élémentaire des Tilleuls », publiques, Nantes, 5 rue des Tilleuls, fermées le 2019-07-04 ; `0440108H` « École primaire des Tilleuls », même adresse, ouverte le 2019-07-04 ;
@@ -167,7 +167,7 @@ Le collège `0440001A` (fixture existante) est en tête du PIAL de `0440201A`, `
 **Interfaces:**
 - Produces: `Famille` élargi ; `FAMILLES_ECOLES`, `FAMILLES_SECOND_DEGRE`, `estEcole(f: Famille): boolean` (dans `libelles.ts`) ; `FAMILLES_COMPATIBLES_ECOLES: Record<"maternelle" | "elementaire" | "primaire", Famille[]>` (dans `fiches.ts`).
 
-- [ ] **Step 1 : tests** dans `tests/normaliser.test.ts` : `0440201A` est classée `maternelle`, `0440202B` `elementaire`, `0440203C` et `0440104D` `primaire` ; une école `ECOLE REGIONALE DU PREMIER DEGRE` a le motif `nature_ecole_hors_perimetre` ; une école privée hors contrat a le motif `prive_hors_contrat`.
+- [ ] **Step 1 : tests** dans `tests/normaliser.test.ts` : `0440201A` est classée `maternelle`, `0440202B` et `0440104D` `elementaire`, `0440203C` et `0440108H` `primaire` ; une école `ECOLE REGIONALE DU PREMIER DEGRE` a le motif `nature_ecole_hors_perimetre` ; une école privée hors contrat a le motif `prive_hors_contrat`.
 - [ ] **Step 2 :** FAIL.
 - [ ] **Step 3 :** type `Ecole` admis au périmètre ; macro `famille_ecole(maternelle, elementaire)` appliquée quand `type_etablissement = 'Ecole'` ; libellés `FAMILLES` et `FAMILLES_PLURIEL`. Les écoles n'ont pas de voisins : `calculerVoisins` ne traite que `FAMILLES_SECOND_DEGRE` et renvoie `null` pour une école. `communesRetenues`, `exporterTerritoires`, `controlerPonderation` et `ORDRE_FAMILLES` filtrent sur `FAMILLES_SECOND_DEGRE`. `niveauDe` (budget) n'est appelé que pour le second degré.
 - [ ] **Step 4 :** `bun test` → PASS, et `site-territoires` inchangé (aucune école sur les territoires).
