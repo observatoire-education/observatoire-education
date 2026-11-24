@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { echantillonUrls, normaliserCorps } from "../scripts/comparer-hebergements.ts";
+import { comparer, echantillonUrls, normaliserCorps } from "../scripts/comparer-hebergements.ts";
 import { ecrireFichiersHebergement, LIMITES, verifierDist } from "../scripts/garde-fous.ts";
 
 async function dossierTemp<T>(f: (d: string) => Promise<T> | T): Promise<T> {
@@ -65,5 +65,38 @@ describe("garde-fous de dist/ (Cloudflare Workers)", () => {
       '<head><script is:inline defer src="https://u.example/s.js" data-website-id="x"></script></head>' +
       '<div>Page générée le 24 novembre 2026. Lien</div><div>Fiche éditée le 24 novembre 2026<br></div>';
     expect(normaliserCorps(html)).toBe(normaliserCorps(html.replace(/24 novembre/g, "25 novembre").replace(/<script.*?<\/script>/, "")));
+  });
+
+  test("normaliserCorps garde les vraies différences", () => {
+    expect(normaliserCorps("<p>a</p>")).not.toBe(normaliserCorps("<p>b</p>"));
+  });
+
+  test("echantillonUrls déséchappe les entités XML des <loc>", () => {
+    const sitemap = "<urlset><url><loc>https://x.fr/a?b=1&amp;c=2</loc></url></urlset>";
+    expect(echantillonUrls(sitemap, 1)).toEqual(["/a?b=1&c=2"]);
+  });
+
+  test("comparer signale erreur réseau, statut, redirection et corps", async () => {
+    const reponses: Record<string, () => Response> = {
+      "https://a.test/reseau": () => new Response("ok"),
+      "https://a.test/statut": () => new Response("x", { status: 200 }),
+      "https://b.test/statut": () => new Response("x", { status: 404 }),
+      "https://a.test/redir": () => new Response(null, { status: 301, headers: { location: "/un/" } }),
+      "https://b.test/redir": () => new Response(null, { status: 301, headers: { location: "/deux/" } }),
+      "https://a.test/corps": () => new Response("a"),
+      "https://b.test/corps": () => new Response("b"),
+      "https://a.test/ok": () => new Response("pareil"),
+      "https://b.test/ok": () => new Response("pareil"),
+    };
+    const stub = async (url: URL) => {
+      const f = reponses[url.href];
+      if (!f) throw new Error("injoignable");
+      return f();
+    };
+    const ecarts = await comparer("https://a.test", "https://b.test", ["/reseau", "/statut", "/redir", "/corps", "/ok"], stub);
+    expect(ecarts.map((e) => e.chemin)).toEqual(["/reseau", "/statut", "/redir", "/corps"]);
+    expect(ecarts[0]!.ecart).toContain("erreur réseau");
+    expect(ecarts[1]!.ecart).toContain("404");
+    expect(ecarts[2]!.ecart).toContain("/deux/");
   });
 });
