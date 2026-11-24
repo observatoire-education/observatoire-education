@@ -98,8 +98,8 @@ describe("attacher", () => {
     expect(f("0440142B").successeurs).toEqual([{ uai: "0440143C", nom: "Collège C", fermeLe: null }]);
     expect(f("0440142B").predecesseurs).toEqual([{ uai: "0440141A", nom: "Collège A", fermeLe: "2015-08-31" }]);
     expect(f("0440143C").predecesseurs.map((p) => p.uai)).toEqual(["0440142B"]);
-    // 5 liens déduits ; ceux dont un fermé n'a pas de fiche sont comptés à part
-    expect(rapport).toEqual({ regle1: 2, regle2: 0, manuels: 0, ambigus: 1, sansFiche: 3 });
+    // 5 liens déduits, dont 2 vers le LPO (fermés cités par ival) ; sans fiche : le fermé de la règle 2
+    expect(rapport).toEqual({ regle1: 4, regle2: 0, manuels: 0, ambigus: 1, sansFiche: 1 });
   });
 
   test("lien vers une UAI sans fiche : ignoré", () => {

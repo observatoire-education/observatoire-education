@@ -67,7 +67,7 @@ describe("voisinage", () => {
 describe("fiches", () => {
   test("une fiche par établissement du périmètre, triées par UAI", () => {
     expect(fiches.map((f) => f.uai)).toEqual([
-      "0440001A", "0440002B", "0440003C", "0440005E", "0440006F", "0440007G", "0440020P", "0440021R", "0440099Z",
+      "0440001A", "0440002B", "0440003C", "0440005E", "0440006F", "0440007G", "0440020P", "0440021R", "0440099Z", "0440101A", "0440102B", "0440103C",
       "0750701C", "0751501A", "0751502B", "6200001F", "9711023K", "9750001C", "9770001G",
     ]);
   });
@@ -132,6 +132,16 @@ describe("établissements fermés", () => {
     expect(toutes.find((f) => f.uai === "0440099Z")).toMatchObject({
       nom: "Collège Disparu", fermeLe: "2020-08-31", disparuLe: "2020-08-31",
     });
+  });
+
+  test("successeurs : le LPO succède au LGT et au LP fermés (règle 1)", () => {
+    const lien = (uai: string, nom: string, fermeLe: string | null) => ({ uai, nom, fermeLe });
+    expect(fiche("0440103C").predecesseurs).toEqual([
+      lien("0440101A", "Lycée général du Port", "2020-08-31"), lien("0440102B", "Lycée professionnel du Port", "2020-08-31"),
+    ]);
+    expect(fiche("0440101A").successeurs).toEqual([lien("0440103C", "Lycée polyvalent du Port", null)]);
+    expect(fiche("0440102B").successeurs).toEqual([lien("0440103C", "Lycée polyvalent du Port", null)]);
+    expect(fiche("0440103C").successeurs).toEqual([]);
   });
 
   test("fiche active : fermeLe null", () => {
@@ -206,7 +216,7 @@ describe("registre des pages", () => {
     expect(apres["0440001A"]).toEqual({ premiere: "2026-01-01", identite: expect.objectContaining({ nom: "Collège Jules-Verne" }) });
     expect(apres["0440002B"]!.premiere).toBe("2026-11-23");
     expect(apres["0440099Z"]).toMatchObject({ disparuLe: "2020-08-31", identite: { nom: "Collège Disparu" } });
-    expect(Object.keys(apres)).toHaveLength(16); // + 2 fiches historiques
+    expect(Object.keys(apres)).toHaveLength(19); // + 4 fiches historiques
   });
 
   test("lecture et écriture : une ligne par UAI, triée", async () => {
@@ -215,7 +225,7 @@ describe("registre des pages", () => {
     const r = mettreAJourRegistre({}, fiches, "2026-11-23");
     ecrireRegistre(chemin, r);
     const texte = await Bun.file(chemin).text();
-    expect(texte.split("\n")).toHaveLength(16 + 3); // accolades, 16 entrées, fin de fichier
+    expect(texte.split("\n")).toHaveLength(19 + 3); // accolades, 19 entrées, fin de fichier
     expect(texte.indexOf("0440001A")).toBeLessThan(texte.indexOf("6200001F"));
     expect(lireRegistre(chemin)).toEqual(r);
   });
@@ -230,7 +240,7 @@ describe("export des données du site", () => {
     expect(f.nom).toBe("Collège Jules-Verne");
 
     const index: EntreeIndex[] = await Bun.file(join(sortie, "index.json")).json();
-    expect(index).toHaveLength(16);
+    expect(index).toHaveLength(19);
     expect(index[0]).toEqual({ u: "0440001A", n: "Collège Jules-Verne", c: "Nantes", d: "44", f: "college", s: "public" });
 
     const dep: DonneesTerritoire = await Bun.file(join(sortie, "departements", "44.json")).json();
