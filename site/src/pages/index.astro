@@ -32,7 +32,7 @@ const communes = france.academiesEtDepartements.flatMap((a) => a.departements.fl
 const millions = (n: number) => (n >= 1e6 ? `${(n / 1e6).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} M` : entier(n));
 const derniereCollecte = sources[0]?.actuelle?.collecteLe;
 ---
-<Base titre="Accueil" chemin="/" description="Les chiffres publics de chaque collège et lycée de France, public et privé sous contrat : sourcés, datés, sans palmarès.">
+<Base chemin="/" description="Les chiffres publics de chaque collège et lycée de France, public et privé sous contrat : sourcés, datés, sans palmarès.">
   <div class="hero">
     <h1>Les chiffres publics de chaque collège et lycée de France.</h1>
     <p>Élèves, personnels et composition sociale des {entier(actifs)} établissements publics et privés sous contrat, situés par rapport aux moyennes de leur département, de leur académie et de la France. Chaque chiffre indique sa source et son millésime.</p>

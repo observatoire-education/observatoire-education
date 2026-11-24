@@ -66,6 +66,7 @@ describe("accueil et recherche", () => {
   test("accueil : recherche et territoires", () => {
     const d = doc("index.html");
     expect(d.querySelector("input#q")).not.toBeNull();
+    expect(d.querySelector("title")!.textContent).toBe("Observatoire citoyen de l'éducation en France");
     expect(d.querySelector("a[href='/departement/44/']")).not.toBeNull();
     const t = texte("index.html");
     expect(t).toContain("Les chiffres publics de chaque collège et lycée de France.");

@@ -5,7 +5,8 @@ import { CONFIG, NOM_SITE } from "../lib/config";
 import "../styles/obs.css";
 
 interface Props {
-  titre: string;
+  /** Titre de la page, suivi du nom du site ; absent sur l'accueil, dont le title est le nom du site seul. */
+  titre?: string;
   description?: string;
   /** Chemin de la page (« /etablissement/0440001A/ ») pour la balise canonical. */
   chemin: string;
@@ -18,7 +19,7 @@ const canonical = CONFIG.SITE_URL ? `${CONFIG.SITE_URL}${chemin}` : null;
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{titre} — {NOM_SITE}</title>
+    <title>{titre ? `${titre} — ${NOM_SITE}` : NOM_SITE}</title>
     {description && <meta name="description" content={description} />}
     {canonical && <link rel="canonical" href={canonical} />}
     {!CONFIG.INDEXABLE && <meta name="robots" content="noindex" />}
