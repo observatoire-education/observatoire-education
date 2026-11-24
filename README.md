@@ -96,6 +96,24 @@ Ensuite, lancer le workflow `nightly` à la main (*Actions → nightly → Run w
 
 Après l'ajout d'une source (par exemple un nouvel exercice du budget), lancer `nightly` à la main (*Actions → nightly → Run workflow*) : tant qu'aucune version de cette source n'est archivée, le build sur push échoue et le site reste sur la version précédente.
 
+### Recette et bascule d'hébergement
+
+Procédure à suivre, dans l'ordre, une fois les préalables faits :
+
+1. Déployer le site sur `observatoire-education.<compte>.workers.dev` (workflow `nightly`, lancé à la main).
+2. Comparer ce déploiement au site en ligne sur un échantillon de 300 pages (premier, dernier et pas régulier du sitemap) :
+   `bun scripts/comparer-hebergements.ts https://observatoireeducation.fr https://observatoire-education.<compte>.workers.dev 300`.
+   Le script compare le statut HTTP et le corps (hors script Umami et date de génération des fiches), une page à la fois ; il doit conclure à zéro écart (code de sortie 0).
+3. Vérifier à la main :
+   - `/etablissement/0440001a/` redirige ;
+   - une URL inconnue rend la page 404 ;
+   - `robots.txt` est identique sur les deux hôtes.
+4. Dans un seul commit de bascule : ajouter à `wrangler.jsonc` `routes: [{ "pattern": "observatoireeducation.fr", "custom_domain": true }]` (pas avant, la zone devant exister dans Cloudflare), supprimer le fichier `CNAME` à la racine (il ne servait qu'à GitHub Pages) et passer `INDEXABLE` à `true`.
+5. Changer les serveurs DNS chez OVH (par le porteur du projet), après la vérification des enregistrements décrite plus haut.
+6. Tester l'envoi d'un message vers `contact@observatoireeducation.fr`.
+
+La bascule est validée quand une nuit de collecte et de déploiement a réussi après elle.
+
 ### Mise en ligne de la phase 4
 
 La phase 4 ajoute 11 sources (établissements fermés, IPS 2016-2021 et 2022, IVAC, IVAL, ségrégation). Ordre à suivre :
