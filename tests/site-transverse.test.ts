@@ -190,4 +190,15 @@ describe("logo", () => {
     expect(octets("apple-touch-icon.png")).toBeGreaterThan(500);
     expect(octets("logo.svg")).toBeGreaterThan(200);
   });
+
+  test("le header porte le logo tableau noir, pas le carré bicolore", () => {
+    const a = doc("sources").querySelector("header .brand")!;
+    expect(a.querySelector("i")).toBeNull();
+    // Image externe plutôt que SVG en ligne : mise en cache une fois, pas d'octets ajoutés à chaque page.
+    const img = a.querySelector('img[src="/favicon.svg"]');
+    expect(img).not.toBeNull();
+    expect(img!.getAttribute("alt")).toBe("");
+    expect(a.querySelector("svg")).toBeNull();
+    expect(a.getAttribute("aria-label")).toBeTruthy();
+  });
 });

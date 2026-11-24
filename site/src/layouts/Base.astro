@@ -31,7 +31,7 @@ const canonical = CONFIG.SITE_URL ? `${CONFIG.SITE_URL}${chemin}` : null;
   <body>
     <header class="top">
       <div class="container">
-        <a class="brand" href="/"><i></i><span>{NOM_SITE}</span></a>
+        <a class="brand" href="/" aria-label={NOM_SITE}><img src="/favicon.svg" alt="" width="22" height="22" /><span>{NOM_SITE}</span></a>
         <form class="search" action="/" method="get" role="search">
           <label class="visuel-masque" for="q-entete">Rechercher un établissement</label>
           <input id="q-entete" class="search" name="q" placeholder="Nom, commune ou UAI" autocomplete="off" />
