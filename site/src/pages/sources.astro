@@ -26,7 +26,7 @@ const ACTIONS: Record<string, string> = { inchange: "inchangé", telecharge: "no
       {requeteArchivee(s) && <p class="requete mute" style="margin:0 0 10px;font-size:13px;word-break:break-all">{LIBELLES_BUDGET.interface.requeteRejouee} : <a href={requeteArchivee(s)}><code>{requeteArchivee(s)}</code></a> (extrait filtré sur les collectivités et les fonctions retenues, exercice {s.id.replace("budget_", "")}).</p>}
       {s.versions.length === 0 ? <p class="mute">Aucune version archivée.</p> : (
         <div class="card" style="padding:4px 6px"><div class="table-wrap"><table>
-          <thead><tr><th>Collectée le</th><th>Modifiée par le producteur</th><th class="n">Lignes</th><th>Empreinte</th><th>Archive</th></tr></thead>
+          <thead><tr><th>Collectée le</th><th>{s.dateSituation ? "Situation au" : "Modifiée par le producteur"}</th><th class="n">Lignes</th><th>Empreinte</th><th>Archive</th></tr></thead>
           <tbody>
             {[...s.versions].reverse().map((v) => (
               <tr>

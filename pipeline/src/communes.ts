@@ -28,6 +28,8 @@ export async function chargerCommunes(db: Db): Promise<TableCommunes> {
      from src_cog_communes where nullif(trim(com), '') is not null`,
   );
   // Un code qui devient une autre commune (fusion, commune nouvelle, changement de code), du plus récent au plus ancien.
+  // Partage d'un territoire (suppression, mod 30 : plusieurs communes d'après à la même date) : `order by ap` rend le
+  // choix déterministe, la commune d'après au plus petit code.
   const mouvements = await db.sql<{ av: string } & Mouvement>(
     `select distinct trim(com_av) as av, trim(com_ap) as ap, trim(date_eff) as le from src_cog_mouvements
      where trim(typecom_ap) = 'COM' and trim(com_av) <> trim(com_ap)
@@ -122,8 +124,11 @@ function arc(topo: Topologie, i: number): [number, number][] {
 }
 
 /**
- * Centroïde (pondéré par la surface, en degrés : l'écart dû à la projection est négligeable à l'échelle d'une
- * commune) du contour de la commune en vigueur `insee` ; null si elle n'a pas de contour. Les trous comptent en négatif.
+ * Centroïde du contour de la commune en vigueur `insee` (pondéré par la surface, trous en négatif), arrondi à 1e-5 ;
+ * null si la commune n'a pas de contour dans communes.topo.json. Lève une erreur si ce fichier est absent : une
+ * installation sans contours doit échouer, pas publier des communes sans centre.
+ * Centroïde plan, calculé en longitude et latitude : l'écart avec un centroïde sphérique est négligeable à l'échelle
+ * d'une commune.
  */
 export function centreCommune(insee: string): { lat: number; lon: number } | null {
   const c = chargerContours();

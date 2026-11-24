@@ -183,6 +183,8 @@ export interface DonneesSource {
   titre: string;
   producteur: string;
   pageUrl: string;
+  /** true : la date `modified` des versions est la date de situation du fichier (COG au 1er janvier), pas une modification. */
+  dateSituation?: true;
   /** Version actuelle (celle qu'utilise le site). */
   actuelle: VersionSource | null;
   /** Toutes les versions archivées, de la plus ancienne à la plus récente. */

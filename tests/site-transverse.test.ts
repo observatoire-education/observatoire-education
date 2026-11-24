@@ -165,6 +165,17 @@ describe("méthode et sources de la phase 4", () => {
     }
   });
 
+  test("/sources/ : le Code officiel géographique est daté de sa situation, pas d'une modification", () => {
+    const d = doc("sources");
+    for (const id of ["cog_communes", "cog_mouvements"]) {
+      const s = d.getElementById(id)!;
+      expect(s.querySelector("thead")!.textContent).toContain("Situation au");
+      expect(s.textContent).not.toContain("Modifiée par le producteur");
+      expect(s.textContent).toContain("Insee · page du jeu sur www.insee.fr");
+    }
+    expect(d.getElementById("annuaire")!.querySelector("thead")!.textContent).toContain("Modifiée par le producteur");
+  });
+
   test("la rupture de méthode de l'IPS est dite sous la courbe, avec renvoi vers la méthode", () => {
     const d = doc("etablissement/0440001A");
     expect(d.body.textContent).toContain("rupture de série dès la rentrée 2022");

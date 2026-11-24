@@ -76,7 +76,12 @@ export async function collecter(opts: OptionsCollecte): Promise<LigneJournal[]> 
     }
   };
   const connues = toutesSources(opts.manifest);
-  for (const s of connues) await essayer(s.id, () => traiter(s, opts, duck));
+  for (const s of connues) {
+    await essayer(s.id, () => traiter(s, opts, duck));
+    // Le téléchargement continue (il reste valable) ; l'erreur rappelle de passer au millésime suivant.
+    const perime = millesimePerime(s, opts.maintenant);
+    if (perime) journal.push({ date, source: s.id, action: "erreur", motif: perime });
+  }
 
   // Exercice suivant du budget : un seul jeu au catalogue, sinon rien n'est inventé.
   const suivant = Math.max(...connues.filter((s) => s.id.startsWith("budget_")).map((s) => Number(s.id.slice(7)))) + 1;
@@ -100,6 +105,20 @@ export async function collecter(opts: OptionsCollecte): Promise<LigneJournal[]> 
     await appendFile(opts.journal, journal.map((l) => `${JSON.stringify(l)}\n`).join(""));
   }
   return journal;
+}
+
+/** Délai laissé à l'Insee pour publier le COG de l'année : du 1er janvier au 15 février. */
+const GRACE_MILLESIME = { mois: 1, jour: 15 };
+
+/**
+ * Source API_FICHIER dont le millésime est dépassé (URL figée sur une année, aucune découverte automatique) : motif
+ * d'erreur à partir du 15 février de l'année suivante, sinon null.
+ */
+export function millesimePerime(s: Source, maintenant: Date): string | null {
+  if (s.api !== API_FICHIER || !s.millesimeLe) return null;
+  const annee = Number(s.millesimeLe.slice(0, 4));
+  if (maintenant < new Date(Date.UTC(annee + 1, GRACE_MILLESIME.mois, GRACE_MILLESIME.jour))) return null;
+  return `COG ${annee} périmé : passer au COG ${annee + 1} dans pipeline/src/sources.ts`;
 }
 
 async function traiter(s: Source, opts: OptionsCollecte, duck: DuckDBConnection): Promise<Resultat> {

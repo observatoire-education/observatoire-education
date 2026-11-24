@@ -18,7 +18,7 @@ import { calculerResultats, dernieresSessions, resume } from "./resultats.ts";
 import { calculerSecteurs, ecolesDesSecteurs, type RapportSecteurs } from "./secteurs.ts";
 import { calculerIndicateurs, calculerRepartitions } from "./indicateurs.ts";
 import type { Registre } from "./registre.ts";
-import { SOURCES, toutesSources } from "./sources.ts";
+import { API_FICHIER, SOURCES, toutesSources } from "./sources.ts";
 import { appliquerManuels, attacherSuccesseurs, deduireSuccesseurs, lireManuels, type Manuels, verifierCycles } from "./successeurs.ts";
 import { derniereRentreeIps, ipsCourant } from "./ips-historique.ts";
 import { ecrireJson, exporterTerritoires } from "./territoires.ts";
@@ -505,6 +505,7 @@ export async function exporter(
   const sources: Record<string, DonneesSource> = Object.fromEntries(
     toutesSources(manifest).map((s) => [s.id, {
       id: s.id, titre: s.titre, producteur: s.producteur, pageUrl: s.pageUrl,
+      ...(s.api === API_FICHIER ? { dateSituation: true as const } : {}),
       actuelle: manifest.derniere(s.id) ?? null, versions: manifest.versions(s.id),
     }]),
   );

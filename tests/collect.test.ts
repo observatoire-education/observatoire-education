@@ -347,6 +347,20 @@ describe("budget : exercices et découverte", () => {
     expect(ligne(j, "budget_2023").action).toBe("telecharge");
   });
 
+  test("COG périmé : une erreur au journal à partir du 15 février de l'année suivante, la collecte continue", async () => {
+    const motif = "COG 2026 périmé : passer au COG 2027 dans pipeline/src/sources.ts";
+    const avant = await collecter({ ...opts(fauxClient({}).client), maintenant: new Date("2027-02-14T02:17:00Z") });
+    expect(avant.filter((l) => l.action === "erreur")).toEqual([]);
+    const apres = await collecter({ ...opts(fauxClient({}).client), maintenant: new Date("2027-02-15T02:17:00Z") });
+    for (const id of ["cog_mouvements", "cog_communes"] as SourceId[]) {
+      const lignes = apres.filter((l) => l.source === id);
+      expect(lignes.map((l) => l.action)).toEqual(["inchange", "erreur"]);
+      expect(lignes[1]!.motif).toBe(motif);
+    }
+    expect(apres.filter((l) => l.action === "erreur")).toHaveLength(2);
+    expect(ligne(apres, "annuaire").action).not.toBe("erreur");
+  });
+
   test("aiguillage : un fichier direct au client fichier, le reste au client Opendatasoft", async () => {
     const appels: string[] = [];
     const faux = (nom: string): ClientSources => ({
