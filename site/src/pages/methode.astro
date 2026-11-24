@@ -2,7 +2,7 @@
 // Méthode : comment les chiffres sont choisis, calculés et affichés. Ton neutre, sans commentaire.
 import Base from "../layouts/Base.astro";
 ---
-<Base titre="Méthode" chemin="/methode/" description="Méthode de l'observatoire : périmètre, moyennes, voisinage, absences, pages conservées.">
+<Base titre="Méthode" chemin="/methode/" description="Méthode de l'observatoire : périmètre, moyennes, voisinage, absences, pages conservées, budget des collectivités.">
   <div class="texte">
     <h1>Méthode</h1>
     <p class="mute">L'observatoire reproduit des données publiques. Il les croise par établissement, les situe par rapport à des moyennes et indique pour chaque chiffre sa source et son millésime. Il ne commente pas les chiffres et ne note aucun établissement.</p>
@@ -71,6 +71,49 @@ import Base from "../layouts/Base.astro";
 
     <h2 id="pages-conservees">Pages conservées</h2>
     <p>L'adresse d'une page ne change jamais. Un établissement qui n'apparaît plus dans l'Annuaire de l'éducation (fermeture, fusion, sortie du périmètre) garde sa page, avec la date depuis laquelle il n'y figure plus et les dernières données publiées par les sources. Il n'est plus proposé comme voisin et n'entre plus dans les moyennes.</p>
+
+    <h2 id="budget">Budget des collectivités</h2>
+    <p>Le budget est celui de la <b>collectivité</b> qui finance les établissements, pas celui de chaque établissement : les départements pour les collèges, les régions pour les lycées. Les montants, en euros par élève, viennent des balances comptables que publie la direction générale des Finances publiques (DGFiP, présentation croisée nature-fonction), budget principal de la collectivité, pour les exercices de 2020 à 2025. Ils sont en <b>euros courants</b> (non corrigés de l'inflation), arrondis à l'euro à l'affichage. Les jeux et leurs requêtes archivées sont sur la page <a href="/sources/">Sources</a>.</p>
+
+    <h3 id="budget-depense">Dépense réelle</h3>
+    <p>Pour chaque ligne de balance (un compte, dans une fonction), la dépense réelle est <code>(obnetdeb − oobdeb) − (obnetcre − oobcre)</code> : les opérations budgétaires nettes, sans les opérations d'ordre (écritures internes sans sortie d'argent, comme les amortissements). Pour la fonction des collèges, la somme des comptes de fonctionnement de trois départements en 2024 (Loire-Atlantique, Nord, Gironde) est égale, à 0,00 % près, à l'agrégat « Dépenses de fonctionnement » que publie l'OFGL.</p>
+
+    <h3 id="budget-comptes">Fonctions et comptes retenus</h3>
+    <p>Une dépense est rattachée à une fonction : 221 pour les collèges, 222 pour les lycées publics, 223 pour les lycées privés. Selon le mode de vote du budget, le code s'écrit seul (221) ou précédé d'un chapitre (93221, 90222) ; l'observatoire le ramène aux trois derniers chiffres. Les comptes sont reconnus par correspondance exacte avec la nomenclature de la collectivité (M52 ou M57), jamais par préfixe : 655112 commence par 65511 sans être le même compte.</p>
+    <ul>
+      <li><b>Départements, public</b> : dotations de fonctionnement aux collèges publics, comptes 65511 (M52) et 655111 (M57), et tous les autres comptes de la fonction 221 qui ne sont pas rattachés au privé.</li>
+      <li><b>Départements, privé sous contrat</b> : contribution aux collèges privés, comptes 65512 (M52), 655112 et 655122 (M57). Le compte 655122, dotation des lycées privés, est compté au privé lorsqu'il figure dans la fonction 221 : deux départements y imputent le forfait de leurs collèges privés.</li>
+      <li><b>Régions</b> : le public est la fonction 222, le privé la fonction 223.</li>
+      <li><b>Personnel</b> : comptes commençant par 64. Le personnel extérieur (compte 621) n'est pas compté.</li>
+      <li><b>Fonctionnement</b> : comptes de la classe 6. <b>Investissement</b> : comptes commençant par 20 (dont 204), 21 et 23, présenté à part. Sont exclus partout : remboursements d'emprunts (16), dotations aux amortissements et provisions (68), plus-values et moins-values de cession (675, 676).</li>
+      <li><b>Investissement privé des départements</b> : comptes commençant par 2042 (subventions d'équipement aux personnes de droit privé) dans la fonction 221.</li>
+    </ul>
+
+    <h3 id="budget-personnel">Les deux niveaux du personnel</h3>
+    <p>Deux montants de fonctionnement sont publiés pour le public : « Fonctionnement hors personnel », comparable partout, et « Fonctionnement, personnel compris », seulement lorsque la collectivité rattache le personnel des collèges (entretien, restauration, accueil) à la fonction des collèges. Le critère est un montant de comptes 64 d'au moins 50 € par élève du public. En 2024, sur 99 collectivités, 38 sont entre −51 € et 0,56 € par élève et 61 entre 124 € et 1 436 € : aucune valeur n'est comprise entre les deux, et le seuil de 50 € par élève se place dans cet intervalle. Sous le seuil, le poste est « personnel non rattaché aux collèges dans les comptes de la collectivité » (ou « aux lycées »), jamais 0 €, et la moyenne de ce poste ne porte que sur les collectivités qui rattachent leur personnel (« moyenne de n collectivités »).</p>
+    <p>Pour le privé sous contrat, un seul montant est publié, la contribution totale : le forfait d'externat couvre une part de matériel et une part de personnel que les comptes ne distinguent pas. Il n'est mis en regard du public que du poste « Fonctionnement, personnel compris » ; si celui-ci est absent, le privé reste affiché sans écart.</p>
+
+    <h3 id="budget-eleves">Élèves, exercices et moyennes</h3>
+    <ul>
+      <li>Le dénominateur est le nombre d'élèves de la <b>rentrée de septembre N−1</b> pour l'exercice N, qui couvre huit mois de l'année comptable (rentrée 2023 pour les comptes 2024). Il porte sur les collèges publics ou privés sous contrat du territoire de la collectivité (collèges) ou sur les lycées d'enseignement général et technologique, professionnels et polyvalents de la région (lycées). Les élèves d'un établissement fermé depuis ne sont pas comptés pour les exercices anciens.</li>
+      <li>La moyenne France est calculée par l'observatoire : Σ montants / Σ élèves des collectivités qui ont une valeur. L'unité est la collectivité, pas le département : aucune valeur n'est fusionnée entre deux collectivités.</li>
+      <li>Une collectivité sans élève du privé sous contrat affiche « aucun élève du privé sous contrat ». Une collectivité qui a des élèves du privé mais aucune ligne privée dans ses comptes pour l'exercice affiche « aucune contribution au privé identifiée dans les comptes de la collectivité pour cet exercice ». Une collectivité absente d'un exercice y est « non disponible » : le graphique d'évolution a un trou, pas un zéro.</li>
+    </ul>
+
+    <h3 id="budget-collectivites">Collectivités particulières</h3>
+    <ul>
+      <li><b>Rhône</b> : les collèges des communes de la Métropole de Lyon relèvent de la Métropole ; ceux des autres communes, du Département du Rhône. <b>Paris</b> : la Ville de Paris pour les collèges, la région Île-de-France pour les lycées.</li>
+      <li><b>Alsace</b> : la Collectivité européenne d'Alsace, créée en 2021, finance les collèges du Bas-Rhin et du Haut-Rhin ; ses montants commencent en 2021 et l'exercice 2020, où les deux départements avaient chacun leur budget, est « non disponible » (rien n'est fusionné). <b>Corse</b> : la Collectivité de Corse. <b>Martinique et Guyane</b> : les collectivités territoriales uniques.</li>
+      <li><b>Mayotte</b> : les balances n'attribuent aucune dépense de collèges ni de lycées au Département ; la fiche indique « aucune collectivité ne finance ces établissements dans les balances de la DGFiP ».</li>
+      <li><b>Saint-Martin, Saint-Barthélemy, Saint-Pierre-et-Miquelon</b> : absents des balances ; la fiche indique « collectivité non identifiée dans les balances de la DGFiP ».</li>
+    </ul>
+
+    <h3 id="budget-agricole">Enseignement agricole</h3>
+    <p>Les régions financent aussi les lycées de l'enseignement agricole, public et privé (dont les maisons familiales rurales). Aucun compte des balances ne les distingue, et les effectifs de la DEPP utilisés ici ne comptent que les élèves de l'Éducation nationale. Les montants sont donc maintenus tels quels, avec la mention : « Les dépenses de la région incluent l'enseignement agricole, dont les élèves ne sont pas comptés ici : le montant par élève en est surestimé, surtout pour le privé. »</p>
+
+    <h3 id="budget-cites">Cités scolaires</h3>
+    <p>Dans une cité scolaire (collège et lycée réunis), une collectivité gère souvent l'ensemble et l'autre lui reverse sa part : le même argent peut figurer dans les comptes d'un département et d'une région. L'observatoire retient les dépenses brutes de chaque collectivité, sans neutraliser ces reversements. Mesurés en 2024 (subventions de fonctionnement 65732 et 65733, subventions d'équipement 20412 et 20413), ils représentent environ 9,1 % des dépenses retenues de la Creuse, 7,3 % de la Meurthe-et-Moselle et 7,0 % du Lot-et-Garonne, qui portent la mention : « Les comptes de la collectivité incluent des reversements entre collectivités pour des cités scolaires (environ x % des dépenses retenues). » Les autres collectivités sont sous 3 %.</p>
+    <p>La nomenclature M57 a aussi une fonction 24 « cités scolaires », que les comptes ne répartissent pas entre collèges et lycées (environ 223 millions d'euros en 2024, pour 30 collectivités). Ces dépenses ne sont pas comptées dans les montants par élève ; le montant est indiqué sur la collectivité concernée.</p>
 
     <h2 id="millesimes">Millésimes et mises à jour</h2>
     <p>Chaque indicateur porte la rentrée la plus récente pour laquelle la donnée existe. Les sources sont vérifiées chaque nuit ; le site est régénéré quand une source change. Les versions successives des sources sont archivées sur la page <a href="/sources/">Sources</a>.</p>

@@ -69,6 +69,10 @@ export async function repartitionsDe(uai: string): Promise<Repartition[]> {
 // --- Manifest et registre de test (tâche 7) ---
 
 /** Manifest avec une version fictive par source, collectée le 22/11/2026. */
+/** Requête archivée fictive d'un exercice du budget. */
+export const requeteTest = (id: string, datasetId: string): string =>
+  `https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/${datasetId}/exports/parquet?where=${id}`;
+
 export function manifestTest(dossier: string): Manifest {
   const m = Manifest.lire(join(dossier, "manifest.json"));
   for (const s of [...Object.values(SOURCES), ...[2023, 2024].map((e) => sourceBudget(e, EXERCICES_BUDGET[e]!))]) {
@@ -76,6 +80,7 @@ export function manifestTest(dossier: string): Manifest {
       sha256: `${s.id}`.padEnd(64, "0"), tag: `archives-${s.id}-2026`, fichier: `${s.id}.parquet`,
       url: `https://github.com/org/depot/releases/download/archives-${s.id}-2026/${s.id}.parquet`,
       modified: "2026-11-01T00:00:00Z", collecteLe: "2026-11-22T02:17:00Z", lignes: 10,
+      ...(s.id.startsWith("budget_") ? { requete: requeteTest(s.id, s.datasetId) } : {}),
     });
   }
   return m;

@@ -1,6 +1,6 @@
 # Observatoire citoyen de l'éducation : phase 3, budget des collectivités par élève et pages région
 
-Date : 2026-11-24. Statut : validé par le porteur le 2026-11-24.
+Date : 2026-11-24. Statut : livrée (validé par le porteur le 2026-11-24).
 Complète : `2026-11-23-observatoire-citoyen-education-design.md` (la spec), `2026-11-23-observatoire-socle-et-maquettes-design.md` (le socle) et `2026-11-24-observatoire-phase2-territoires-design.md` (phase 2). En cas de conflit sur le périmètre de la phase 3, ce document l'emporte.
 
 ## 1. Intention

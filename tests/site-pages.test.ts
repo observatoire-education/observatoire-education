@@ -108,6 +108,43 @@ describe("sources, méthode, 404, sitemap", () => {
     expect(t).toContain("Licence Ouverte 2.0");
   });
 
+  test("sources : les six exercices des balances DGFiP, chacun avec sa requête archivée", () => {
+    const t = texte("sources");
+    expect(t).toContain("DGFiP");
+    for (const e of [2020, 2021, 2022, 2023, 2024, 2025]) {
+      expect(t).toContain(`présentation croisée nature-fonction ${e}`);
+    }
+    const d = doc("sources");
+    expect(d.querySelectorAll("section[id^='budget_'] .requete").length).toBe(6);
+    expect(texte("sources")).toContain("Requête archivée");
+    expect(d.querySelector("section#budget_2025 .requete")!.textContent).toContain("where=budget_2025");
+    expect(t).toContain("data.economie.gouv.fr");
+  });
+
+  test("méthode : budget des collectivités", () => {
+    const d = doc("methode");
+    const t = texte("methode");
+    expect(d.getElementById("budget")).not.toBeNull();
+    expect(t).toContain("Budget des collectivités");
+    expect(t).toContain("(obnetdeb − oobdeb) − (obnetcre − oobcre)");
+    for (const c of ["65511", "655111", "65512", "655112", "655122", "2042"]) expect(t).toContain(c);
+    expect(t).toContain("comptes commençant par 64");
+    expect(t).toContain("50 € par élève");
+    expect(t).toContain("rentrée de septembre N−1");
+    expect(t).toContain("enseignement agricole");
+    expect(t).toContain("surestimé");
+    expect(t).toContain("cités scolaires");
+    expect(t).toContain("Creuse");
+    expect(t).toContain("Meurthe-et-Moselle");
+    expect(t).toContain("Lot-et-Garonne");
+    expect(t).toContain("fonction 24");
+    expect(t).toContain("aucune collectivité ne finance ces établissements dans les balances de la DGFiP");
+    expect(t).toContain("collectivité non identifiée dans les balances de la DGFiP");
+    expect(t).toContain("aucune contribution au privé identifiée");
+    expect(t).toContain("euros courants");
+    expect(t).toContain("de 2020 à 2025");
+  });
+
   test("méthode : périmètre, moyennes, voisinage, absences, pages conservées", () => {
     const d = doc("methode");
     const t = texte("methode");

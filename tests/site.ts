@@ -7,7 +7,8 @@ import { parseHTML } from "linkedom";
 import { calculerBudgets } from "../pipeline/src/budget-eleves.ts";
 import { assemblerFiches, attacherBudgets, exporter } from "../pipeline/src/fiches.ts";
 import type { Registre } from "../pipeline/src/registre.ts";
-import { dbAvecRegistre, identiteTest, manifestTest } from "./aide.ts";
+import { sourceBudget } from "../pipeline/src/sources.ts";
+import { dbAvecRegistre, identiteTest, manifestTest, requeteTest } from "./aide.ts";
 
 const RACINE = resolve(import.meta.dir, "..");
 export const DIST_TEST = join(RACINE, ".cache", "dist-test");
@@ -52,6 +53,15 @@ export function siteTest(): Promise<string> {
     }
     const budgets = await calculerBudgets(db, fiches);
     attacherBudgets(fiches, budgets, manifest);
+    // Exercices sans fixture de données : présents seulement dans les sources, pour la page /sources/.
+    for (const e of [2020, 2021, 2022, 2025]) {
+      const s = sourceBudget(e, `jeu-${e}`);
+      manifest.ajouter(s.id, {
+        sha256: s.id.padEnd(64, "0"), tag: `archives-${s.id}-2026`, fichier: `${s.id}.parquet`,
+        url: `https://github.com/org/depot/releases/download/archives-${s.id}-2026/${s.id}.parquet`,
+        modified: "2026-11-01T00:00:00Z", collecteLe: "2026-11-22T02:17:00Z", lignes: 10, requete: requeteTest(s.id, s.datasetId),
+      });
+    }
     await exporter(fiches, db, manifest, DONNEES_TEST);
     const p = Bun.spawn(["bun", "run", "astro", "build"], {
       cwd: join(RACINE, "site"),
