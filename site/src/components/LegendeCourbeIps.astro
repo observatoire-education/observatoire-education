@@ -1,11 +1,11 @@
 ---
 // Légende sous une courbe d'IPS : établissement (fiche seulement), moyennes public et privé, rond creux si une
 // moyenne est calculée par l'observatoire (jamais présenté comme une valeur publiée par la DEPP).
-import { LIBELLES_BUDGET } from "@obs/shared/libelles";
+import { LIBELLES_BUDGET, LIBELLES_IPS } from "@obs/shared/libelles";
 interface Props { etablissement?: boolean; calcule: boolean; departementale?: boolean }
 const { etablissement = false, calcule, departementale = false } = Astro.props;
 const moyenne = departementale ? "moyenne départementale" : "moyenne";
 ---
 <div class="legend">
   {etablissement && <><span class="me">établissement</span> · </>}<span class="sect pub">{moyenne} public</span> · <span class="sect pri">privé s. c.</span>{calcule && <> · <span class="mute">○ {LIBELLES_BUDGET.moyenne.calculee}</span></>}
-</div>
+<br><a class="mute" href="/methode/#ips-ancien">{LIBELLES_IPS.rupture}</a></div>

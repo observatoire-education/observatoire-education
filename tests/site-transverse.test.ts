@@ -124,3 +124,35 @@ describe("garde-fous du build", () => {
     }
   });
 });
+
+describe("méthode et sources de la phase 4", () => {
+  test("/methode/ porte les ancres de la phase 4 et les liens vers les notes de la DEPP", () => {
+    const d = doc("methode");
+    for (const a of ["valeur-ajoutee", "resultats-colleges", "rupture-bac", "successeurs", "corrections", "segregation", "ips-ancien"]) {
+      expect(d.getElementById(a)).not.toBeNull();
+    }
+    const liens = [...d.querySelectorAll("a")].map((x) => x.getAttribute("href") ?? "");
+    expect(liens.some((h) => h.includes("fr-en-indicateurs-valeur-ajoutee-colleges"))).toBe(true);
+    expect(liens.some((h) => h.includes("fr-en-indicateur_segregation_sociale_colleges"))).toBe(true);
+    expect(liens.some((h) => h.includes("fr-en-ips-colleges-ap2022"))).toBe(true);
+    const t = texte("methode");
+    expect(t).toContain("session 2025");
+    expect(t).toContain("successeurs-manuels.json");
+  });
+
+  test("/sources/ liste les onze nouvelles sources avec leurs versions", () => {
+    const d = doc("sources");
+    const ids = ["fermes", "ips_colleges_2016", "ips_colleges_2022", "ips_lycees_2016", "ips_lycees_2022", "ips_erea_2016", "ips_erea", "ivac", "ival_gt", "ival_pro", "segregation"];
+    for (const id of ids) {
+      const s = d.getElementById(id);
+      expect(s).not.toBeNull();
+      expect(s!.textContent).toMatch(/\d\d\/\d\d\/\d{4}|Aucune version archivée/);
+    }
+  });
+
+  test("la rupture de méthode de l'IPS est dite sous la courbe, avec renvoi vers la méthode", () => {
+    const d = doc("etablissement/0440001A");
+    expect(d.body.textContent).toContain("rupture de série dès la rentrée 2022");
+    expect(d.querySelector('a[href="/methode/#ips-ancien"]')).not.toBeNull();
+  });
+});

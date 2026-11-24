@@ -14,10 +14,10 @@ const visibles = annees.slice(-5);
 const premiere = annees[0]!.annee;
 const derniere = annees.at(-1)!.annee;
 const source = lireSources().segregation;
-type Cellule = { t: string; abs: boolean };
-const indice = (v: number | null): Cellule => (v === null ? { t: LIBELLES.nonDisponible, abs: true } : { t: nombre(v, 3), abs: false });
-const pourcent = (v: number | null): Cellule => (v === null ? { t: LIBELLES.nonDisponible, abs: true } : { t: part(v), abs: false });
-const lignes: { libelle: string; valeurs: Cellule[] }[] = [
+type Valeur = { t: string; abs: boolean };
+const indice = (v: number | null): Valeur => (v === null ? { t: LIBELLES.nonDisponible, abs: true } : { t: nombre(v, 3), abs: false });
+const pourcent = (v: number | null): Valeur => (v === null ? { t: LIBELLES.nonDisponible, abs: true } : { t: part(v), abs: false });
+const lignes: { libelle: string; valeurs: Valeur[] }[] = [
   { libelle: L.indices.ensemble, valeurs: visibles.map((a) => indice(a.entropie.ensemble)) },
   { libelle: L.indices.public, valeurs: visibles.map((a) => indice(a.entropie.public)) },
   { libelle: L.indices.prive, valeurs: visibles.map((a) => indice(a.entropie.prive)) },

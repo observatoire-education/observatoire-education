@@ -201,7 +201,7 @@ export const SOURCES: Record<SourceId, Source> = {
   ips_colleges_2022: source(
     "ips_colleges_2022",
     "fr-en-ips-colleges-ap2022",
-    "Indices de position sociale des collèges (2022)",
+    "Indices de position sociale dans les collèges (2022)",
     [...IPS_ETAB, "effectifs"],
     false,
     parUai("rentree_scolaire"),
@@ -217,7 +217,7 @@ export const SOURCES: Record<SourceId, Source> = {
   ips_lycees_2022: source(
     "ips_lycees_2022",
     "fr-en-ips-lycees-ap2022",
-    "Indices de position sociale des lycées (2022)",
+    "Indices de position sociale dans les lycées (2022)",
     [...IPS_LYCEES, "effectifs_voie_gt", "effectifs_voie_pro", "effectifs_ensemble_gt_pro"],
     false,
     parUai("rentree_scolaire"),

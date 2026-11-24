@@ -1,8 +1,11 @@
 ---
 // Méthode : comment les chiffres sont choisis, calculés et affichés. Ton neutre, sans commentaire.
 import Base from "../layouts/Base.astro";
+
+/** Pages des jeux de la DEPP sur le portail (documentation et méthodologie). */
+const JEUX = "https://data.education.gouv.fr/explore/dataset";
 ---
-<Base titre="Méthode" chemin="/methode/" description="Méthode de l'observatoire : périmètre, moyennes, voisinage, absences, pages conservées, budget des collectivités.">
+<Base titre="Méthode" chemin="/methode/" description="Méthode de l'observatoire : périmètre, moyennes, voisinage, absences, pages conservées, résultats, successeurs, corrections, ségrégation, budget des collectivités.">
   <div class="texte">
     <h1>Méthode</h1>
     <p class="mute">L'observatoire reproduit des données publiques. Il les croise par établissement, les situe par rapport à des moyennes et indique pour chaque chiffre sa source et son millésime. Il ne commente pas les chiffres et ne note aucun établissement.</p>
@@ -31,7 +34,7 @@ import Base from "../layouts/Base.astro";
     </ul>
 
     <h2 id="moyennes-calculees">Moyennes calculées par l'observatoire</h2>
-    <p>Les moyennes de l'IPS d'un département, d'une académie et de la France sont celles que publie la DEPP, affichées telles quelles. Pour une commune, la DEPP n'en publie pas : l'observatoire calcule une moyenne <b>pondérée par les élèves</b>, indiquée « moyenne calculée par l'observatoire » avec le nombre d'établissements pris en compte. Seuls comptent les établissements de la famille et du secteur concernés dont l'IPS et le nombre d'élèves sont publiés.</p>
+    <p>Les moyennes de l'IPS d'un département, d'une académie et de la France sont celles que publie la DEPP, affichées telles quelles lorsqu'elles existent (voir plus bas pour les autres rentrées). Pour une commune, la DEPP n'en publie pas : l'observatoire calcule une moyenne <b>pondérée par les élèves</b>, indiquée « moyenne calculée par l'observatoire » avec le nombre d'établissements pris en compte. Seuls comptent les établissements de la famille et du secteur concernés dont l'IPS et le nombre d'élèves sont publiés.</p>
     <p>Pour vérifier cette pondération, la même moyenne est calculée pour chaque département, famille et secteur, puis comparée à la moyenne que la DEPP publie pour ce département. La génération des données s'arrête si l'écart médian dépasse 0,2 point ou si le 90<sup>e</sup> centile des écarts dépasse 1,0 point. Mesure du 24 novembre 2026, sur 746 groupes (famille, département, secteur) : écart médian de 0,06 point, 90<sup>e</sup> centile de 0,53 point.</p>
 
     <h2 id="cartes">Cartes</h2>
@@ -70,7 +73,7 @@ import Base from "../layouts/Base.astro";
     </ul>
 
     <h2 id="pages-conservees">Pages conservées</h2>
-    <p>L'adresse d'une page ne change jamais. Un établissement qui n'apparaît plus dans l'Annuaire de l'éducation (fermeture, fusion, sortie du périmètre) garde sa page, avec la date depuis laquelle il n'y figure plus et les dernières données publiées par les sources. Il n'est plus proposé comme voisin et n'entre plus dans les moyennes.</p>
+    <p>L'adresse d'une page ne change jamais. Un établissement qui n'apparaît plus dans l'Annuaire de l'éducation (fermeture, fusion, sortie du périmètre) garde sa page, avec la date depuis laquelle il n'y figure plus et les dernières données publiées par les sources. Il n'est plus proposé comme voisin et n'entre plus dans les moyennes des indicateurs de la dernière rentrée ; il compte dans les moyennes de résultats et d'IPS des années où il était ouvert (voir ci-dessous).</p>
 
     <h2 id="budget">Budget des collectivités</h2>
     <p>Le budget est celui de la <b>collectivité</b> qui finance les établissements, pas celui de chaque établissement : les départements pour les collèges, les régions pour les lycées. Les montants, en euros par élève, viennent des balances comptables que publie la direction générale des Finances publiques (DGFiP, présentation croisée nature-fonction), budget principal de la collectivité, pour tous les exercices publiés depuis 2020 (le dernier est celui du jour de la génération du site). Ils sont en <b>euros courants</b> (non corrigés de l'inflation), arrondis à l'euro à l'affichage. Les jeux et leurs requêtes archivées sont sur la page <a href="/sources/">Sources</a>.</p>
@@ -115,6 +118,45 @@ import Base from "../layouts/Base.astro";
     <h3 id="budget-cites">Cités scolaires</h3>
     <p>Dans une cité scolaire (collège et lycée réunis), une collectivité gère souvent l'ensemble et l'autre lui reverse sa part : le même argent peut figurer dans les comptes d'un département et d'une région. L'observatoire retient les dépenses brutes de chaque collectivité, sans neutraliser ces reversements. Mesurés en 2024 (subventions de fonctionnement 65732 et 65733, subventions d'équipement 20412 et 20413), ils représentent environ 9,1 % des dépenses retenues de la Creuse, 7,3 % de la Meurthe-et-Moselle et 7,0 % du Lot-et-Garonne, qui portent la mention : « Les comptes de la collectivité incluent des reversements entre collectivités pour des cités scolaires (environ x % des dépenses retenues). » Les autres collectivités sont sous 3 %.</p>
     <p>La nomenclature M57 a aussi une fonction 24 « cités scolaires », que les comptes ne répartissent pas entre collèges et lycées (environ 223 millions d'euros en 2024, pour 30 collectivités). Ces dépenses ne sont pas comptées dans les montants par élève ; le montant est indiqué sur la collectivité concernée.</p>
+
+    <h2 id="sessions">Sessions et rentrées</h2>
+    <p>Une <b>session</b> est l'année de l'examen : la « session 2025 » est celle de juin 2025, qui clôt l'année scolaire 2024-2025. Elle se rapproche donc de la <b>rentrée 2024</b> (rentrée = session − 1) quand on la met en regard de l'IPS.</p>
+
+    <h2 id="resultats-colleges">Résultats des collèges</h2>
+    <p>Les résultats du diplôme national du brevet viennent des indicateurs de valeur ajoutée des collèges (IVAC) de la DEPP (<a href={`${JEUX}/fr-en-indicateurs-valeur-ajoutee-colleges/information/`}>jeu sur data.education.gouv.fr</a>). Ils sont repris <b>à partir de la session 2022</b>, date à laquelle la DEPP a changé la méthode de l'IVAC. Le jeu du brevet par établissement de 2006 à 2021 existe, mais sans valeur ajoutée : il n'est pas utilisé, par décision de l'observatoire.</p>
+    <p>Les résultats des lycées viennent des indicateurs de résultat des lycées d'enseignement général et technologique et des lycées professionnels (<a href={`${JEUX}/fr-en-indicateurs-de-resultat-des-lycees-gt_v2/information/`}>voie générale et technologique</a>, <a href={`${JEUX}/fr-en-indicateurs-de-resultat-des-lycees-pro_v2/information/`}>voie professionnelle</a>), depuis la session 2012.</p>
+    <p>Un seul chiffre est affiché par établissement dans les listes, les voisins et les nuages : la série générale pour un collège, la voie générale et technologique pour un lycée général et technologique, la voie professionnelle pour un lycée professionnel ; un lycée polyvalent affiche les deux (« GT 92 % · pro 85 % »). Dans ces listes et ces nuages, un chiffre ne compte que s'il date de la <b>dernière rentrée</b> (IPS) ou de la <b>dernière session de sa source</b> (résultats) : les valeurs plus anciennes ne sont pas mélangées aux récentes.</p>
+
+    <h2 id="valeur-ajoutee">Lire la valeur ajoutée</h2>
+    <p>Selon la note de la DEPP, la valeur ajoutée est l'écart entre le taux observé dans l'établissement et le taux attendu compte tenu des caractéristiques de ses élèves (<a href={`${JEUX}/fr-en-indicateurs-valeur-ajoutee-colleges/information/`}>méthodologie des indicateurs de valeur ajoutée des collèges</a> ; <a href={`${JEUX}/fr-en-indicateurs-de-resultat-des-lycees-gt_v2/information/`}>des lycées</a>). Elle est affichée signée, telle que publiée (« +3 », « −2 »), sans décimale si la source n'en a pas. L'observatoire n'en calcule ni écart ni moyenne. Une valeur absente ou secrète (vide, « ND », « . ») est dite « non publiée pour cette session » : elle n'est jamais remplacée par un zéro, et l'établissement n'entre alors ni dans les moyennes ni dans les nuages pour cet indicateur. La valeur ajoutée de la série professionnelle du brevet n'est pas publiée.</p>
+
+    <h2 id="rupture-bac">Rupture du baccalauréat</h2>
+    <p>La réforme du baccalauréat change les séries à partir de la <b>session 2021</b> : les taux d'avant et d'après ne décrivent pas les mêmes épreuves. Les fiches le signalent sous les courbes concernées.</p>
+
+    <h2 id="moyennes-resultats">Moyennes de résultats calculées</h2>
+    <p>La DEPP ne publie pas de moyenne territoriale des résultats. L'observatoire calcule, pour chaque voie, niveau de territoire, secteur et session, la moyenne Σ(taux × effectif) / Σ effectif, où l'effectif est le nombre de candidats (brevet) ou de présents (baccalauréat). Tous les établissements qui ont un résultat pour la session comptent, <b>fermés depuis compris</b>. Ces moyennes sont indiquées « moyenne calculée par l'observatoire ».</p>
+    <p>Les moyennes d'IPS d'un département, d'une académie et de la France sont affichées telles que la DEPP les publie lorsqu'elles existent. Sinon, l'observatoire calcule Σ(IPS × élèves) / Σ élèves, avec les élèves de la même rentrée ; pour les rentrées 2016 à 2018, les effectifs d'élèves n'étant disponibles qu'à partir de 2019, ce sont ceux de la <b>rentrée 2019</b>. Les établissements fermés comptent pour les années où ils étaient ouverts. Les fiches historiques sans code de commune ne comptent pas dans les moyennes d'une commune.</p>
+
+    <h2 id="nuages">Nuages IPS et réussite</h2>
+    <p>Sur les pages de département et d'académie qui comptent au moins 5 établissements concernés, un nuage place chaque établissement selon son IPS (en abscisse) et son taux de réussite (en ordonnée). Chaque point associe les résultats d'une session à l'IPS de l'année scolaire correspondante (rentrée = session − 1). Pour un lycée, l'IPS de la voie est utilisé lorsqu'il est publié pour cette rentrée ; sinon l'IPS de l'ensemble de l'établissement sert pour tous les points, et une note le dit sous le graphique. Les points sont pleins pour le public et en contour pour le privé sous contrat, de rayon fixe, sans couleur selon la valeur ; le tableau des établissements donne les mêmes chiffres.</p>
+
+    <h2 id="ips-ancien">IPS avant 2022 et rupture de série</h2>
+    <p>L'historique de l'IPS remonte à la rentrée 2016 grâce aux jeux 2016-2021 des collèges, des lycées et des EREA, complétés par les jeux de 2022 et après (<a href={`${JEUX}/fr-en-ips_colleges/information/`}>collèges 2016-2021</a>, <a href={`${JEUX}/fr-en-ips-colleges-ap2022/information/`}>collèges 2022 et après</a>, <a href={`${JEUX}/fr-en-ips_lycees/information/`}>lycées 2016-2021</a>, <a href={`${JEUX}/fr-en-ips-lycees-ap2022/information/`}>lycées 2022 et après</a>). Les EREA, qui n'avaient pas d'IPS dans le jeu principal, en ont un dans les jeux dédiés. La DEPP signale dans la documentation de ces jeux une <b>rupture de série à partir de la rentrée 2022</b> : les valeurs de référence de l'indice ont changé et les élèves dont les professions des deux parents ne sont pas renseignées ne comptent plus dans la moyenne de l'établissement. Les valeurs d'avant et d'après 2022 ne sont donc pas strictement comparables ; les courbes d'IPS le mentionnent.</p>
+
+    <h2 id="successeurs">Établissements fermés et successeurs</h2>
+    <p>Un établissement fermé a une page si au moins une source historique le cite ; la date de fermeture officielle, quand le jeu des établissements fermés la donne, remplace la date déduite des collectes. Son secteur vient de ce jeu ; s'il n'y figure pas, il est repris des sources qui citent l'établissement.</p>
+    <p>Un successeur n'est indiqué que si un seul candidat existe, selon deux règles appliquées dans l'ordre :</p>
+    <ol>
+      <li>un établissement du second degré ouvert dans la même commune, du même secteur, de famille compatible, dont la date d'ouverture est à 92 jours ou moins de la date de fermeture ;</li>
+      <li>sinon, un établissement ouvert à la date de fermeture, dans la même commune, à la même adresse (écrite sans accents, majuscules ni ponctuation), du même secteur et de famille compatible.</li>
+    </ol>
+    <p>La première règle qui trouve un candidat unique l'emporte. Si la première règle trouve plusieurs candidats, l'observatoire n'indique aucun successeur et ne passe pas à la seconde. Le fichier <code>pipeline/successeurs-manuels.json</code> permet d'ajouter ou de retirer un lien avec son motif ; il l'emporte sur la déduction, et un code UAI inconnu y fait échouer la génération des données. Les liens ne pointent que vers des établissements qui ont une page. Une chaîne (A, puis B, puis C) est affichée maillon par maillon.</p>
+
+    <h2 id="corrections">Corrections du producteur</h2>
+    <p>Une version d'une source millésimée est une correction lorsqu'au moins une ligne (clé et millésime) d'un millésime déjà présent dans la version précédente a changé de valeur sur une colonne requise, ou a disparu. Une ligne d'un millésime nouveau n'est pas une correction. Seules les valeurs publiées déclenchent la mention, jamais une moyenne calculée. La fiche donne les liens vers la version précédente et la version corrigée.</p>
+
+    <h2 id="segregation">Ségrégation sociale entre collèges</h2>
+    <p>L'indice d'entropie (indice de Theil) mesure l'inégale répartition des élèves de milieux sociaux différents entre les collèges d'un département. La DEPP le publie <b>par département seulement</b>, avec la part de la ségrégation due à l'écart entre public et privé ; l'observatoire reprend ces valeurs telles que publiées (<a href={`${JEUX}/fr-en-indicateur_segregation_sociale_colleges/information/`}>note et jeu de la DEPP</a>), sans les recalculer ni les agréger pour une académie ou une région.</p>
 
     <h2 id="millesimes">Millésimes et mises à jour</h2>
     <p>Chaque indicateur porte la rentrée la plus récente pour laquelle la donnée existe. Les sources sont vérifiées chaque nuit ; le site est régénéré quand une source change. Les versions successives des sources sont archivées sur la page <a href="/sources/">Sources</a>.</p>

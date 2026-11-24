@@ -261,6 +261,11 @@ export const LIBELLES_NUAGES = {
   effectif: { brevet_general: "candidats", bac_gt: "présents", bac_pro: "présents" },
 } as const;
 
+/** Mention sous une courbe d'IPS : la DEPP signale une rupture de série à la rentrée 2022. */
+export const LIBELLES_IPS = {
+  rupture: "rupture de série dès la rentrée 2022",
+} as const;
+
 /** Libellés du bloc « Ségrégation sociale entre collèges » (pages département ; renvoi sur les autres pages de territoire). */
 export const LIBELLES_SEGREGATION = {
   titre: "Ségrégation sociale entre collèges",
