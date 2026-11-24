@@ -9,7 +9,7 @@ import { type Db, ouvrir } from "../pipeline/src/db.ts";
 import { connexion, executer, ident, lignes, litteral } from "../pipeline/src/duck.ts";
 import { calculerIndicateurs, calculerRepartitions } from "../pipeline/src/indicateurs.ts";
 import type { Registre } from "../pipeline/src/registre.ts";
-import { SOURCES } from "../pipeline/src/sources.ts";
+import { EXERCICES_BUDGET, SOURCES, type Source, sourceBudget } from "../pipeline/src/sources.ts";
 
 export const FIXTURES = join(import.meta.dir, "fixtures");
 
@@ -21,7 +21,8 @@ export const FIXTURES = join(import.meta.dir, "fixtures");
 export async function cheminsFixtures(dossier: string): Promise<Record<SourceId, string>> {
   const duck = await connexion();
   const chemins = {} as Record<SourceId, string>;
-  for (const s of Object.values(SOURCES)) {
+  const budgets = [2023, 2024].map((e) => sourceBudget(e, EXERCICES_BUDGET[e]!));
+  for (const s of [...Object.values(SOURCES), ...budgets] as Source[]) {
     const csv = `read_csv(${litteral(join(FIXTURES, `${s.id}.csv`))}, header = true, all_varchar = true)`;
     const presentes = (await lignes<{ column_name: string }>(duck, `describe select * from ${csv}`)).map((c) => c.column_name);
     const ajouts = s.colonnesRequises.filter((c) => !presentes.includes(c)).map((c) => `null::varchar as ${ident(c)}`);

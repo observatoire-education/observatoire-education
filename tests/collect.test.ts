@@ -8,7 +8,7 @@ import { assurerCache, collecter, type ClientSources } from "../pipeline/src/col
 import { DepotGithub, DepotLocal, type Lanceur } from "../pipeline/src/depot.ts";
 import { connexion, executer, lignes, litteral } from "../pipeline/src/duck.ts";
 import { ErreurParquetInvalide } from "../pipeline/src/ods.ts";
-import { SOURCES } from "../pipeline/src/sources.ts";
+import { SOURCES, type Source, sourceBudget, toutesSources } from "../pipeline/src/sources.ts";
 
 // --- Faux client : fabrique des Parquet avec DuckDB, sans réseau ---
 
@@ -24,11 +24,13 @@ interface Reglage {
 
 const duck = await connexion();
 
-async function fabriquer(id: SourceId, r: Reglage, dest: string): Promise<void> {
-  const colonnes = SOURCES[id]!.colonnesRequises.filter((c) => c !== r.sansColonne);
+async function fabriquer(s: Source, r: Reglage, dest: string): Promise<void> {
+  const id = s.id;
+  const colonnes = s.colonnesRequises.filter((c) => c !== r.sansColonne);
   const expr = (c: string) => {
     if (c === "identifiant_de_l_etablissement" || c === "uai") return `'044' || lpad(i::varchar, 4, '0') || 'A'`;
     if (c === "type_etablissement") return `'Collège'`;
+    if (c === "fonction") return `'221'`;
     return `(i % 7)::varchar`;
   };
   let select = `select ${colonnes.map((c) => `${expr(c)} as "${c}"`).join(", ")} from range(${r.lignes}) t(i)`;
@@ -41,8 +43,13 @@ async function fabriquer(id: SourceId, r: Reglage, dest: string): Promise<void> 
   await executer(duck, `copy (${select}) to ${litteral(dest)} (format parquet)`);
 }
 
-function fauxClient(reglages: Partial<Record<SourceId, Partial<Reglage>>>) {
+function fauxClient(
+  reglages: Partial<Record<SourceId, Partial<Reglage>>>,
+  /** Catalogue simulé : identifiants renvoyés pour une recherche de titre. */
+  catalogue: Record<string, string[]> = {},
+) {
   const telechargements: SourceId[] = [];
+  const recherches: string[] = [];
   const regle = (id: SourceId): Reglage => ({ modified: "M1", lignes: 10, ...reglages[id] });
   const client: ClientSources = {
     async metadata(s) {
@@ -54,11 +61,16 @@ function fauxClient(reglages: Partial<Record<SourceId, Partial<Reglage>>>) {
       telechargements.push(s.id);
       const r = regle(s.id);
       if (r.leve === "tronque") throw new ErreurParquetInvalide(`fichier Parquet tronqué ou invalide pour ${s.datasetId}`);
-      await fabriquer(s.id, r, dest);
-      return dest;
+      await fabriquer(s, r, dest);
+      const url = `${s.api}/${s.datasetId}/exports/parquet${s.filtre ? `?where=${encodeURIComponent(s.filtre)}` : ""}`;
+      return { chemin: dest, url };
+    },
+    async chercherJeu(_api, titre) {
+      recherches.push(titre);
+      return catalogue[titre] ?? [];
     },
   };
-  return { client, telechargements, reglages };
+  return { client, telechargements, recherches, reglages };
 }
 
 // --- Bac à sable ---
@@ -184,7 +196,7 @@ describe("collecte", () => {
     await collecter(opts(fauxClient({}).client, { journal }));
     await collecter(opts(fauxClient({}).client, { journal }));
     const l = (await Bun.file(journal).text()).trim().split("\n").map((x) => JSON.parse(x));
-    expect(l).toHaveLength(14);
+    expect(l).toHaveLength(24); // sept sources et cinq exercices du budget, deux fois
     expect(l[0]).toMatchObject({ date: "2026-11-23T02:17:00.000Z", source: "annuaire" });
   });
 
@@ -204,12 +216,73 @@ describe("collecte", () => {
   });
 });
 
+describe("budget : exercices et découverte", () => {
+  const titre2025 = "nature-fonction 2025";
+
+  test("les extraits budget sont collectés avec leur requête", async () => {
+    await collecter(opts(fauxClient({}).client));
+    const v = manifest.derniere("budget_2024")!;
+    expect(v.requete).toContain("exports/parquet?where=");
+    expect(manifest.derniere("annuaire")!.requete).toBeUndefined();
+  });
+
+  test("un exercice nouveau trouvé est collecté et archivé avec sa requête", async () => {
+    const f = fauxClient({}, { [titre2025]: ["jeu-2025"] });
+    const j = await collecter(opts(f.client));
+    expect(f.recherches).toEqual([titre2025]);
+    expect(ligne(j, "budget_2025")).toMatchObject({ action: "telecharge", lignes: 10 });
+    expect(manifest.jeuDecouvert("budget_2025")).toBe("jeu-2025");
+    expect(manifest.derniere("budget_2025")!.requete).toContain("where=");
+    expect(Manifest.lire(manifest.chemin).jeuDecouvert("budget_2025")).toBe("jeu-2025");
+    // la nuit suivante : le jeu découvert est une source connue, on cherche 2026
+    const j2 = await collecter(opts(f.client));
+    expect(ligne(j2, "budget_2025").action).toBe("inchange");
+    expect(f.recherches.at(-1)).toBe("nature-fonction 2026");
+    expect(toutesSources(manifest).map((s) => s.id)).toContain("budget_2025");
+    const chemins = await assurerCache(manifest, depot, join(racine, "cache"));
+    expect(chemins.budget_2025).toBeDefined();
+  });
+
+  test("deux jeux pour un exercice : erreur au journal, rien de collecté", async () => {
+    const f = fauxClient({}, { [titre2025]: ["jeu-a", "jeu-b"] });
+    const j = await collecter(opts(f.client));
+    expect(ligne(j, "budget_2025")).toEqual({
+      date: maintenant.toISOString(),
+      source: "budget_2025",
+      action: "erreur",
+      motif: "plusieurs jeux pour l'exercice 2025 : jeu-a, jeu-b",
+    });
+    expect(manifest.jeuDecouvert("budget_2025")).toBeUndefined();
+    expect(manifest.versions("budget_2025")).toHaveLength(0);
+  });
+
+  test("aucun jeu : aucune ligne de journal pour l'exercice", async () => {
+    const j = await collecter(opts(fauxClient({}).client));
+    expect(j.filter((l) => l.source === "budget_2025")).toEqual([]);
+    expect(j).toHaveLength(12);
+  });
+
+  test("un extrait budget sans la colonne fonction est rejeté", async () => {
+    const j = await collecter(opts(fauxClient({ budget_2024: { sansColonne: "fonction" } }).client));
+    expect(ligne(j, "budget_2024")).toMatchObject({ action: "rejete", motif: "colonne manquante : fonction" });
+    expect(manifest.versions("budget_2024")).toHaveLength(0);
+    expect(ligne(j, "budget_2023").action).toBe("telecharge");
+  });
+
+  test("sourceBudget : identifiant, titre et API", () => {
+    const s = sourceBudget(2025, "x");
+    expect(s).toMatchObject({ id: "budget_2025", producteur: "DGFiP", referentiel: false });
+    expect(s.titre).toBe("Balances comptables des collectivités, présentation croisée nature-fonction 2025");
+    expect(s.pageUrl).toBe("https://data.economie.gouv.fr/explore/dataset/x/information/");
+  });
+});
+
 describe("cache local", () => {
   test("assurerCache vérifie l'empreinte", async () => {
     await collecter(opts(fauxClient({}).client));
     const cache = join(racine, "cache");
     const chemins = await assurerCache(manifest, depot, cache);
-    expect(Object.keys(chemins)).toHaveLength(7);
+    expect(Object.keys(chemins)).toHaveLength(12);
     await Bun.write(chemins.ips_lycees, "corrompu");
     const encore = await assurerCache(manifest, depot, cache);
     expect(await empreinte(encore.ips_lycees)).toBe(manifest.derniere("ips_lycees")!.sha256);

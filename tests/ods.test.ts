@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { OdsClient, USER_AGENT } from "../pipeline/src/ods.ts";
-import { developper, SOURCES } from "../pipeline/src/sources.ts";
+import { API_ECO, developper, EXERCICES_BUDGET, FILTRE_BUDGET, SOURCES, sourceBudget } from "../pipeline/src/sources.ts";
 
 type Appel = { url: string; headers: Headers };
 
@@ -86,11 +86,26 @@ describe("client Opendatasoft", () => {
     const { f, appels } = fauxFetch([parquet()]);
     const dest = join(dossier, "ips.parquet");
     const client = new OdsClient(f, USER_AGENT, sansAttente);
-    expect(await client.telechargerParquet(SOURCES.ips_colleges, dest)).toBe(dest);
+    const url = "https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-ips-colleges-ap2023/exports/parquet";
+    expect(await client.telechargerParquet(SOURCES.ips_colleges, dest)).toEqual({ chemin: dest, url });
     expect(await Bun.file(dest).text()).toBe("PAR1contenuPAR1");
-    expect(appels[0]!.url).toBe(
-      "https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-ips-colleges-ap2023/exports/parquet",
-    );
+    expect(appels[0]!.url).toBe(url); // sans filtre : URL inchangée
+  });
+
+  test("téléchargement d'une source budget : filtre encodé, URL renvoyée", async () => {
+    const { f, appels } = fauxFetch([parquet()]);
+    const s = sourceBudget(2024, EXERCICES_BUDGET[2024]!);
+    const dest = join(dossier, "b.parquet");
+    const attendue = `${API_ECO}/${s.datasetId}/exports/parquet?where=${encodeURIComponent(FILTRE_BUDGET)}`;
+    const r = await new OdsClient(f, USER_AGENT, sansAttente).telechargerParquet(s, dest);
+    expect(r).toEqual({ chemin: dest, url: attendue });
+    expect(appels[0]!.url).toBe(attendue);
+  });
+
+  test("métadonnées d'une source budget : API data.economie.gouv.fr", async () => {
+    const { f, appels } = fauxFetch([Response.json({ metas: { default: { modified: "M", records_count: 3 } } })]);
+    await new OdsClient(f, USER_AGENT, sansAttente).metadata(sourceBudget(2024, "abc"));
+    expect(appels[0]!.url).toBe(`${API_ECO}/abc`);
   });
 
   test("parquet tronqué rejeté", async () => {
@@ -122,5 +137,30 @@ describe("client Opendatasoft", () => {
     const client = new OdsClient(f, USER_AGENT, sansAttente);
     await expect(client.metadata(SOURCES.annuaire)).rejects.toThrow(/404/);
     expect(appels).toHaveLength(1);
+  });
+});
+
+describe("recherche d'un jeu au catalogue", () => {
+  const titre = "nature-fonction 2025";
+  const catalogue = (...titres: string[]) =>
+    Response.json({ results: titres.map((t, i) => ({ dataset_id: `jeu-${i}`, title: t })) });
+
+  test("aucun, un ou deux jeux selon le catalogue", async () => {
+    const cas: [string[], string[]][] = [
+      [[], []],
+      [[`Balances avec la présentation croisée ${titre}`], ["jeu-0"]],
+      [[`Balances ${titre}`, `Balances provisoires ${titre}`], ["jeu-0", "jeu-1"]],
+    ];
+    for (const [titres, attendu] of cas) {
+      const { f, appels } = fauxFetch([catalogue(...titres)]);
+      expect(await new OdsClient(f, USER_AGENT, sansAttente).chercherJeu(API_ECO, titre)).toEqual(attendu);
+      expect(appels[0]!.url).toStartWith(`${API_ECO}?`);
+      expect(decodeURIComponent(appels[0]!.url)).toContain(`where=search("${titre}")`);
+    }
+  });
+
+  test("un titre plus long n'est pas accepté : « 20250 » n'est pas « 2025 »", async () => {
+    const { f } = fauxFetch([catalogue("Balances nature-fonction 20250", "Balances nature-fonction 2025")]);
+    expect(await new OdsClient(f, USER_AGENT, sansAttente).chercherJeu(API_ECO, titre)).toEqual(["jeu-1"]);
   });
 });

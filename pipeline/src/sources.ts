@@ -1,6 +1,7 @@
 // Registre des sources de la phase 1 (data.education.gouv.fr, API Opendatasoft v2.1).
 // Champs vérifiés sur l'API le 2026-11-23.
 import type { SourceId } from "@obs/shared/types";
+import type { Manifest } from "./archive.ts";
 import { colonnesDe, JEUX_EFFECTIFS } from "./colonnes-eleves.ts";
 
 export interface Source {
@@ -9,6 +10,10 @@ export interface Source {
   titre: string;
   producteur: string;
   pageUrl: string;
+  /** Base de l'API Opendatasoft qui héberge le jeu. */
+  api: string;
+  /** Clause `where` ODSQL : seul l'extrait filtré est téléchargé (budget). */
+  filtre?: string;
   /** Colonnes dont l'absence fait rejeter une version téléchargée. */
   colonnesRequises: string[];
   /** true : référentiel téléchargé chaque nuit (annuaire), sans millésime. */
@@ -17,6 +22,8 @@ export interface Source {
 
 export const PORTAIL = "https://data.education.gouv.fr";
 export const API = `${PORTAIL}/api/explore/v2.1/catalog/datasets`;
+export const PORTAIL_ECO = "https://data.economie.gouv.fr";
+export const API_ECO = `${PORTAIL_ECO}/api/explore/v2.1/catalog/datasets`;
 
 /** Produit cartésien de motifs : developper("a_{x,y}_{1,2}") → a_x_1, a_x_2, a_y_1, a_y_2. */
 export function developper(motif: string): string[] {
@@ -41,6 +48,7 @@ function source(
     titre,
     producteur: id === "annuaire" ? "MEN" : "MEN-DEPP",
     pageUrl: `${PORTAIL}/explore/dataset/${datasetId}/information/`,
+    api: API,
     colonnesRequises,
     referentiel,
   };
@@ -132,3 +140,53 @@ export const SOURCES: Record<SourceId, Source> = {
     ),
   ),
 };
+
+// --- Budget des collectivités (DGFiP, data.economie.gouv.fr) : un jeu par exercice, extrait filtré ---
+
+/** Identifiants irréguliers des jeux annuels (vérifiés le 2026-11-24) ; les exercices suivants sont découverts au catalogue. */
+export const EXERCICES_BUDGET: Record<number, string> = {
+  2020: "balances-comptables-des-collectivites-et-des-etablissements-publics-locaux-avec7",
+  2021: "balances-comptables-des-collectivites-et-des-etablissements-publics-locaux-avec8",
+  2022: "balances-comptables-des-collectivites-et-des-etablissements-publics-locaux-2022",
+  2023: "balances-comptables-des-collectivites-et-des-epl-avec-fonction-2023",
+  2024: "balances-comptables-des-collectivites-et-des-etablissements-publics-locaux-avec-la-presentation-croisee-nature-fonction-2024",
+};
+
+/** Fonction collèges (221) et lycées (222, 223), seules ou précédées d'un chapitre 90 à 94 ; 22 et ses préfixes : non détaillée. */
+const FONCTIONS_BUDGET = [
+  ...["221", "222", "223", "22"].flatMap((f) => ["", "90", "91", "92", "93", "94"].map((p) => `${p}${f}`)),
+  "922",
+  "932",
+];
+const liste = (valeurs: string[]) => valeurs.map((v) => `"${v}"`).join(",");
+
+export const FILTRE_BUDGET = `categ in (${liste(["DEPT", "REG", "CTU", "ML", "PARIS"])}) and cbudg = "1" and fonction in (${liste(FONCTIONS_BUDGET)})`;
+
+export const COLONNES_BUDGET = [
+  ...["exer", "ident", "siren", "lbudg", "categ", "ndept", "cregi", "cbudg", "nomen", "fonction", "compte"],
+  ...["obnetdeb", "obnetcre", "oobdeb", "oobcre"],
+];
+
+export function sourceBudget(exercice: number, datasetId: string): Source {
+  return {
+    id: `budget_${exercice}`,
+    datasetId,
+    titre: `Balances comptables des collectivités, présentation croisée nature-fonction ${exercice}`,
+    producteur: "DGFiP",
+    pageUrl: `${PORTAIL_ECO}/explore/dataset/${datasetId}/information/`,
+    api: API_ECO,
+    filtre: FILTRE_BUDGET,
+    colonnesRequises: COLONNES_BUDGET,
+    referentiel: false,
+  };
+}
+
+/** Sources de phase 1 + exercices budget connus + jeux découverts au catalogue (enregistrés dans le manifest). */
+export function toutesSources(manifest: Manifest): Source[] {
+  const budgets = new Map<number, string>(Object.entries(EXERCICES_BUDGET).map(([e, d]) => [Number(e), d]));
+  for (const [id, datasetId] of manifest.jeuxDecouverts()) {
+    const exercice = Number(id.replace("budget_", ""));
+    if (!budgets.has(exercice)) budgets.set(exercice, datasetId);
+  }
+  return [...Object.values(SOURCES), ...[...budgets].sort(([a], [b]) => a - b).map(([e, d]) => sourceBudget(e, d))];
+}

@@ -9,9 +9,9 @@ import { decrireParquet, empreinte, type Manifest, motifRejet } from "./archive.
 import type { Depot } from "./depot.ts";
 import { connexion, executer, ident, litteral } from "./duck.ts";
 import { ErreurParquetInvalide, type OdsClient } from "./ods.ts";
-import { type Source, SOURCES } from "./sources.ts";
+import { API_ECO, type Source, sourceBudget, toutesSources } from "./sources.ts";
 
-export type ClientSources = Pick<OdsClient, "metadata" | "telechargerParquet">;
+export type ClientSources = Pick<OdsClient, "metadata" | "telechargerParquet" | "chercherJeu">;
 
 export type LigneJournal = {
   date: string;
@@ -42,14 +42,34 @@ export async function collecter(opts: OptionsCollecte): Promise<LigneJournal[]> 
   await mkdir(opts.tmp, { recursive: true });
   const duck = await connexion();
   const journal: LigneJournal[] = [];
-  for (const s of Object.values(SOURCES)) {
-    const base = { date: opts.maintenant.toISOString(), source: s.id };
+  const date = opts.maintenant.toISOString();
+  const essayer = async (id: SourceId, tache: () => Promise<Resultat | null>) => {
     try {
-      journal.push({ ...base, ...(await traiter(s, opts, duck)) });
+      const r = await tache();
+      if (r) journal.push({ date, source: id, ...r });
     } catch (e) {
       const motif = e instanceof Error ? e.message : String(e);
-      journal.push({ ...base, action: e instanceof ErreurParquetInvalide ? "rejete" : "erreur", motif });
+      journal.push({ date, source: id, action: e instanceof ErreurParquetInvalide ? "rejete" : "erreur", motif });
     }
+  };
+  const connues = toutesSources(opts.manifest);
+  for (const s of connues) await essayer(s.id, () => traiter(s, opts, duck));
+
+  // Exercice suivant du budget : un seul jeu au catalogue, sinon rien n'est inventé.
+  const suivant = Math.max(...connues.filter((s) => s.id.startsWith("budget_")).map((s) => Number(s.id.slice(7)))) + 1;
+  const idSuivant: SourceId = `budget_${suivant}`;
+  let nouvelle: Source | undefined;
+  await essayer(idSuivant, async () => {
+    const jeux = await opts.client.chercherJeu(API_ECO, `nature-fonction ${suivant}`);
+    if (jeux.length === 0) return null;
+    if (jeux.length > 1) return { action: "erreur", motif: `plusieurs jeux pour l'exercice ${suivant} : ${jeux.join(", ")}` };
+    opts.manifest.decouvrir(idSuivant, jeux[0]!);
+    nouvelle = sourceBudget(suivant, jeux[0]!);
+    return null;
+  });
+  if (nouvelle) {
+    const s = nouvelle;
+    await essayer(s.id, () => traiter(s, opts, duck));
   }
   duck.closeSync();
   if (opts.journal) {
@@ -69,7 +89,7 @@ async function traiter(s: Source, opts: OptionsCollecte, duck: DuckDBConnection)
   const brut = join(opts.tmp, `${s.id}.brut.parquet`);
   const reduit = join(opts.tmp, `${s.id}.reduit.parquet`);
   try {
-    await opts.client.telechargerParquet(s, brut);
+    const { url: requete } = await opts.client.telechargerParquet(s, brut);
     let fichier = brut;
     let desc = await decrireParquet(duck, brut);
     const manque = motifRejet(s, { ...desc, lignes: Math.max(desc.lignes, 1) });
@@ -100,6 +120,7 @@ async function traiter(s: Source, opts: OptionsCollecte, duck: DuckDBConnection)
       manifest.ajouter(s.id, {
         sha256: sha, tag, fichier: nom, url, modified: meta.modified,
         collecteLe: maintenant.toISOString(), lignes: desc.lignes,
+        ...(s.filtre ? { requete } : {}),
       });
       manifest.ecrire();
     } finally {
@@ -131,7 +152,7 @@ export async function assurerCache(
   cache = ".cache/archives",
 ): Promise<Record<SourceId, string>> {
   const chemins = {} as Record<SourceId, string>;
-  for (const s of Object.values(SOURCES)) {
+  for (const s of toutesSources(manifest)) {
     const v = manifest.derniere(s.id);
     if (!v) throw new Error(`aucune version archivée pour ${s.id}`);
     const chemin = join(cache, s.id, v.fichier);

@@ -1,7 +1,7 @@
 // Client minimal de l'API Opendatasoft v2.1 (data.education.gouv.fr).
 // Sobriété : une requête de métadonnées et un téléchargement par source et par exécution ;
 // les nouveaux essais ne portent que sur les erreurs 5xx et réseau.
-import { API, type Source } from "./sources.ts";
+import type { Source } from "./sources.ts";
 
 export const USER_AGENT = "observatoireeducation/0.1 (+https://observatoireeducation.fr)";
 
@@ -46,7 +46,7 @@ export class OdsClient {
   }
 
   async metadata(s: Source): Promise<SourceMeta> {
-    const url = `${API}/${s.datasetId}`;
+    const url = `${s.api}/${s.datasetId}`;
     const corps = (await (await this.requete(url)).json()) as {
       metas?: { default?: { modified?: string; records_count?: number } };
     };
@@ -57,9 +57,12 @@ export class OdsClient {
     return { modified: meta.modified, recordsCount: meta.records_count };
   }
 
-  /** Télécharge l'export Parquet complet vers `dest` (écriture en flux) et vérifie qu'il n'est pas tronqué. */
-  async telechargerParquet(s: Source, dest: string): Promise<string> {
-    const url = `${API}/${s.datasetId}/exports/parquet`;
+  /**
+   * Télécharge l'export Parquet (filtré si la source a un filtre) vers `dest` en flux et vérifie qu'il n'est pas tronqué.
+   * Renvoie aussi l'URL utilisée, pour la garder avec la version archivée.
+   */
+  async telechargerParquet(s: Source, dest: string): Promise<{ chemin: string; url: string }> {
+    const url = `${s.api}/${s.datasetId}/exports/parquet${s.filtre ? `?where=${encodeURIComponent(s.filtre)}` : ""}`;
     await Bun.write(dest, await this.requete(url));
     const f = Bun.file(dest);
     // La taille doit être lue avant de découper : slice(-4) sur un fichier non encore mesuré renvoie vide.
@@ -69,7 +72,17 @@ export class OdsClient {
     if (taille < 8 || debut !== MAGIQUE_PARQUET || fin !== MAGIQUE_PARQUET) {
       throw new ErreurParquetInvalide(`fichier Parquet tronqué ou invalide pour ${s.datasetId} (${taille} octets)`);
     }
-    return dest;
+    return { chemin: dest, url };
+  }
+
+  /** Identifiants des jeux du catalogue dont le titre contient exactement `titre` (« 2025 » n'accepte pas « 20250 »). */
+  async chercherJeu(api: string, titre: string): Promise<string[]> {
+    const where = encodeURIComponent(`search("${titre}")`);
+    const corps = (await (await this.requete(`${api}?where=${where}&select=dataset_id,title&limit=100`)).json()) as {
+      results?: { dataset_id?: string; title?: string }[];
+    };
+    const motif = new RegExp(`(?<![\\p{L}\\p{N}])${titre.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\p{L}\\p{N}])`, "u");
+    return (corps.results ?? []).filter((r) => r.dataset_id && motif.test(r.title ?? "")).map((r) => r.dataset_id!);
   }
 
   private async requete(url: string): Promise<Response> {

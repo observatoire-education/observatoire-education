@@ -16,6 +16,8 @@ interface Contenu {
   vus: Partial<Record<SourceId, string>>;
   /** Empreinte de la version actuelle : pas forcément la dernière ajoutée (un portail peut revenir à un état connu). */
   actuelles: Partial<Record<SourceId, string>>;
+  /** Identifiant du jeu pour un exercice découvert au catalogue (budget), absent du registre des sources. */
+  jeux: Partial<Record<SourceId, string>>;
 }
 
 export class Manifest {
@@ -25,9 +27,9 @@ export class Manifest {
   ) {}
 
   static lire(chemin: string): Manifest {
-    if (!existsSync(chemin)) return new Manifest(chemin, { versions: {}, vus: {}, actuelles: {} });
+    if (!existsSync(chemin)) return new Manifest(chemin, { versions: {}, vus: {}, actuelles: {}, jeux: {} });
     const c = JSON.parse(readFileSync(chemin, "utf8")) as Partial<Contenu>;
-    return new Manifest(chemin, { versions: c.versions ?? {}, vus: c.vus ?? {}, actuelles: c.actuelles ?? {} });
+    return new Manifest(chemin, { versions: c.versions ?? {}, vus: c.vus ?? {}, actuelles: c.actuelles ?? {}, jeux: c.jeux ?? {} });
   }
 
   versions(id: SourceId): Version[] {
@@ -56,6 +58,18 @@ export class Manifest {
   rendreActuelle(id: SourceId, sha256: string): void {
     if (!this.connait(id, sha256)) throw new Error(`version inconnue pour ${id} : ${sha256}`);
     this.contenu.actuelles[id] = sha256;
+  }
+
+  jeuDecouvert(id: SourceId): string | undefined {
+    return this.contenu.jeux[id];
+  }
+
+  jeuxDecouverts(): [SourceId, string][] {
+    return Object.entries(this.contenu.jeux) as [SourceId, string][];
+  }
+
+  decouvrir(id: SourceId, datasetId: string): void {
+    this.contenu.jeux[id] = datasetId;
   }
 
   modifiedVu(id: SourceId): string | undefined {
