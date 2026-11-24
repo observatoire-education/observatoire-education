@@ -26,6 +26,8 @@ describe("fiche imprimable A4", () => {
     expect(mentionMoyennesA4("ips_erea", true)).toBe("");
     expect(mentionMoyennesA4("ips_colleges_2016", false)).toBe("");
     expect(mentionMoyennesA4("ivac", false)).toBe("");
+    // La liste des établissements fermés ne porte aucune moyenne.
+    expect(mentionMoyennesA4("fermes", false)).toBe("");
     expect(mentionMoyennesA4("effectifs_colleges", true)).toBe(" · moyennes calculées (Σ / Σ)");
   });
 

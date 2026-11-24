@@ -8,7 +8,7 @@ import type {
 import type { Manifest } from "./archive.ts";
 import type { Db } from "./db.ts";
 import { budgetDeFiche, calculerBudgets } from "./budget-eleves.ts";
-import { collectivitesCorrigees, type EntreeCorrection, resoudreCorrection } from "./corrections.ts";
+import { collectivitesCorrigees, correctionEnVigueur, type EntreeCorrection, resoudreCorrection } from "./corrections.ts";
 import { calculerEleves } from "./eleves.ts";
 import { calculerResultats, dernieresSessions, resume } from "./resultats.ts";
 import { calculerIndicateurs, calculerRepartitions } from "./indicateurs.ts";
@@ -225,12 +225,12 @@ export function millesimesAffiches(f: Fiche): Map<SourceId, Set<number>> {
 const parDate = (a: { le: string; millesime: number }, b: { le: string; millesime: number }) => a.le.localeCompare(b.le) || a.millesime - b.millesime;
 
 /**
- * Rattache à chaque source de chaque fiche les corrections d'un millésime que la fiche affiche, dont la version
- * corrigée est la version actuelle de la source. Idempotent.
+ * Rattache à chaque source de chaque fiche les corrections en vigueur (`correctionEnVigueur`) d'un millésime que
+ * la fiche affiche. Idempotent.
  */
 export function attacherCorrections(fiches: Fiche[], corrections: EntreeCorrection[], manifest: Manifest): void {
   const sourcesBudget = toutesSources(manifest);
-  const actuelle = (e: EntreeCorrection) => e.corrigee === manifest.derniere(e.source)?.sha256;
+  const actuelle = (e: EntreeCorrection) => correctionEnVigueur(manifest, e);
   for (const f of fiches) {
     const collectivite = (f.budget.colleges ?? f.budget.lycees)?.id;
     // Un exercice corrigé et affiché porte sa propre source, même s'il n'est pas le dernier exercice du bloc budget.
@@ -247,7 +247,7 @@ export function attacherCorrections(fiches: Fiche[], corrections: EntreeCorrecti
       const trouvees = corrections
         .filter((e) => {
           if (e.source !== s.id || !affiches.get(e.source)?.has(e.millesime)) return false;
-          // Une correction ne décrit les chiffres affichés que si sa version corrigée est la version actuelle.
+          // Une correction ne vaut plus si le portail est revenu à une version collectée avant elle.
           if (!actuelle(e)) return false;
           return e.source.startsWith("budget_") ? !!collectivite && collectivitesCorrigees(e).has(collectivite) : e.cles.includes(f.uai);
         })

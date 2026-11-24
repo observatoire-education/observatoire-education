@@ -574,14 +574,21 @@ describe("budget des fiches et des territoires", () => {
       expect(toutes.filter((f) => f.uai !== "0440001A").flatMap((f) => f.sources).some((s) => s.corrections)).toBe(false);
     });
 
-    test("correction dont la version corrigée n'est plus la version actuelle : absente", async () => {
+    test("version publiée après la correction (rentrée ajoutée) : la mention reste (spec 6.3)", async () => {
       const m = await manifestCorrige();
-      // Une troisième version publiée depuis : la correction « a → ips_colleges… » ne décrit plus les chiffres affichés.
+      // Une troisième version, plus récente, qui ne touche pas 2024 : le chiffre corrigé est toujours affiché.
       m.ajouter("ips_colleges", {
         sha256: "d".repeat(64), tag: "t", fichier: "ips_colleges-apres.parquet", url: "https://exemple.org/ips-apres.parquet",
         modified: "2026-11-23T00:00:00Z", collecteLe: "2026-11-23T02:17:00Z", lignes: 10,
       });
-      m.rendreActuelle("ips_colleges", "d".repeat(64));
+      const toutes = await assemblerFiches(db, m, {}, maintenant, { corrections: [entree(2024, ["0440001A"])] });
+      const sur = toutes.find((f) => f.uai === "0440001A")!.sources.find((s) => s.id === "ips_colleges")!;
+      expect(sur.corrections?.map((c) => c.millesime)).toEqual([2024]);
+    });
+
+    test("retour du portail à la version d'avant la correction : mention absente", async () => {
+      const m = await manifestCorrige();
+      m.rendreActuelle("ips_colleges", "a".repeat(64));
       const toutes = await assemblerFiches(db, m, {}, maintenant, { corrections: [entree(2024, ["0440001A"])] });
       expect(toutes.flatMap((f) => f.sources).some((s) => s.corrections)).toBe(false);
     });

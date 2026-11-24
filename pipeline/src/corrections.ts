@@ -94,6 +94,18 @@ export function resoudreCorrection(manifest: Manifest, e: EntreeCorrection): Cor
   };
 }
 
+/**
+ * Une correction vaut tant que la version actuelle de la source est la version corrigée ou une version collectée
+ * après elle (spec 6.3 : la mention reste tant que le millésime corrigé est affiché). Elle cesse si le portail
+ * revient à une version collectée avant (la version précédente, par exemple).
+ */
+export function correctionEnVigueur(manifest: Manifest, e: EntreeCorrection): boolean {
+  const actuelle = manifest.derniere(e.source);
+  const corrigee = manifest.versions(e.source).find((v) => v.sha256 === e.corrigee);
+  if (!actuelle || !corrigee) return false;
+  return actuelle.sha256 === corrigee.sha256 || actuelle.collecteLe > corrigee.collecteLe;
+}
+
 /** Collectivités (id) touchées par une correction de budget : clés `categ|ndept|cregi|lbudg`. */
 export function collectivitesCorrigees(e: EntreeCorrection): Set<string> {
   const ids = new Set<string>();

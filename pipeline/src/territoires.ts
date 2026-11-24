@@ -11,7 +11,7 @@ import { communeDeRattachement, LIBELLES_PLM, SEUIL_COMMUNE } from "@obs/shared/
 import type { Famille, Fiche, Indicateur, Mesure, Niveau, Secteur, SourceId } from "@obs/shared/types";
 import type { Manifest } from "./archive.ts";
 import type { Budgets } from "./budget-eleves.ts";
-import { collectivitesCorrigees, type EntreeCorrection, resoudreCorrection } from "./corrections.ts";
+import { collectivitesCorrigees, correctionEnVigueur, type EntreeCorrection, resoudreCorrection } from "./corrections.ts";
 import type { Db } from "./db.ts";
 import { depCanonique } from "./normalise.ts";
 import { dernieresSessions, type DernieresSessions, type IpsRentree, nuages, resume, VOIES_NUAGE } from "./resultats.ts";
@@ -343,6 +343,8 @@ export async function exporterTerritoires(
     // Exercices montrés par la page, par collectivité.
     const exercices = new Map(collectivites.map((c) => [c.id as string, new Set(c.exercices.map((x) => x.exercice))]));
     const trouvees = corrections
+      // Même règle que les fiches : une correction cesse si le portail revient à une version collectée avant elle.
+      .filter((e) => correctionEnVigueur(manifest!, e))
       .filter((e) =>
         e.source === "segregation" ? dep !== null && e.cles.some((c) => depCanonique(c) === dep)
           : e.source.startsWith("budget_") && [...collectivitesCorrigees(e)].some((id) => exercices.get(id)?.has(e.millesime)))
