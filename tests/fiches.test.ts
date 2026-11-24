@@ -43,6 +43,15 @@ describe("voisinage", () => {
     expect(v[0]!.eleves.valeur).toBe(600);
   });
 
+  test("voisin : reussite et partAgreges", async () => {
+    const v = (await calculerVoisins(db)).get("0440001A")!;
+    expect(v[0]!.reussite).toEqual([{ voie: "brevet_general", session: 2025, taux: 60, va: 1 }]);
+    expect(v[0]!.partAgreges).toMatchObject({ statut: expect.any(String) });
+    expect(v[1]!.reussite).toEqual([{ voie: "brevet_general", session: 2025, taux: null, va: null }]);
+    const lpo = (await calculerVoisins(db)).get("0440003C")!;
+    expect(lpo[0]).toMatchObject({ uai: "0440006F", reussite: [{ voie: "bac_pro", session: 2025, taux: 70 }] });
+  });
+
   test("lycées : familles compatibles", async () => {
     // un LEGT voit les LEGT et les LPO ; un LPO voit aussi les LP
     expect((await calculerVoisins(db)).get("0440003C")!.map((x) => x.uai)).toEqual(["0440006F"]);
@@ -112,8 +121,16 @@ describe("fiches", () => {
     expect(fiche("0440006F").sources.map((x) => x.id)).toContain("effectifs_lycees_pro");
   });
 
+  test("résultats : sources ivac et ival avec la dernière session, millésimes affichés", () => {
+    expect(fiche("0440001A").sources.find((x) => x.id === "ivac")!.rentree).toBe(2025);
+    expect(fiche("0440103C").sources.map((x) => x.id)).toEqual(expect.arrayContaining(["ival_gt", "ival_pro"]));
+    expect([...millesimesAffiches(fiche("0440103C")).get("ival_gt")!].sort()).toEqual([2019, 2020, 2021, 2022, 2023, 2024, 2025]);
+    expect(fiche("0440200E").resultats).toEqual([]);
+    expect(fiche("0440021R").resultats.map((r) => r.voie)).toEqual(["bac_pro"]); // fermé : historique conservé
+  });
+
   test("établissement sans aucune statistique : seul l'annuaire est cité", () => {
-    expect(fiche("0440007G").sources.map((x) => x.id)).toEqual(["annuaire"]);
+    expect(fiche("0440007G").sources.map((x) => x.id)).toEqual(["annuaire", "ivac"]); // effectif publié, aucune valeur
   });
 });
 
@@ -205,7 +222,7 @@ describe("registre des pages", () => {
     expect(f).toMatchObject({ nom: "Collège Disparu", disparuLe: "2020-08-31", voisins: null });
     const ips = f.indicateurs.find((i) => i.code === "ips")!;
     expect(ips.mesure).toMatchObject({ valeur: 88, rentree: 2024 }); // encore présent dans la source
-    expect(f.sources.map((x) => x.id)).toEqual(["annuaire", "ips_colleges"]);
+    expect(f.sources.map((x) => x.id)).toEqual(["annuaire", "ips_colleges", "ival_gt"]);
   });
 
   test("disparition absente des fermés officiels : datée de cette collecte", async () => {

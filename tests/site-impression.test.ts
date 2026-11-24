@@ -37,7 +37,7 @@ describe("fiche imprimable A4", () => {
 
   test("chaque ligne du tableau central renvoie à une source listée", () => {
     const sources = [...a4("0440001A").querySelectorAll(".ft ol li")];
-    expect(sources.length).toBe(8); // quatre sources de la fiche, deux anciens jeux d'IPS, plus les balances de la DGFiP (exercices 2023, corrigé, et 2024)
+    expect(sources.length).toBe(9); // quatre sources de la fiche, l'IVAC (résultats), deux anciens jeux d'IPS, plus les balances de la DGFiP (exercices 2023, corrigé, et 2024)
     const renvois = [...a4("0440001A").querySelectorAll(".centre tbody sup")].map((s) => Number(s.textContent!.replace(/\D/g, "")));
     expect(renvois.length).toBeGreaterThan(5);
     for (const n of renvois) expect(n).toBeGreaterThanOrEqual(1), expect(n).toBeLessThanOrEqual(sources.length);

@@ -1,0 +1,119 @@
+// Résultats aux examens d'une fiche : brevet (IVAC) et baccalauréat (IVAL), à partir des tables `resultats`
+// et `moyennes_resultats`. Une valeur absente n'est jamais un zéro : elle porte le statut « non_publie ».
+import type { ParSecteur } from "@obs/shared/donnees";
+import type { Famille, Fiche, Niveau, ResultatsVoie, ResumeResultat, SourceId, ValeurResultat, VoieResultat } from "@obs/shared/types";
+import type { CodeResultat, StatutResultat } from "@obs/shared/types";
+import type { Db } from "./db.ts";
+
+export type { CodeResultat, ResultatsVoie, ResumeResultat, StatutResultat, ValeurResultat, VoieResultat };
+
+/** Ordre d'affichage des voies sur une fiche. */
+export const VOIES: VoieResultat[] = ["brevet_general", "brevet_pro", "bac_gt", "bac_pro"];
+
+/** Valeurs affichées par voie, dans l'ordre. */
+const CODES: Record<VoieResultat, CodeResultat[]> = {
+  brevet_general: ["taux_reussite", "note_ecrit", "taux_acces"],
+  brevet_pro: ["taux_reussite", "note_ecrit"],
+  bac_gt: ["taux_reussite", "taux_acces", "taux_mentions"],
+  bac_pro: ["taux_reussite", "taux_acces", "taux_mentions"],
+};
+
+const NIVEAUX: Niveau[] = ["departement", "academie", "france"];
+const RUPTURE = 2021;
+
+interface Ligne {
+  uai: string; voie: VoieResultat; session: number; source: SourceId; effectif: number | null;
+  taux_reussite: number | null; va_reussite: number | null; note_ecrit: number | null; va_note: number | null;
+  taux_acces: number | null; va_acces: number | null; taux_mentions: number | null; va_mentions: number | null;
+  mentions_ab: number | null; mentions_b: number | null; mentions_tb: number | null;
+}
+interface LigneMoyenne {
+  voie: VoieResultat; code: CodeResultat; niveau: Niveau; territoire: string; secteur: string; session: number; valeur: number; n: number;
+}
+
+const valeurDe = (l: Ligne, code: CodeResultat): number | null => l[code];
+
+/** Valeur ajoutée de la ligne pour un code ; undefined = sans objet par construction. */
+function vaDe(l: Ligne, code: CodeResultat): number | null | undefined {
+  if (l.voie === "brevet_pro") return undefined;
+  if (l.voie === "brevet_general") return code === "taux_reussite" ? l.va_reussite : code === "note_ecrit" ? l.va_note : undefined;
+  return code === "taux_reussite" ? l.va_reussite : code === "taux_acces" ? l.va_acces : code === "taux_mentions" ? l.va_mentions : undefined;
+}
+
+const statut = (v: number | null): StatutResultat => (v === null ? "non_publie" : "ok");
+
+/** Session affichée : la dernière qui a au moins une valeur publiée (à défaut, la dernière ligne). */
+function sessionAffichee(lignes: Ligne[], voie: VoieResultat): Ligne {
+  const codes = CODES[voie];
+  const avecValeur = lignes.filter((l) => codes.some((c) => valeurDe(l, c) !== null));
+  return (avecValeur.at(-1) ?? lignes.at(-1))!;
+}
+
+export async function calculerResultats(db: Db): Promise<Map<string, ResultatsVoie[]>> {
+  const lignes = await db.sql<Ligne>("select * from resultats order by uai, voie, session");
+  const moyennes = await db.sql<LigneMoyenne>("select * from moyennes_resultats");
+  const territoires = new Map(
+    (await db.sql<{ uai: string; dep: string; aca: string }>("select uai, dep, aca from fiches_etab")).map((r) => [r.uai, r]),
+  );
+  const index = new Map<string, LigneMoyenne>();
+  for (const m of moyennes) index.set([m.voie, m.code, m.niveau, m.territoire, m.secteur, m.session].join("|"), m);
+
+  const resultat = new Map<string, ResultatsVoie[]>();
+  for (const [uai, deLaFiche] of Map.groupBy(lignes, (l) => l.uai)) {
+    const t = territoires.get(uai);
+    const voies: ResultatsVoie[] = [];
+    for (const voie of VOIES) {
+      const l = deLaFiche.filter((x) => x.voie === voie);
+      if (!l.length) continue;
+      const affichee = sessionAffichee(l, voie);
+      const code = (c: CodeResultat, niveau: Niveau, secteur: string) => {
+        const territoire = niveau === "france" ? "FR" : niveau === "departement" ? t?.dep : t?.aca;
+        const m = territoire ? index.get([voie, c, niveau, territoire, secteur, affichee.session].join("|")) : undefined;
+        return m ?? null;
+      };
+      const valeurs: ValeurResultat[] = CODES[voie].map((c) => {
+        const v = valeurDe(affichee, c);
+        const va = vaDe(affichee, c);
+        return {
+          code: c, valeur: v, statut: statut(v),
+          va: va ?? null, statutVa: va === undefined ? "sans_objet" : statut(va),
+          comparaisons: c === "note_ecrit"
+            ? []
+            : NIVEAUX.map((niveau) => {
+                const pub = code(c, niveau, "public");
+                const pri = code(c, niveau, "prive_sous_contrat");
+                const n: ParSecteur<number> = { public: pub?.n ?? 0, prive: pri?.n ?? 0 };
+                return { niveau, public: pub?.valeur ?? null, prive: pri?.valeur ?? null, n };
+              }),
+        };
+      });
+      const historique = l.filter((x) => x.taux_reussite !== null).map((x): [number, number] => [x.session, x.taux_reussite!]);
+      const bac = voie === "bac_gt" || voie === "bac_pro";
+      const rupture = bac && historique.some(([s]) => s < RUPTURE) && historique.some(([s]) => s >= RUPTURE) ? RUPTURE : null;
+      const mentions = voie === "brevet_general" && (affichee.mentions_ab !== null || affichee.mentions_b !== null || affichee.mentions_tb !== null)
+        ? { ab: affichee.mentions_ab, b: affichee.mentions_b, tb: affichee.mentions_tb }
+        : null;
+      voies.push({ voie, source: affichee.source, session: affichee.session, effectif: affichee.effectif, valeurs, mentions, historique, rupture });
+    }
+    resultat.set(uai, voies);
+  }
+  return resultat;
+}
+
+/** Voies résumées par famille (règle « un seul chiffre par établissement »). */
+const VOIES_RESUME: Record<Famille, VoieResultat[]> = {
+  college: ["brevet_general"],
+  legt: ["bac_gt"],
+  lp: ["bac_pro"],
+  lpo: ["bac_gt", "bac_pro"],
+  erea: ["brevet_general", "bac_gt", "bac_pro"],
+};
+
+/** Un chiffre par voie utile : taux de réussite et valeur ajoutée de la session affichée. Seules les voies présentes. */
+export function resume(f: Pick<Fiche, "famille" | "resultats">): ResumeResultat[] {
+  return VOIES_RESUME[f.famille].flatMap((voie) => {
+    const r = f.resultats.find((x) => x.voie === voie);
+    const v = r?.valeurs.find((x) => x.code === "taux_reussite");
+    return r && v ? [{ voie, session: r.session, taux: v.valeur, va: v.va }] : [];
+  });
+}

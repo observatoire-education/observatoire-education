@@ -55,7 +55,7 @@ const ficheTest = (
       ...(options.ips === undefined ? [] : [indicateur("ips", options.ips)]),
       ...(options.eleves === undefined ? [] : [indicateur("eleves", options.eleves, options.rentreeEleves)]),
     ],
-    repartitions: [], eleves: null, voisins: null, sources: [],
+    repartitions: [], eleves: null, voisins: null, resultats: [], sources: [],
   };
 };
 

@@ -85,7 +85,7 @@ describe("fiche établissement", () => {
   });
 
   test("poids d'une fiche complète", () => {
-    expect(octets("etablissement/0440001A")).toBeLessThanOrEqual(50_000);
+    expect(octets("etablissement/0440001A")).toBeLessThanOrEqual(52_000);
   });
 
   test("part de filles partielle : couverture dite", () => {

@@ -1,7 +1,7 @@
 // Types communs au pipeline et au site.
 // Règle cardinale : une donnée absente n'est jamais un zéro ; elle porte un statut.
 import type { CodeIndicateur, CodeRepartition } from "./libelles.ts";
-import type { BudgetCollectivite, MoyennesBudgetFrance } from "./donnees.ts";
+import type { BudgetCollectivite, MoyennesBudgetFrance, ParSecteur } from "./donnees.ts";
 
 export type { CodeIndicateur, CodeRepartition };
 
@@ -125,6 +125,46 @@ export interface Voisin {
   eleves: Mesure;
   elevesParEtpEns: Mesure;
   ips: Mesure;
+  /** Part d'enseignants agrégés ; un seul chiffre de réussite par voie (règle de la fiche). */
+  partAgreges: Mesure;
+  reussite: ResumeResultat[];
+}
+
+export type VoieResultat = "brevet_general" | "brevet_pro" | "bac_gt" | "bac_pro";
+export type CodeResultat = "taux_reussite" | "note_ecrit" | "taux_acces" | "taux_mentions";
+export type StatutResultat = "ok" | "non_publie";
+
+export interface ValeurResultat {
+  code: CodeResultat;
+  valeur: number | null;
+  statut: StatutResultat;
+  va: number | null;
+  /** « sans_objet » : la source ne publie pas de valeur ajoutée pour cette valeur. */
+  statutVa: StatutResultat | "sans_objet";
+  /** Taux seulement ; la note à l'écrit n'a pas de moyenne. */
+  comparaisons: { niveau: Niveau; public: number | null; prive: number | null; n: ParSecteur<number> }[];
+}
+
+export interface ResultatsVoie {
+  voie: VoieResultat;
+  source: SourceId;
+  /** Année de l'examen (2025 = juin 2025). */
+  session: number;
+  effectif: number | null;
+  valeurs: ValeurResultat[];
+  mentions: { ab: number | null; b: number | null; tb: number | null } | null;
+  /** [session, taux de réussite] par session croissante. */
+  historique: [number, number][];
+  /** 2021 pour les voies du baccalauréat si l'historique la traverse. */
+  rupture: number | null;
+}
+
+/** Un chiffre de réussite pour les listes et les voisins. */
+export interface ResumeResultat {
+  voie: VoieResultat;
+  session: number;
+  taux: number | null;
+  va: number | null;
 }
 
 /** Correction d'un millésime par le producteur : URL des deux versions archivées. */
@@ -196,6 +236,8 @@ export interface Fiche extends Identite {
   eleves: Eleves | null;
   /** null = voisins non calculables (coordonnées absentes ou page disparue). */
   voisins: Voisin[] | null;
+  /** Résultats aux examens, dans l'ordre brevet général, brevet pro, bac GT, bac pro ; [] si aucun. */
+  resultats: ResultatsVoie[];
   sources: SourceRef[];
   /** Moyens de la collectivité ; seul le niveau de la famille est présent, null = collectivité non identifiée. */
   budget: {

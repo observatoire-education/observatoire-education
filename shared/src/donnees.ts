@@ -1,7 +1,7 @@
 // Format des fichiers de données produits par le pipeline (site/data/) et lus par le site.
 import type { IdCollectivite, NiveauBudget } from "./collectivites.ts";
 import type { CodeIndicateur } from "./libelles.ts";
-import type { Comparaison, Correction, Famille, PointIps, Secteur, SourceId, Statut } from "./types.ts";
+import type { Comparaison, Correction, Famille, PointIps, ResumeResultat, Secteur, SourceId, Statut } from "./types.ts";
 
 /** Une entrée de `index.json` (et de la recherche) : clés courtes. */
 export interface EntreeIndex {
@@ -28,6 +28,7 @@ export interface LigneListe {
   statutVs: Statut;
   partEnseignantes: number | null;
   ips: number | null;
+  reussite: ResumeResultat[];
 }
 
 export interface ParSecteur<T> {

@@ -13,6 +13,7 @@ import type { Manifest } from "./archive.ts";
 import type { Budgets } from "./budget-eleves.ts";
 import { collectivitesCorrigees, type EntreeCorrection, resoudreCorrection } from "./corrections.ts";
 import type { Db } from "./db.ts";
+import { resume } from "./resultats.ts";
 import { calculerIpsHistorique, derniereRentreeIps, ipsCourant, type NiveauIps } from "./ips-historique.ts";
 
 // --- Aides partagées avec fiches.ts ---
@@ -51,6 +52,7 @@ export function ligneListe(f: Fiche, rentreeIps: number | null): LigneListe {
     statutVs: vs?.statut ?? "non_disponible",
     partEnseignantes: ok(valeur(f, "part_enseignantes")),
     ips: ipsCourant(valeur(f, "ips"), rentreeIps),
+    reussite: resume(f),
   };
 }
 

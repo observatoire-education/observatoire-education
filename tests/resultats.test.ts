@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { dbTest } from "./aide.ts";
+import { calculerResultats, resume } from "../pipeline/src/resultats.ts";
 
 const un = async (q: string) => (await (await dbTest()).sql(q))[0] as Record<string, unknown>;
 
@@ -70,5 +71,70 @@ describe("normalisation des résultats", () => {
     // brevet : pas de taux de mentions, donc pas de moyenne
     expect(await db.sql("select count(*)::int as n from moyennes_resultats where voie like 'brevet%' and code = 'taux_mentions'")).toEqual([{ n: 0 }]);
     expect(await db.sql("select valeur, n from moyennes_resultats where voie = 'bac_gt' and code = 'taux_mentions' and niveau = 'departement' and territoire = '44' and secteur = 'public' and session = 2025")).toEqual([{ valeur: 62, n: 1 }]);
+  });
+});
+
+describe("résultats sur les fiches", () => {
+  const fiche = async (uai: string) => (await import("./aide.ts")).dbTest().then(async (db) => (await calculerResultats(db)).get(uai));
+
+  test("collège : brevet général et pro, dernière session 2025, historique 2022-2025", async () => {
+    const r = (await fiche("0440001A"))!;
+    expect(r.map((v) => v.voie)).toEqual(["brevet_general", "brevet_pro"]);
+    const g = r[0]!;
+    expect(g).toMatchObject({ source: "ivac", session: 2025, effectif: 100, rupture: null, mentions: { ab: 25, b: 18, tb: 7 } });
+    expect(g.historique).toEqual([[2022, 84], [2023, 86], [2024, 88], [2025, 80]]);
+    expect(g.valeurs.map((v) => v.code)).toEqual(["taux_reussite", "note_ecrit", "taux_acces"]);
+    expect(g.valeurs[0]).toMatchObject({ valeur: 80, statut: "ok", va: 3, statutVa: "ok" });
+    expect(g.valeurs[1]).toMatchObject({ valeur: 12.3, va: 0.4, comparaisons: [] });
+    expect(g.valeurs[2]).toMatchObject({ valeur: 98, va: null, statutVa: "sans_objet" });
+    const p = r[1]!;
+    expect(p.valeurs.map((v) => v.code)).toEqual(["taux_reussite", "note_ecrit"]);
+    expect(p.valeurs.every((v) => v.statutVa === "sans_objet" && v.va === null)).toBe(true);
+    expect(p.mentions).toBeNull();
+  });
+
+  test("comparaisons du taux : département, académie, France, public et privé", async () => {
+    const c = (await fiche("0440001A"))![0]!.valeurs[0]!.comparaisons;
+    expect(c.map((x) => x.niveau)).toEqual(["departement", "academie", "france"]);
+    for (const x of c) {
+      expect(x.public).toBeCloseTo((80 * 100 + 70 * 50) / 150, 10);
+      expect(x.prive).toBe(60);
+      expect(x.n).toEqual({ public: 2, prive: 1 });
+    }
+    // le taux d'accès a ses propres moyennes
+    expect((await fiche("0440001A"))![0]!.valeurs[2]!.comparaisons[0]).toMatchObject({ public: 97, prive: 99, n: { public: 2, prive: 1 } });
+    // moyenne absente pour une session : null avec n 0 (le bac pro 2025 n'a pas de moyenne de mentions privée)
+    expect((await fiche("0440103C"))![0]!.valeurs[2]!.comparaisons[0]).toMatchObject({ public: 62, prive: null, n: { public: 1, prive: 0 } });
+  });
+
+  test("valeur non publiée : statut non_publie, jamais 0", async () => {
+    const g = (await fiche("0440007G"))![0]!;
+    expect(g.valeurs.every((v) => v.valeur === null && v.statut === "non_publie")).toBe(true);
+    expect(g.historique).toEqual([]);
+  });
+
+  test("LPO : bac_gt et bac_pro, rupture 2021", async () => {
+    const r = (await fiche("0440103C"))!;
+    expect(r.map((v) => v.voie)).toEqual(["bac_gt", "bac_pro"]);
+    expect(r[0]).toMatchObject({ source: "ival_gt", session: 2025, rupture: 2021, mentions: null });
+    expect(r[0]!.valeurs.map((v) => v.code)).toEqual(["taux_reussite", "taux_acces", "taux_mentions"]);
+    expect(r[0]!.valeurs[2]).toMatchObject({ valeur: 62, va: 2, statutVa: "ok" });
+    expect(r[0]!.historique[0]).toEqual([2019, 88]);
+    expect(r[1]!.source).toBe("ival_pro");
+    // historique entièrement avant 2021 : pas de rupture
+    expect((await fiche("0440099Z"))![0]!.rupture).toBeNull();
+  });
+
+  test("resume d'un LPO présent dans ival_pro seul : une entrée", async () => {
+    const r = (await fiche("0440006F"))!;
+    expect(resume({ famille: "lpo", resultats: r })).toEqual([{ voie: "bac_pro", session: 2025, taux: 70, va: -1 }]);
+    const lpo = (await fiche("0440103C"))!;
+    expect(resume({ famille: "lpo", resultats: lpo }).map((x) => x.voie)).toEqual(["bac_gt", "bac_pro"]);
+    expect(resume({ famille: "college", resultats: (await fiche("0440001A"))! }).map((x) => x.voie)).toEqual(["brevet_general"]);
+    expect(resume({ famille: "erea", resultats: [] })).toEqual([]);
+  });
+
+  test("fiche sans résultats : []", async () => {
+    expect((await fiche("0440200E")) ?? []).toEqual([]);
   });
 });

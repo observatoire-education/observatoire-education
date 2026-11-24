@@ -3,13 +3,14 @@ import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { DonneesSource, EntreeIndex } from "@obs/shared/donnees";
 import type {
-  Famille, Fiche, Identite, Indicateur, Mesure, Repartition, Secteur, Site, SourceId, SourceRef, Voisin,
+  Famille, Fiche, Identite, Indicateur, Mesure, Repartition, ResultatsVoie, Secteur, Site, SourceId, SourceRef, Voisin,
 } from "@obs/shared/types";
 import type { Manifest } from "./archive.ts";
 import type { Db } from "./db.ts";
 import { budgetDeFiche, calculerBudgets } from "./budget-eleves.ts";
 import { collectivitesCorrigees, type EntreeCorrection, resoudreCorrection } from "./corrections.ts";
 import { calculerEleves } from "./eleves.ts";
+import { calculerResultats, resume } from "./resultats.ts";
 import { calculerIndicateurs, calculerRepartitions } from "./indicateurs.ts";
 import type { Registre } from "./registre.ts";
 import { SOURCES, toutesSources } from "./sources.ts";
@@ -50,8 +51,10 @@ export async function calculerVoisins(
   k = 6,
   rayonKm = 30,
   indicateurs?: Map<string, Indicateur[]>,
+  resultats?: Map<string, ResultatsVoie[]>,
 ): Promise<Map<string, Voisin[] | null>> {
   const ind = indicateurs ?? (await calculerIndicateurs(db));
+  const res = resultats ?? (await calculerResultats(db));
   const compat = Object.entries(FAMILLES_VOISINES)
     .flatMap(([a, bs]) => bs.map((b) => `('${a}', '${b}')`))
     .join(", ");
@@ -93,6 +96,8 @@ export async function calculerVoisins(
             eleves: mesure(p.voisin, "eleves"),
             elevesParEtpEns: mesure(p.voisin, "eleves_par_etp_ens"),
             ips: mesureIps(p.voisin),
+            partAgreges: mesure(p.voisin, "part_agreges"),
+            reussite: resume({ famille: p.famille, resultats: res.get(p.voisin) ?? [] }),
           }))
         : null,
     );
@@ -156,7 +161,7 @@ async function identitesHistoriques(db: Db): Promise<Map<string, { identite: Ide
 
 /** Les sources effectivement utilisées par la fiche, dans l'ordre du registre, avec le millésime le plus récent. */
 function sourcesUtilisees(
-  manifest: Manifest, indicateurs: Indicateur[], repartitions: Repartition[], eleves: Fiche["eleves"],
+  manifest: Manifest, indicateurs: Indicateur[], repartitions: Repartition[], eleves: Fiche["eleves"], resultats: ResultatsVoie[],
 ): SourceRef[] {
   const rentrees = new Map<SourceId, number | null>([["annuaire", null]]);
   const noter = (id: SourceId | null, rentree: number | null) => {
@@ -170,6 +175,7 @@ function sourcesUtilisees(
   }
   for (const r of repartitions) if (r.statut === "ok") noter(r.source, r.rentree);
   for (const s of eleves?.source ?? []) noter(s, eleves!.rentree);
+  for (const r of resultats) noter(r.source, r.session); // la « rentrée » d'une source de résultats est sa session
 
   return Object.values(SOURCES)
     .filter((s) => rentrees.has(s.id))
@@ -204,6 +210,8 @@ export function millesimesAffiches(f: Fiche): Map<SourceId, Set<number>> {
   for (const r of f.repartitions) if (r.statut === "ok") noter(r.source, r.rentree);
   for (const s of f.eleves?.source ?? []) noter(s, f.eleves!.rentree);
   for (const ex of (f.budget.colleges ?? f.budget.lycees)?.exercices ?? []) noter(ex.source, ex.exercice);
+  for (const r of f.resultats) for (const [session] of r.historique) noter(r.source, session);
+  for (const r of f.resultats) noter(r.source, r.session);
   return affiches;
 }
 
@@ -280,7 +288,8 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
   const indicateurs = await calculerIndicateurs(db);
   const repartitions = await calculerRepartitions(db);
   const eleves = await calculerEleves(db);
-  const voisins = await calculerVoisins(db, 6, 30, indicateurs);
+  const resultats = await calculerResultats(db);
+  const voisins = await calculerVoisins(db, 6, 30, indicateurs, resultats);
   const actives = await identitesActives(db);
   const disparus = await db.sql<{ uai: string }>("select uai from disparus order by uai");
   const historiques = await identitesHistoriques(db);
@@ -293,13 +302,15 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
     const ind = indicateurs.get(uai) ?? [];
     const rep = repartitions.get(uai) ?? [];
     const el = eleves.get(uai) ?? null;
+    const res = resultats.get(uai) ?? [];
     return {
       uai, ...identite, disparuLe, fermeLe: disparuLe === null ? null : (fermetures.get(uai) ?? null),
       successeurs: [], predecesseurs: [], // remplacés plus bas, quand toutes les fiches sont connues
       indicateurs: ind, repartitions: rep, eleves: el,
       budget: { france: [] }, // remplacé plus bas, quand toutes les fiches (disparues comprises) sont connues
       voisins: disparuLe === null ? (voisins.get(uai) ?? null) : null,
-      sources: sourcesUtilisees(manifest, ind, rep, el),
+      resultats: res,
+      sources: sourcesUtilisees(manifest, ind, rep, el, res),
     };
   };
 

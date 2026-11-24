@@ -11,7 +11,7 @@ const dep = (nom: string, commune = "Nantes"): DonneesTerritoire => ({
       compte: { public: 1, prive: 0 }, eleves: { public: 10, prive: null }, ipsMoyen: { public: 100, prive: null, calculee: false },
       ipsHistorique: [], distributionIps: { public: [], prive: [], bornes: [] }, moyennes: [],
       liste: [{ uai: "0440001A", nom, secteur: "public", commune, codeCommune: "44109", ep: null, eleves: 10, elevesParEtpEns: -1.5,
-        elevesParEtpVs: null, statutVs: "non_disponible", partEnseignantes: null, ips: 100 }],
+        elevesParEtpVs: null, statutVs: "non_disponible", partEnseignantes: null, ips: 100, reussite: [] }],
     },
   },
 });
