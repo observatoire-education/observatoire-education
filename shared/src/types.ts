@@ -54,6 +54,22 @@ export interface Indicateur {
   comparaisons: Comparaison[];
   /** [rentrée, valeur], par rentrée croissante. */
   historique: [number, number][];
+  /**
+   * Source de chaque point de `historique` (même ordre), seulement si elle change d'une rentrée à l'autre
+   * (IPS : un jeu par période).
+   */
+  sourcesHistorique?: SourceId[];
+  /** IPS : moyennes du département de l'établissement, par rentrée (publiées ou calculées). */
+  referencesHistoriques?: PointIps[];
+}
+
+/** Moyenne d'IPS d'un territoire pour une rentrée : par secteur, publiée par la DEPP ou calculée. */
+export interface PointIps {
+  rentree: number;
+  public: number | null;
+  prive: number | null;
+  /** true : moyenne calculée par l'observatoire (la DEPP n'en publie pas pour cette rentrée). */
+  calculee: boolean;
 }
 
 export interface PartsReference {

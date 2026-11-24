@@ -13,6 +13,7 @@ import type { Manifest } from "./archive.ts";
 import type { Budgets } from "./budget-eleves.ts";
 import { collectivitesCorrigees, type EntreeCorrection, resoudreCorrection } from "./corrections.ts";
 import type { Db } from "./db.ts";
+import { calculerIpsHistorique, type NiveauIps } from "./ips-historique.ts";
 
 // --- Aides partagées avec fiches.ts ---
 
@@ -223,6 +224,7 @@ export async function exporterTerritoires(
   corrections: EntreeCorrection[] = [], manifest?: Manifest,
 ): Promise<void> {
   for (const d of ["regions", "departements", "academies", "communes"]) await mkdir(join(sortie, d), { recursive: true });
+  const ipsHistorique = await calculerIpsHistorique(db);
   const ips = { dep: await ipsMoyens(db, "dep"), aca: await ipsMoyens(db, "aca"), nat: await ipsMoyens(db, "nat") };
   const horsContratLignes = await db.sql<{ dep: string; aca: string; code_commune: string }>(
     "select dep, aca, code_commune from classement where motif = 'prive_hors_contrat'",
@@ -278,7 +280,7 @@ export async function exporterTerritoires(
   const familles = (
     groupe: Fiche[],
     ipsMoyen: (famille: Famille, g: Fiche[]) => IpsMoyens,
-    options: { liste: boolean; niveaux: Niveau[] | null },
+    options: { liste: boolean; niveaux: Niveau[] | null; territoire: [NiveauIps, string] },
   ): DonneesTerritoire["familles"] => {
     const resultat: DonneesTerritoire["familles"] = {};
     for (const [famille, g] of Map.groupBy(groupe, (f) => f.famille)) {
@@ -287,6 +289,7 @@ export async function exporterTerritoires(
         compte: compte(g),
         eleves: eleves(g),
         ipsMoyen: ipsMoyen(famille, g),
+        ipsHistorique: ipsHistorique.serie(options.territoire[0], famille, options.territoire[1]),
         distributionIps: { public: distribution(valeursIps("public")), prive: distribution(valeursIps("prive_sous_contrat")), bornes: BORNES_IPS },
         moyennes: options.niveaux === null
           ? []
@@ -342,7 +345,7 @@ export async function exporterTerritoires(
     const donnees: DonneesTerritoire = {
       budget: { collectivites: [], france: [] }, // pas de bloc budget sur les pages commune
       ref, parents: [FRANCE, ...regionParent(groupe), refAcademie(premier), refDepartement(premier)], rentree,
-      familles: familles(groupe, (_, g) => calculee(g), { liste: true, niveaux: null }),
+      familles: familles(groupe, (_, g) => calculee(g), { liste: true, niveaux: null, territoire: ["commune", code] }),
       horsContrat: horsContrat((l) => communeDeRattachement(l.code_commune) === code),
       enfants: [], communes: [], carte: points(groupe),
     };
@@ -357,7 +360,7 @@ export async function exporterTerritoires(
       ...correctionsDe(dep, budgetDe(groupe, [dep]).collectivites),
       ref: refDepartement(premier), parents: [FRANCE, ...regionParent(groupe), refAcademie(premier)], rentree,
       familles: familles(groupe, (famille) => depp(ips.dep.get(`${famille}|${dep}`)), {
-        liste: true, niveaux: ["departement", "academie", "france"],
+        liste: true, niveaux: ["departement", "academie", "france"], territoire: ["departement", dep],
       }),
       horsContrat: horsContrat((l) => l.dep === dep),
       enfants: [], communes: (communesParDep.get(dep) ?? []).sort(parLibelle), carte: points(groupe),
@@ -372,7 +375,7 @@ export async function exporterTerritoires(
       budget: budgetDe(groupe, depsDe(groupe)),
       ...correctionsDe(null, budgetDe(groupe, depsDe(groupe)).collectivites),
       ref: refAcademie(groupe[0]!), parents: [FRANCE, ...regionParent(groupe)], rentree,
-      familles: familles(groupe, (famille) => depp(ips.aca.get(`${famille}|${aca}`)), { liste: false, niveaux: ["academie", "france"] }),
+      familles: familles(groupe, (famille) => depp(ips.aca.get(`${famille}|${aca}`)), { liste: false, niveaux: ["academie", "france"], territoire: ["academie", aca] }),
       horsContrat: horsContrat((l) => l.aca === aca),
       enfants: [...Map.groupBy(groupe, (f) => f.dep)]
         .map(([dep, g]) => ligne(refDepartement(g[0]!), g, ips.dep.get(`college|${dep}`)))
@@ -393,7 +396,7 @@ export async function exporterTerritoires(
       budget: budgetDe(groupe, region.deps),
       ...correctionsDe(null, budgetDe(groupe, region.deps).collectivites),
       ref, parents: [FRANCE], rentree,
-      familles: familles(groupe, (_, g) => calculee(g), { liste: false, niveaux: ["france"] }),
+      familles: familles(groupe, (_, g) => calculee(g), { liste: false, niveaux: ["france"], territoire: ["region", region.code] }),
       horsContrat: horsContrat((l) => region.deps.includes(l.dep)),
       enfants: [...Map.groupBy(groupe, (f) => f.dep)]
         .map(([dep, g]) => ligne(refDepartement(g[0]!), g, ips.dep.get(`college|${dep}`)))
@@ -431,7 +434,7 @@ export async function exporterTerritoires(
     budget: { collectivites: collectivitesTriees(budgets.collectivites.keys()), france: budgets.france },
     ...correctionsDe(null, collectivitesTriees(budgets.collectivites.keys())),
     ref: FRANCE, parents: [], rentree,
-    familles: familles(actives, (famille) => depp(ips.nat.get(`${famille}|FR`)), { liste: false, niveaux: ["france"] }),
+    familles: familles(actives, (famille) => depp(ips.nat.get(`${famille}|FR`)), { liste: false, niveaux: ["france"], territoire: ["france", "FR"] }),
     horsContrat: horsContratLignes.length,
     enfants: [...parAcademie]
       .map(([aca, g]) => ligne(refAcademie(g[0]!), g, ips.aca.get(`college|${aca}`)))

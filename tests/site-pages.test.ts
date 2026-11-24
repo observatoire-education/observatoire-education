@@ -13,7 +13,7 @@ describe("page département", () => {
     const noms = [...d.querySelectorAll("#liste-college tbody td:first-child")].map((td) => td.textContent!.trim());
     expect(noms).toEqual(["Collège Jules-Verne", "Collège Saint-Exemple", "Collège Sans GPS", "Collège Simple"]);
     expect(noms).toEqual([...noms].sort((a, b) => a.localeCompare(b, "fr")));
-    expect([...d.querySelectorAll(".tabs a")].map((a) => a.getAttribute("href"))).toEqual(["#college", "#legt", "#lpo"]);
+    expect([...d.querySelectorAll(".tabs a")].map((a) => a.getAttribute("href"))).toEqual(["#college", "#legt", "#lpo", "#erea"]);
     expect(texte("departement/44")).toContain("non couvert par les statistiques publiques");
   });
 
@@ -41,7 +41,7 @@ describe("page département", () => {
     const lignes = csv.trim().split("\n");
     expect(lignes[0]).toBe("uai;nom;famille;secteur;commune;ep;eleves;eleves_par_etp_ens;eleves_par_etp_vs;part_enseignantes;ips");
     expect(lignes.find((l) => l.startsWith("0440002B"))).toContain(";non_publie_prive;");
-    expect(lignes).toHaveLength(1 + 7); // 7 établissements actifs dans le 44
+    expect(lignes).toHaveLength(1 + 8); // 8 établissements actifs dans le 44
   });
 
   test("pas de page disparue dans les listes, Corse générée", () => {
@@ -91,7 +91,7 @@ describe("accueil et recherche", () => {
 
   test("recherche.json : clés courtes", () => {
     const idx = JSON.parse(page("recherche.json")) as EntreeIndex[];
-    expect(idx.length).toBe(21); // 14 actifs + 2 pages du registre + 5 fiches historiques
+    expect(idx.length).toBe(22); // 14 actifs + 2 pages du registre + 5 fiches historiques
     expect(Object.keys(idx.find((e) => e.u === "0440001A")!).sort()).toEqual(["c", "d", "f", "n", "s", "u"]);
     expect(idx.find((e) => e.u === "0440004D")).toBeUndefined();
   });

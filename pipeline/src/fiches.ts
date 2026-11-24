@@ -157,7 +157,10 @@ function sourcesUtilisees(
     const r = rentrees.get(id);
     rentrees.set(id, r === undefined || r === null ? rentree : rentree === null ? r : Math.max(r, rentree));
   };
-  for (const i of indicateurs) if (i.mesure.statut === "ok") noter(i.mesure.source, i.mesure.rentree);
+  for (const i of indicateurs) {
+    if (i.mesure.statut === "ok") noter(i.mesure.source, i.mesure.rentree);
+    i.sourcesHistorique?.forEach((s, k) => noter(s, i.historique[k]![0]));
+  }
   for (const r of repartitions) if (r.statut === "ok") noter(r.source, r.rentree);
   for (const s of eleves?.source ?? []) noter(s, eleves!.rentree);
 
@@ -189,7 +192,7 @@ export function millesimesAffiches(f: Fiche): Map<SourceId, Set<number>> {
   };
   for (const i of f.indicateurs) {
     if (i.mesure.statut === "ok") noter(i.mesure.source, i.mesure.rentree);
-    for (const [rentree] of i.historique) noter(i.mesure.source, rentree);
+    i.historique.forEach(([rentree], k) => noter(i.sourcesHistorique?.[k] ?? i.mesure.source, rentree));
   }
   for (const r of f.repartitions) if (r.statut === "ok") noter(r.source, r.rentree);
   for (const s of f.eleves?.source ?? []) noter(s, f.eleves!.rentree);

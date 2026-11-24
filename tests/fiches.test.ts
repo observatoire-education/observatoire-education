@@ -67,7 +67,7 @@ describe("voisinage", () => {
 describe("fiches", () => {
   test("une fiche par établissement du périmètre, triées par UAI", () => {
     expect(fiches.map((f) => f.uai)).toEqual([
-      "0440001A", "0440002B", "0440003C", "0440005E", "0440006F", "0440007G", "0440020P", "0440021R", "0440023T", "0440099Z", "0440101A", "0440102B", "0440103C",
+      "0440001A", "0440002B", "0440003C", "0440005E", "0440006F", "0440007G", "0440020P", "0440021R", "0440023T", "0440099Z", "0440101A", "0440102B", "0440103C", "0440200E",
       "0750701C", "0751501A", "0751502B", "6200001F", "9711023K", "9750001C", "9770001G",
     ]);
   });
@@ -92,7 +92,7 @@ describe("fiches", () => {
 
   test("sources d'une fiche : seulement celles utilisées, avec millésime et lien brut", () => {
     const s = fiche("0440003C").sources;
-    expect(s.map((x) => x.id)).toEqual(["annuaire", "ips_lycees", "effectifs_lycees_gt", "personnels"]);
+    expect(s.map((x) => x.id)).toEqual(["annuaire", "ips_lycees", "effectifs_lycees_gt", "personnels", "ips_lycees_2016", "ips_lycees_2022"]);
     expect(s.find((x) => x.id === "ips_lycees")).toMatchObject({
       producteur: "MEN-DEPP", rentree: 2025, collecteLe: "2026-11-22T02:17:00Z",
       brutUrl: "https://github.com/org/depot/releases/download/archives-ips_lycees-2026/ips_lycees.parquet",
@@ -224,7 +224,7 @@ describe("registre des pages", () => {
     expect(apres["0440001A"]).toEqual({ premiere: "2026-01-01", identite: expect.objectContaining({ nom: "Collège Jules-Verne" }) });
     expect(apres["0440002B"]!.premiere).toBe("2026-11-23");
     expect(apres["0440099Z"]).toMatchObject({ disparuLe: "2020-08-31", identite: { nom: "Collège Disparu" } });
-    expect(Object.keys(apres)).toHaveLength(20); // + 5 fiches historiques
+    expect(Object.keys(apres)).toHaveLength(21); // + 5 fiches historiques
   });
 
   test("lecture et écriture : une ligne par UAI, triée", async () => {
@@ -233,7 +233,7 @@ describe("registre des pages", () => {
     const r = mettreAJourRegistre({}, fiches, "2026-11-23");
     ecrireRegistre(chemin, r);
     const texte = await Bun.file(chemin).text();
-    expect(texte.split("\n")).toHaveLength(20 + 3); // accolades, 20 entrées, fin de fichier
+    expect(texte.split("\n")).toHaveLength(21 + 3); // accolades, 21 entrées, fin de fichier
     expect(texte.indexOf("0440001A")).toBeLessThan(texte.indexOf("6200001F"));
     expect(lireRegistre(chemin)).toEqual(r);
   });
@@ -248,7 +248,7 @@ describe("export des données du site", () => {
     expect(f.nom).toBe("Collège Jules-Verne");
 
     const index: EntreeIndex[] = await Bun.file(join(sortie, "index.json")).json();
-    expect(index).toHaveLength(20);
+    expect(index).toHaveLength(21);
     expect(index[0]).toEqual({ u: "0440001A", n: "Collège Jules-Verne", c: "Nantes", d: "44", f: "college", s: "public" });
 
     const dep: DonneesTerritoire = await Bun.file(join(sortie, "departements", "44.json")).json();
@@ -272,9 +272,11 @@ describe("export des données du site", () => {
     expect(col.liste.find((l) => l.uai === "0440002B")).toMatchObject({ statutVs: "non_publie_prive", elevesParEtpVs: null, ips: 123 });
     expect(col.ipsMoyen).toEqual({ public: 106.4, prive: 121.4, calculee: false });
     expect(col.distributionIps.bornes).toHaveLength(21);
-    expect(col.distributionIps.public.reduce((a, b) => a + b, 0)).toBe(1); // 0440005E n'a pas d'IPS
+    expect(col.distributionIps.public.reduce((a, b) => a + b, 0)).toBe(2); // 0440005E : son seul IPS est celui de 2018
     expect(col.moyennes.find((m) => m.code === "eleves_par_etp_ens")!.comparaisons[0]!.public.valeur).toBe(14.75);
-    expect(Object.keys(dep.familles).sort()).toEqual(["college", "legt", "lpo"]);
+    expect(Object.keys(dep.familles).sort()).toEqual(["college", "erea", "legt", "lpo"]);
+    expect(dep.familles.college!.ipsHistorique.find((p) => p.rentree === 2018)).toEqual({ rentree: 2018, public: 91.6, prive: 120, calculee: true });
+    expect(dep.familles.college!.ipsHistorique.find((p) => p.rentree === 2025)).toMatchObject({ calculee: false });
     expect(await Bun.file(join(sortie, "departements", "2A.json")).exists()).toBe(true);
 
     const commune: DonneesTerritoire = await Bun.file(join(sortie, "communes", "44109.json")).json();
@@ -494,6 +496,13 @@ describe("budget des fiches et des territoires", () => {
       const f = fiche("0440001A");
       const m = millesimesAffiches(f);
       expect(m.get("ips_colleges")?.has(f.indicateurs.find((i) => i.code === "ips")!.mesure.rentree!)).toBe(true);
+    });
+
+    test("millesimesAffiches : chaque rentrée d'IPS sous le jeu dont elle vient", () => {
+      const m = millesimesAffiches(fiche("0440001A"));
+      expect([...m.get("ips_colleges_2016")!].sort()).toEqual([2016, 2017, 2018, 2019, 2020, 2021]);
+      expect([...m.get("ips_colleges_2022")!]).toEqual([2022]);
+      expect(m.get("ips_colleges")!.has(2016)).toBe(false);
     });
 
     test("correction de l'IPS 2024 d'un collège : sur sa fiche seulement", async () => {

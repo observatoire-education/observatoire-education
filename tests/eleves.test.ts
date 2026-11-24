@@ -67,6 +67,7 @@ describe("élèves par niveau et par sexe", () => {
 describe("tables d'effectifs", () => {
   test("historique des totaux", async () => {
     expect(await db.sql("select rentree, eleves from effectifs where uai = '0440001A' order by rentree")).toEqual([
+      { rentree: 2019, eleves: 500 },
       { rentree: 2024, eleves: 600 },
       { rentree: 2025, eleves: 590 },
     ]);

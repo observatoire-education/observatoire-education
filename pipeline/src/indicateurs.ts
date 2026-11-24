@@ -10,6 +10,7 @@ import type {
 } from "@obs/shared/types";
 import type { Db } from "./db.ts";
 import { litteral } from "./duck.ts";
+import { calculerIpsHistorique } from "./ips-historique.ts";
 
 // --- Définitions ---
 
@@ -226,11 +227,10 @@ export async function calculerIndicateurs(db: Db): Promise<Map<string, Indicateu
   const ipsSource = Map.groupBy(
     await db.sql<{
       uai: string; rentree: number; source: SourceId;
-      dep_public: number | null; dep_prive: number | null; aca_public: number | null; aca_prive: number | null;
-      nat_public: number | null; nat_prive: number | null;
-    }>("select * exclude (ips, ecart_type) from ips"),
+    }>("select uai, rentree, source from ips"),
     (r) => r.uai,
   );
+  const ipsHistorique = await calculerIpsHistorique(db);
   const derniere = await dernieresRentrees(db, "moyennes");
   const derniereIps = (await db.sql<{ r: number }>("select max(rentree) as r from ips"))[0]?.r ?? null;
 
@@ -249,12 +249,15 @@ export async function calculerIndicateurs(db: Db): Promise<Map<string, Indicateu
       const derniereLigne = serie.at(-1);
       let mesure: Mesure;
       let historique: [number, number][] = serie.map((l) => [l.rentree, l.valeur]);
+      let sourcesHistorique: SourceId[] | undefined;
       if (prive && NON_PUBLIES_PRIVE.has(code)) {
         mesure = absente("non_publie_prive");
         historique = [];
       } else if (derniereLigne) {
         mesure = { valeur: derniereLigne.valeur, statut: "ok", source: derniereLigne.source, rentree: derniereLigne.rentree };
         if (derniereLigne.couverture !== null && derniereLigne.couverture < 100) mesure.couverture = derniereLigne.couverture;
+        // La source de chaque point, quand elle change (IPS : un jeu par période).
+        if (serie.some((l) => l.source !== derniereLigne.source)) sourcesHistorique = serie.map((l) => l.source);
       } else {
         mesure = absente();
         // part sous le seuil de couverture : la couverture reste connue, pour l'expliquer
@@ -271,9 +274,10 @@ export async function calculerIndicateurs(db: Db): Promise<Map<string, Indicateu
         const ligne = (ipsSource.get(e.uai) ?? []).find((x) => x.rentree === r);
         const m = (v: number | null | undefined): Mesure =>
           v === null || v === undefined ? absente("non_disponible", r) : { valeur: v, statut: "ok", source: ligne!.source, rentree: r };
+        // Moyenne publiée pour la rentrée, sinon calculée par l'observatoire (série du territoire).
         comparaisons = NIVEAUX.map((n) => {
-          const p = n === "departement" ? "dep" : n === "academie" ? "aca" : "nat";
-          return { niveau: n, public: m(ligne?.[`${p}_public`]), prive: m(ligne?.[`${p}_prive`]), calculee: false };
+          const point = ligne && ipsHistorique.serie(n, e.famille, territoireDe(e, n)).find((p) => p.rentree === r);
+          return { niveau: n, public: m(point?.public), prive: m(point?.prive), calculee: point?.calculee ?? false };
         });
       } else if (genre === "ratio" || genre === "part") {
         const r = mesure.rentree ?? derniere.get(code);
@@ -288,7 +292,10 @@ export async function calculerIndicateurs(db: Db): Promise<Map<string, Indicateu
           }));
         }
       }
-      liste.push({ code, mesure, comparaisons, historique });
+      const indicateur: Indicateur = { code, mesure, comparaisons, historique };
+      if (sourcesHistorique) indicateur.sourcesHistorique = sourcesHistorique;
+      if (code === "ips") indicateur.referencesHistoriques = ipsHistorique.serie("departement", e.famille, e.dep);
+      liste.push(indicateur);
     }
     resultat.set(e.uai, liste);
   }

@@ -1,12 +1,17 @@
 -- 03 : IPS et personnels des établissements qui ont une fiche (table fiches_etab, créée par 05).
 
--- IPS : collèges et lycées ; pour un lycée, les moyennes publiées de sa famille (LEGT, LPO ou LP).
+-- IPS de 2016-2017 à aujourd'hui : union des huit jeux. Une même (uai, rentrée) dans plusieurs jeux :
+-- le jeu le plus récent l'emporte (actuel, puis ap2022, puis 2016-2021). Moyennes publiées : seulement
+-- dans les jeux actuels (collèges, lycées par type de lycée) et le jeu EREA ; null ailleurs.
+-- Lycées : `ips` = IPS de l'établissement (actuel) ou de l'ensemble GT + pro (anciens jeux) ;
+-- `ips_gt` et `ips_pro` : IPS par voie. Écart-type : celui de l'établissement (actuel), null pour les anciens jeux.
 create or replace table ips as
 with brut as (
   select
     upper(trim(uai)) as uai,
     rentree(rentree_scolaire) as rentree,
     'ips_colleges' as source,
+    0 as priorite,
     nombre(ips) as ips,
     nombre(ecart_type_de_l_ips) as ecart_type,
     nombre(ips_departemental_public) as dep_public,
@@ -21,8 +26,11 @@ with brut as (
     upper(trim(uai)) as uai,
     rentree(rentree_scolaire) as rentree,
     'ips_lycees' as source,
+    0 as priorite,
     nombre(ips_etab) as ips,
     nombre(ecart_type_etablissement) as ecart_type,
+    nombre(ips_voie_gt) as ips_gt,
+    nombre(ips_voie_pro) as ips_pro,
     nombre(case upper(trim(type_de_lycee)) when 'LEGT' then ips_departemental_legt_public
       when 'LPO' then ips_departemental_lpo_public when 'LP' then ips_departemental_lp_public end) as dep_public,
     nombre(case upper(trim(type_de_lycee)) when 'LEGT' then ips_departemental_legt_prive
@@ -36,9 +44,49 @@ with brut as (
     nombre(case upper(trim(type_de_lycee)) when 'LEGT' then ips_national_legt_prive
       when 'LPO' then ips_national_lpo_prive when 'LP' then ips_national_lp_prive end) as nat_prive
   from src_ips_lycees
+  union all by name
+  select
+    upper(trim(uai)) as uai,
+    rentree(rentree_scolaire) as rentree,
+    'ips_erea' as source,
+    0 as priorite,
+    nombre(ips) as ips,
+    nombre(ecart_type_de_l_ips) as ecart_type,
+    nombre(ips_departemental_public) as dep_public,
+    nombre(ips_departemental_prive) as dep_prive,
+    nombre(ips_academique_public) as aca_public,
+    nombre(ips_academique_prive) as aca_prive,
+    nombre(ips_national_public) as nat_public,
+    nombre(ips_national_prive) as nat_prive
+  from src_ips_erea
+  union all by name
+  select upper(trim(uai)) as uai, rentree(rentree_scolaire) as rentree, 'ips_colleges_2022' as source, 1 as priorite,
+    nombre(ips) as ips, nombre(ecart_type_de_l_ips) as ecart_type
+  from src_ips_colleges_2022
+  union all by name
+  select upper(trim(uai)) as uai, rentree(rentree_scolaire) as rentree, 'ips_lycees_2022' as source, 1 as priorite,
+    nombre(ips_ensemble_gt_pro) as ips, null::double as ecart_type,
+    nombre(ips_voie_gt) as ips_gt, nombre(ips_voie_pro) as ips_pro
+  from src_ips_lycees_2022
+  union all by name
+  select upper(trim(uai)) as uai, rentree(rentree_scolaire) as rentree, 'ips_colleges_2016' as source, 2 as priorite,
+    nombre(ips) as ips, nombre(ecart_type_de_l_ips) as ecart_type
+  from src_ips_colleges_2016
+  union all by name
+  select upper(trim(uai)) as uai, rentree(rentree_scolaire) as rentree, 'ips_lycees_2016' as source, 2 as priorite,
+    nombre(ips_ensemble_gt_pro) as ips, null::double as ecart_type,
+    nombre(ips_voie_gt) as ips_gt, nombre(ips_voie_pro) as ips_pro
+  from src_ips_lycees_2016
+  union all by name
+  select upper(trim(uai)) as uai, rentree(rentree_scolaire) as rentree, 'ips_erea_2016' as source, 2 as priorite,
+    nombre(ips) as ips, nombre(ecart_type_de_l_ips) as ecart_type
+  from src_ips_erea_2016
 )
-select * from brut
+select uai, rentree, source, ips, ecart_type, ips_gt, ips_pro,
+  dep_public, dep_prive, aca_public, aca_prive, nat_public, nat_prive
+from brut
 where rentree is not null and uai in (select uai from fiches_etab)
+qualify row_number() over (partition by uai, rentree order by priorite, source) = 1
 order by uai, rentree;
 
 -- Personnels : volumes en ETP ; une valeur vide reste null (jamais 0).

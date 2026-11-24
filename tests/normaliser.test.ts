@@ -119,7 +119,7 @@ describe("tables canoniques", () => {
   test("périmètre et Corse", async () => {
     const r = await db.sql<{ uai: string; dep: string }>("select uai, dep from etablissements order by uai");
     expect(r.map((x) => x.uai)).toEqual([
-      "0440001A", "0440002B", "0440003C", "0440005E", "0440006F", "0440007G", "0440103C", "0750701C", "0751501A", "0751502B",
+      "0440001A", "0440002B", "0440003C", "0440005E", "0440006F", "0440007G", "0440103C", "0440200E", "0750701C", "0751501A", "0751502B",
       "6200001F", "9711023K", "9750001C", "9770001G",
     ]);
     expect(r.find((x) => x.uai === "6200001F")!.dep).toBe("2A");
@@ -170,7 +170,7 @@ describe("tables canoniques", () => {
   });
 
   test("IPS lycée : moyennes de la famille, NA absent", async () => {
-    expect(await db.sql("select ips, dep_public, dep_prive, nat_prive from ips where uai = '0440003C'")).toEqual([
+    expect(await db.sql("select ips, dep_public, dep_prive, nat_prive from ips where uai = '0440003C' and rentree = 2025")).toEqual([
       { ips: 118.2, dep_public: 112, dep_prive: 125, nat_prive: 123 },
     ]);
     expect(await db.sql("select ips, ecart_type, dep_public from ips where uai = '0440006F'")).toEqual([
@@ -180,6 +180,9 @@ describe("tables canoniques", () => {
 
   test("IPS collège : historique et moyenne privée absente en Corse", async () => {
     expect(await db.sql("select rentree, ips from ips where uai = '0440001A' order by rentree")).toEqual([
+      ...[94, 94.5, 95, 95.5, 96, 96.5].map((ips, i) => ({ rentree: 2016 + i, ips })),
+      { rentree: 2022, ips: 91.5 }, // ap2022 l'emporte sur l'ancien jeu (90)
+      { rentree: 2023, ips: 93.5 },
       { rentree: 2024, ips: 93 },
       { rentree: 2025, ips: 92.4 },
     ]);

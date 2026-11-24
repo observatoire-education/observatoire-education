@@ -1,7 +1,7 @@
 // Format des fichiers de données produits par le pipeline (site/data/) et lus par le site.
 import type { IdCollectivite, NiveauBudget } from "./collectivites.ts";
 import type { CodeIndicateur } from "./libelles.ts";
-import type { Comparaison, Correction, Famille, Secteur, SourceId, Statut } from "./types.ts";
+import type { Comparaison, Correction, Famille, PointIps, Secteur, SourceId, Statut } from "./types.ts";
 
 /** Une entrée de `index.json` (et de la recherche) : clés courtes. */
 export interface EntreeIndex {
@@ -45,6 +45,8 @@ export interface SyntheseFamille {
   compte: ParSecteur<number>;
   eleves: ParSecteur<number | null>;
   ipsMoyen: IpsMoyens;
+  /** Moyennes d'IPS du territoire, de 2016 à la dernière rentrée (publiées, sinon calculées). */
+  ipsHistorique: PointIps[];
   /** Nombre d'établissements par classe de 5 points d'IPS ; `bornes` a une case de plus que les comptes. */
   distributionIps: { public: number[]; prive: number[]; bornes: number[] };
   moyennes: MoyenneTerritoire[];

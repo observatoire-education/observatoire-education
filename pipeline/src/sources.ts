@@ -125,6 +125,8 @@ export const SOURCES: Record<SourceId, Source> = {
       "uai",
       "type_de_lycee",
       "ips_etab",
+      "ips_voie_gt",
+      "ips_voie_pro",
       "ecart_type_etablissement",
       "ips_{departemental,academique,national}_{legt,lpo,lp}_{public,prive}",
     ),

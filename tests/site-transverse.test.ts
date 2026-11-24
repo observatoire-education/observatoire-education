@@ -60,7 +60,7 @@ describe("contrôles transverses du HTML", () => {
 
   test("chaque fiche porte ses sources datées", () => {
     const fiches = toutesLesPages().filter((p) => p.startsWith("etablissement/"));
-    expect(fiches.length).toBe(21);
+    expect(fiches.length).toBe(22);
     for (const p of fiches) {
       const sources = [...doc(p).querySelectorAll("#sources li")];
       expect(sources.length).toBeGreaterThan(0);

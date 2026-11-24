@@ -11,7 +11,7 @@ describe("indicateurs situés", () => {
       niveau: "departement", calculee: false, public: { valeur: 106.4 }, prive: { valeur: 121.4 },
     });
     expect(i.comparaisons.map((c) => c.niveau)).toEqual(["departement", "academie", "france"]);
-    expect(i.historique).toEqual([[2024, 93.0], [2025, 92.4]]);
+    expect(i.historique.map(([r]) => r)).toEqual([2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025]);
   });
 
   test("IPS : moyenne privée absente (Corse), IPS lycée NA", async () => {
@@ -75,7 +75,7 @@ describe("indicateurs situés", () => {
   test("volumes : historique, sans comparaison", async () => {
     const e = await indic("0440001A", "eleves");
     expect(e.mesure).toMatchObject({ valeur: 590, rentree: 2025, source: "effectifs_colleges" });
-    expect(e.historique).toEqual([[2024, 600], [2025, 590]]);
+    expect(e.historique).toEqual([[2019, 500], [2024, 600], [2025, 590]]);
     expect(e.comparaisons).toEqual([]);
     expect((await indic("0440001A", "ecart_type_ips")).comparaisons).toEqual([]);
   });
@@ -90,7 +90,7 @@ describe("indicateurs situés", () => {
 
   test("chaque établissement a les seize indicateurs, dans l'ordre", async () => {
     const tous = await calculerIndicateurs(await dbTest());
-    expect(tous.size).toBe(20); // 14 actifs + 5 historiques sans registre
+    expect(tous.size).toBe(21); // 15 actifs + 5 historiques sans registre
     for (const liste of tous.values()) expect(liste.map((i) => i.code)).toEqual([...CODES_INDICATEURS]);
   });
 });
