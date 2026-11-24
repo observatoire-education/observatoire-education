@@ -24,3 +24,6 @@ export const CITES_SCOLAIRES: Record<IdCollectivite, number> = {
   "dep-54": 7.3,
   "dep-47": 7.0,
 };
+
+/** Premier exercice publié ; il n'y a pas de borne haute : tout exercice collecté est publié. */
+export const EXERCICE_MIN = 2020;

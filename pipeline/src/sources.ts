@@ -150,6 +150,7 @@ export const EXERCICES_BUDGET: Record<number, string> = {
   2022: "balances-comptables-des-collectivites-et-des-etablissements-publics-locaux-2022",
   2023: "balances-comptables-des-collectivites-et-des-epl-avec-fonction-2023",
   2024: "balances-comptables-des-collectivites-et-des-etablissements-publics-locaux-avec-la-presentation-croisee-nature-fonction-2024",
+  2025: "balances-comptables-des-collectivites-et-des-etablissements-publics-locaux-avec-la-presentation-croisee-nature-fonction-2025",
 };
 
 /**

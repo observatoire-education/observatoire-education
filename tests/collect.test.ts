@@ -196,7 +196,7 @@ describe("collecte", () => {
     await collecter(opts(fauxClient({}).client, { journal }));
     await collecter(opts(fauxClient({}).client, { journal }));
     const l = (await Bun.file(journal).text()).trim().split("\n").map((x) => JSON.parse(x));
-    expect(l).toHaveLength(24); // sept sources et cinq exercices du budget, deux fois
+    expect(l).toHaveLength(26); // sept sources et six exercices du budget, deux fois
     expect(l[0]).toMatchObject({ date: "2026-11-23T02:17:00.000Z", source: "annuaire" });
   });
 
@@ -217,7 +217,7 @@ describe("collecte", () => {
 });
 
 describe("budget : exercices et découverte", () => {
-  const titre2025 = "nature-fonction 2025";
+  const titre2026 = "nature-fonction 2026";
 
   test("les extraits budget sont collectés avec leur requête", async () => {
     await collecter(opts(fauxClient({}).client));
@@ -227,39 +227,39 @@ describe("budget : exercices et découverte", () => {
   });
 
   test("un exercice nouveau trouvé est collecté et archivé avec sa requête", async () => {
-    const f = fauxClient({}, { [titre2025]: ["jeu-2025"] });
+    const f = fauxClient({}, { [titre2026]: ["jeu-2026"] });
     const j = await collecter(opts(f.client));
-    expect(f.recherches).toEqual([titre2025]);
-    expect(ligne(j, "budget_2025")).toMatchObject({ action: "telecharge", lignes: 10 });
-    expect(manifest.jeuDecouvert("budget_2025")).toBe("jeu-2025");
-    expect(manifest.derniere("budget_2025")!.requete).toContain("where=");
-    expect(Manifest.lire(manifest.chemin).jeuDecouvert("budget_2025")).toBe("jeu-2025");
-    // la nuit suivante : le jeu découvert est une source connue, on cherche 2026
+    expect(f.recherches).toEqual([titre2026]);
+    expect(ligne(j, "budget_2026")).toMatchObject({ action: "telecharge", lignes: 10 });
+    expect(manifest.jeuDecouvert("budget_2026")).toBe("jeu-2026");
+    expect(manifest.derniere("budget_2026")!.requete).toContain("where=");
+    expect(Manifest.lire(manifest.chemin).jeuDecouvert("budget_2026")).toBe("jeu-2026");
+    // la nuit suivante : le jeu découvert est une source connue, on cherche 2027
     const j2 = await collecter(opts(f.client));
-    expect(ligne(j2, "budget_2025").action).toBe("inchange");
-    expect(f.recherches.at(-1)).toBe("nature-fonction 2026");
-    expect(toutesSources(manifest).map((s) => s.id)).toContain("budget_2025");
+    expect(ligne(j2, "budget_2026").action).toBe("inchange");
+    expect(f.recherches.at(-1)).toBe("nature-fonction 2027");
+    expect(toutesSources(manifest).map((s) => s.id)).toContain("budget_2026");
     const chemins = await assurerCache(manifest, depot, join(racine, "cache"));
-    expect(chemins.budget_2025).toBeDefined();
+    expect(chemins.budget_2026).toBeDefined();
   });
 
   test("deux jeux pour un exercice : erreur au journal, rien de collecté", async () => {
-    const f = fauxClient({}, { [titre2025]: ["jeu-a", "jeu-b"] });
+    const f = fauxClient({}, { [titre2026]: ["jeu-a", "jeu-b"] });
     const j = await collecter(opts(f.client));
-    expect(ligne(j, "budget_2025")).toEqual({
+    expect(ligne(j, "budget_2026")).toEqual({
       date: maintenant.toISOString(),
-      source: "budget_2025",
+      source: "budget_2026",
       action: "erreur",
-      motif: "plusieurs jeux pour l'exercice 2025 : jeu-a, jeu-b",
+      motif: "plusieurs jeux pour l'exercice 2026 : jeu-a, jeu-b",
     });
-    expect(manifest.jeuDecouvert("budget_2025")).toBeUndefined();
-    expect(manifest.versions("budget_2025")).toHaveLength(0);
+    expect(manifest.jeuDecouvert("budget_2026")).toBeUndefined();
+    expect(manifest.versions("budget_2026")).toHaveLength(0);
   });
 
   test("aucun jeu : aucune ligne de journal pour l'exercice", async () => {
     const j = await collecter(opts(fauxClient({}).client));
-    expect(j.filter((l) => l.source === "budget_2025")).toEqual([]);
-    expect(j).toHaveLength(12);
+    expect(j.filter((l) => l.source === "budget_2026")).toEqual([]);
+    expect(j).toHaveLength(13);
   });
 
   test("un extrait budget sans la colonne fonction est rejeté", async () => {
@@ -270,9 +270,9 @@ describe("budget : exercices et découverte", () => {
   });
 
   test("sourceBudget : identifiant, titre et API", () => {
-    const s = sourceBudget(2025, "x");
-    expect(s).toMatchObject({ id: "budget_2025", producteur: "DGFiP", referentiel: false });
-    expect(s.titre).toBe("Balances comptables des collectivités, présentation croisée nature-fonction 2025");
+    const s = sourceBudget(2026, "x");
+    expect(s).toMatchObject({ id: "budget_2026", producteur: "DGFiP", referentiel: false });
+    expect(s.titre).toBe("Balances comptables des collectivités, présentation croisée nature-fonction 2026");
     expect(s.pageUrl).toBe("https://data.economie.gouv.fr/explore/dataset/x/information/");
   });
 });
@@ -282,7 +282,7 @@ describe("cache local", () => {
     await collecter(opts(fauxClient({}).client));
     const cache = join(racine, "cache");
     const chemins = await assurerCache(manifest, depot, cache);
-    expect(Object.keys(chemins)).toHaveLength(12);
+    expect(Object.keys(chemins)).toHaveLength(13);
     await Bun.write(chemins.ips_lycees, "corrompu");
     const encore = await assurerCache(manifest, depot, cache);
     expect(await empreinte(encore.ips_lycees)).toBe(manifest.derniere("ips_lycees")!.sha256);
