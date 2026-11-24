@@ -2,15 +2,28 @@
 // Nuage IPS × réussite d'un territoire (SVG rendu au build) : titre, figure, note. Aucun nom écrit hors des `<title>`.
 import type { Nuage } from "@obs/shared/donnees";
 import { LIBELLES_NUAGES } from "@obs/shared/libelles";
+import { date } from "@obs/shared/format";
 import { anneeScolaire } from "../lib/affichage";
+import { lireSources } from "../lib/donnees";
 import { svgNuage } from "../lib/plot";
 
 interface Props { n: Nuage }
 const { n } = Astro.props;
+const sources = lireSources();
+/** Source datée : résultats par session, IPS par rentrée. */
+const lignes = [
+  ...[n.sources.resultats].map((id) => ({ id, quand: `session ${n.session}` })),
+  ...n.sources.ips.map((id) => ({ id, quand: `rentrée ${anneeScolaire(n.rentreeIps)}` })),
+].flatMap(({ id, quand }) => (sources[id] ? [{ s: sources[id]!, quand }] : []));
 ---
 <div class="card nuage" data-voie={n.voie}>
   <div class="lab"><span>{LIBELLES_NUAGES.titres[n.voie]}</span><span class="yr">session {n.session} · IPS {anneeScolaire(n.rentreeIps)}</span></div>
   <Fragment set:html={svgNuage(n)} />
   <div class="legend"><span class="sect pub">publics</span><span class="sect pri">privés sous contrat</span></div>
   <div class="src">{LIBELLES_NUAGES.note}{n.ipsEnsemble && <> {LIBELLES_NUAGES.noteIpsEnsemble}</>}</div>
+  <div class="src"><ul style="margin:0;padding-left:18px;line-height:1.7">
+    {lignes.map(({ s, quand }) => (
+      <li>{s.producteur}, <a href={s.pageUrl}>{s.titre}</a> · {quand}{s.actuelle && <> · collecté le {date(s.actuelle.collecteLe)} · <a href={s.actuelle.url}>donnée brute</a></>}</li>
+    ))}
+  </ul></div>
 </div>

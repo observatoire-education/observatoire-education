@@ -8,12 +8,12 @@ import type {
 import { collectiviteDe, type NiveauBudget, REGIONS, regionDe } from "@obs/shared/collectivites";
 import { CODES_INDICATEURS, INDICATEURS } from "@obs/shared/libelles";
 import { communeDeRattachement, LIBELLES_PLM, SEUIL_COMMUNE } from "@obs/shared/territoires";
-import type { Famille, Fiche, Indicateur, Mesure, Niveau, Secteur } from "@obs/shared/types";
+import type { Famille, Fiche, Indicateur, Mesure, Niveau, Secteur, SourceId } from "@obs/shared/types";
 import type { Manifest } from "./archive.ts";
 import type { Budgets } from "./budget-eleves.ts";
 import { collectivitesCorrigees, type EntreeCorrection, resoudreCorrection } from "./corrections.ts";
 import type { Db } from "./db.ts";
-import { dernieresSessions, type DernieresSessions, type IpsRentree, nuages, resume } from "./resultats.ts";
+import { dernieresSessions, type DernieresSessions, type IpsRentree, nuages, resume, VOIES_NUAGE } from "./resultats.ts";
 import { calculerIpsHistorique, derniereRentreeIps, ipsCourant, type NiveauIps } from "./ips-historique.ts";
 
 // --- Aides partagées avec fiches.ts ---
@@ -234,12 +234,13 @@ export async function exporterTerritoires(
   const rentreesNuages = [...new Set(Object.values(sessions).map((x) => x! - 1))].sort();
   const ipsNuages = new Map<number, Map<string, IpsRentree>>();
   for (const r of rentreesNuages) {
-    ipsNuages.set(r, new Map((await db.sql<{ uai: string; gt: number | null; pro: number | null; ips: number | null }>(
-      `select uai, ips_gt as gt, ips_pro as pro, ips from ips where rentree = ${r}`,
-    )).map((l) => [l.uai, { gt: l.gt, pro: l.pro, ips: l.ips }] as const)));
+    ipsNuages.set(r, new Map((await db.sql<{ uai: string; gt: number | null; pro: number | null; ips: number | null; source: SourceId }>(
+      `select uai, ips_gt as gt, ips_pro as pro, ips, source from ips where rentree = ${r}`,
+    )).map((l) => [l.uai, { gt: l.gt, pro: l.pro, ips: l.ips, source: l.source }] as const)));
   }
   const nuagesDe = (groupe: Fiche[]) => {
-    const n = rentreesNuages.flatMap((r) => nuages(groupe, ipsNuages.get(r)!, r, sessions));
+    const n = rentreesNuages.flatMap((r) => nuages(groupe, ipsNuages.get(r)!, r, sessions))
+      .sort((a, b) => VOIES_NUAGE.indexOf(a.voie) - VOIES_NUAGE.indexOf(b.voie));
     return n.length ? { nuages: n } : {};
   };
   const ips = { dep: await ipsMoyens(db, "dep"), aca: await ipsMoyens(db, "aca"), nat: await ipsMoyens(db, "nat") };

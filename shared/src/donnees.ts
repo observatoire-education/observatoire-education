@@ -120,6 +120,8 @@ export interface Nuage {
   /** Moyennes pondérées par l'effectif sur les points du nuage ; null si l'effectif total est nul. */
   moyennes: { ips: number | null; taux: number | null };
   points: PointNuage[];
+  /** Sources affichées sous le nuage : celle des résultats, celles de l'IPS de la rentrée `rentreeIps`. */
+  sources: { resultats: SourceId; ips: SourceId[] };
 }
 
 export interface DonneesTerritoire {

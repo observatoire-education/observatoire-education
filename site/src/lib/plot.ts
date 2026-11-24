@@ -229,7 +229,7 @@ export function optionsNuage(n: Nuage): Plot.PlotOptions {
       ...(n.moyennes.ips === null ? [] : [Plot.ruleX([n.moyennes.ips], { stroke: "var(--muted)", strokeDasharray: "4 3", className: "moyenne-ips" })]),
       ...(n.moyennes.taux === null ? [] : [Plot.ruleY([n.moyennes.taux], { stroke: "var(--muted)", strokeDasharray: "4 3", className: "moyenne-taux" })]),
       Plot.dot(publics, { x: "ips", y: "taux", r: 3, fill: "var(--pub)", title: titre }),
-      Plot.dot(prives, { x: "ips", y: "taux", r: 3, fill: "none", stroke: "var(--pri)", strokeWidth: 1.5, title: titre }),
+      Plot.dot(prives, { x: "ips", y: "taux", r: 3, fill: "var(--surface)", stroke: "var(--pri)", strokeWidth: 1.5, title: titre }),
     ],
   };
 }

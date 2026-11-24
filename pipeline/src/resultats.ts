@@ -132,7 +132,7 @@ export function resume(f: Pick<Fiche, "famille" | "resultats">, dernieres: Derni
 /** Nombre minimal de points pour qu'un nuage soit affiché. */
 export const MIN_POINTS_NUAGE = 5;
 
-const VOIES_NUAGE: Nuage["voie"][] = ["brevet_general", "bac_gt", "bac_pro"];
+export const VOIES_NUAGE: Nuage["voie"][] = ["brevet_general", "bac_gt", "bac_pro"];
 
 /** Moyenne pondérée par l'effectif ; null si l'effectif total est nul (jamais un zéro). */
 function moyennePonderee(points: PointNuage[], valeur: (p: PointNuage) => number): number | null {
@@ -141,7 +141,7 @@ function moyennePonderee(points: PointNuage[], valeur: (p: PointNuage) => number
 }
 
 /** IPS d'un établissement à une rentrée : de la voie GT, de la voie pro, et de l'ensemble de l'établissement. */
-export interface IpsRentree { gt: number | null; pro: number | null; ips: number | null }
+export interface IpsRentree { gt: number | null; pro: number | null; ips: number | null; source?: SourceId }
 
 /**
  * Nuages IPS × réussite d'un groupe de fiches actives : un par voie, avec au moins 5 points. Un point : voie à la
@@ -156,7 +156,10 @@ export function nuages(groupe: Fiche[], ipsParVoie: Map<string, IpsRentree>, ren
     const cle = voie === "bac_gt" ? "gt" : "pro";
     const ensemble = bac && !parVoie(cle);
     const points: PointNuage[] = [];
+    const sourcesIps = new Set<SourceId>();
+    let sourceResultats: SourceId = voie === "brevet_general" ? "ivac" : voie === "bac_gt" ? "ival_gt" : "ival_pro";
     for (const f of groupe) {
+      if (!VOIES_RESUME[f.famille].includes(voie)) continue; // même règle que les listes : un chiffre par famille
       const r = f.resultats.find((x) => x.voie === voie);
       if (!r || r.session !== dernieres[r.source] || r.session - 1 !== rentreeIps) continue;
       const v = r.valeurs.find((x) => x.code === "taux_reussite");
@@ -164,6 +167,8 @@ export function nuages(groupe: Fiche[], ipsParVoie: Map<string, IpsRentree>, ren
       const i = ipsParVoie.get(f.uai);
       const ips = (!bac || ensemble ? i?.ips : i?.[cle]) ?? null;
       if (ips === null) continue;
+      if (i?.source) sourcesIps.add(i.source);
+      sourceResultats = r.source;
       points.push({ uai: f.uai, nom: f.nom, commune: f.commune, secteur: f.secteur, ips, taux: v.valeur, va: v.va, effectif: r.effectif });
     }
     if (points.length < MIN_POINTS_NUAGE) return [];
@@ -171,7 +176,7 @@ export function nuages(groupe: Fiche[], ipsParVoie: Map<string, IpsRentree>, ren
     return [{
       voie, session: rentreeIps + 1, rentreeIps, ipsEnsemble: ensemble,
       moyennes: { ips: moyennePonderee(points, (p) => p.ips), taux: moyennePonderee(points, (p) => p.taux) },
-      points,
+      points, sources: { resultats: sourceResultats, ips: [...sourcesIps].sort() },
     }];
   });
 }

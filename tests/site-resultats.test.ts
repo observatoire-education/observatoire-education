@@ -172,7 +172,7 @@ describe("nuages IPS × réussite", () => {
     // Plot porte fill et stroke sur le groupe de points
     const g = (c: Element, a: string) => c.parentElement!.getAttribute(a);
     expect(pts.filter((c) => g(c, "fill") === "var(--pub)")).toHaveLength(3);
-    const prives = pts.filter((c) => g(c, "fill") === "none");
+    const prives = pts.filter((c) => g(c, "fill") === "var(--surface)");
     expect(prives).toHaveLength(2);
     expect(prives.every((c) => g(c, "stroke") === "var(--pri)")).toBe(true);
     expect(new Set(pts.map((c) => c.getAttribute("r")))).toEqual(new Set(["3"]));
@@ -207,7 +207,7 @@ describe("nuages IPS × réussite", () => {
 
   test("optionsNuage : fonction pure, une règle par axe", () => {
     const n: Nuage = {
-      voie: "bac_gt", session: 2025, rentreeIps: 2024, ipsEnsemble: false, moyennes: { ips: 100, taux: 90 },
+      voie: "bac_gt", session: 2025, rentreeIps: 2024, ipsEnsemble: false, moyennes: { ips: 100, taux: 90 }, sources: { resultats: "ival_gt", ips: [] },
       points: [{ uai: "A", nom: "A", commune: "X", secteur: "public", ips: 100, taux: 90, va: null, effectif: null }],
     };
     const o = optionsNuage(n);
@@ -224,5 +224,21 @@ describe("nuages IPS × réussite", () => {
 
   test("aucun mot de palmarès dans les pages à nuages", () => {
     for (const c of ["departement/35", "academie/14"]) expect(t(c)).not.toMatch(/\b(rang|classement|top|meilleur(e)?s?|pire)s?\b/i);
+  });
+
+  test("sources sous chaque nuage : résultats (session, collecte, donnée brute) et IPS de la rentrée", () => {
+    const l = (voie: string) => [...sec("departement/35", voie)!.querySelectorAll(".src li")].map((x) => norm(x.textContent!.replace(/\s+/g, " ").trim()));
+    const b = l("brevet_general");
+    expect(b).toHaveLength(2);
+    expect(b[0]).toMatch(/^.+, .+ · session 2025 · collecté le \d{2}\/\d{2}\/\d{4}/);
+    expect(b[0]).toContain("Indicateurs de valeur ajoutée des collèges");
+    expect(b[1]).toMatch(/rentrée 2024-2025 · collecté le \d{2}\/\d{2}\/\d{4}/);
+    const liens = [...sec("departement/35", "brevet_general")!.querySelectorAll(".src li a")].map((a) => a.getAttribute("href"));
+    expect(liens).toHaveLength(4); // page du jeu et donnée brute, deux fois
+    expect(l("bac_gt")[0]).toContain("session 2025");
+  });
+
+  test("page région : pas de nuage", () => {
+    expect(doc("region/53").querySelector("#nuages")).toBeNull();
   });
 });

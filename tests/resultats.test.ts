@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { dbTest } from "./aide.ts";
-import type { Fiche, ResultatsVoie, Secteur } from "@obs/shared/types";
+import type { Famille, Fiche, ResultatsVoie, Secteur } from "@obs/shared/types";
 import { calculerResultats, dernieresSessions, type IpsRentree, nuages, resume } from "../pipeline/src/resultats.ts";
 
 const un = async (q: string) => (await (await dbTest()).sql(q))[0] as Record<string, unknown>;
@@ -174,8 +174,8 @@ describe("nuages IPS × réussite", () => {
     valeurs: [{ code: "taux_reussite", valeur: taux, statut: taux === null ? "non_publie" : "ok", va, statutVa: "ok", comparaisons: [] }],
     mentions: null, historique: [], rupture: null,
   });
-  const fiche = (uai: string, resultats: ResultatsVoie[], secteur: Secteur = "public"): Fiche =>
-    ({ uai, nom: `Étab ${uai}`, commune: "Nantes", secteur, resultats, indicateurs: [] } as unknown as Fiche);
+  const fiche = (uai: string, resultats: ResultatsVoie[], famille: Famille = resultats[0]?.voie === "brevet_general" ? "college" : "lpo", secteur: Secteur = "public"): Fiche =>
+    ({ uai, nom: `Étab ${uai}`, commune: "Nantes", secteur, famille, resultats, indicateurs: [] } as unknown as Fiche);
   const colleges = (n: number) => Array.from({ length: n }, (_, i) => fiche(`C${i}`, [res("brevet_general", 70 + i, i)]));
   const ipsColleges = (n: number): Ips => new Map(Array.from({ length: n }, (_, i) => [`C${i}`, { gt: null, pro: null, ips: 90 + 5 * i }]));
 
@@ -233,5 +233,23 @@ describe("nuages IPS × réussite", () => {
 
   test("rentrée d'IPS différente de session − 1 : aucun point", () => {
     expect(nuages(colleges(5), ipsColleges(5), 2024, SESS)).toEqual([]);
+  });
+
+  test("un établissement n'entre que dans les nuages de sa famille (comme les listes)", () => {
+    // 5 lycées professionnels : une ligne bac_gt parasite ne fait pas de nuage GT ; 5 LEGT ne font pas de nuage pro
+    const lp = Array.from({ length: 5 }, (_, i) => fiche(`P${i}`, [res("bac_gt", 90), res("bac_pro", 70 + i)], "lp"));
+    const ips: Ips = new Map(lp.map((x, i) => [x.uai, { gt: 100, pro: 90 + i, ips: 95 }]));
+    expect(nuages(lp, ips, R, SESS).map((n) => n.voie)).toEqual(["bac_pro"]);
+    const col = Array.from({ length: 5 }, (_, i) => fiche(`G${i}`, [res("brevet_general", 80)], "legt"));
+    expect(nuages(col, new Map(col.map((x) => [x.uai, { gt: 1, pro: 1, ips: 100 }])), R, SESS)).toEqual([]);
+  });
+
+  test("nuages dans l'ordre brevet, GT, pro et sources résolues", () => {
+    const f = Array.from({ length: 5 }, (_, i) => fiche(`L${i}`, [res("bac_pro", 80), res("bac_gt", 90)], "lpo"));
+    const ips: Ips = new Map(f.map((x, i) => [x.uai, { gt: 100, pro: 90, ips: 99, source: i % 2 ? "ips_lycees_2022" : "ips_lycees" } as IpsRentree]));
+    const n = nuages(f, ips, R, SESS);
+    expect(n.map((x) => x.voie)).toEqual(["bac_gt", "bac_pro"]);
+    expect(n[0]!.sources).toEqual({ resultats: "ival_gt", ips: ["ips_lycees", "ips_lycees_2022"] });
+    expect(n[1]!.sources.resultats).toBe("ival_pro");
   });
 });
