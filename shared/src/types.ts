@@ -266,6 +266,39 @@ export interface SecteurCollege {
   colleges: LienEtab[];
 }
 
+/** Établissement d'un PIAL : lien vers sa fiche, avec sa famille et son secteur. */
+export interface MembreEtab extends LienEtab {
+  famille: Famille;
+  secteur: Secteur;
+}
+
+/**
+ * PIAL (pôle inclusif d'accompagnement localisé) d'après la colonne `pial` de l'Annuaire. La tête a une fiche
+ * (sinon aucun PIAL n'est affiché) ; `membres` : les autres établissements du pôle, triés par nom, tête exclue.
+ */
+export interface Pial {
+  tete: MembreEtab;
+  membres: MembreEtab[];
+}
+
+/** Une école ouverte dans une liste (écoles du secteur d'un collège) ; élèves et IPS de la dernière rentrée publiée. */
+export interface LigneEcole {
+  uai: string;
+  nom: string;
+  famille: Famille;
+  secteur: Secteur;
+  commune: string;
+  eleves: number | null;
+  ips: number | null;
+}
+
+/** Rattachements d'une école ouverte : collège de secteur à son adresse, PIAL et circonscription. */
+export interface Rattachements {
+  secteur: SecteurCollege;
+  pial: Pial | null;
+  circonscription: string | null;
+}
+
 export interface Fiche extends Identite {
   uai: string;
   /** Date ISO de la première collecte où l'établissement n'apparaissait plus dans le périmètre. */
@@ -281,6 +314,15 @@ export interface Fiche extends Identite {
   eleves: Eleves | null;
   /** Classes : présent pour les écoles seulement (null = aucune donnée de classes). */
   classes?: Classes | null;
+  /** Écoles ouvertes seulement (absent des fiches du second degré et des écoles fermées). */
+  rattachements?: Rattachements;
+  /** Second degré seulement : PIAL dont l'établissement est la tête ou un membre ; null sinon. */
+  pial?: Pial | null;
+  /**
+   * Second degré seulement : écoles ouvertes (publiques et privées sous contrat) dont l'adresse relève du secteur
+   * du collège, triées par nom. null hors collège public ouvert présent dans la carte scolaire.
+   */
+  ecolesDuSecteur?: LigneEcole[] | null;
   /** null = voisins non calculables (coordonnées absentes ou page disparue). */
   voisins: Voisin[] | null;
   /** Résultats aux examens, dans l'ordre brevet général, brevet pro, bac GT, bac pro ; [] si aucun. */

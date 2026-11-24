@@ -2,7 +2,7 @@
 // scolaire des collèges publics. C'est une déduction de l'observatoire : aucun rapprochement approché
 // (ni distance d'édition, ni numéro supposé) ; au moindre doute, l'adresse est « non rapprochée ».
 import { FAMILLES_ECOLES } from "@obs/shared/libelles";
-import type { LienEtab, SecteurCollege } from "@obs/shared/types";
+import type { LienEtab, LigneEcole, SecteurCollege } from "@obs/shared/types";
 import type { Db } from "./db.ts";
 import { litteral } from "./duck.ts";
 
@@ -301,5 +301,29 @@ export async function calculerSecteurs(db: Db, rapport?: RapportSecteurs): Promi
     resultat.set(e.uai, colleges && colleges.length > 0 ? { statut: decoupee ? "voie" : "commune", colleges } : nonRapproche());
   }
   if (rapport) Object.assign(rapport, { sansFiche: sansFiche.size, ecolesSansFiche, communesDeuxCartes });
+  return resultat;
+}
+
+/**
+ * Écoles ouvertes de chaque collège de la carte scolaire : celles dont l'adresse relève de son secteur
+ * (publiques et privées sous contrat), triées par nom. Clé : chaque collège cité par la carte, même sans école
+ * rapprochée (liste vide) ; un collège absent de la carte n'a pas de clé.
+ */
+export async function ecolesDesSecteurs(
+  db: Db, secteurs: Map<string, SecteurCollege>, ecoles: Map<string, LigneEcole>,
+): Promise<Map<string, LigneEcole[]>> {
+  const resultat = new Map<string, LigneEcole[]>(
+    (
+      await db.sql<{ rne: string }>(
+        `select distinct upper(trim(code_rne)) as rne from src_carte_scolaire where nullif(trim(code_rne), '') is not null`,
+      )
+    ).map((l) => [l.rne, []]),
+  );
+  for (const [uai, s] of secteurs) {
+    const ligne = ecoles.get(uai);
+    if (!ligne) continue;
+    for (const c of s.colleges) resultat.get(c.uai)?.push(ligne);
+  }
+  for (const liste of resultat.values()) liste.sort((a, b) => a.nom.localeCompare(b.nom, "fr") || a.uai.localeCompare(b.uai));
   return resultat;
 }

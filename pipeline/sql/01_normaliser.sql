@@ -30,6 +30,9 @@ select
   vrai(ulis) as ulis,
   vrai(hebergement) as internat,
   famille_ecole(ecole_maternelle, ecole_elementaire) as famille_ecole,
+  -- UAI de la tête du PIAL (collège, lycée, école ou circonscription) et nom de la circonscription
+  nullif(upper(trim(pial)), '') as pial,
+  nullif(trim(nom_circonscription), '') as circonscription,
   trim(etat) as etat
 from src_annuaire
 where identifiant_de_l_etablissement is not null;
@@ -89,7 +92,7 @@ select
   uai, nom, famille, secteur_brut as secteur,
   case when secteur_brut = 'prive_sous_contrat' then contrat_brut end as contrat,
   adresse, adresse_n, date_ouverture, code_postal, code_commune, commune, dep, dep_libelle, aca, aca_libelle,
-  lat, lon, ep, segpa, ulis, internat
+  lat, lon, ep, segpa, ulis, internat, pial, circonscription
 from classement
 where motif is null
 order by uai;

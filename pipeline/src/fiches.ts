@@ -3,7 +3,8 @@ import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { DonneesSource, EntreeIndex } from "@obs/shared/donnees";
 import type {
-  Classes, CodeIndicateur, Famille, FamilleEcole, FamilleSecondDegre, Fiche, Identite, Indicateur, Mesure, Repartition, ResultatsVoie, Secteur, Site, SourceId, SourceRef, Voisin,
+  Classes, CodeIndicateur, Famille, FamilleEcole, FamilleSecondDegre, Fiche, Identite, Indicateur, LigneEcole, Mesure, Rattachements,
+  Repartition, ResultatsVoie, Secteur, Site, SourceId, SourceRef, Voisin,
 } from "@obs/shared/types";
 import { estEcole, FAMILLES_SECOND_DEGRE } from "@obs/shared/libelles";
 import type { Manifest } from "./archive.ts";
@@ -12,7 +13,9 @@ import { budgetDeFiche, calculerBudgets } from "./budget-eleves.ts";
 import { collectivitesCorrigees, correctionEnVigueur, type EntreeCorrection, resoudreCorrection } from "./corrections.ts";
 import { calculerClasses } from "./ecoles.ts";
 import { calculerEleves } from "./eleves.ts";
+import { calculerPial, type RapportPial } from "./pial.ts";
 import { calculerResultats, dernieresSessions, resume } from "./resultats.ts";
+import { calculerSecteurs, ecolesDesSecteurs, type RapportSecteurs } from "./secteurs.ts";
 import { calculerIndicateurs, calculerRepartitions } from "./indicateurs.ts";
 import type { Registre } from "./registre.ts";
 import { SOURCES, toutesSources } from "./sources.ts";
@@ -318,6 +321,36 @@ export interface OptionsAssemblage {
   manuels?: Manuels;
   /** Corrections de millésime détectées (archives/corrections.json), lues par l'appelant. */
   corrections?: EntreeCorrection[];
+  /** Chiffres du collège de secteur des écoles, remplis par assemblerFiches. */
+  secteurs?: RapportSecteurs;
+  /** Chiffres des PIAL dont la tête n'a pas de fiche, remplis par assemblerFiches. */
+  pial?: RapportPial;
+}
+
+/**
+ * Ligne de chaque école ouverte pour les listes : élèves et IPS seulement s'ils sont de la dernière rentrée
+ * publiée pour les écoles (une ligne sans rentrée ne doit pas montrer un chiffre ancien comme actuel).
+ */
+export function lignesEcoles(actives: Map<string, Identite>, indicateurs: Map<string, Indicateur[]>): Map<string, LigneEcole> {
+  const ecoles = [...actives].filter(([, i]) => estEcole(i.famille));
+  const mesure = (uai: string, code: CodeIndicateur) => indicateurs.get(uai)?.find((i) => i.code === code)?.mesure;
+  const derniere = (code: CodeIndicateur) =>
+    Math.max(...ecoles.map(([uai]) => mesure(uai, code)).filter((m) => m?.statut === "ok" && m.rentree !== null).map((m) => m!.rentree!));
+  const courant = (uai: string, code: CodeIndicateur, rentree: number) => {
+    const m = mesure(uai, code);
+    return m?.statut === "ok" && m.rentree === rentree ? m.valeur : null;
+  };
+  const rentreeEleves = derniere("eleves");
+  const rentreeIps = derniere("ips");
+  return new Map(
+    ecoles.map(([uai, i]) => [
+      uai,
+      {
+        uai, nom: i.nom, famille: i.famille, secteur: i.secteur, commune: i.commune,
+        eleves: courant(uai, "eleves", rentreeEleves), ips: courant(uai, "ips", rentreeIps),
+      },
+    ]),
+  );
 }
 
 /**
@@ -332,6 +365,13 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
   const resultats = await calculerResultats(db);
   const voisins = await calculerVoisins(db, 6, 30, indicateurs, resultats);
   const actives = await identitesActives(db);
+  // Rattachements (écoles ouvertes) ; PIAL et écoles du secteur (second degré)
+  const secteurs = await calculerSecteurs(db, opts.secteurs);
+  const pial = await calculerPial(db, opts.pial);
+  const circonscriptions = new Map(
+    (await db.sql<{ uai: string; circonscription: string | null }>("select uai, circonscription from etablissements")).map((l) => [l.uai, l.circonscription]),
+  );
+  const ecolesSecteur = await ecolesDesSecteurs(db, secteurs, lignesEcoles(actives, indicateurs));
   const disparus = await db.sql<{ uai: string }>("select uai from disparus order by uai");
   const historiques = await identitesHistoriques(db);
   const fermetures = new Map(
@@ -346,11 +386,25 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
     const res = resultats.get(uai) ?? [];
     // classes : écoles seulement (le champ est absent des fiches du second degré)
     const cl = estEcole(identite.famille) ? (classes.get(uai) ?? null) : undefined;
+    const ouverte = disparuLe === null;
+    const secteur = secteurs.get(uai);
+    // rattachements : écoles ouvertes ; pial et ecolesDuSecteur : second degré (null pour une page disparue)
+    const rattachements: Rattachements | undefined = estEcole(identite.famille) && ouverte && secteur
+      ? { secteur, pial: pial.get(uai) ?? null, circonscription: circonscriptions.get(uai) ?? null }
+      : undefined;
+    const secondDegre = estEcole(identite.famille)
+      ? {}
+      : {
+          pial: ouverte ? (pial.get(uai) ?? null) : null,
+          ecolesDuSecteur: ouverte && identite.famille === "college" && identite.secteur === "public" ? (ecolesSecteur.get(uai) ?? null) : null,
+        };
     return {
       uai, ...identite, disparuLe, fermeLe: disparuLe === null ? null : (fermetures.get(uai) ?? null),
       successeurs: [], predecesseurs: [], // remplacés plus bas, quand toutes les fiches sont connues
       indicateurs: ind, repartitions: rep, eleves: el,
       ...(cl === undefined ? {} : { classes: cl }),
+      ...(rattachements === undefined ? {} : { rattachements }),
+      ...secondDegre,
       budget: { france: [] }, // remplacé plus bas, quand toutes les fiches (disparues comprises) sont connues
       voisins: disparuLe === null ? (voisins.get(uai) ?? null) : null,
       resultats: res,

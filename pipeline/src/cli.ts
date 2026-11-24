@@ -9,7 +9,8 @@ import { type Depot, DepotGithub, DepotLocal } from "./depot.ts";
 import { assemblerFiches, exporter, type RapportSuccesseurs } from "./fiches.ts";
 import { OdsClient } from "./ods.ts";
 import { ecrireRegistre, lireRegistre, mettreAJourRegistre } from "./registre.ts";
-import { calculerSecteurs, type RapportSecteurs } from "./secteurs.ts";
+import type { RapportPial } from "./pial.ts";
+import type { RapportSecteurs } from "./secteurs.ts";
 import { derniereRentreeIps } from "./ips-historique.ts";
 import { controlerPonderation, ipsMoyens, verifierPonderation } from "./territoires.ts";
 
@@ -70,7 +71,11 @@ async function data(): Promise<void> {
   const dateDonnees = new Date(manifest.derniere("annuaire")!.collecteLe);
   const successeurs: RapportSuccesseurs = { regle1: 0, regle2: 0, manuels: 0, ambigus: 0, sansFiche: 0 };
   const corrections = lireCorrections(CHEMINS.corrections);
-  const fiches = await assemblerFiches(db, manifest, registre, dateDonnees, { rapport: successeurs, corrections });
+  const rapportSecteurs: RapportSecteurs = { sansFiche: 0, ecolesSansFiche: 0, communesDeuxCartes: 0 };
+  const rapportPial: RapportPial = { tetesSansFiche: 0, membresSansTete: 0 };
+  const fiches = await assemblerFiches(db, manifest, registre, dateDonnees, {
+    rapport: successeurs, corrections, secteurs: rapportSecteurs, pial: rapportPial,
+  });
   // Contrôle de la moyenne pondérée (pages communes) : appliquée aux départements, elle doit retrouver la DEPP.
   // En cas d'échec, rien n'est écrit ni publié.
   // n = 0 (jointure IPS cassée, table vide) est aussi un échec.
@@ -103,14 +108,16 @@ async function data(): Promise<void> {
   console.log(`  résultats ignorés (UAI sans fiche) : ${ignores.map((l) => `${l.source} ${l.n}`).join(", ") || "aucun"}`);
   const ecoles = await db.sql<{ source: string; n: number }>("select source, n from ecoles_ignorees order by source");
   console.log(`  écoles ignorées (UAI sans fiche) : ${ecoles.map((l) => `${l.source} ${l.n}`).join(", ") || "aucune"}`);
-  const rapportSecteurs: RapportSecteurs = { sansFiche: 0, ecolesSansFiche: 0, communesDeuxCartes: 0 };
-  const secteurs = await calculerSecteurs(db, rapportSecteurs);
-  const parStatut = Map.groupBy(secteurs.values(), (s) => s.statut);
-  const taux = (n: number) => `${((100 * n) / Math.max(secteurs.size, 1)).toFixed(1).replace(".", ",")} %`;
-  console.log(`  collège de secteur de ${secteurs.size} écoles : ${[...parStatut].map(([s, l]) => `${s} ${l.length} (${taux(l.length)})`).join(", ")}`);
+  // Rattachements calculés par assemblerFiches (écoles ouvertes)
+  const rattachements = fiches.flatMap((f) => (f.rattachements ? [f.rattachements] : []));
+  const parStatut = Map.groupBy(rattachements, (r) => r.secteur.statut);
+  const taux = (n: number) => `${((100 * n) / Math.max(rattachements.length, 1)).toFixed(1).replace(".", ",")} %`;
+  console.log(`  collège de secteur de ${rattachements.length} écoles : ${[...parStatut].map(([s, l]) => `${s} ${l.length} (${taux(l.length)})`).join(", ")}`);
   console.log(`    ${rapportSecteurs.ecolesSansFiche} école(s) non rapprochée(s) faute de fiche pour un collège de leur secteur (${rapportSecteurs.sansFiche} collège(s) sans fiche)`);
   // Commune citée par les cartes de deux départements : ses lignes sont réunies et rapprochées ensemble.
   console.log(`    ${rapportSecteurs.communesDeuxCartes} commune(s) présente(s) dans les cartes de deux départements, lignes réunies`);
+  const avecPial = rattachements.filter((r) => r.pial !== null).length;
+  console.log(`  PIAL : ${avecPial} école(s) rattachée(s) ; ${rapportPial.tetesSansFiche} tête(s) de PIAL sans fiche (circonscription ou hors périmètre), ${rapportPial.membresSansTete} école(s) ou établissement(s) concerné(s), sans PIAL affiché`);
   const [{ n: inconnus } = { n: 0 }] = await db.sql<{ n: number }>("select count(*)::integer as n from budget_inconnus");
   console.log(`  ${inconnus} budget(s) de collectivité non identifiée dans les balances`);
   const budgets = await calculerBudgets(db, fiches);
