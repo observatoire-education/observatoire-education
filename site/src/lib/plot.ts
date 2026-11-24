@@ -2,7 +2,9 @@
 // Couleurs en variables CSS : le thème sombre s'applique sans recalcul.
 import * as Plot from "@observablehq/plot";
 import { parseHTML } from "linkedom";
+import type { ExerciceBudget } from "@obs/shared/donnees";
 import { nombre } from "@obs/shared/format";
+import { LIBELLES_BUDGET } from "@obs/shared/libelles";
 
 const { document } = parseHTML("<!doctype html><html><body></body></html>");
 
@@ -111,4 +113,40 @@ export function svgDistribution(publique: number[], privee: number[], bornes: nu
   });
   const resume = (c: number[]) => c.reduce((a, b) => a + b, 0);
   return svg(p, `Répartition des établissements selon leur IPS, par classes de 5 points : ${resume(publique)} publics, ${resume(privee)} privés sous contrat`);
+}
+
+/**
+ * Évolution des moyens de la collectivité, en € par élève : le public (fonctionnement personnel compris, ou
+ * hors personnel si le personnel n'est jamais rattaché) et le privé (contribution). Un exercice sans valeur
+ * fait un trou dans la courbe, jamais un zéro. Chaîne vide s'il n'y a aucune valeur à tracer.
+ */
+export function svgEvolutionBudget(exercices: ExerciceBudget[]): string {
+  const valeur = (m: { parEleve: number | null; statut: string }) => (m.statut === "ok" ? m.parEleve : null);
+  const avec = exercices.some((e) => valeur(e.public.avecPersonnel) !== null);
+  const poste = avec ? LIBELLES_BUDGET.postes.avecPersonnel : LIBELLES_BUDGET.postes.horsPersonnel;
+  const serie = (k: string, v: (e: ExerciceBudget) => number | null) =>
+    exercices.map((e) => ({ annee: e.exercice, v: v(e), k }));
+  const pub = serie("pub", (e) => valeur(avec ? e.public.avecPersonnel : e.public.horsPersonnel));
+  const pri = serie("pri", (e) => valeur(e.prive.fonctionnement));
+  const defini = [...pub, ...pri].filter((d) => d.v !== null);
+  if (defini.length === 0) return "";
+  const annees = exercices.map((e) => e.exercice);
+  const max = Math.max(...defini.map((d) => d.v!));
+  const p = Plot.plot({
+    document, width: 440, height: 150, marginLeft: 44, marginRight: 14, marginTop: 10, style: STYLE,
+    x: {
+      domain: annees.length > 1 ? [Math.min(...annees), Math.max(...annees)] : [annees[0]! - 1, annees[0]! + 1],
+      ticks: annees, tickFormat: (a: number) => String(a), label: null,
+    },
+    y: { domain: [0, max * 1.1], label: null, ticks: 4, grid: true, tickFormat: (d: number) => nombre(d, 0) },
+    marks: [
+      Plot.line(pub, { x: "annee", y: "v", stroke: "var(--pub)", strokeWidth: 2 }),
+      Plot.line(pri, { x: "annee", y: "v", stroke: "var(--pri)", strokeWidth: 2, strokeDasharray: "4 3" }),
+      Plot.dot(pub.filter((d) => d.v !== null), { x: "annee", y: "v", r: 3.5, fill: "var(--pub)" }),
+      Plot.dot(pri.filter((d) => d.v !== null), { x: "annee", y: "v", r: 3, fill: "var(--surface)", stroke: "var(--pri)", strokeWidth: 2 }),
+    ],
+  });
+  const decrit = (nom: string, s: typeof pub) =>
+    `${nom} : ${s.map((d) => `${d.annee} ${d.v === null ? "non disponible" : nombre(d.v, 0)}`).join(", ")}`;
+  return svg(p, `Évolution en € par élève. ${decrit(`Public, ${poste.toLowerCase()}`, pub)}. ${decrit("Privé sous contrat, contribution", pri)}`);
 }

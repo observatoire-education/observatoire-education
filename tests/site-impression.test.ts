@@ -29,7 +29,7 @@ describe("fiche imprimable A4", () => {
 
   test("chaque ligne du tableau central renvoie à une source listée", () => {
     const sources = [...a4("0440001A").querySelectorAll(".ft ol li")];
-    expect(sources.length).toBe(4);
+    expect(sources.length).toBe(5); // quatre sources de la fiche, plus les balances de la DGFiP
     const renvois = [...a4("0440001A").querySelectorAll(".centre tbody sup")].map((s) => Number(s.textContent!.replace(/\D/g, "")));
     expect(renvois.length).toBeGreaterThan(5);
     for (const n of renvois) expect(n).toBeGreaterThanOrEqual(1), expect(n).toBeLessThanOrEqual(sources.length);

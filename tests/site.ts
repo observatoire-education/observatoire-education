@@ -4,6 +4,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { parseHTML } from "linkedom";
+import { budgetDeFiche, calculerBudgets } from "../pipeline/src/budget-eleves.ts";
 import { assemblerFiches, exporter } from "../pipeline/src/fiches.ts";
 import type { Registre } from "../pipeline/src/registre.ts";
 import { dbAvecRegistre, identiteTest, manifestTest } from "./aide.ts";
@@ -22,6 +23,19 @@ export const REGISTRE_TEST: Registre = {
   "0440099Z": { premiere: "2026-01-01", identite: identiteTest("Collège Disparu"), disparuLe: "2026-10-01" },
 };
 
+/** Élèves aux rentrées 2022 et 2023 (les fixtures n'ont que 2024 et 2025) : dénominateurs des exercices 2023 et 2024. */
+const ELEVES_HISTORIQUES: Record<string, [number, number][]> = {
+  "0440001A": [[2022, 580], [2023, 600]],
+  "0440002B": [[2022, 500], [2023, 520]],
+  "0440005E": [[2022, 300], [2023, 310]],
+  "6200001F": [[2023, 200]],
+  "0440003C": [[2022, 1100], [2023, 1150]],
+  "0440006F": [[2023, 700]],
+  "0751501A": [[2023, 500]],
+  "0751502B": [[2023, 400]],
+  "0750701C": [[2023, 300]],
+};
+
 let construction: Promise<string> | undefined;
 
 export function siteTest(): Promise<string> {
@@ -31,6 +45,13 @@ export function siteTest(): Promise<string> {
     const db = await dbAvecRegistre(REGISTRE_TEST);
     const manifest = manifestTest(await mkdir(join(RACINE, ".cache", "manifest-test"), { recursive: true }).then(() => join(RACINE, ".cache", "manifest-test")));
     const fiches = await assemblerFiches(db, manifest, REGISTRE_TEST, new Date("2026-11-23T02:17:00Z"));
+    for (const f of fiches) {
+      const h = ELEVES_HISTORIQUES[f.uai];
+      const i = f.indicateurs.find((x) => x.code === "eleves");
+      if (h && i) i.historique = [...h, ...i.historique.filter(([a]) => !h.some(([b]) => a === b))].sort((a, b) => a[0] - b[0]);
+    }
+    const budgets = await calculerBudgets(db, fiches);
+    for (const f of fiches) f.budget = budgetDeFiche(f, budgets);
     await exporter(fiches, db, manifest, DONNEES_TEST);
     const p = Bun.spawn(["bun", "run", "astro", "build"], {
       cwd: join(RACINE, "site"),

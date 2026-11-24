@@ -36,6 +36,11 @@ export function part(x: number | null): string {
   return x === null ? ABSENT : `${nombre(x, 1)}${FINE}%`;
 }
 
+/** Montant en millions d'euros, une décimale : « 97,3 M€ ». */
+export function millions(euros: number): string {
+  return `${nombre(euros / 1e6, 1)}${FINE}M€`;
+}
+
 /** Écart à une moyenne, puis la moyenne : « −14,0 (106,4) ». */
 export function ecart(valeur: number, moyenne: number, decimales = 1): string {
   const d = valeur - moyenne;

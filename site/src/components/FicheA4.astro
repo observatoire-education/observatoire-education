@@ -3,9 +3,10 @@
 // Tableaux seulement (aucun graphique), moyennes seules, chaque ligne renvoie à sa source numérotée.
 import QRCode from "qrcode";
 import { date, entier, nombre } from "@obs/shared/format";
-import { academie, type CodeIndicateur, CONTRATS, FAMILLES, FAMILLES_PLURIEL, INDICATEURS, LIBELLES, SECTEURS } from "@obs/shared/libelles";
+import { academie, type CodeIndicateur, CONTRATS, FAMILLES, FAMILLES_PLURIEL, INDICATEURS, LIBELLES, LIBELLES_BUDGET, SECTEURS } from "@obs/shared/libelles";
 import type { Fiche, Mesure, Niveau, Secteur, SourceId } from "@obs/shared/types";
 import { anneeScolaire, formater, indicateur, reference } from "../lib/affichage";
+import { absenceBudget, montantBudget, niveauDe } from "../lib/budget";
 import { CONFIG, lienPermanent } from "../lib/config";
 
 interface Props { f: Fiche; genereLe: string }
@@ -61,6 +62,20 @@ const renvoiEleves = renvoi(el?.source[0]);
 const etp = (code: CodeIndicateur) => etab(code, indicateur(f, code).mesure);
 const renvoiPersonnels = renvoi("personnels");
 const contrat = f.contrat ? (CONTRATS[f.contrat] ?? f.contrat) : null;
+
+// Moyens de la collectivité : trois lignes (hors personnel, personnel compris, contribution au privé), moyennes France seules.
+const niveauBudget = niveauDe(f.famille);
+const budget = (niveauBudget === "colleges" ? f.budget.colleges : f.budget.lycees) ?? null;
+const exBudget = budget?.exercices.at(-1);
+const moyBudget = exBudget ? f.budget.france.find((m) => m.niveau === niveauBudget)?.exercices.find((x) => x.exercice === exBudget.exercice) : undefined;
+const renvoiBudget = `[${f.sources.length + 1}]`;
+const contribution = niveauBudget === "colleges" ? LIBELLES_BUDGET.postes.contributionColleges : LIBELLES_BUDGET.postes.contributionLycees;
+const lignesBudget = exBudget ? [
+  { libelle: LIBELLES_BUDGET.postes.horsPersonnel, m: exBudget.public.horsPersonnel, moy: moyBudget?.public.horsPersonnel, secteur: "public" as const, unite: LIBELLES_BUDGET.unites.parEleve },
+  { libelle: LIBELLES_BUDGET.postes.avecPersonnel, m: exBudget.public.avecPersonnel, moy: moyBudget?.public.avecPersonnel, secteur: "public" as const, unite: LIBELLES_BUDGET.unites.parEleve },
+  { libelle: contribution, m: exBudget.prive.fonctionnement, moy: moyBudget?.prive.fonctionnement, secteur: "prive" as const, unite: LIBELLES_BUDGET.unites.parElevePrive },
+].map((l) => ({ ...l, aff: montantBudget(l.m, niveauBudget) })) : [];
+const moyenneBudget = (v: { valeur: number | null } | undefined) => (v && v.valeur !== null ? entier(v.valeur) : "n. d.");
 const nd = (v: number | null) => (v === null ? "n. d." : entier(v));
 ---
 <div class="a4" aria-hidden="true">
@@ -113,6 +128,23 @@ const nd = (v: number | null) => (v === null ? "n. d." : entier(v));
           <td class="n me">{ecartType.mesure.valeur !== null ? nombre(ecartType.mesure.valeur) : "n. d."}</td>
           <td colspan="6"></td>
         </tr>
+        {lignesBudget.map((l) => (
+          <tr>
+            <td>{l.libelle} ({l.unite}) <sup>{renvoiBudget}</sup></td>
+            <td class={`n me${l.aff.absent ? " np" : ""}`}>{l.aff.absent ? "n. d." : l.aff.texte}</td>
+            <td class="hist" colspan="4">{l.aff.absent ? l.aff.texte : `${budget!.libelle} · exercice ${exBudget!.exercice}`}</td>
+            {l.secteur === "public"
+              ? <><td class={`n${moyenneBudget(l.moy) === "n. d." ? " np" : ""}`}>{moyenneBudget(l.moy)}</td><td></td></>
+              : <><td></td><td class="n">{moyenneBudget(l.moy)}</td></>}
+          </tr>
+        ))}
+        {!budget && (
+          <tr>
+            <td>{LIBELLES_BUDGET.titre} <sup>{renvoiBudget}</sup></td>
+            <td class="n me np">n. d.</td>
+            <td class="hist" colspan="6">{absenceBudget(f.budget.motif ?? "collectivite_non_identifiee", niveauBudget)}</td>
+          </tr>
+        )}
       </tbody>
     </table>
   </div>
@@ -172,6 +204,7 @@ const nd = (v: number | null) => (v === null ? "n. d." : entier(v));
       {f.sources.map((s) => (
         <li>{s.producteur}, {s.titre}{s.rentree !== null && ` · rentrée ${anneeScolaire(s.rentree)}`} · collecté le {date(s.collecteLe)}{s.id.startsWith("ips_") ? " · moyennes publiées par la DEPP" : s.id === "annuaire" ? "" : " · moyennes calculées (Σ / Σ)"}.</li>
       ))}
+      <li>{exBudget ? LIBELLES_BUDGET.source(exBudget.exercice) : "DGFiP, balances comptables"} · {LIBELLES_BUDGET.moyenne.calculee}.</li>
     </ol>
     <div>
       « non publié » : {LIBELLES.nonPubliePrive} (la DEPP ne publie pas les ETP de vie scolaire des établissements privés sous contrat).

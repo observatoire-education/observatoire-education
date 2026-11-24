@@ -36,6 +36,13 @@ describe("contrôles transverses du HTML", () => {
     }
   });
 
+  test("aucun « NaN », « Infinity » ni « undefined » dans le texte des pages", () => {
+    for (const p of toutesLesPages()) {
+      const m = texte(p).match(/\b(NaN|Infinity|undefined)\b/);
+      expect(m ? `${p} : « ${m[0]} »` : null).toBeNull();
+    }
+  });
+
   test("aucun zéro à la place d'une absence (vie scolaire)", () => {
     for (const uai of ["0440002B", "0440005E"]) {
       const d = doc(`etablissement/${uai}`);
