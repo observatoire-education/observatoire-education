@@ -2,7 +2,7 @@
 // `OBS_DEPOT=local bun scripts/budget-controles.ts [--manifest <chemin>] [--hors-ligne]`
 // Imprime un rapport : chaque contrôle a un critère écrit et un verdict (RÉUSSI / À EXAMINER).
 // --manifest : manifest à lire (par défaut archives/manifest.json ; une copie locale peut contenir les exercices de budget).
-// --hors-ligne : saute les contrôles qui interrogent l'OFGL et data.economie.gouv.fr (5 requêtes au plus).
+// --hors-ligne : saute les contrôles qui interrogent l'OFGL et data.economie.gouv.fr (6 requêtes au plus).
 import { readFileSync } from "node:fs";
 import { collectiviteDe, type NiveauBudget } from "@obs/shared/collectivites";
 import { Manifest } from "../pipeline/src/archive.ts";
@@ -241,7 +241,8 @@ async function controleCites(db: Db): Promise<void> {
     {
       select: "categ, lbudg, sum(obnetdeb - oobdeb - obnetcre + oobcre) as dep",
       where: `categ in ('REG','CTU','DEPT','ML','PARIS') and cbudg='1' and fonction in ('24','9024','9124','9324','9224','9424')
-        and (startswith(compte,'6') or startswith(compte,'20') or startswith(compte,'21') or startswith(compte,'23'))`,
+        and ((startswith(compte,'6') and not startswith(compte,'68') and not startswith(compte,'675') and not startswith(compte,'676'))
+          or startswith(compte,'20') or startswith(compte,'21') or startswith(compte,'23'))`,
       group_by: "categ, lbudg",
       order_by: "dep desc",
       limit: "100",
@@ -262,7 +263,18 @@ async function controleCom(): Promise<void> {
   const om = r.results.map((x) => x.ndept).filter((d) => /^1\d\d$|^97/.test(d ?? ""));
   console.log(`codes de département outre-mer présents dans tout le jeu 2024 (toutes catégories) : ${om.join(", ")}`);
   console.log("101 Guadeloupe, 102 Guyane, 103 Martinique, 104 La Réunion, 106 Mayotte : aucun code pour les trois collectivités d'outre-mer");
-  verdict(!om.some((d) => !["101", "102", "103", "104", "106"].includes(d)), "collectiviteDe reste null pour 975, 977, 978");
+  // Recherche par libellé de budget, toutes catégories (une requête).
+  const libelles = await json<{ results: { categ: string; ndept: string; lbudg: string }[] }>(`${API_ECO}/${EXERCICES_BUDGET[2024]}/records`, {
+    select: "categ, ndept, lbudg",
+    where: "search(lbudg, 'MIQUELON') or search(lbudg, 'BARTHELEMY') or search(lbudg, 'SAINT-MARTIN') or search(lbudg, 'ST MARTIN')",
+    group_by: "categ, ndept, lbudg",
+    limit: "200",
+  });
+  const horsMetropole = libelles.results.filter((x) => !/^0\d[\dAB]$/.test(x.ndept ?? ""));
+  console.log(`libellés contenant MIQUELON, BARTHELEMY, SAINT-MARTIN ou ST MARTIN : ${libelles.results.length} budgets, ` +
+    `départements ${[...new Set(libelles.results.map((x) => x.ndept))].sort().join(", ")} ; hors métropole : ${horsMetropole.length}`);
+  for (const x of horsMetropole) console.log(`  ${x.categ} ${x.ndept} ${x.lbudg}`);
+  verdict(!om.some((d) => !["101", "102", "103", "104", "106"].includes(d)) && horsMetropole.length === 0, "collectiviteDe reste null pour 975, 977, 978");
 }
 
 // --- Compléments -----------------------------------------------------------------------------------------

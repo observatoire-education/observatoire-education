@@ -2,7 +2,7 @@
 
 Contrôles faits le 24 novembre 2026 sur les balances comptables de la DGFiP (présentation croisée nature-fonction), exercices 2020 à 2025, avec les élèves de la rentrée précédente (DEPP). Ils fixent les règles de calcul avant toute publication.
 
-Pour les refaire : `OBS_DEPOT=local bun scripts/budget-controles.ts --manifest <manifest>`. Le script imprime, pour chaque contrôle, son critère, les chiffres et un verdict. Il envoie au plus cinq requêtes : trois à l'OFGL (une par département), deux à data.economie.gouv.fr. L'option `--hors-ligne` les supprime.
+Pour les refaire : `OBS_DEPOT=local bun scripts/budget-controles.ts --manifest <manifest>`. Le script imprime, pour chaque contrôle, son critère, les chiffres et un verdict. Il envoie au plus six requêtes : trois à l'OFGL (une par département), trois à data.economie.gouv.fr. L'option `--hors-ligne` les supprime.
 
 Vocabulaire :
 - **fonction** : le domaine d'une dépense dans les comptes. 221 = collèges, 222 = lycées publics, 223 = lycées privés, 22 = enseignement du second degré sans détail ;
@@ -66,12 +66,14 @@ Les opérations d'ordre sont rares dans ces fonctions : de 6 à 19 lignes par ex
 - **La seule absence est le Département de Mayotte**, pour les lycées tous les ans et pour les collèges à partir de 2022.
 
 **Mayotte.** Les lignes du Département dans ces fonctions sont résiduelles :
-- fonction 221 (collèges) : 429 € en 2020, 527 € en 2021, rien ensuite ;
-- fonction 222 (lycées) : de 0,13 à 0,70 M€ par an, uniquement des bourses (compte 6513 puis 65131) et des subventions à des associations (6574, 65748).
+- fonction 221 (collèges) : 429 € de personnel (comptes 64) en 2020, 527 € en 2021, rien ensuite ;
+- fonction 222 (lycées) : de 0,13 à 0,70 M€ par an, en bourses (compte 6513 puis 65131) et en subventions de fonctionnement (6574, 65748, 65738, 65742), dont certaines lignes négatives (65738 : +280 000 € en 2020, −42 000 € en 2021 ; 65742 : −65 000 € en 2024).
 
-Aucune dotation aux collèges ou aux lycées, aucun investissement. Une réponse ministérielle publiée par l'Assemblée nationale (question écrite n° 899, 15e législature) indique que le Département de Mayotte n'exerce pas la compétence du second degré, qui ne lui a pas été transférée ; d'après un dossier d'enquête publique de la préfecture de Mayotte (2022), c'est le rectorat qui construit les collèges et les lycées.
+Aucune dotation aux collèges ou aux lycées, aucun investissement.
 
-Le tableau de la spec (section 6.5) attribue les collèges et les lycées de Mayotte au Département. Les comptes montrent que ce n'est pas le cas. Le code actuel attribue les fiches de Mayotte à `dep-976`, qui n'a pas de montants : elles afficheraient une absence de données. **À décider par le porteur** : garder ce rattachement, ou traiter Mayotte comme Saint-Martin (aucune collectivité qui finance ces établissements dans les balances), avec un libellé d'absence à choisir. Rien n'a été changé dans le code.
+Sources externes, **lues seulement à travers les résumés d'une recherche web, pas dans les documents eux-mêmes** (à vérifier avant de les citer) : une réponse ministérielle publiée par l'Assemblée nationale (question écrite n° 899, 15e législature) indiquerait que le Département de Mayotte n'exerce pas la compétence du second degré, qui ne lui a pas été transférée ; un dossier d'enquête publique de la préfecture de Mayotte (2022) indiquerait que c'est le rectorat qui construit les collèges et les lycées. Les comptes, eux, sont constatés directement : ils vont dans le même sens.
+
+Le tableau de la spec (section 6.5) attribue les collèges et les lycées de Mayotte au Département. Les comptes montrent que ce n'est pas le cas. Le code actuel attribue les fiches de Mayotte à `dep-976`. Pour les lycées, `dep-976` n'a aucun montant (le filtre des lycées ne retient que les régions et les collectivités uniques). Pour les collèges, il n'a que les montants résiduels de personnel de 2020 et 2021 (429 € et 527 €, sous le seuil du contrôle 3), puis plus rien à partir de 2022 : les fiches afficheraient le personnel « non rattaché » en 2020-2021 et une absence de données ensuite. **À décider par le porteur** : garder ce rattachement, ou traiter Mayotte comme Saint-Martin (aucune collectivité qui finance ces établissements dans les balances), avec un libellé d'absence à choisir. Rien n'a été changé dans le code.
 
 ## 3. Personnel rattaché aux collèges
 
@@ -143,7 +145,7 @@ Ces reversements sont presque tous des subventions d'équipement aux régions (c
 
 **Décision.** `CITES_SCOLAIRES = { "dep-23": 9,1 ; "dep-54": 7,3 ; "dep-47": 7,0 }`. Ces trois collectivités affichent la mention prévue : « Les comptes de la collectivité incluent des reversements entre collectivités pour des cités scolaires (environ {x} % des dépenses retenues). »
 
-**À signaler au porteur : la fonction 24 « Cités scolaires ».** La nomenclature M57 a une fonction propre aux cités scolaires (24, et 9024 / 9324 selon le mode de vote). Elle est hors des fonctions 221, 222 et 223, donc hors de l'extrait collecté et des montants publiés. En 2024, elle porte environ 223 M€ de dépenses réelles (fonctionnement et investissement) dans les budgets principaux de 30 collectivités. Les plus importantes, rapportées à leurs dépenses retenues :
+**À signaler au porteur : la fonction 24 « Cités scolaires ».** La nomenclature M57 a une fonction propre aux cités scolaires (24, et 9024 / 9324 selon le mode de vote). Elle est hors des fonctions 221, 222 et 223, donc hors de l'extrait collecté et des montants publiés. En 2024, elle porte environ 223 M€ de dépenses réelles (fonctionnement et investissement) dans les budgets principaux de 30 collectivités. Les onze montants les plus élevés, avec les dépenses retenues de chaque collectivité :
 
 | Collectivité | Fonction 24 (2024) | Dépenses retenues 221 / 222 / 223 |
 |---|---|---|
@@ -155,6 +157,7 @@ Ces reversements sont presque tous des subventions d'équipement aux régions (c
 | Région Hauts-de-France | 9,12 M€ | 564,6 M€ |
 | Département de la Haute-Garonne | 4,85 M€ | 77,0 M€ |
 | Département des Bouches-du-Rhône | 4,20 M€ | 265,0 M€ |
+| Région Occitanie | 2,97 M€ | 591,3 M€ |
 | Département de l'Ariège | 2,40 M€ | 6,8 M€ |
 | Collectivité de Corse | 2,14 M€ | 54,0 M€ |
 
@@ -164,7 +167,7 @@ Ces dépenses ne se répartissent pas entre collèges et lycées dans les compte
 
 **Critère.** Si l'une de ces collectivités finance des collèges ou des lycées dans une fonction 221 ou 222, elle est ajoutée.
 
-**Résultat.** Dans tout le jeu 2024 (toutes catégories de collectivités), les seuls codes d'outre-mer sont 101 Guadeloupe, 102 Guyane, 103 Martinique, 104 La Réunion et 106 Mayotte. Une recherche sur les libellés (« MIQUELON », « BARTHELEMY », « SAINT-MARTIN ») ne trouve que des communes de métropole.
+**Résultat.** Dans tout le jeu 2024 (toutes catégories de collectivités), les seuls codes d'outre-mer sont 101 Guadeloupe, 102 Guyane, 103 Martinique, 104 La Réunion et 106 Mayotte. Une recherche sur les libellés de budget (« MIQUELON », « BARTHELEMY », « SAINT-MARTIN », « ST MARTIN ») trouve 44 budgets, tous de communes, de CCAS, de groupements ou de syndicats de métropole (17 départements), aucun hors métropole.
 
 **Décision.** Aucune règle ajoutée. Les fiches de ces trois territoires affichent « collectivité non identifiée dans les balances de la DGFiP ».
 
@@ -186,19 +189,20 @@ La Corrèze (1 383 élèves de collèges privés) et la Nièvre (1 041) n'ont pa
 
 **Décision.** Le compte 655122 en fonction 221 est compté comme contribution aux collèges privés (correspondance exacte, testée).
 
-**Pour information :** collectivités qui ont des élèves de collèges privés mais aucune contribution au privé dans la fonction 221 :
-- **La Réunion**, tous les exercices (environ 5 700 élèves du privé). Son compte des collèges publics est utilisé, mais aucun compte du privé ;
-- **la Martinique en 2024**. Ses versements au privé sont irréguliers : 1,58 M€ en 2021, 0,39 M€ en 2022, 0,37 M€ en 2023, rien en 2024, 1,66 M€ en 2025.
+**Pour information :** collectivités qui ont des élèves du privé sous contrat mais aucune contribution au privé dans les comptes lus :
+- **La Réunion, collèges**, tous les exercices (environ 5 700 élèves du privé). Le script constate l'absence de compte du privé dans la fonction 221 : en 2024, ses comptes 65 de cette fonction sont 655111 (collèges publics, 9,02 M€), 657381 (1,04 M€), 65748 (0,17 M€), 657382 (0,03 M€) et 65131 (bourses, 4 800 €). Un versement au privé imputé ailleurs (autre fonction ou autre compte) n'est pas exclu ;
+- **la Martinique en 2024, collèges et lycées**. Elle n'a ni compte des collèges privés dans la fonction 221 ni aucune ligne dans la fonction 223 (lycées privés, environ 1 430 élèves à la rentrée 2023). Ses versements au privé sont irréguliers. Collèges : 1,58 M€ en 2021, 0,39 M€ en 2022, 0,37 M€ en 2023, rien en 2024, 1,66 M€ en 2025. Lycées : 1,29 M€ en 2021, 0,09 M€ en 2022 et 2023, rien en 2024, 1,23 M€ en 2025.
 
-Ces cas afficheront l'absence de la contribution au privé pour l'exercice concerné.
+Ces cas afficheront l'absence de la contribution au privé pour l'exercice concerné : « Contribution aux collèges privés » comme « Contribution aux lycées privés ». Le libellé d'absence est à choisir à la tâche 5 : ces collectivités ont des élèves du privé, donc « aucun élève du privé sous contrat » ne convient pas.
 
 ## 8. Alsace et exercice 2025
 
 **Alsace.** La Collectivité européenne d'Alsace a des montants de 2021 à 2025. Le Bas-Rhin et le Haut-Rhin n'ont des montants qu'en 2020. C'est conforme à la décision de ne rien fusionner : la série de la Collectivité européenne d'Alsace commence en 2021. Les montants 2020 des deux départements ne sont rattachés à aucune fiche.
 
 **Exercice 2025.** 113 collectivités ont des montants, comme en 2024 (99 pour les collèges, 17 pour les lycées, 3 en commun). Le total des postes vaut 12 571 M€, contre 12 720 M€ en 2024 (−1,2 %). Les écarts portent sur des postes isolés :
-- contribution au privé de la Martinique, présente en 2025 et absente en 2024 ;
-- investissement du privé : 60 départements en 2024, 56 en 2025 ;
+- contribution aux collèges privés et contribution aux lycées privés de la Martinique : présentes en 2025, absentes en 2024 (96 collectivités pour les collèges privés en 2024, 97 en 2025 ; 16 pour les lycées privés en 2024, 17 en 2025) ;
+- investissement des collèges privés : 60 départements en 2024, 56 en 2025 ;
+- investissement des lycées privés : 16 collectivités en 2024, 15 en 2025. La région Guadeloupe en a un en 2024 (0,20 M€), pas en 2025 (elle en avait aussi en 2020 et 2023) ;
 - personnel : le Lot-et-Garonne a un compte 64 résiduel en 2024 (6 849 €) et aucun en 2025 ; il reste sous le seuil. Le Val-d'Oise rattache son personnel aux collèges à partir de 2025 (44,08 M€), alors qu'il n'avait aucun compte 64 dans la fonction 221 de 2020 à 2024. Sa série « personnel compris » commence donc en 2025.
 
 L'exercice 2025 est complet et utilisable.
