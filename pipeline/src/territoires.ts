@@ -3,7 +3,7 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import type {
   BudgetCollectivite, BudgetTerritoire, CarteDonnees, DonneesFrance, DonneesTerritoire, EcoleFermee, EcolesCommune, IpsMoyens, LigneListe,
-  LigneTerritoire, MoyenneTerritoire, ParSecteur, RefTerritoire, SyntheseFamille, ValeurCarte,
+  LigneTerritoire, MoyenneTerritoire, ParSecteur, RefTerritoire, SyntheseFamille, SynthesePremierDegre, ValeurCarte,
 } from "@obs/shared/donnees";
 import { collectiviteDe, type NiveauBudget, REGIONS, regionDe } from "@obs/shared/collectivites";
 import { CODES_INDICATEURS, estEcole, estSecondDegre, FAMILLES_ECOLES, INDICATEURS } from "@obs/shared/libelles";
@@ -19,7 +19,9 @@ import type { Db } from "./db.ts";
 import { depCanonique } from "./normalise.ts";
 import { dernieresSessions, type DernieresSessions, type IpsRentree, nuages, resume, VOIES_NUAGE } from "./resultats.ts";
 import { calculerSegregation } from "./segregation.ts";
-import { calculerIpsHistorique, derniereRentreeIps, ipsCourant, type NiveauIps, SQL_DERNIERE_RENTREE_IPS } from "./ips-historique.ts";
+import {
+  calculerIpsHistorique, derniereRentreeIps, type IpsHistorique, ipsCourant, type NiveauIps, SQL_DERNIERE_RENTREE_IPS,
+} from "./ips-historique.ts";
 
 // --- Aides partagées avec fiches.ts ---
 
@@ -332,6 +334,102 @@ export function verifierPonderation(c: ControlePonderation): string {
   return chiffres;
 }
 
+// --- Premier degré des territoires (spec, section 6.8) ---
+
+/** Territoire d'une synthèse du premier degré : un critère sur le département ou l'académie, et la série d'IPS. */
+export interface TerritoirePremierDegre {
+  niveau: Exclude<NiveauIps, "commune">;
+  code: string;
+  contient: (l: { dep: string; aca: string }) => boolean;
+}
+
+/**
+ * Synthèses du premier degré : écoles ouvertes (fiches actives), élèves et classes de la dernière rentrée des
+ * effectifs des écoles, IPS de la dernière rentrée de l'IPS des écoles (moyennes de `ips-historique.ts` : publiées
+ * par la DEPP pour le département, l'académie et la France, calculées pour la région), historique des écoles
+ * ouvertes et des classes, fermetures par année, écoles hors contrat (nombre seulement).
+ */
+export async function synthesesPremierDegre(
+  db: Db, actives: Fiche[], ipsHistorique: IpsHistorique,
+): Promise<(t: TerritoirePremierDegre) => SynthesePremierDegre> {
+  const ouvertes = actives.filter((f) => estEcole(f.famille) && f.disparuLe === null);
+  const rentrees = rentreesEcoles(new Map(ouvertes.map((f) => [f.uai, f])), new Map(ouvertes.map((f) => [f.uai, f.indicateurs])));
+  const rentreeEleves = rentrees.eleves?.rentree ?? null;
+  const rentreeIps = rentrees.ips?.rentree ?? null;
+  // Écoles ouvertes et classes par département, académie et rentrée (écoles ouvertes et fermées depuis, d'après les
+  // effectifs des écoles) ; une école sans classes publiées (null ou 0) rend le total des classes inconnu.
+  const series = await db.sql<{ dep: string; aca: string; rentree: number; ecoles: number; classes: number | null; sans_classes: number }>(`
+    select f.dep, f.aca, h.rentree, count(*)::integer as ecoles, sum(h.classes)::integer as classes,
+      count(*) filter (where h.classes is null or h.classes = 0)::integer as sans_classes
+    from classes_historique h join fiches_etab f using (uai)
+    where h.source = 'effectifs_ecoles'
+    group by all`);
+  // Écoles fermées depuis 2012 (liste des fermés, même périmètre que les pages commune), par année de fermeture.
+  const fermes = await db.sql<{ dep: string; aca: string; annee: number; n: number }>(`
+    select dep, aca, year(date_fermeture)::integer as annee, count(*)::integer as n
+    from fermes
+    where famille in (${enSql(FAMILLES_ECOLES)}) and date_fermeture >= date '2012-01-01'
+      and uai not in (select uai from etablissements)
+    group by all`);
+  const horsContrat = await db.sql<{ dep: string; aca: string }>(
+    "select dep, aca from classement where motif = 'prive_hors_contrat' and type_etablissement = 'Ecole'",
+  );
+
+  const deSecteur = (g: Fiche[], s: Secteur) => g.filter((f) => f.secteur === s);
+  const elevesDe = (f: Fiche): number | null => {
+    const m = valeur(f, "eleves");
+    return m?.statut === "ok" && m.rentree === rentreeEleves ? m.valeur : null;
+  };
+  /** Classes de la rentrée des élèves ; 0 est une absence de donnée, comme sur la fiche. */
+  const classesDe = (f: Fiche): number | null => f.classes?.historique.find(([r]) => r === rentreeEleves)?.[2] || null;
+  const sommeEleves = (g: Fiche[]): number | null => {
+    const v = g.map(elevesDe).filter((e) => e !== null);
+    return v.length ? v.reduce((a, b) => a + b, 0) : null;
+  };
+  /** Σ élèves ÷ Σ classes sur les écoles qui publient les deux (une école sans classes sort des deux sommes). */
+  const parClasse = (g: Fiche[]): number | null => {
+    let eleves = 0;
+    let classes = 0;
+    for (const f of g) {
+      const e = elevesDe(f);
+      const c = classesDe(f);
+      if (e === null || c === null) continue;
+      eleves += e;
+      classes += c;
+    }
+    return classes > 0 ? arrondi1(eleves / classes) : null;
+  };
+  const ipsDe = (g: Fiche[]) => g.map((f) => ipsCourant(valeur(f, "ips"), rentreeIps)).filter((v) => v !== null);
+
+  return (t) => {
+    const g = ouvertes.filter((f) => t.contient(f));
+    const [pub, priv] = [deSecteur(g, "public"), deSecteur(g, "prive_sous_contrat")];
+    const point = ipsHistorique.serie(t.niveau, "maternelle", t.code).find((p) => p.rentree === rentreeIps);
+    const parRentree = new Map<number, { ecoles: number; classes: number; inconnues: boolean }>();
+    for (const s of series.filter((x) => t.contient(x))) {
+      const x = parRentree.get(s.rentree) ?? { ecoles: 0, classes: 0, inconnues: false };
+      x.ecoles += s.ecoles;
+      x.classes += s.classes ?? 0;
+      x.inconnues ||= s.sans_classes > 0;
+      parRentree.set(s.rentree, x);
+    }
+    const parAnnee = new Map<number, number>();
+    for (const l of fermes.filter((x) => t.contient(x))) parAnnee.set(l.annee, (parAnnee.get(l.annee) ?? 0) + l.n);
+    return {
+      compte: { public: pub.length, prive: priv.length },
+      eleves: { public: sommeEleves(pub), prive: sommeEleves(priv) },
+      elevesParClasse: { public: parClasse(pub), prive: parClasse(priv) },
+      ipsMoyen: { public: point?.public ?? null, prive: point?.prive ?? null, calculee: point?.calculee ?? false },
+      distributionIps: { public: distribution(ipsDe(pub)), prive: distribution(ipsDe(priv)), bornes: BORNES_IPS },
+      rentrees: { eleves: rentreeEleves, ips: rentreeIps },
+      historique: [...parRentree].sort((a, b) => a[0] - b[0])
+        .map(([r, x]): [number, number, number | null] => [r, x.ecoles, x.inconnues || x.classes === 0 ? null : x.classes]),
+      fermetures: [...parAnnee].sort((a, b) => a[0] - b[0]),
+      horsContrat: horsContrat.filter((l) => t.contient(l)).length,
+    };
+  };
+}
+
 // --- Export ---
 
 const FRANCE: RefTerritoire = { niveau: "france", code: "FR", libelle: "France" };
@@ -373,9 +471,17 @@ export async function exporterTerritoires(
   const ecolesCommunes = await ecolesDesCommunes(db, actives);
   const ecolesParDep = Map.groupBy(actives.filter((f) => estEcole(f.famille)), (f) => f.dep);
   const lignesDep = lignesEcoles(new Map(actives.map((f) => [f.uai, f])), new Map(actives.map((f) => [f.uai, f.indicateurs])));
-  actives = secondDegre(actives); // aucune école dans les synthèses de territoire
+  const toutes = actives;
+  const communesEcolesParDep = Map.groupBy(
+    [...ecolesCommunes].map(([code, c]): [string, RefTerritoire] => [c.dep.code, { niveau: "commune", code, libelle: c.libelle }]),
+    ([d]) => d,
+  );
+  const communesEcoles = (dep: string): RefTerritoire[] =>
+    (communesEcolesParDep.get(dep) ?? []).map(([, r]) => r).sort((a, b) => parLibelle(a, b) || a.code.localeCompare(b.code));
+  actives = secondDegre(actives); // aucune école dans les synthèses du second degré
   for (const d of ["regions", "departements", "academies", "communes"]) await mkdir(join(sortie, d), { recursive: true });
   const ipsHistorique = await calculerIpsHistorique(db);
+  const premierDegre = await synthesesPremierDegre(db, toutes, ipsHistorique);
   const rentreeIps = await derniereRentreeIps(db);
   const sessions = await dernieresSessions(db);
   const segregation = await calculerSegregation(db);
@@ -394,8 +500,8 @@ export async function exporterTerritoires(
   };
   const ips = { dep: await ipsMoyens(db, "dep"), aca: await ipsMoyens(db, "aca"), nat: await ipsMoyens(db, "nat") };
   const horsContratLignes = await db.sql<{ dep: string; aca: string; code_commune: string }>(
-    // collèges et lycées hors contrat seulement : les pages de territoire ne portent pas sur les écoles
-    "select dep, aca, code_commune from classement where motif = 'prive_hors_contrat' and type_etablissement <> 'Ecole'",
+    // collèges et lycées hors contrat seulement : les écoles hors contrat sont comptées dans le premier degré
+    "select dep, aca, code_commune from classement where motif = 'prive_hors_contrat' and type_etablissement is distinct from 'Ecole'",
   );
   const horsContrat = (filtre: (l: { dep: string; aca: string; code_commune: string }) => boolean) =>
     horsContratLignes.filter(filtre).length;
@@ -554,6 +660,8 @@ export async function exporterTerritoires(
       ...nuagesDe(groupe),
       ...(segregation.has(dep) ? { segregation: segregation.get(dep)! } : {}),
       listeEcoles: (ecolesParDep.get(dep) ?? []).map((f) => ({ ...lignesDep.get(f.uai)!, ep: f.ep })).sort((a, b) => parNom(a, b) || a.uai.localeCompare(b.uai)),
+      premierDegre: premierDegre({ niveau: "departement", code: dep, contient: (l) => l.dep === dep }),
+      communesEcoles: communesEcoles(dep),
     };
     await ecrireJson(join(sortie, "departements", `${dep}.json`), donnees);
   }
@@ -572,6 +680,7 @@ export async function exporterTerritoires(
         .sort((a, b) => parLibelle(a.ref, b.ref)),
       communes: [], carte: valeursCarte(groupe),
       ...nuagesDe(groupe),
+      premierDegre: premierDegre({ niveau: "academie", code: aca, contient: (l) => l.aca === aca }),
     };
     await ecrireJson(join(sortie, "academies", `${aca}.json`), donnees);
   }
@@ -594,6 +703,7 @@ export async function exporterTerritoires(
         .sort((a, b) => parLibelle(a.ref, b.ref)),
       communes: [], carte: valeursCarte(groupe),
       academies: [...Map.groupBy(groupe, (f) => f.aca)].map(([, g]) => refAcademie(g[0]!)).sort(parLibelle),
+      premierDegre: premierDegre({ niveau: "region", code: region.code, contient: (l) => region.deps.includes(l.dep) }),
     };
     await ecrireJson(join(sortie, "regions", `${region.code}.json`), donnees);
   }
@@ -632,6 +742,7 @@ export async function exporterTerritoires(
       .sort((a, b) => parLibelle(a.ref, b.ref)),
     communes: [], carte: valeursCarte(actives),
     academiesEtDepartements: academies, regions, carteBudget,
+    premierDegre: premierDegre({ niveau: "france", code: "FR", contient: () => true }),
   };
   await ecrireJson(join(sortie, "france.json"), france);
 }

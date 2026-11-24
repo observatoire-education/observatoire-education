@@ -1,0 +1,82 @@
+---
+// Premier degré d'un département, d'une académie, d'une région ou de la France (spec, section 6.8) : écoles ouvertes,
+// élèves et élèves par classe par secteur, IPS moyen et répartition des écoles selon l'IPS, écoles et classes par
+// rentrée, écoles fermées par année, privé hors contrat en nombre seulement. Aucune liste nominative d'écoles : le
+// département renvoie à son CSV, et à ses pages commune (noms seuls, par initiale).
+import type { RefTerritoire, SynthesePremierDegre } from "@obs/shared/donnees";
+import { entier, nombre } from "@obs/shared/format";
+import { LIBELLES, LIBELLES_COMMUNE_ECOLES, LIBELLES_PREMIER_DEGRE as L } from "@obs/shared/libelles";
+import { cheminTerritoire } from "@obs/shared/territoires";
+import { anneeScolaire } from "../lib/affichage";
+import { communesDisponibles } from "../lib/donnees";
+import { svgBarres, svgDistribution, svgElevesClasses } from "../lib/plot";
+import { fermeturesParAnnee, parInitiale } from "../lib/territoire";
+
+interface Props { p: SynthesePremierDegre; territoire: RefTerritoire; communes?: RefTerritoire[] }
+const { p, territoire, communes = [] } = Astro.props;
+const [motPub, motPriv] = L.secteurs(p.compte.public, p.compte.prive);
+const total = (a: number | null, b: number | null) => (a === null && b === null ? null : (a ?? 0) + (b ?? 0));
+const val = (v: number | null, f: (x: number) => string) => (v === null ? LIBELLES.nonDisponible : f(v));
+const courbe = svgElevesClasses(p.historique, [L.ecoles, "Classes"]);
+const rentreesHistorique = p.historique.map(([r]) => r);
+const fermetures = fermeturesParAnnee(p.fermetures, p.rentrees.eleves);
+const lettres = parInitiale(communes.filter((c) => communesDisponibles().has(c.code)));
+const nIps = [...p.distributionIps.public, ...p.distributionIps.prive].reduce((a, b) => a + b, 0);
+---
+<section id="premier-degre">
+  <h2>{L.titre}</h2>
+  <div class="kpis">
+    <div><div class="k">{L.ecoles}</div><div class="v">{entier(p.compte.public + p.compte.prive)}</div>
+      <div class="c"><span class="p">{entier(p.compte.public)} {motPub}</span> · <span class="q">{entier(p.compte.prive)} {motPriv}</span></div></div>
+    <div><div class="k">{L.eleves}{p.rentrees.eleves && ` · ${p.rentrees.eleves}`}</div><div class="v">{entier(total(p.eleves.public, p.eleves.prive))}</div>
+      <div class="c"><span class="p">{val(p.eleves.public, entier)}</span> · <span class="q">{val(p.eleves.prive, entier)}</span></div></div>
+    <div><div class="k">{L.elevesParClasse}{p.rentrees.eleves && ` · ${p.rentrees.eleves}`}</div>
+      <div class="v" style="font-size:20px;padding-top:6px"><span style="color:var(--pub-ink)">{val(p.elevesParClasse.public, (x) => nombre(x))}</span> · <span style="color:var(--pri-ink)">{val(p.elevesParClasse.prive, (x) => nombre(x))}</span></div>
+      <div class="c">public · privé s. c.</div></div>
+    <div><div class="k">{L.ipsMoyen}{p.rentrees.ips && ` · ${anneeScolaire(p.rentrees.ips)}`}</div>
+      <div class="v" style="font-size:20px;padding-top:6px"><span style="color:var(--pub-ink)">{val(p.ipsMoyen.public, (x) => nombre(x))}</span> · <span style="color:var(--pri-ink)">{val(p.ipsMoyen.prive, (x) => nombre(x))}</span></div>
+      <div class="c">{p.ipsMoyen.calculee ? <>public · privé s. c.<span class="mention"> · {L.ipsCalcule}</span></> : L.ipsDepp}</div></div>
+    <div><div class="k">{L.horsContrat}</div><div class="v">{entier(p.horsContrat)} {L.ecole(p.horsContrat)}</div><div class="c" style="font-family:var(--sans)">{LIBELLES.nonCouvert}</div></div>
+  </div>
+  <p class="src" style="border:0">{L.noteElevesParClasse}</p>
+
+  {(nIps > 0 || courbe) && (
+    <div class="cols2" style="margin-top:14px">
+      {nIps > 0 && (
+        <div class="card">
+          <div class="lab"><span>{L.repartitionIps}</span><span class="yr">{anneeScolaire(p.rentrees.ips)}</span></div>
+          <Fragment set:html={svgDistribution(p.distributionIps.public, p.distributionIps.prive, p.distributionIps.bornes)} />
+          <div class="legend"><span class="sect pub">publiques (nombre)</span><span class="sect pri">privées sous contrat (nombre)</span></div>
+        </div>
+      )}
+      {courbe && (
+        <div class="card">
+          <div class="lab"><span>{L.evolution}</span><span class="yr">{Math.min(...rentreesHistorique)} → {Math.max(...rentreesHistorique)}</span></div>
+          <Fragment set:html={courbe} />
+          <div class="legend"><span class="me">écoles (axe de gauche)</span><span>- - - classes (axe de droite)</span></div>
+        </div>
+      )}
+    </div>
+  )}
+
+  {fermetures.length > 0 && (
+    <div class="cols2" style="margin-top:14px">
+      <div class="card">
+        <div class="lab"><span>{L.fermetures}</span><span class="yr">{fermetures[0]![0]} → {fermetures.at(-1)![0]}</span></div>
+        <Fragment set:html={svgBarres(fermetures)} />
+      </div>
+    </div>
+  )}
+
+  {territoire.niveau === "departement" && (
+    <p style="margin-top:14px"><a class="btn" href={`${cheminTerritoire(territoire)}etablissements.csv`} download>⬇ {LIBELLES_COMMUNE_ECOLES.csvDepartement}</a></p>
+  )}
+
+  {lettres.length > 0 && (
+    <div id="communes-ecoles">
+      <h3 class="sous-titre">{L.communes}</h3>
+      <p class="src" style="border:0">{L.noteCommunes}</p>
+      <dl class="initiales">{lettres.map(([l, cs]) => <><dt>{l}</dt><dd>{cs.map((c) => <a href={`/commune/${c.code}/`}>{c.libelle}</a>)}</dd></>)}</dl>
+    </div>
+  )}
+</section>

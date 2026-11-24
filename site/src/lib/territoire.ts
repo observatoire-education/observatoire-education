@@ -132,3 +132,22 @@ export function csvBudget(collectivites: BudgetCollectivite[], niveau: NiveauBud
 export function pluriel(n: number, nom: string): string {
   return `${entier(n)} ${nom}${n > 1 ? "s" : ""}`;
 }
+
+/** Initiale de classement d'un nom : sans accent, en capitale (« Écouflant » → « E »). */
+export const initiale = (nom: string): string => nom.normalize("NFD").replace(/\p{M}/gu, "").charAt(0).toUpperCase();
+
+/** Communes regroupées par initiale, dans l'ordre reçu (déjà trié par nom). */
+export function parInitiale<T extends { libelle: string }>(communes: T[]): [string, T[]][] {
+  return [...Map.groupBy(communes, (c) => initiale(c.libelle))];
+}
+
+/**
+ * Écoles fermées par année, de 2012 à `jusqua` (ou à la dernière fermeture si elle est plus tardive) : une année
+ * absente de la liste des fermés est une année sans fermeture (la liste est complète depuis 2012), donc 0.
+ */
+export function fermeturesParAnnee(fermetures: [number, number][], jusqua: number | null): [number, number][] {
+  if (fermetures.length === 0) return [];
+  const n = new Map(fermetures);
+  const fin = Math.max(jusqua ?? 0, ...fermetures.map(([a]) => a));
+  return Array.from({ length: fin - 2012 + 1 }, (_, i): [number, number] => [2012 + i, n.get(2012 + i) ?? 0]);
+}

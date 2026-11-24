@@ -299,3 +299,7 @@ a.chip { display:inline-flex; align-items:center; text-decoration:none; cursor:p
 .moyens-tableau th.n { white-space:normal; max-width:14ch; }
 .mention-budget { font-size:13px; margin:10px 0 0; max-width:70ch; }
 .moyens-territoire .moyens + .moyens { margin-top:14px; }
+/* Communes d'un département, par initiale : noms seuls. */
+.initiales { display:grid; grid-template-columns:auto 1fr; gap:4px 12px; margin:0; }
+.initiales dt { font-weight:600; }
+.initiales dd { margin:0; display:flex; flex-wrap:wrap; gap:2px 12px; }

@@ -3,10 +3,12 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { cheminTerritoire, communeDeRattachement } from "@obs/shared/territoires";
+import type { DonneesTerritoire } from "@obs/shared/donnees";
 import type { Fiche, Identite, Indicateur } from "@obs/shared/types";
 import { assemblerFiches } from "../pipeline/src/fiches.ts";
 import {
-  communesRetenues, ecolesDesCommunes, type EcolesDUneCommune, libelleListe, controlerPonderation, moyennePonderee, verifierPonderation,
+  communesRetenues, ecolesDesCommunes, type EcolesDUneCommune, exporterTerritoires, libelleListe, controlerPonderation, moyennePonderee,
+  verifierPonderation,
 } from "../pipeline/src/territoires.ts";
 import { partPrive } from "../site/src/lib/territoire.ts";
 import { dbAvecRegistre, dbTest, FIXTURES, identiteTest, manifestTest } from "./aide.ts";
@@ -227,5 +229,86 @@ describe("écoles des communes (pages commune étendues)", () => {
     expect(e.fermees.every((f) => f.ancienneCommune === undefined)).toBe(true);
     expect(e.plusDEcoleDepuis).toBeNull();
     expect(e.points.map((p) => p.uai).sort()).toEqual(["0440108H", "0440201A", "0440202B", "0440203C"]);
+  });
+});
+
+describe("premier degré sur les territoires (spec, section 6.8)", () => {
+  let dep: DonneesTerritoire;
+  let aca: DonneesTerritoire;
+  let region: DonneesTerritoire;
+  let france: DonneesTerritoire;
+  beforeAll(async () => {
+    const db = await dbTest();
+    const dossier = await mkdtemp(join(tmpdir(), "obs-premier-degre-"));
+    const avant = process.env.OBS_CONTOURS;
+    process.env.OBS_CONTOURS = join(FIXTURES, "contours");
+    try {
+      const fiches = await assemblerFiches(db, manifestTest(dossier), {}, new Date("2026-11-23T02:17:00Z"));
+      const sortie = join(dossier, "data");
+      await exporterTerritoires(fiches.filter((f) => f.disparuLe === null), db, sortie, 2025);
+      const lire = (chemin: string): Promise<DonneesTerritoire> => Bun.file(join(sortie, chemin)).json();
+      [dep, aca, region, france] = await Promise.all([
+        lire("departements/44.json"), lire("academies/17.json"), lire("regions/52.json"), lire("france.json"),
+      ]);
+    } finally {
+      if (avant === undefined) delete process.env.OBS_CONTOURS;
+      else process.env.OBS_CONTOURS = avant;
+      await rm(dossier, { recursive: true, force: true });
+    }
+  });
+
+  test("Loire-Atlantique : écoles ouvertes et élèves par secteur", () => {
+    const p = dep.premierDegre!;
+    // ouvertes : 0440201A, 0440202B, 0440104D, 0440105E, 0440108H (publiques) ; 0440203C (privée sous contrat)
+    expect(p.compte).toEqual({ public: 5, prive: 1 });
+    expect(p.eleves).toEqual({ public: 102 + 196 + 10 + 45 + 216, prive: 166 });
+  });
+
+  test("élèves par classe : Σ élèves ÷ Σ classes, sans les écoles dont les classes ne sont pas publiées (0 classe)", () => {
+    // 0440105E : 45 élèves, 0 classe en 2025 → hors des deux sommes
+    expect(dep.premierDegre!.elevesParClasse).toEqual({ public: 23.8, prive: 23.7 }); // 524 ÷ 22 ; 166 ÷ 7
+  });
+
+  test("IPS des écoles : moyennes publiées par la DEPP (département, académie, France), calculées pour la région", () => {
+    expect(dep.premierDegre!.ipsMoyen).toEqual({ public: 99.9, prive: 106.5, calculee: false });
+    expect(aca.premierDegre!.ipsMoyen).toEqual({ public: 104.5, prive: 112, calculee: false });
+    expect(france.premierDegre!.ipsMoyen).toEqual({ public: 102.9, prive: 119.3, calculee: false });
+    expect(region.premierDegre!.ipsMoyen).toEqual({ public: 96, prive: 122, calculee: true });
+    const d = dep.premierDegre!.distributionIps;
+    expect(d.public.reduce((a, b) => a + b, 0)).toBe(1); // 0440202B (96)
+    expect(d.public[Math.floor((96 - 60) / 5)]).toBe(1);
+    expect(d.prive[Math.floor((122 - 60) / 5)]).toBe(1);
+    expect(d.bornes).toHaveLength(d.public.length + 1);
+  });
+
+  test("historique : écoles ouvertes et classes par rentrée ; 0 classe d'une école rend le total inconnu", () => {
+    expect(dep.premierDegre!.historique).toEqual([
+      [2014, 3, 11], [2015, 3, 11], [2016, 2, 8], [2017, 2, 8], [2018, 2, 8],
+      [2019, 6, 31], [2020, 6, 31], [2021, 6, 31], [2022, 6, 31], [2023, 6, 31], [2024, 6, 31], [2025, 6, null],
+    ]);
+    expect(france.premierDegre!.historique).toEqual(dep.premierDegre!.historique);
+  });
+
+  test("fermetures : écoles fermées par année depuis 2012", () => {
+    const f = dep.premierDegre!.fermetures;
+    expect(f).toContainEqual([2016, 1]);
+    // fusion des Tilleuls : la maternelle et l'élémentaire ferment toutes deux le 2019-07-04
+    expect(f).toContainEqual([2019, 2]);
+    expect(f).toEqual([[2013, 1], [2016, 1], [2018, 1], [2019, 2], [2020, 1]]);
+    expect(aca.premierDegre!.fermetures).toEqual(f);
+  });
+
+  test("privé hors contrat : écoles comptées à part, collèges et lycées inchangés", () => {
+    expect(dep.premierDegre!.horsContrat).toBe(1); // 0440205E
+    expect(dep.horsContrat).toBe(1); // 0440004D, collège hors contrat
+  });
+
+  test("département : communes qui ont, ou ont eu, une école ; aucune école dans les synthèses du second degré", () => {
+    expect(dep.communesEcoles!.map((c) => c.code)).toEqual(["44888", "44109", "44150", "44903"]); // par nom
+    expect(dep.communesEcoles![0]).toEqual({ niveau: "commune", code: "44888", libelle: "Les Sables" });
+    expect(aca.communesEcoles).toBeUndefined();
+    for (const d of [dep, aca, region, france]) {
+      expect(Object.keys(d.familles).filter((f) => ["maternelle", "elementaire", "primaire"].includes(f))).toEqual([]);
+    }
   });
 });

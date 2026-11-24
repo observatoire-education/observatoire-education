@@ -117,6 +117,64 @@ describe("page département : puces des communes", () => {
   });
 });
 
+describe("premier degré sur les territoires", () => {
+  const ECOLES_OUVERTES = ["0440201A", "0440202B", "0440203C", "0440104D", "0440105E", "0440108H"];
+  const bloc = (chemin: string) => doc(chemin).querySelector("#premier-degre");
+
+  test("département : écoles, élèves, élèves par classe, IPS des écoles, hors contrat en nombre", () => {
+    const b = bloc("departement/44")!;
+    expect(b).not.toBeNull();
+    expect(b.querySelector("h2")!.textContent!.trim()).toBe("Écoles");
+    const t = b.textContent!.replace(/\s+/g, " ");
+    expect(t).toContain("5 publiques");
+    expect(t).toContain("1 privée s. c.");
+    expect(t).toContain("Élèves par classe");
+    expect(t).toContain("23,8"); // 524 élèves ÷ 22 classes
+    expect(t).toContain("99,9"); // moyenne DEPP des écoles publiques du département
+    expect(t).toContain("1 école");
+    expect(t).toContain("non couvert par les statistiques publiques");
+    expect(doc("departement/44").querySelector("nav.tabs a[href='#premier-degre']")).not.toBeNull();
+  });
+
+  test("département : aucune liste nominative d'écoles, renvoi au CSV du département", () => {
+    const d = doc("departement/44");
+    for (const uai of ECOLES_OUVERTES) expect(d.querySelector(`a[href='/etablissement/${uai}/']`)).toBeNull();
+    expect(texte("departement/44")).not.toContain("École maternelle Les Lilas");
+    expect(bloc("departement/44")!.querySelector("a[href='/departement/44/etablissements.csv']")).not.toBeNull();
+  });
+
+  test("évolution des écoles et des classes, fermetures par année", () => {
+    const b = bloc("departement/44")!;
+    const arias = [...b.querySelectorAll("svg[role=img]")].map((s) => s.getAttribute("aria-label")!);
+    expect(arias.some((a) => a.startsWith("Écoles : 2014 3"))).toBe(true);
+    expect(arias.some((a) => a.includes("2019 2"))).toBe(true); // fusion des Tilleuls : deux écoles fermées
+    expect(b.outerHTML).not.toMatch(/NaN/);
+  });
+
+  test("département : communes qui ont ou ont eu une école, par lettre, noms seuls", () => {
+    const liste = doc("departement/44").querySelector("#communes-ecoles")!;
+    expect(liste).not.toBeNull();
+    const liens = [...liste.querySelectorAll("a")];
+    expect(liens.map((a) => a.getAttribute("href"))).toEqual(["/commune/44888/", "/commune/44109/", "/commune/44150/", "/commune/44903/"]);
+    expect(liens.map((a) => a.textContent!.trim())).toEqual(["Les Sables", "Nantes", "Saint-Aubin", "Val-de-l'Erdre"]);
+    expect([...liste.querySelectorAll("dt")].map((x) => x.textContent!.trim())).toEqual(["L", "N", "S", "V"]);
+  });
+
+  test("académie, région, France : synthèse sans liste de communes", () => {
+    for (const chemin of ["academie/17", "region/52", "france"]) {
+      const b = bloc(chemin)!;
+      expect(b).not.toBeNull();
+      expect(b.textContent).toContain("Élèves par classe");
+      expect(doc(chemin).querySelector("#communes-ecoles")).toBeNull();
+    }
+    expect(bloc("region/52")!.textContent).toContain("moyenne calculée par l'observatoire");
+  });
+
+  test("département sans école : pas de bloc", () => {
+    expect(bloc("departement/75")).toBeNull();
+  });
+});
+
 describe("titre de liste d'une commune", () => {
   test("un seul établissement : forme naturelle, jamais « Les 1 »", () => {
     for (const c of ["commune/44109", "departement/44", "departement/75"]) {

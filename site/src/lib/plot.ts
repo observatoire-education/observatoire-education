@@ -279,8 +279,9 @@ export function svgSegregation(annees: AnneeSegregation[]): string {
  * Élèves et classes d'une école sur toute la série : élèves en trait plein (axe de gauche), classes en pointillé
  * (axe de droite, ramené à l'échelle des élèves) ; les ouvertures et fermetures de classes se lisent sur la marche.
  * Une valeur absente, ou 0 classe, fait un trou dans la ligne, jamais un zéro. Chaîne vide sans aucune valeur.
+ * `noms` : séries décrites (un territoire montre les écoles ouvertes à la place des élèves).
  */
-export function svgElevesClasses(historique: Classes["historique"]): string {
+export function svgElevesClasses(historique: Classes["historique"], noms: [string, string] = ["Élèves", "Classes"]): string {
   const eleves = historique.map(([annee, e]) => ({ annee, v: e }));
   const nbClasses = historique.map(([annee, , c]) => ({ annee, n: c === 0 ? null : c }));
   const ve = eleves.flatMap((d) => (d.v === null ? [] : [d.v]));
@@ -330,7 +331,7 @@ export function svgElevesClasses(historique: Classes["historique"]): string {
     if (der && der.n === d.n) der.a = d.annee;
     else periodes.push({ n: d.n, de: d.annee, a: d.annee });
   }
-  const aria = `Élèves : ${eleves.map((d) => `${d.annee} ${val(d.v)}`).join(", ")}. Classes : ${
+  const aria = `${noms[0]} : ${eleves.map((d) => `${d.annee} ${val(d.v)}`).join(", ")}. ${noms[1]} : ${
     periodes.map((x) => `${val(x.n)} ${x.de === x.a ? `en ${x.de}` : `de ${x.de} à ${x.a}`}`).join(", ")}`;
   // La marche répète chaque sommet (« L43.2,18.1L43.2,18.1 ») : un seul suffit.
   return svg(p, aria, 1).replace(/(L[\d.]+,[\d.]+)\1+/g, "$1");

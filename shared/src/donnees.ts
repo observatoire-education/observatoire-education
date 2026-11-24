@@ -172,9 +172,40 @@ export interface EcolesCommune {
   points: PointCarte[];
 }
 
+/**
+ * Premier degré d'un département, d'une académie, d'une région ou de la France (spec, section 6.8) : écoles ouvertes
+ * (publiques et privées sous contrat), élèves et classes de la dernière rentrée des effectifs des écoles, IPS de la
+ * dernière rentrée de l'IPS des écoles.
+ */
+export interface SynthesePremierDegre {
+  compte: ParSecteur<number>;
+  eleves: ParSecteur<number | null>;
+  /** Σ élèves ÷ Σ classes, arrondi à 0,1, sur les écoles qui publient élèves et classes (0 classe : non publié). */
+  elevesParClasse: ParSecteur<number | null>;
+  /** Moyennes des écoles publiées par la DEPP (département, académie, France), sinon calculées (région). */
+  ipsMoyen: IpsMoyens;
+  /** Nombre d'écoles par classe de 5 points d'IPS ; `bornes` a une case de plus que les comptes. */
+  distributionIps: { public: number[]; prive: number[]; bornes: number[] };
+  /** Rentrées de `eleves` et `elevesParClasse`, et de l'IPS. */
+  rentrees: { eleves: number | null; ips: number | null };
+  /**
+   * [rentrée, écoles ouvertes, classes] par rentrée croissante (effectifs des écoles, écoles ouvertes et fermées
+   * depuis) ; classes null si une école comptée ne les publie pas (0 classe), comme sur la page commune.
+   */
+  historique: [number, number, number | null][];
+  /** [année, écoles fermées cette année-là] depuis 2012, années sans fermeture omises. */
+  fermetures: [number, number][];
+  /** Écoles privées hors contrat ouvertes (Annuaire) : nombre seulement. */
+  horsContrat: number;
+}
+
 export interface DonneesTerritoire {
   /** Pages commune : écoles de la commune ; absent si elle n'a ni n'a eu d'école depuis 2012. */
   ecoles?: EcolesCommune;
+  /** Département, académie, région et France : premier degré (absent pour une commune). */
+  premierDegre?: SynthesePremierDegre;
+  /** Pages département : communes qui ont, ou ont eu depuis 2012, une école (pages commune), triées par nom. */
+  communesEcoles?: RefTerritoire[];
   /** Pages département : écoles ouvertes, pour le CSV (triées par nom). */
   listeEcoles?: (LigneEcole & { ep: string | null })[];
   ref: RefTerritoire;

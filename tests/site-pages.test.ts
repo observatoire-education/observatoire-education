@@ -13,7 +13,8 @@ describe("page département", () => {
     const noms = [...d.querySelectorAll("#liste-college tbody td:first-child")].map((td) => td.textContent!.trim());
     expect(noms).toEqual(["Collège Jules-Verne", "Collège Saint-Exemple", "Collège Sans GPS", "Collège Simple"]);
     expect(noms).toEqual([...noms].sort((a, b) => a.localeCompare(b, "fr")));
-    expect([...d.querySelectorAll(".tabs a")].map((a) => a.getAttribute("href"))).toEqual(["#college", "#legt", "#lpo", "#erea"]);
+    // familles du second degré, puis le bloc du premier degré
+    expect([...d.querySelectorAll(".tabs a")].map((a) => a.getAttribute("href"))).toEqual(["#college", "#legt", "#lpo", "#erea", "#premier-degre"]);
     expect(texte("departement/44")).toContain("non couvert par les statistiques publiques");
   });
 

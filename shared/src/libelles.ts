@@ -169,6 +169,29 @@ export const LIBELLES_COMMUNE_ECOLES = {
   sansCentre: "Position de la commune non disponible : écoles les plus proches non calculées",
 } as const;
 
+/** Premier degré des pages département, académie, région et France (spec, section 6.8). */
+export const LIBELLES_PREMIER_DEGRE = {
+  titre: "Écoles",
+  ecoles: "Écoles",
+  /** Mots qui suivent les nombres d'écoles par secteur (« 5 publiques · 1 privée s. c. ») : singulier pour 0 et 1. */
+  secteurs: (pub: number, priv: number): [string, string] =>
+    [pub > 1 ? "publiques" : "publique", priv > 1 ? "privées s. c." : "privée s. c."],
+  eleves: "Élèves",
+  elevesParClasse: "Élèves par classe",
+  ipsMoyen: "IPS moyen des écoles",
+  ipsDepp: "public · privé s. c. (DEPP)",
+  ipsCalcule: "moyenne calculée par l'observatoire",
+  horsContrat: "Privé hors contrat",
+  /** Mot qui suit le nombre d'écoles hors contrat : singulier pour 0 et 1. */
+  ecole: (n: number): string => (n > 1 ? "écoles" : "école"),
+  repartitionIps: "Répartition des écoles selon l'IPS",
+  evolution: "Écoles et classes",
+  fermetures: "Écoles fermées par année",
+  communes: "Communes du département",
+  noteCommunes: "Communes qui ont, ou ont eu depuis 2012, au moins une école.",
+  noteElevesParClasse: "Élèves par classe : Σ élèves ÷ Σ classes des écoles qui publient leurs classes.",
+} as const;
+
 /** « Preel-CP » (typologie des classes) → « Préélémentaire-CP ». */
 export function libelleTypeClasse(brut: string): string {
   return brut.split("-").map((n) => (n === "Preel" ? LIBELLES_ECOLES.preelementaire : n)).join("-");

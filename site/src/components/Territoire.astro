@@ -19,6 +19,7 @@ import { absenceBudget, motifAbsenceTerritoire, niveauDe } from "../lib/budget";
 import Ariane from "./Ariane.astro";
 import BlocBudget from "./BlocBudget.astro";
 import BlocEcolesCommune from "./BlocEcolesCommune.astro";
+import BlocPremierDegre from "./BlocPremierDegre.astro";
 import BlocSegregation from "./BlocSegregation.astro";
 import CarteTerritoire from "./CarteTerritoire.astro";
 import Cellule from "./Cellule.astro";
@@ -47,6 +48,10 @@ const academies = d.academies ?? [];
 const premierLycee = familles.find(([f]) => f !== "college")?.[0];
 const avecBudget = (f: Famille) => niveau !== "commune" && (f === "college" || f === premierLycee);
 const avecEtablissements = niveau === "departement" || niveau === "commune";
+/** Premier degré (département, académie, région, France) : bloc présent dès qu'il y a une école, ouverte ou fermée. */
+const pd = d.premierDegre;
+const avecPremierDegre = pd !== undefined
+  && (pd.compte.public + pd.compte.prive > 0 || pd.historique.length > 0 || pd.fermetures.length > 0 || pd.horsContrat > 0);
 
 /** Le territoire et ses niveaux supérieurs, du plus proche au plus large (colonnes des moyennes). */
 const NIVEAUX: Niveau[] =
@@ -145,6 +150,7 @@ const badges = [
 
   {!seulementEcoles && <nav class="tabs" aria-label="Types d'établissement">
     {familles.map(([f]) => <a href={`#${f}`}>{FAMILLES_PLURIEL[f]}</a>)}
+    {avecPremierDegre && <a href="#premier-degre">Écoles</a>}
   </nav>}
 
   {familles.map(([f, s]) => {
@@ -287,6 +293,8 @@ const badges = [
       </section>
     );
   })}
+
+  {avecPremierDegre && <BlocPremierDegre p={pd!} territoire={d.ref} communes={d.communesEcoles} />}
 
   {(d.nuages ?? []).length > 0 && (
     <section id="nuages">
