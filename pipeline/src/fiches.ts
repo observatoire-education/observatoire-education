@@ -11,7 +11,7 @@ import type { Manifest } from "./archive.ts";
 import type { Db } from "./db.ts";
 import { budgetDeFiche, calculerBudgets } from "./budget-eleves.ts";
 import { collectivitesCorrigees, correctionEnVigueur, type EntreeCorrection, resoudreCorrection } from "./corrections.ts";
-import { calculerClasses } from "./ecoles.ts";
+import { calculerClasses, calculerEcolesProches } from "./ecoles.ts";
 import { calculerEleves } from "./eleves.ts";
 import { calculerPial, type RapportPial } from "./pial.ts";
 import { calculerResultats, dernieresSessions, resume } from "./resultats.ts";
@@ -52,7 +52,8 @@ export const FAMILLES_COMPATIBLES_ECOLES: Record<FamilleEcole, Famille[]> = {
 
 const SECOND_DEGRE_SQL = FAMILLES_SECOND_DEGRE.map((f) => `'${f}'`).join(", ");
 
-const HAVERSINE_SQL = `2 * ${RAYON_TERRE_KM} * asin(sqrt(
+/** Distance haversine en SQL entre les lignes `a` et `b` (colonnes lat, lon), en kilomètres. */
+export const HAVERSINE_SQL = `2 * ${RAYON_TERRE_KM} * asin(sqrt(
   pow(sin(radians(b.lat - a.lat) / 2), 2) + cos(radians(a.lat)) * cos(radians(b.lat)) * pow(sin(radians(b.lon - a.lon) / 2), 2)))`;
 
 /**
@@ -389,6 +390,7 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
   // Rattachements (écoles ouvertes) ; PIAL et écoles du secteur (second degré)
   const secteurs = await calculerSecteurs(db, opts.secteurs);
   const pial = await calculerPial(db, opts.pial);
+  const ecolesProches = await calculerEcolesProches(db);
   const circonscriptions = new Map(
     (await db.sql<{ uai: string; circonscription: string | null }>("select uai, circonscription from etablissements")).map((l) => [l.uai, l.circonscription]),
   );
@@ -426,6 +428,8 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
       indicateurs: ind, repartitions: rep, eleves: el,
       ...(cl === undefined ? {} : { classes: cl }),
       ...(rattachements === undefined ? {} : { rattachements }),
+      // écoles les plus proches : écoles ouvertes seulement (null sans coordonnées)
+      ...(estEcole(identite.famille) && ouverte ? { ecolesProches: ecolesProches.get(uai) ?? null } : {}),
       ...secondDegre,
       budget: { france: [] }, // remplacé plus bas, quand toutes les fiches (disparues comprises) sont connues
       voisins: disparuLe === null ? (voisins.get(uai) ?? null) : null,
@@ -458,7 +462,11 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
     f.sources = sourcesUtilisees(manifest, f.indicateurs, f.repartitions, f.eleves, f.resultats, f.classes, {
       historique: f.disparuLe !== null && historiques.has(f.uai),
       fermes: f.fermeLe !== null || f.predecesseurs.some((p) => p.fermeLe !== null),
-      listes: f.ecolesDuSecteur?.length ? [rentreesListes.eleves, rentreesListes.ips].filter((l) => l !== null) : [],
+      listes: [
+        ...(f.ecolesDuSecteur?.length ? [rentreesListes.eleves, rentreesListes.ips] : []),
+        // élèves et classes des écoles proches : dernière rentrée des effectifs des écoles
+        ...(f.ecolesProches?.liste.length ? [rentreesListes.eleves] : []),
+      ].filter((l) => l !== null),
     });
   }
   if (opts.rapport) {

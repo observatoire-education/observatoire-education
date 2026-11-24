@@ -1,0 +1,53 @@
+---
+// Autour de l'école (spec, section 6.6) : écoles ouvertes compatibles les plus proches, à vol d'oiseau, triées par
+// distance ; maternelle ou primaire et élémentaire ou primaire les plus proches ; phrase « Aucune autre école à moins
+// de n km » quand elle s'applique. Sans coordonnées, l'absence est dite. Élèves et classes de la dernière rentrée
+// publiée pour les écoles (rentrée dans le titre de la colonne, source citée dans la section « Sources »).
+import { entier, nombre } from "@obs/shared/format";
+import { FAMILLES, LIBELLES_ECOLES_PROCHES as LP, LIBELLES_RATTACHEMENTS as LR, SECTEURS } from "@obs/shared/libelles";
+import type { EcoleProche, EcolesProches, Fiche } from "@obs/shared/types";
+import Absence from "./Absence.astro";
+import Cellule from "./Cellule.astro";
+
+interface Props { f: Fiche; p: EcolesProches | null }
+const { f, p } = Astro.props;
+const rentree = f.sources.find((s) => s.id === "effectifs_ecoles")?.rentree;
+const titre = (libelle: string) => (rentree ? `${libelle} ${rentree}` : libelle);
+const km = (e: EcoleProche) => `${nombre(e.distanceKm)} km`;
+const plusProches: [string, EcoleProche | null][] = p
+  ? [[LP.plusProcheMaternelle, p.plusProcheMaternelle], [LP.plusProcheElementaire, p.plusProcheElementaire]]
+  : [];
+---
+<section id="autour">
+  <h2>{LP.titre}</h2>
+  <div class="card">
+    {p === null ? <Absence texte={LP.sansCoordonnees} /> : (
+      <>
+        {p.aucuneAMoinsDe !== null && <p>{LP.aucuneAMoinsDe(p.aucuneAMoinsDe)}</p>}
+        {plusProches.filter(([, e]) => e !== null).map(([libelle, e]) => (
+          <p>{libelle} <a href={`/etablissement/${e!.uai}/`}>{e!.nom}</a>, {km(e!)}</p>
+        ))}
+        {p.liste.length > 0 && (
+          <div class="table-wrap">
+            <table class="mini-t">
+              <thead><tr><th>École</th><th class="n">Distance</th><th>Nature</th><th>Secteur</th><th class="n">{titre("Élèves")}</th><th class="n">{titre("Classes")}</th></tr></thead>
+              <tbody>
+                {p.liste.map((e) => (
+                  <tr>
+                    <td><a href={`/etablissement/${e.uai}/`}>{e.nom}</a></td>
+                    <td class="n">{km(e)}</td>
+                    <td>{FAMILLES[e.famille]}</td>
+                    <td><span class={`sect ${e.secteur === "public" ? "pub" : "pri"}`}>{e.secteur === "public" ? SECTEURS.public : "Privé s. c."}</span></td>
+                    <td class="n"><Cellule texte={e.eleves === null ? LR.nonPublie : entier(e.eleves)} absent={e.eleves === null} /></td>
+                    <td class="n"><Cellule texte={e.classes === null ? LR.nonPublie : entier(e.classes)} absent={e.classes === null} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <p class="ecole-note">{LP.note} <a href="/methode/#ecoles-proches">{LR.methode}</a>.</p>
+      </>
+    )}
+  </div>
+</section>

@@ -1,7 +1,12 @@
 // Classes des écoles : série des élèves et des classes, typologie de la dernière rentrée (tables de 08_ecoles.sql).
-import type { Classes, SourceId, TypeClasses } from "@obs/shared/types";
+// Écoles les plus proches (spec, section 6.6).
+import { FAMILLES_ECOLES, SEUILS_ISOLEMENT_KM } from "@obs/shared/libelles";
+import type { Classes, EcoleProche, EcolesProches, Famille, FamilleEcole, Secteur, SourceId, TypeClasses } from "@obs/shared/types";
 import type { Db } from "./db.ts";
+import { FAMILLES_COMPATIBLES_ECOLES, HAVERSINE_SQL } from "./fiches.ts";
 import { SOURCES } from "./sources.ts";
+
+export { SEUILS_ISOLEMENT_KM };
 
 /** Ordre des niveaux pour trier les types de classes : « Preel » d'abord, puis CP à CM2. */
 const ORDRE_NIVEAUX = ["PREEL", "CP", "CE1", "CE2", "CM1", "CM2"];
@@ -52,4 +57,133 @@ export async function calculerClasses(db: Db): Promise<Map<string, Classes>> {
     resultat.set(uai, c);
   }
   return resultat;
+}
+
+// --- Écoles les plus proches ---
+
+/** Nombre d'écoles de la liste et rayon de recherche. */
+const NB_ECOLES_PROCHES = 6;
+const RAYON_ECOLES_PROCHES_KM = 50;
+/** Clé du résultat de calculerEcolesProches quand il est calculé depuis un point. */
+export const DEPUIS = "depuis";
+
+/** Plus grand seuil sous lequel il n'y a aucune école, d'après la distance de la plus proche (null : aucune dans le rayon). */
+export function seuilIsolement(plusProcheKm: number | null): number | null {
+  return SEUILS_ISOLEMENT_KM.filter((s) => plusProcheKm === null || plusProcheKm >= s).at(-1) ?? null;
+}
+
+interface PointDepart { id: string; lat: number; lon: number; famille: FamilleEcole | null }
+interface LigneProche {
+  id: string; uai: string; nom: string; famille: Famille; secteur: Secteur; commune: string; d: number;
+  compatible: boolean; mat: boolean; elem: boolean;
+}
+
+const enSql = (fs: readonly string[]) => fs.map((f) => `'${f}'`).join(", ");
+
+/**
+ * Pour chaque point de départ, les écoles ouvertes à moins de `rayonKm` qui servent au résultat : les 6 plus proches
+ * compatibles, la maternelle ou primaire la plus proche, l'élémentaire ou primaire la plus proche. Triées par distance.
+ * Un point sans famille (centre d'une commune) est compatible avec toutes les écoles.
+ */
+async function lignesProches(db: Db, points: PointDepart[], rayonKm: number): Promise<Map<string, LigneProche[]>> {
+  if (points.length === 0) return new Map();
+  // Calculé ici et non au chargement du module : fiches.ts importe aussi ce module.
+  const compatible = `case a.famille ${Object.entries(FAMILLES_COMPATIBLES_ECOLES)
+    .map(([f, cs]) => `when '${f}' then b.famille in (${enSql(cs)})`)
+    .join(" ")} else true end`;
+  const r = Number(rayonKm);
+  // Grille de cases d'au moins `r` km de côté : les écoles à moins de r km sont dans la case du point ou dans l'une des
+  // 8 cases voisines (jointure par égalité, sans produit croisé). 111 km par degré de latitude ; en longitude, la case
+  // est calculée pour 52° de latitude, plus au nord que tout le territoire couvert.
+  const pasLat = r / 111;
+  const pasLon = r / (111 * Math.cos((52 * Math.PI) / 180));
+  const lignes = await db.sql<LigneProche>(
+    `with a as (
+       select *, floor(lat / ${pasLat})::bigint as cy, floor(lon / ${pasLon})::bigint as cx
+       from (select unnest(from_json($1::json, '[{"id":"VARCHAR","lat":"DOUBLE","lon":"DOUBLE","famille":"VARCHAR"}]'), recursive := true))
+     ),
+     voisinage as (select a.*, cy + dy as ny, cx + dx as nx from a, range(-1, 2) y(dy), range(-1, 2) x(dx)),
+     b as (
+       select uai, famille, lat, lon, floor(lat / ${pasLat})::bigint as cy, floor(lon / ${pasLon})::bigint as cx
+       from etablissements
+       where lat is not null and lon is not null and famille in (${enSql(FAMILLES_ECOLES)})
+     ),
+     p as (
+       select a.id, b.uai, ${HAVERSINE_SQL} as d, ${compatible} as compatible,
+         b.famille in ('maternelle', 'primaire') as mat, b.famille in ('elementaire', 'primaire') as elem
+       from voisinage a join b on b.cy = a.ny and b.cx = a.nx
+       where b.uai <> a.id
+     ),
+     retenues as (
+       select * from p where d <= ${r}
+       qualify (compatible and row_number() over (partition by id, compatible order by d, uai) <= ${NB_ECOLES_PROCHES})
+         or (mat and row_number() over (partition by id, mat order by d, uai) = 1)
+         or (elem and row_number() over (partition by id, elem order by d, uai) = 1)
+     )
+     select r.*, e.nom, e.famille, e.secteur, e.commune from retenues r join etablissements e using (uai)
+     order by id, d, uai`,
+    [JSON.stringify(points)],
+  );
+  return Map.groupBy(lignes, (l) => l.id);
+}
+
+/**
+ * Écoles les plus proches, à vol d'oiseau (spec, section 6.6).
+ *
+ * Sans `depuis` : une entrée par école ouverte ; null pour une école sans coordonnées, qui n'apparaît chez aucune
+ * autre. Les écoles fermées n'apparaissent jamais. La liste et la phrase « Aucune autre école à moins de n km »
+ * (`aucuneAMoinsDe`) portent sur les autres écoles compatibles avec celle de la fiche (FAMILLES_COMPATIBLES_ECOLES :
+ * une maternelle avec les maternelles et les primaires, etc.) ; les deux écoles « la plus proche » sont cherchées
+ * parmi toutes les autres écoles, dans le même rayon de 50 km.
+ *
+ * Avec `depuis` (centre d'une commune sans école) : une seule entrée, de clé DEPUIS, calculée sur toutes les écoles
+ * ouvertes, sans compatibilité ni exclusion.
+ */
+export async function calculerEcolesProches(db: Db, depuis?: { lat: number; lon: number }): Promise<Map<string, EcolesProches | null>> {
+  const ecoles = depuis
+    ? []
+    : await db.sql<{ uai: string; famille: FamilleEcole; lat: number | null; lon: number | null }>(
+        `select uai, famille, lat, lon from etablissements where famille in (${enSql(FAMILLES_ECOLES)}) order by uai`,
+      );
+  const points: PointDepart[] = depuis
+    ? [{ id: DEPUIS, lat: depuis.lat, lon: depuis.lon, famille: null }]
+    : ecoles.filter((e) => e.lat !== null && e.lon !== null).map((e) => ({ id: e.uai, lat: e.lat!, lon: e.lon!, famille: e.famille }));
+
+  // Élèves et classes de la dernière rentrée publiée pour les écoles (une rentrée plus ancienne n'est pas montrée).
+  const chiffres = new Map(
+    (await db.sql<{ uai: string; eleves: number | null; classes: number | null }>(
+      "select uai, eleves, classes from classes_historique where rentree = (select max(rentree) from classes_historique)",
+    )).map((c) => [c.uai, c]),
+  );
+  const ecole = (l: LigneProche): EcoleProche => {
+    const c = chiffres.get(l.uai);
+    return {
+      uai: l.uai, nom: l.nom, famille: l.famille, secteur: l.secteur, commune: l.commune, distanceKm: l.d,
+      eleves: c?.eleves ?? null, classes: c?.classes ? c.classes : null, // 0 classe : absence, jamais un zéro
+    };
+  };
+  const resume = (lignes: LigneProche[]): EcolesProches => {
+    const liste = lignes.filter((l) => l.compatible).slice(0, NB_ECOLES_PROCHES).map(ecole);
+    const mat = lignes.find((l) => l.mat);
+    const elem = lignes.find((l) => l.elem);
+    return {
+      liste,
+      plusProcheMaternelle: mat ? ecole(mat) : null,
+      plusProcheElementaire: elem ? ecole(elem) : null,
+      aucuneAMoinsDe: seuilIsolement(liste[0]?.distanceKm ?? null),
+    };
+  };
+
+  // Deux passes : la plupart des écoles trouvent tout à moins de 10 km (le plus grand seuil, qui suffit toujours pour
+  // la phrase) ; les autres sont reprises dans le rayon de 50 km.
+  const complet = (p: EcolesProches) =>
+    p.liste.length === NB_ECOLES_PROCHES && p.plusProcheMaternelle !== null && p.plusProcheElementaire !== null;
+  const proches = new Map<string, EcolesProches>();
+  const premiere = await lignesProches(db, points, Math.max(...SEUILS_ISOLEMENT_KM));
+  for (const p of points) proches.set(p.id, resume(premiere.get(p.id) ?? []));
+  const aReprendre = points.filter((p) => !complet(proches.get(p.id)!));  const seconde = await lignesProches(db, aReprendre, RAYON_ECOLES_PROCHES_KM);
+  for (const p of aReprendre) proches.set(p.id, resume(seconde.get(p.id) ?? []));
+
+  if (depuis) return new Map([[DEPUIS, proches.get(DEPUIS)!]]);
+  return new Map(ecoles.map((e) => [e.uai, proches.get(e.uai) ?? null]));
 }

@@ -1,13 +1,98 @@
 import { describe, expect, test } from "bun:test";
 import { CODES_INDICATEURS, INDICATEURS } from "@obs/shared/libelles";
 import { calculerEleves } from "../pipeline/src/eleves.ts";
-import { calculerClasses } from "../pipeline/src/ecoles.ts";
+import { calculerClasses, calculerEcolesProches, DEPUIS, SEUILS_ISOLEMENT_KM, seuilIsolement } from "../pipeline/src/ecoles.ts";
+import { distanceKm } from "../pipeline/src/fiches.ts";
 import { calculerIndicateurs, calculerRepartitions } from "../pipeline/src/indicateurs.ts";
 import { dbTest, indic } from "./aide.ts";
 
 const db = await dbTest();
 const classes = await calculerClasses(db);
 const eleves = await calculerEleves(db);
+const proches = await calculerEcolesProches(db);
+
+// Coordonnées des fixtures (Annuaire)
+const GPS: Record<string, [number, number]> = {
+  "0440104D": [47.35, -1.4], "0440108H": [47.23, -1.54], "0440201A": [47.22, -1.55],
+  "0440202B": [47.215, -1.56], "0440203C": [47.2205, -1.551],
+};
+const d = (a: string, b: string) => distanceKm(...GPS[a]!, ...GPS[b]!);
+const FERMEES = ["0440106F", "0440107G", "0440109K", "0440110M"];
+
+describe("écoles les plus proches", () => {
+  test("seuils de la phrase « Aucune autre école à moins de n km »", () => {
+    expect(SEUILS_ISOLEMENT_KM).toEqual([2, 5, 10]);
+    expect([1.99, 2, 4.99, 5, 9.99, 10, 42, null].map(seuilIsolement)).toEqual([null, 2, 2, 5, 5, 10, 10, 10]);
+  });
+
+  test("une entrée par école ouverte, aucune pour le second degré ni pour une école fermée", () => {
+    expect([...proches.keys()].sort()).toEqual(["0440104D", "0440105E", "0440108H", "0440201A", "0440202B", "0440203C"]);
+  });
+
+  test("0440104D (élémentaire, Saint-Aubin) : écoles élémentaires ou primaires triées par distance, aucune à moins de 10 km", () => {
+    const p = proches.get("0440104D")!;
+    expect(p.liste.map((e) => e.uai)).toEqual(["0440108H", "0440203C", "0440202B"]);
+    expect(p.liste[0]!.distanceKm).toBeCloseTo(d("0440104D", "0440108H"), 9);
+    expect(p.liste[0]!.distanceKm).toBeGreaterThan(10);
+    // l'école élémentaire du Moulin, fermée, est à moins d'1 km : elle ne compte pas
+    expect(p.aucuneAMoinsDe).toBe(10);
+    expect(p.plusProcheElementaire!.uai).toBe("0440108H");
+    expect(p.plusProcheMaternelle!.uai).toBe("0440108H");
+  });
+
+  test("maternelle : liste des maternelles et primaires ; élémentaire ou primaire la plus proche, jamais une maternelle", () => {
+    const p = proches.get("0440201A")!;
+    expect(p.liste.map((e) => e.uai)).toEqual(["0440203C", "0440108H"]);
+    expect(p.aucuneAMoinsDe).toBeNull(); // 0440203C à moins de 2 km
+    expect(p.plusProcheElementaire!.uai).toBe("0440203C");
+    expect(p.plusProcheMaternelle!.uai).toBe("0440203C");
+    const { distanceKm: km, ...premiere } = p.liste[0]!;
+    expect(premiere).toEqual({
+      uai: "0440203C", nom: "École primaire Sainte-Marie", famille: "primaire", secteur: "prive_sous_contrat", commune: "Nantes",
+      eleves: 166, classes: 7,
+    });
+    expect(km).toBeCloseTo(d("0440201A", "0440203C"), 9);
+    for (const [, q] of proches) {
+      if (!q) continue;
+      expect(q.plusProcheElementaire?.famille).not.toBe("maternelle");
+      expect(q.plusProcheMaternelle?.famille).not.toBe("elementaire");
+    }
+  });
+
+  test("primaire : toutes les écoles, sans elle-même", () => {
+    const p = proches.get("0440203C")!;
+    expect(p.liste.map((e) => e.uai)).toEqual(["0440201A", "0440202B", "0440108H", "0440104D"]);
+    expect(p.plusProcheMaternelle!.uai).toBe("0440201A");
+    expect(p.plusProcheElementaire!.uai).toBe("0440202B");
+  });
+
+  test("0440105E (sans coordonnées) : null, et absente des listes des autres ; aucune école fermée dans une liste", () => {
+    expect(proches.get("0440105E")).toBeNull();
+    for (const [, q] of proches) {
+      const uais = [...(q?.liste ?? []), q?.plusProcheMaternelle, q?.plusProcheElementaire].map((e) => e?.uai);
+      expect(uais).not.toContain("0440105E");
+      for (const f of FERMEES) expect(uais).not.toContain(f);
+    }
+  });
+
+  test("depuis un point : toutes les écoles ouvertes, sans compatibilité ni exclusion", async () => {
+    const auBourg = (await calculerEcolesProches(db, { lat: 47.35, lon: -1.4 })).get(DEPUIS)!;
+    const attendu = Object.keys(GPS).sort((a, b) => d("0440104D", a) - d("0440104D", b));
+    expect(attendu.slice(0, 2)).toEqual(["0440104D", "0440108H"]);
+    expect(auBourg.liste.map((e) => e.uai)).toEqual(attendu);
+    expect(auBourg.liste[0]!.distanceKm).toBe(0);
+    expect(auBourg.aucuneAMoinsDe).toBeNull();
+    expect(auBourg.plusProcheMaternelle!.uai).toBe("0440108H");
+    expect(auBourg.plusProcheElementaire!.uai).toBe("0440104D");
+    // 3,3 km puis 6,7 km de l'école du Bourg
+    expect((await calculerEcolesProches(db, { lat: 47.38, lon: -1.4 })).get(DEPUIS)!.aucuneAMoinsDe).toBe(2);
+    expect((await calculerEcolesProches(db, { lat: 47.41, lon: -1.4 })).get(DEPUIS)!.aucuneAMoinsDe).toBe(5);
+    // au-delà de 50 km : liste vide
+    expect((await calculerEcolesProches(db, { lat: 45, lon: 2 })).get(DEPUIS)).toEqual({
+      liste: [], plusProcheMaternelle: null, plusProcheElementaire: null, aucuneAMoinsDe: 10,
+    });
+  });
+});
 
 describe("rentrée des jeux du premier degré", () => {
   test("rentree() lit l'année d'un champ date, d'une date en texte ou d'une année", async () => {

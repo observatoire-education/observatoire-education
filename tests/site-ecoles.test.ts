@@ -32,7 +32,7 @@ describe("fiche école", () => {
   test("aucune fiche école ne montre les blocs des lots à venir ni les données sans objet", () => {
     for (const uai of ECOLES) {
       const t = texte(fiche(uai)).toLowerCase();
-      for (const mot of ["Autour de l'école", "Budget", "Vie scolaire", "agrégés"]) {
+      for (const mot of ["Budget", "Vie scolaire", "agrégés"]) {
         expect(`${uai} : ${mot} ${t.includes(mot.toLowerCase())}`).toBe(`${uai} : ${mot} false`);
       }
       expect(t).not.toContain("Voisins");
@@ -88,9 +88,10 @@ describe("fiche école", () => {
     expect(svgs[0]!.getAttribute("aria-label")).toEndWith(". Classes : 8 de 2011 à 2025");
   });
 
-  // 25 000 octets jusqu'au lot 1 ; relevé à 26 000 par le bloc des rattachements (plafond permis : 30 000).
-  test("poids : la fiche 0440202B fait 26 000 octets au plus", () => {
-    expect(octets(fiche("0440202B"))).toBeLessThanOrEqual(26_000);
+  // 25 000 octets jusqu'au lot 1 ; relevé à 26 000 par le bloc des rattachements, puis à 27 500 par le bloc
+  // « Autour de l'école » (plafond permis : 30 000).
+  test("poids : la fiche 0440202B fait 27 500 octets au plus", () => {
+    expect(octets(fiche("0440202B"))).toBeLessThanOrEqual(27_500);
   });
 
   test("fiche A4 d'une école : « Fiche pour le conseil d'école »", () => {
@@ -254,11 +255,59 @@ describe("collège : écoles de son secteur et PIAL", () => {
   });
 });
 
+const NOTE_DISTANCES = "Distances à vol d'oiseau, sans tenir compte du relief ni des routes.";
+
+describe("autour de l'école", () => {
+  test("juste après les rattachements, dans le sommaire", () => {
+    const d = doc(fiche("0440104D"));
+    expect([...d.querySelectorAll("main section")].slice(0, 2).map((s) => s.id)).toEqual(["rattachements", "autour"]);
+    expect(liens(d.querySelector("nav.toc")).slice(0, 2)).toEqual(["#rattachements", "#autour"]);
+    expect(propre(d.querySelector("#autour h2")?.textContent)).toBe("Autour de l'école");
+  });
+
+  test("école isolée : phrase « Aucune autre école à moins de 10 km », plus proches par niveau, tableau, note", () => {
+    const b = doc(fiche("0440104D")).querySelector("#autour")!;
+    const t = propre(b.textContent);
+    expect(t).toContain("Aucune autre école à moins de 10 km");
+    expect(t).toMatch(/École maternelle ou primaire la plus proche : École primaire des Tilleuls, \d+,\d km/);
+    expect(t).toMatch(/École élémentaire ou primaire la plus proche : École primaire des Tilleuls, \d+,\d km/);
+    expect([...b.querySelectorAll("thead th")].map((x) => propre(x.textContent))).toEqual(["École", "Distance", "Nature", "Secteur", "Élèves 2025", "Classes 2025"]);
+    const lignes = [...b.querySelectorAll("tbody tr")].map((r) => [...r.querySelectorAll("td")].map((x) => propre(x.textContent)));
+    expect(lignes.map((l) => l[0])).toEqual(["École primaire des Tilleuls", "École primaire Sainte-Marie", "École élémentaire Jules-Ferry"]);
+    expect(lignes[1]!.slice(2)).toEqual(["École primaire", "Privé s. c.", "166", "7"]);
+    expect(lignes[0]![1]).toMatch(/^\d+,\d km$/);
+    expect(liens(b.querySelector("tbody"))).toEqual(["/etablissement/0440108H/", "/etablissement/0440203C/", "/etablissement/0440202B/"]);
+    expect(t).toContain(NOTE_DISTANCES);
+    expect(b.querySelector('a[href="/methode/#ecoles-proches"]')).not.toBeNull();
+  });
+
+  test("école compatible à moins de 2 km : pas de phrase ; maternelle : élémentaire ou primaire la plus proche", () => {
+    const t = propre(doc(fiche("0440201A")).querySelector("#autour")!.textContent);
+    expect(t).not.toContain("Aucune autre école");
+    expect(t).toMatch(/École élémentaire ou primaire la plus proche : École primaire Sainte-Marie, 0,1 km/);
+  });
+
+  test("école sans coordonnées : « Coordonnées de l'école non publiées » ; école fermée : pas de bloc", () => {
+    const b = doc(fiche("0440105E")).querySelector("#autour")!;
+    expect(propre(b.querySelector(".na")?.textContent)).toBe("Coordonnées de l'école non publiées");
+    expect(b.querySelector("table")).toBeNull();
+    for (const uai of ["0440106F", "0440107G", "0440109K", "0440110M"]) {
+      expect(doc(fiche(uai)).querySelector("#autour")).toBeNull();
+      expect(texte(fiche(uai))).not.toContain("Autour de l'école");
+    }
+  });
+});
+
 describe("méthode : secteur de collège d'une école et PIAL", () => {
   test("ancres #secteur-ecole et #pial", () => {
     const d = doc("methode");
     expect(d.querySelector("#secteur-ecole")).not.toBeNull();
     expect(propre(d.querySelector("#pial")?.textContent)).toBe("PIAL");
+  });
+
+  test("écoles les plus proches : vol d'oiseau, seuils, compatibilité, 50 km, temps de trajet à venir", () => {
+    const t = propre(doc("methode").querySelector("#ecoles-proches")?.nextElementSibling?.textContent);
+    for (const s of ["vol d'oiseau", "6 écoles", "50 km", "2, 5 ou 10 km", "maternelles et primaires", "temps de trajet"]) expect(t).toContain(s);
   });
 });
 

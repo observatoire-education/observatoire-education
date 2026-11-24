@@ -120,6 +120,12 @@ describe("écoles", () => {
     });
   });
 
+  test("écoles les plus proches : écoles ouvertes seulement, null sans coordonnées", () => {
+    expect(fiche("0440104D").ecolesProches!.aucuneAMoinsDe).toBe(10);
+    expect(fiche("0440105E").ecolesProches).toBeNull();
+    for (const uai of ["0440106F", "0440107G", "0440001A"]) expect(fiche(uai)).not.toHaveProperty("ecolesProches");
+  });
+
   test("une fiche historique par école fermée citée, famille d'après la nature", () => {
     expect(Object.fromEntries(fiches.filter((f) => estEcole(f.famille) && f.fermeLe !== null).map((f) => [f.uai, f.famille]))).toEqual({
       "0440106F": "elementaire", "0440107G": "maternelle", "0440109K": "elementaire", "0440110M": "maternelle",

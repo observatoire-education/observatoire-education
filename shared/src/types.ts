@@ -299,6 +299,31 @@ export interface Rattachements {
   circonscription: string | null;
 }
 
+/** Une école ouverte proche, à vol d'oiseau ; élèves et classes de la dernière rentrée publiée pour les écoles. */
+export interface EcoleProche {
+  uai: string;
+  nom: string;
+  famille: Famille;
+  secteur: Secteur;
+  commune: string;
+  distanceKm: number;
+  eleves: number | null;
+  /** null si non publié ou 0 (jamais un zéro pour une absence). */
+  classes: number | null;
+}
+
+/** Écoles les plus proches d'une école ouverte (spec, section 6.6), ou d'un point (centre d'une commune sans école). */
+export interface EcolesProches {
+  /** Les 6 écoles ouvertes compatibles les plus proches à moins de 50 km, triées par distance. */
+  liste: EcoleProche[];
+  /** École maternelle ou primaire la plus proche, à moins de 50 km. */
+  plusProcheMaternelle: EcoleProche | null;
+  /** École élémentaire ou primaire la plus proche, à moins de 50 km. */
+  plusProcheElementaire: EcoleProche | null;
+  /** Plus grand seuil de SEUILS_ISOLEMENT_KM sans autre école compatible, null s'il y en a une à moins de 2 km. */
+  aucuneAMoinsDe: number | null;
+}
+
 export interface Fiche extends Identite {
   uai: string;
   /** Date ISO de la première collecte où l'établissement n'apparaissait plus dans le périmètre. */
@@ -316,6 +341,8 @@ export interface Fiche extends Identite {
   classes?: Classes | null;
   /** Écoles ouvertes seulement (absent des fiches du second degré et des écoles fermées). */
   rattachements?: Rattachements;
+  /** Écoles ouvertes seulement : écoles les plus proches ; null si l'école n'a pas de coordonnées. */
+  ecolesProches?: EcolesProches | null;
   /** Second degré seulement : PIAL dont l'établissement est la tête ou un membre ; null sinon. */
   pial?: Pial | null;
   /**

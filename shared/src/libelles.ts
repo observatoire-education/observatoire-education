@@ -130,6 +130,19 @@ export const LIBELLES_RATTACHEMENTS = {
   nonPublie: "non publié",
 } as const;
 
+/** Seuils de la phrase « Aucune autre école à moins de n km » (spec, section 6.6). */
+export const SEUILS_ISOLEMENT_KM = [2, 5, 10] as const;
+
+/** Bloc « Autour de l'école » : écoles les plus proches (spec, section 6.6). */
+export const LIBELLES_ECOLES_PROCHES = {
+  titre: "Autour de l'école",
+  aucuneAMoinsDe: (km: number): string => `Aucune autre école à moins de ${km} km`,
+  plusProcheMaternelle: "École maternelle ou primaire la plus proche :",
+  plusProcheElementaire: "École élémentaire ou primaire la plus proche :",
+  note: "Distances à vol d'oiseau, sans tenir compte du relief ni des routes.",
+  sansCoordonnees: "Coordonnées de l'école non publiées",
+} as const;
+
 /** « Preel-CP » (typologie des classes) → « Préélémentaire-CP ». */
 export function libelleTypeClasse(brut: string): string {
   return brut.split("-").map((n) => (n === "Preel" ? LIBELLES_ECOLES.preelementaire : n)).join("-");
