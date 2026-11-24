@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { COMMUNES_METROPOLE_LYON, REGIONS, collectiviteDe, libelleCollectivite, motifSansCollectivite, regionDe } from "@obs/shared/collectivites";
+import { COMMUNES_METROPOLE_LYON, REGIONS, collectiviteDe, comparerCollectivites, libelleCollectivite, motifSansCollectivite, nomCollectivite, regionDe } from "@obs/shared/collectivites";
 import { cheminTerritoire } from "@obs/shared/territoires";
 
 describe("collectivités", () => {
@@ -64,5 +64,24 @@ describe("motifSansCollectivite", () => {
     expect(motifSansCollectivite("971", "97801")).toBe("collectivite_non_identifiee");
     expect(motifSansCollectivite("971", "97701")).toBe("collectivite_non_identifiee");
     expect(motifSansCollectivite("975", "97502")).toBe("collectivite_non_identifiee");
+  });
+});
+
+describe("nomCollectivite et ordre", () => {
+  test("nom nu, sans article ni type", () => {
+    expect(nomCollectivite("dep-01")).toBe("Ain");
+    expect(nomCollectivite("dep-28")).toBe("Eure-et-Loir");
+    expect(nomCollectivite("dep-83")).toBe("Var");
+    expect(nomCollectivite("dep-44")).toBe("Loire-Atlantique");
+    expect(nomCollectivite("dep-974")).toBe("La Réunion");
+    expect(nomCollectivite("reg-52")).toBe("Pays de la Loire");
+    expect(nomCollectivite("ml-lyon")).toBe("Lyon");
+    expect(nomCollectivite("cea")).toBe("Alsace");
+    expect(() => nomCollectivite("dep-987")).toThrow("collectivité inconnue");
+  });
+  test("tri par nom sans article, départage par identifiant", () => {
+    const ids = ["dep-83", "dep-01", "dep-28", "dep-44", "paris"].map((id) => ({ id }));
+    expect(ids.sort(comparerCollectivites).map((x) => x.id)).toEqual(["dep-01", "dep-28", "dep-44", "paris", "dep-83"]);
+    expect(comparerCollectivites({ id: "dep-44" }, { id: "dep-44" })).toBe(0);
   });
 });

@@ -123,3 +123,26 @@ export function libelleCollectivite(id: IdCollectivite): string {
   }
   throw new Error(`collectivité inconnue : ${id}`);
 }
+
+const NOMS_NUS: Record<string, string> = {
+  "ml-lyon": "Lyon", paris: "Paris", cea: "Alsace", "ctu-corse": "Corse", "ctu-martinique": "Martinique", "ctu-guyane": "Guyane",
+};
+
+/** Nom nu d'une collectivité, sans article ni type (« Ain », « Eure-et-Loir », « Pays de la Loire ») : sert au tri. */
+export function nomCollectivite(id: IdCollectivite): string {
+  if (NOMS_NUS[id]) return NOMS_NUS[id];
+  if (id.startsWith("reg-")) {
+    const region = REGIONS.find((r) => r.code === id.slice(4));
+    if (region) return region.libelle;
+  }
+  if (id.startsWith("dep-")) {
+    const complement = DEPARTEMENTS[id.slice(4)];
+    if (complement) return complement.replace(/^(?:de la |de l'|d'|des |du |de )/, "");
+  }
+  throw new Error(`collectivité inconnue : ${id}`);
+}
+
+/** Ordre d'affichage des collectivités : par nom sans article, puis par identifiant. */
+export function comparerCollectivites(a: { id: IdCollectivite }, b: { id: IdCollectivite }): number {
+  return nomCollectivite(a.id).localeCompare(nomCollectivite(b.id), "fr") || a.id.localeCompare(b.id);
+}

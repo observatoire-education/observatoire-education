@@ -22,6 +22,12 @@ describe("page région", () => {
     expect(d.querySelector("a[href='/region/52/departements.csv']")).not.toBeNull();
   });
 
+  test("badges : accord du pluriel (« 1 département », « 1 académie »)", () => {
+    const t = texte("region/52");
+    expect(t).not.toMatch(/\b1 (départements|académies)/);
+    expect(t).toMatch(/\b1 (département|académie)\b/);
+  });
+
   test("CSV des départements : mêmes colonnes que celui des académies", () => {
     const lignes = page("region/52/departements.csv").trim().split("\n");
     expect(lignes[0]).toBe(page("france/academies.csv").split("\n")[0]!);

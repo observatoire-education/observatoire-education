@@ -1,6 +1,7 @@
 // Aides des pages de territoire (France, académie, département, commune) : synthèses, lignes de liste, CSV.
-import type { NiveauBudget } from "@obs/shared/collectivites";
+import { comparerCollectivites, type NiveauBudget } from "@obs/shared/collectivites";
 import type { BudgetCollectivite, DonneesTerritoire, LigneListe, LigneTerritoire, SyntheseFamille } from "@obs/shared/donnees";
+import { entier } from "@obs/shared/format";
 import { FAMILLES } from "@obs/shared/libelles";
 import type { Famille } from "@obs/shared/types";
 
@@ -94,7 +95,7 @@ const arrondi = (v: number | null): number | null => (v === null ? null : Math.r
 export function csvBudget(collectivites: BudgetCollectivite[], niveau: NiveauBudget): string {
   const lignes = [...collectivites]
     .filter((c) => c.niveau === niveau)
-    .sort((a, b) => a.libelle.localeCompare(b.libelle, "fr"))
+    .sort(comparerCollectivites)
     .flatMap((c) =>
       [...c.exercices].sort((a, b) => a.exercice - b.exercice).map((e) => [
         c.id, c.libelle, e.exercice, e.rentree, e.eleves.public, e.eleves.prive,
@@ -103,4 +104,9 @@ export function csvBudget(collectivites: BudgetCollectivite[], niveau: NiveauBud
       ]),
     );
   return csv(COLONNES_CSV_BUDGET, lignes);
+}
+
+/** « 1 académie », « 12 académies » (nombre à la française, pluriel dès 2). */
+export function pluriel(n: number, nom: string): string {
+  return `${entier(n)} ${nom}${n > 1 ? "s" : ""}`;
 }

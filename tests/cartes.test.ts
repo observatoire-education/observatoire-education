@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
+import { LIBELLES_BUDGET } from "@obs/shared/libelles";
 
 process.env.OBS_CONTOURS = join(import.meta.dir, "fixtures", "contours");
 const { contourCommune, contourDepartement, contoursDepartements, communesDuDepartement, formesCollectivites } = await import("../site/src/lib/contours.ts");
@@ -175,5 +176,21 @@ describe("carte du budget", () => {
     expect(legende).toContain("Dépense de fonctionnement hors personnel par élève des collèges publics");
     expect(legende).toContain("var(--pub-soft)");
     expect(legende).toContain("var(--pub-ink)");
+  });
+
+  test("outre-mer : cinq encarts dont Mayotte en gris, avec sa note d'absence", () => {
+    const avant = process.env.OBS_CONTOURS;
+    process.env.OBS_CONTOURS = join(import.meta.dir, "..", "site", "contours");
+    try {
+      const valeurs = [
+        { id: "dep-971", deps: ["971"], budget: 300 }, { id: "ctu-martinique", deps: ["972"], budget: 300 },
+        { id: "ctu-guyane", deps: ["973"], budget: 300 }, { id: "dep-974", deps: ["974"], budget: 300 },
+      ];
+      const { encarts } = svgCarteBudget(valeurs, { encartsDrom: true });
+      expect(encarts.map((e) => e.code).sort()).toEqual(["971", "972", "973", "974", "976"]);
+      expect(fills(encarts.find((e) => e.code === "976")!.svg)).toEqual(["var(--line)"]);
+      const notes = notesCarteBudget(valeurs, (d) => (d === "976" ? "Mayotte" : d), (id) => id);
+      expect(notes).toContain(`Mayotte : ${LIBELLES_BUDGET.absences.aucuneCollectivite}.`);
+    } finally { process.env.OBS_CONTOURS = avant; }
   });
 });

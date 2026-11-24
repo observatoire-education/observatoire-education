@@ -1,6 +1,6 @@
 ---
 // Tableau des collectivités d'un niveau (collèges ou lycées), triées par nom : dernier exercice publié, en € par élève.
-import type { NiveauBudget } from "@obs/shared/collectivites";
+import { comparerCollectivites, type NiveauBudget } from "@obs/shared/collectivites";
 import type { BudgetCollectivite } from "@obs/shared/donnees";
 import { LIBELLES_BUDGET as L } from "@obs/shared/libelles";
 import { brutBudget, montantBudget } from "../lib/budget";
@@ -8,7 +8,7 @@ import Cellule from "./Cellule.astro";
 
 interface Props { collectivites: BudgetCollectivite[]; niveau: NiveauBudget }
 const { collectivites, niveau } = Astro.props;
-const lignes = [...collectivites].sort((a, b) => a.libelle.localeCompare(b.libelle, "fr"));
+const lignes = [...collectivites].sort(comparerCollectivites);
 const exercice = Math.max(...lignes.map((c) => c.exercices.at(-1)?.exercice ?? 0));
 const contribution = niveau === "colleges" ? L.postes.contributionColleges : L.postes.contributionLycees;
 ---

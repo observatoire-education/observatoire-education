@@ -5,6 +5,7 @@ import { parseHTML } from "linkedom";
 import type { Feature, FeatureCollection, Geometry } from "geojson";
 import type { PointCarte, ValeurCarte } from "@obs/shared/donnees";
 import { entier } from "@obs/shared/format";
+import { LIBELLES_BUDGET } from "@obs/shared/libelles";
 import type { CarteDonnees } from "@obs/shared/donnees";
 import { contoursDepartements, formesCollectivites } from "./contours";
 import { svg } from "./plot";
@@ -159,12 +160,14 @@ export function svgCarteBudget(
 
 /** Notes sous la carte du budget : collectivités qui couvrent plusieurs départements, et Lyon / Rhône. */
 export function notesCarteBudget(valeurs: ValeursBudget, libelleDep: (dep: string) => string, libelleCollectivite: (id: string) => string): string[] {
+  const mayotte = !valeurs.some((v) => v.id === "dep-976") && formesCollectivites().some((f) => f.id === "dep-976");
   const notes = valeurs
     .filter((v) => v.deps.length > 1)
     .map((v) => `${v.deps.map(libelleDep).join(" et ")} : valeur de la collectivité unique, ${libelleCollectivite(v.id)}.`);
   if (valeurs.some((v) => v.id === "ml-lyon") && valeurs.some((v) => v.id === "dep-69")) {
     notes.push("La Métropole de Lyon et le reste du Département du Rhône sont deux collectivités distinctes, dessinées séparément.");
   }
+  if (mayotte) notes.push(`${libelleDep("976")} : ${LIBELLES_BUDGET.absences.aucuneCollectivite}.`);
   return notes;
 }
 

@@ -1,6 +1,6 @@
 // Mise en forme du bloc « Moyens de la collectivité » : absences, montants, comparaisons à la moyenne France.
 import type { MontantBudget, MoyenneBudget, StatutBudget } from "@obs/shared/donnees";
-import type { NiveauBudget } from "@obs/shared/collectivites";
+import { motifSansCollectivite, REGIONS, type NiveauBudget } from "@obs/shared/collectivites";
 import { lireSources } from "./donnees";
 import { ecart, entier } from "@obs/shared/format";
 import { LIBELLES, LIBELLES_BUDGET as L } from "@obs/shared/libelles";
@@ -57,3 +57,18 @@ export const niveauDe = (famille: Famille): NiveauBudget => (famille === "colleg
 
 /** Lien vers la donnée brute archivée d'un exercice (`budget_N`), si elle est connue. */
 export const brutBudget = (id: string): string | undefined => lireSources()[id]?.actuelle?.url;
+
+/**
+ * Territoire sans collectivité (Mayotte) : motif de l'absence, dérivé d'un département du territoire
+ * (le département de la page, le premier de la région, le premier de l'académie). null : territoire sans département.
+ */
+export function motifAbsenceTerritoire(
+  ref: { niveau: string; code: string },
+  enfants: { ref: { code: string } }[],
+): "aucune_collectivite" | "collectivite_non_identifiee" | null {
+  const dep = ref.niveau === "departement" ? ref.code
+    : ref.niveau === "region" ? REGIONS.find((r) => r.code === ref.code)?.deps[0]
+    : ref.niveau === "academie" ? enfants[0]?.ref.code
+    : undefined;
+  return dep === undefined ? null : motifSansCollectivite(dep, "");
+}

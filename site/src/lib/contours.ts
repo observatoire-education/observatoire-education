@@ -97,7 +97,8 @@ export function formesCollectivites(): { id: IdCollectivite; contour: Contour }[
   for (const d of departements) {
     const code = d.properties.code;
     if (code !== "69") {
-      const id = collectiviteDe("colleges", code, "");
+      // Mayotte n'a aucune collectivité : la forme est dessinée, grisée (aucune valeur ne porte son identifiant).
+      const id = collectiviteDe("colleges", code, "") ?? (code === "976" ? "dep-976" : null);
       if (id) formes.push({ id, contour: d });
       continue;
     }

@@ -4,7 +4,7 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import { LIBELLES_BUDGET as L } from "../shared/src/libelles.ts";
 import { ecart, entier } from "../shared/src/format.ts";
-import { absenceBudget, comparaisonBudget, montantBudget, millions } from "../site/src/lib/budget.ts";
+import { absenceBudget, comparaisonBudget, montantBudget, millions, motifAbsenceTerritoire } from "../site/src/lib/budget.ts";
 import { posteEvolutionAvecPersonnel, svgEvolutionBudget } from "../site/src/lib/plot.ts";
 import type { ExerciceBudget } from "../shared/src/donnees.ts";
 import { doc, page, siteTest, texte } from "./site.ts";
@@ -324,6 +324,16 @@ describe("svgEvolutionBudget", () => {
     const s = svgEvolutionBudget([exercice(2023, 1000, 2000), exercice(2024, null, null)]);
     expect(s).toContain("var(--pri)");
     expect(posteEvolutionAvecPersonnel([exercice(2023, 1000, 2000)])).toBe(true);
+  });
+});
+
+describe("territoire sans collectivité", () => {
+  test("le motif est dérivé d'un département du territoire", () => {
+    expect(motifAbsenceTerritoire({ niveau: "departement", code: "976" }, [])).toBe("aucune_collectivite");
+    expect(motifAbsenceTerritoire({ niveau: "region", code: "06" }, [])).toBe("aucune_collectivite");
+    expect(motifAbsenceTerritoire({ niveau: "academie", code: "28" }, [{ ref: { code: "976" } }])).toBe("aucune_collectivite");
+    expect(motifAbsenceTerritoire({ niveau: "academie", code: "28" }, [{ ref: { code: "975" } }])).toBe("collectivite_non_identifiee");
+    expect(motifAbsenceTerritoire({ niveau: "academie", code: "28" }, [])).toBeNull();
   });
 });
 

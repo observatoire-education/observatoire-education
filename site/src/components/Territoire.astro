@@ -11,10 +11,9 @@ import Base from "../layouts/Base.astro";
 import { anneeScolaire, formater } from "../lib/affichage";
 import { communesDisponibles, lireFrance, lireSources, lireTerritoire } from "../lib/donnees";
 import { domaine, svgDistribution, svgPoints } from "../lib/plot";
-import { famillesDe, nomFamille, partPrive } from "../lib/territoire";
+import { famillesDe, nomFamille, partPrive, pluriel } from "../lib/territoire";
 import Absence from "./Absence.astro";
-import { REGIONS, motifSansCollectivite } from "@obs/shared/collectivites";
-import { absenceBudget, niveauDe } from "../lib/budget";
+import { absenceBudget, motifAbsenceTerritoire, niveauDe } from "../lib/budget";
 import Ariane from "./Ariane.astro";
 import BlocBudget from "./BlocBudget.astro";
 import CarteTerritoire from "./CarteTerritoire.astro";
@@ -105,9 +104,9 @@ const badges = [
   ...(niveau === "commune" && dep ? [dep.libelle] : []),
   `${entier(total)} établissements`,
   ...(niveau === "departement" ? [`${communes.filter((c) => c.n !== null).length} communes avec un collège ou un lycée`] : []),
-  ...(niveau === "academie" || niveau === "region" ? [`${d.enfants.length} départements`] : []),
-  ...(niveau === "region" ? [`${academies.length} académies`] : []),
-  ...(niveau === "france" ? [`${d.enfants.length} académies`] : []),
+  ...(niveau === "academie" || niveau === "region" ? [pluriel(d.enfants.length, "département")] : []),
+  ...(niveau === "region" ? [pluriel(academies.length, "académie")] : []),
+  ...(niveau === "france" ? [pluriel(d.enfants.length, "académie")] : []),
 ];
 ---
 <Base titre={titre} chemin={chemin}
@@ -202,11 +201,11 @@ const badges = [
           const tableau = cols.length > 0 && (niveau === "france" || niveau === "academie" || niveau === "region") && (nb === "colleges" || cols.length > 2);
           if (cols.length === 0) {
             // Territoire sans collectivité (Mayotte) : l'absence est dite, pas passée sous silence.
-            const dep0 = niveau === "departement" ? d.ref.code : niveau === "region" ? REGIONS.find((r) => r.code === d.ref.code)?.deps[0] : undefined;
-            return dep0 === undefined ? null : (
+            const motif = motifAbsenceTerritoire(d.ref, d.enfants);
+            return motif === null ? null : (
               <div class="moyens-territoire">
                 <h3 class="sous-titre">{LIBELLES_BUDGET.titre}</h3>
-                <div class="moyens"><div class="card"><Absence texte={absenceBudget(motifSansCollectivite(dep0, ""), nb)} /></div></div>
+                <div class="moyens"><div class="card"><Absence texte={absenceBudget(motif, nb)} /></div></div>
               </div>
             );
           }
