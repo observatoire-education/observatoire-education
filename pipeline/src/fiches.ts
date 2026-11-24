@@ -3,14 +3,14 @@ import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { DonneesSource, EntreeIndex } from "@obs/shared/donnees";
 import type {
-  Famille, Fiche, Identite, Indicateur, Mesure, Repartition, ResultatsVoie, Secteur, Site, SourceId, SourceRef, Voisin,
+  CodeIndicateur, Famille, Fiche, Identite, Indicateur, Mesure, Repartition, ResultatsVoie, Secteur, Site, SourceId, SourceRef, Voisin,
 } from "@obs/shared/types";
 import type { Manifest } from "./archive.ts";
 import type { Db } from "./db.ts";
 import { budgetDeFiche, calculerBudgets } from "./budget-eleves.ts";
 import { collectivitesCorrigees, type EntreeCorrection, resoudreCorrection } from "./corrections.ts";
 import { calculerEleves } from "./eleves.ts";
-import { calculerResultats, resume } from "./resultats.ts";
+import { calculerResultats, dernieresSessions, resume } from "./resultats.ts";
 import { calculerIndicateurs, calculerRepartitions } from "./indicateurs.ts";
 import type { Registre } from "./registre.ts";
 import { SOURCES, toutesSources } from "./sources.ts";
@@ -55,6 +55,7 @@ export async function calculerVoisins(
 ): Promise<Map<string, Voisin[] | null>> {
   const ind = indicateurs ?? (await calculerIndicateurs(db));
   const res = resultats ?? (await calculerResultats(db));
+  const sessions = await dernieresSessions(db);
   const compat = Object.entries(FAMILLES_VOISINES)
     .flatMap(([a, bs]) => bs.map((b) => `('${a}', '${b}')`))
     .join(", ");
@@ -77,7 +78,7 @@ export async function calculerVoisins(
   const avecCoordonnees = await db.sql<{ uai: string; gps: boolean }>(
     "select uai, lat is not null and lon is not null as gps from etablissements",
   );
-  const mesure = (uai: string, code: string): Mesure =>
+  const mesure = (uai: string, code: CodeIndicateur): Mesure =>
     ind.get(uai)?.find((i) => i.code === code)?.mesure ?? { valeur: null, statut: "non_disponible", source: null, rentree: null };
   // IPS d'un voisin : seulement celui de la dernière rentrée (un IPS plus ancien n'est pas comparé).
   const rentreeIps = await derniereRentreeIps(db);
@@ -97,7 +98,7 @@ export async function calculerVoisins(
             elevesParEtpEns: mesure(p.voisin, "eleves_par_etp_ens"),
             ips: mesureIps(p.voisin),
             partAgreges: mesure(p.voisin, "part_agreges"),
-            reussite: resume({ famille: p.famille, resultats: res.get(p.voisin) ?? [] }),
+            reussite: resume({ famille: p.famille, resultats: res.get(p.voisin) ?? [] }, sessions),
           }))
         : null,
     );

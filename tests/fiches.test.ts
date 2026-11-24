@@ -46,7 +46,9 @@ describe("voisinage", () => {
   test("voisin : reussite et partAgreges", async () => {
     const v = (await calculerVoisins(db)).get("0440001A")!;
     expect(v[0]!.reussite).toEqual([{ voie: "brevet_general", session: 2025, taux: 60, va: 1 }]);
-    expect(v[0]!.partAgreges).toMatchObject({ statut: expect.any(String) });
+    expect(v[0]!.partAgreges).toMatchObject({ statut: "non_disponible", valeur: null });
+    const inverse = (await calculerVoisins(db)).get("0440002B")!.find((x) => x.uai === "0440001A")!;
+    expect(inverse.partAgreges).toMatchObject({ statut: "ok", valeur: 8 });
     expect(v[1]!.reussite).toEqual([{ voie: "brevet_general", session: 2025, taux: null, va: null }]);
     const lpo = (await calculerVoisins(db)).get("0440003C")!;
     expect(lpo[0]).toMatchObject({ uai: "0440006F", reussite: [{ voie: "bac_pro", session: 2025, taux: 70 }] });
@@ -129,7 +131,7 @@ describe("fiches", () => {
     expect(fiche("0440021R").resultats.map((r) => r.voie)).toEqual(["bac_pro"]); // fermé : historique conservé
   });
 
-  test("établissement sans aucune statistique : seul l'annuaire est cité", () => {
+  test("établissement dont seul l'effectif du brevet est publié : annuaire et IVAC cités", () => {
     expect(fiche("0440007G").sources.map((x) => x.id)).toEqual(["annuaire", "ivac"]); // effectif publié, aucune valeur
   });
 });

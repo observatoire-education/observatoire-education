@@ -84,6 +84,15 @@ describe("fiche établissement", () => {
     ]);
   });
 
+  test("la source IVAC porte une session, jamais une rentrée", () => {
+    const lignes = [...doc("etablissement/0440001A").querySelectorAll("li")].map((l) => l.textContent ?? "").filter((t) => t.includes("valeur ajoutée des collèges"));
+    expect(lignes.length).toBeGreaterThan(0);
+    for (const t of lignes) {
+      expect(t).toContain("session 2025");
+      expect(t).not.toContain("rentrée 2025-2026");
+    }
+  });
+
   test("poids d'une fiche complète", () => {
     expect(octets("etablissement/0440001A")).toBeLessThanOrEqual(52_000);
   });

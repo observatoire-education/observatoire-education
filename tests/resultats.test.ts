@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { dbTest } from "./aide.ts";
-import { calculerResultats, resume } from "../pipeline/src/resultats.ts";
+import { calculerResultats, dernieresSessions, resume } from "../pipeline/src/resultats.ts";
 
 const un = async (q: string) => (await (await dbTest()).sql(q))[0] as Record<string, unknown>;
 
@@ -74,6 +74,8 @@ describe("normalisation des résultats", () => {
   });
 });
 
+const S = await dernieresSessions(await dbTest());
+
 describe("résultats sur les fiches", () => {
   const fiche = async (uai: string) => (await import("./aide.ts")).dbTest().then(async (db) => (await calculerResultats(db)).get(uai));
 
@@ -127,14 +129,30 @@ describe("résultats sur les fiches", () => {
 
   test("resume d'un LPO présent dans ival_pro seul : une entrée", async () => {
     const r = (await fiche("0440006F"))!;
-    expect(resume({ famille: "lpo", resultats: r })).toEqual([{ voie: "bac_pro", session: 2025, taux: 70, va: -1 }]);
+    expect(resume({ famille: "lpo", resultats: r }, S)).toEqual([{ voie: "bac_pro", session: 2025, taux: 70, va: -1 }]);
     const lpo = (await fiche("0440103C"))!;
-    expect(resume({ famille: "lpo", resultats: lpo }).map((x) => x.voie)).toEqual(["bac_gt", "bac_pro"]);
-    expect(resume({ famille: "college", resultats: (await fiche("0440001A"))! }).map((x) => x.voie)).toEqual(["brevet_general"]);
-    expect(resume({ famille: "erea", resultats: [] })).toEqual([]);
+    expect(resume({ famille: "lpo", resultats: lpo }, S).map((x) => x.voie)).toEqual(["bac_gt", "bac_pro"]);
+    expect(resume({ famille: "college", resultats: (await fiche("0440001A"))! }, S).map((x) => x.voie)).toEqual(["brevet_general"]);
+    expect(resume({ famille: "erea", resultats: [] }, S)).toEqual([]);
   });
 
   test("fiche sans résultats : []", async () => {
     expect((await fiche("0440200E")) ?? []).toEqual([]);
+  });
+
+  test("dernières sessions par source", () => {
+    expect(S).toEqual({ ivac: 2025, ival_gt: 2025, ival_pro: 2025 });
+  });
+
+  test("LPO sans ligne GT pour la dernière session : seule la voie pro", async () => {
+    const r = (await fiche("0440103C"))!.filter((v) => v.voie !== "bac_gt" || v.session === 2025).map((v) => v.voie === "bac_gt" ? { ...v, session: 2020 } : v);
+    expect(resume({ famille: "lpo", resultats: r }, S).map((x) => x.voie)).toEqual(["bac_pro"]);
+  });
+
+  test("collège dont la dernière ligne est ancienne : absent des listes et des voisins", async () => {
+    // 0440023T : brevet général 2022 seulement
+    const r = (await fiche("0440023T"))!;
+    expect(r[0]!.session).toBe(2022);
+    expect(resume({ famille: "college", resultats: r }, S)).toEqual([]);
   });
 });

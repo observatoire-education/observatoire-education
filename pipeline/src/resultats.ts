@@ -109,11 +109,22 @@ const VOIES_RESUME: Record<Famille, VoieResultat[]> = {
   erea: ["brevet_general", "bac_gt", "bac_pro"],
 };
 
-/** Un chiffre par voie utile : taux de réussite et valeur ajoutée de la session affichée. Seules les voies présentes. */
-export function resume(f: Pick<Fiche, "famille" | "resultats">): ResumeResultat[] {
+/** Dernière session de chaque source de résultats (ivac, ival_gt, ival_pro). */
+export type DernieresSessions = Partial<Record<SourceId, number>>;
+
+export async function dernieresSessions(db: Db): Promise<DernieresSessions> {
+  const l = await db.sql<{ source: SourceId; s: number }>("select source, max(session)::integer as s from resultats group by source");
+  return Object.fromEntries(l.map((r) => [r.source, r.s]));
+}
+
+/**
+ * Un chiffre par voie utile : taux de réussite et valeur ajoutée de la session affichée. Seules les voies présentes
+ * dont la session est la dernière de leur source : une session plus ancienne reste sur la fiche, hors des listes.
+ */
+export function resume(f: Pick<Fiche, "famille" | "resultats">, dernieres: DernieresSessions): ResumeResultat[] {
   return VOIES_RESUME[f.famille].flatMap((voie) => {
     const r = f.resultats.find((x) => x.voie === voie);
     const v = r?.valeurs.find((x) => x.code === "taux_reussite");
-    return r && v ? [{ voie, session: r.session, taux: v.valeur, va: v.va }] : [];
+    return r && v && r.session === dernieres[r.source] ? [{ voie, session: r.session, taux: v.valeur, va: v.va }] : [];
   });
 }

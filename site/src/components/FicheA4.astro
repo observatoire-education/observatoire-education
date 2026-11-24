@@ -3,7 +3,7 @@
 // Tableaux seulement (aucun graphique), moyennes seules, chaque ligne renvoie à sa source numérotée.
 import QRCode from "qrcode";
 import Fermeture from "./Fermeture.astro";
-import { date, entier, nombre } from "@obs/shared/format";
+import { date, entier, estSession, nombre } from "@obs/shared/format";
 import { academie, type CodeIndicateur, CONTRATS, FAMILLES, FAMILLES_PLURIEL, INDICATEURS, LIBELLES, LIBELLES_BUDGET, SECTEURS } from "@obs/shared/libelles";
 import type { Fiche, Mesure, Niveau, Secteur, SourceId } from "@obs/shared/types";
 import { anneeScolaire, formater, indicateur, reference } from "../lib/affichage";
@@ -204,7 +204,7 @@ const nd = (v: number | null) => (v === null ? "n. d." : entier(v));
     <div><b>Sources</b> (Licence Ouverte 2.0 ; versions archivées et téléchargeables sur la page « Sources ») :</div>
     <ol>
       {f.sources.map((s) => (
-        <li>{s.producteur}, {s.titre}{s.rentree !== null && ` · rentrée ${anneeScolaire(s.rentree)}`} · collecté le {date(s.collecteLe)}{["ips_colleges", "ips_lycees", "ips_erea"].includes(s.id) ? " · moyennes publiées par la DEPP" : s.id.startsWith("ips_") ? "" : s.id === "annuaire" ? "" : " · moyennes calculées (Σ / Σ)"}.</li>
+        <li>{s.producteur}, {s.titre}{s.rentree !== null && (estSession(s.id) ? ` · session ${s.rentree}` : ` · rentrée ${anneeScolaire(s.rentree)}`)} · collecté le {date(s.collecteLe)}{["ips_colleges", "ips_lycees", "ips_erea"].includes(s.id) ? " · moyennes publiées par la DEPP" : s.id.startsWith("ips_") ? "" : s.id === "annuaire" ? "" : " · moyennes calculées (Σ / Σ)"}.</li>
       ))}
     </ol>
     <div>

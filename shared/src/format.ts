@@ -67,10 +67,13 @@ export function date(iso: string): string {
   return formatDate.format(d);
 }
 
+/** Sources de résultats : leur millésime est une session (année de l'examen), non une rentrée. */
+export const estSession = (id: SourceId): boolean => id === "ivac" || id.startsWith("ival_");
+
 /** « Source : {producteur}, {titre} · rentrée {r}-{r+1} · collecté le {jj/mm/aaaa} ». */
 export function ligneSource(s: SourceRef): string {
   const morceaux = [`Source : ${s.producteur}, ${s.titre}`];
-  if (s.rentree !== null) morceaux.push(`rentrée ${s.rentree}-${s.rentree + 1}`);
+  if (s.rentree !== null) morceaux.push(estSession(s.id) ? `session ${s.rentree}` : `rentrée ${s.rentree}-${s.rentree + 1}`);
   morceaux.push(`collecté le ${date(s.collecteLe)}`);
   return morceaux.join(" · ");
 }

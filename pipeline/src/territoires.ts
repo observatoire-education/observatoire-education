@@ -13,7 +13,7 @@ import type { Manifest } from "./archive.ts";
 import type { Budgets } from "./budget-eleves.ts";
 import { collectivitesCorrigees, type EntreeCorrection, resoudreCorrection } from "./corrections.ts";
 import type { Db } from "./db.ts";
-import { resume } from "./resultats.ts";
+import { dernieresSessions, type DernieresSessions, resume } from "./resultats.ts";
 import { calculerIpsHistorique, derniereRentreeIps, ipsCourant, type NiveauIps } from "./ips-historique.ts";
 
 // --- Aides partagées avec fiches.ts ---
@@ -42,7 +42,7 @@ export function libelleListe(f: Fiche): string {
   return `${LIBELLES_PLM[ville as keyof typeof LIBELLES_PLM]} ${n === 1 ? "1er" : `${n}e`} arrondissement`;
 }
 
-export function ligneListe(f: Fiche, rentreeIps: number | null): LigneListe {
+export function ligneListe(f: Fiche, rentreeIps: number | null, sessions: DernieresSessions): LigneListe {
   const vs = valeur(f, "eleves_par_etp_vs");
   return {
     uai: f.uai, nom: f.nom, secteur: f.secteur, commune: libelleListe(f), codeCommune: f.codeCommune, ep: f.ep,
@@ -52,7 +52,7 @@ export function ligneListe(f: Fiche, rentreeIps: number | null): LigneListe {
     statutVs: vs?.statut ?? "non_disponible",
     partEnseignantes: ok(valeur(f, "part_enseignantes")),
     ips: ipsCourant(valeur(f, "ips"), rentreeIps),
-    reussite: resume(f),
+    reussite: resume(f, sessions),
   };
 }
 
@@ -229,6 +229,7 @@ export async function exporterTerritoires(
   for (const d of ["regions", "departements", "academies", "communes"]) await mkdir(join(sortie, d), { recursive: true });
   const ipsHistorique = await calculerIpsHistorique(db);
   const rentreeIps = await derniereRentreeIps(db);
+  const sessions = await dernieresSessions(db);
   const ips = { dep: await ipsMoyens(db, "dep"), aca: await ipsMoyens(db, "aca"), nat: await ipsMoyens(db, "nat") };
   const horsContratLignes = await db.sql<{ dep: string; aca: string; code_commune: string }>(
     "select dep, aca, code_commune from classement where motif = 'prive_hors_contrat'",
@@ -300,7 +301,7 @@ export async function exporterTerritoires(
           : moyennesTerritoire(g)
               .map((m) => ({ ...m, comparaisons: m.comparaisons.filter((c) => options.niveaux!.includes(c.niveau)) }))
               .filter((m) => m.comparaisons.length),
-        liste: options.liste ? g.map((f) => ligneListe(f, rentreeIps)).sort(parNom) : [],
+        liste: options.liste ? g.map((f) => ligneListe(f, rentreeIps, sessions)).sort(parNom) : [],
       };
       resultat[famille] = synthese;
     }
