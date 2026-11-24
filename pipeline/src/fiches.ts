@@ -211,7 +211,7 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
     const rep = repartitions.get(uai) ?? [];
     const el = eleves.get(uai) ?? null;
     return {
-      uai, ...identite, disparuLe, fermeLe: fermetures.get(uai) ?? null,
+      uai, ...identite, disparuLe, fermeLe: disparuLe === null ? null : (fermetures.get(uai) ?? null),
       indicateurs: ind, repartitions: rep, eleves: el,
       budget: { france: [] }, // remplacé plus bas, quand toutes les fiches (disparues comprises) sont connues
       voisins: disparuLe === null ? (voisins.get(uai) ?? null) : null,
@@ -228,7 +228,7 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
     }
     const entree = registre[uai];
     if (!entree) continue;
-    fiches.push(fiche(uai, entree.identite, entree.disparuLe ?? aujourdhui));
+    fiches.push(fiche(uai, entree.identite, fermetures.get(uai) ?? entree.disparuLe ?? aujourdhui));
   }
   // Les dénominateurs comptent aussi les établissements fermés : toutes les fiches, actives et disparues.
   const budgets = await calculerBudgets(db, fiches);

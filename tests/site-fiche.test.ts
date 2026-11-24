@@ -70,7 +70,7 @@ describe("fiche établissement", () => {
 
   test("page disparue : mention exacte, page générée", () => {
     const t = texte("etablissement/0440099Z");
-    expect(t).toContain("Cet établissement n'apparaît plus dans l'Annuaire de l'éducation depuis le 01/10/2026.");
+    expect(t).toContain("Cet établissement n'apparaît plus dans l'Annuaire de l'éducation depuis le 31/08/2020.");
     expect(t).toContain("Collège Disparu");
   });
 

@@ -130,12 +130,26 @@ describe("établissements fermés", () => {
     const toutes = await assemblerFiches(await dbAvecRegistre(registre), manifest, registre, maintenant);
     expect(toutes.filter((f) => f.uai === "0440099Z")).toHaveLength(1);
     expect(toutes.find((f) => f.uai === "0440099Z")).toMatchObject({
-      nom: "Collège Disparu", fermeLe: "2020-08-31", disparuLe: "2026-10-01",
+      nom: "Collège Disparu", fermeLe: "2020-08-31", disparuLe: "2020-08-31",
     });
   });
 
   test("fiche active : fermeLe null", () => {
     expect(fiche("0440001A").fermeLe).toBeNull();
+  });
+
+  test("UAI active aussi présente chez les fermés : ni fermeLe ni disparuLe", () => {
+    expect(fiche("0440002B")).toMatchObject({ fermeLe: null, disparuLe: null });
+  });
+
+  test("la date officielle remplace celle du registre, et entre au registre", async () => {
+    const avant: Registre = {
+      "0440099Z": { premiere: "2026-01-01", identite: identiteTest("Collège Disparu"), disparuLe: "2026-10-01" },
+    };
+    const d = await dbAvecRegistre(avant);
+    expect(await d.sql("select disparu_le from disparus where uai = '0440099Z'")).toEqual([{ disparu_le: "2020-08-31" }]);
+    const apres = mettreAJourRegistre(avant, await assemblerFiches(d, manifest, avant, maintenant), "2026-11-23");
+    expect(apres["0440099Z"]).toMatchObject({ premiere: "2026-01-01", disparuLe: "2020-08-31", identite: { nom: "Collège Disparu" } });
   });
 
   test("les fiches historiques entrent au registre", () => {
@@ -159,17 +173,23 @@ describe("registre des pages", () => {
     };
     const f = (await assemblerFiches(await dbAvecRegistre(registre), manifest, registre, maintenant))
       .find((x) => x.uai === "0440099Z")!;
-    expect(f).toMatchObject({ nom: "Collège Disparu", disparuLe: "2026-10-01", voisins: null });
+    expect(f).toMatchObject({ nom: "Collège Disparu", disparuLe: "2020-08-31", voisins: null });
     const ips = f.indicateurs.find((i) => i.code === "ips")!;
     expect(ips.mesure).toMatchObject({ valeur: 88, rentree: 2024 }); // encore présent dans la source
     expect(f.sources.map((x) => x.id)).toEqual(["annuaire", "ips_colleges"]);
   });
 
-  test("nouvelle disparition : datée de cette collecte ; voisin de personne ; hors des moyennes", async () => {
+  test("disparition absente des fermés officiels : datée de cette collecte", async () => {
+    const registre: Registre = { "0440098Y": { premiere: "2026-01-01", identite: identiteTest("Collège Évanoui") } };
+    const toutes = await assemblerFiches(await dbAvecRegistre(registre), manifest, registre, maintenant);
+    expect(toutes.find((x) => x.uai === "0440098Y")).toMatchObject({ disparuLe: "2026-11-23", fermeLe: null });
+  });
+
+  test("nouvelle disparition : date officielle ; voisin de personne ; hors des moyennes", async () => {
     const registre: Registre = { "0440099Z": { premiere: "2026-01-01", identite: identiteTest("Collège Disparu", 47.2185, -1.553) } };
     const d = await dbAvecRegistre(registre);
     const toutes = await assemblerFiches(d, manifest, registre, maintenant);
-    expect(toutes.find((x) => x.uai === "0440099Z")!.disparuLe).toBe("2026-11-23");
+    expect(toutes.find((x) => x.uai === "0440099Z")!.disparuLe).toBe("2020-08-31");
     for (const f of toutes) expect(f.voisins?.map((v) => v.uai) ?? []).not.toContain("0440099Z");
     // la moyenne IPS est celle de la source ; la moyenne Σ/Σ des collèges publics ignore la page disparue
     const jv = toutes.find((x) => x.uai === "0440001A")!;
@@ -185,7 +205,7 @@ describe("registre des pages", () => {
     const apres = mettreAJourRegistre(avant, await assemblerFiches(d, manifest, avant, maintenant), "2026-11-23");
     expect(apres["0440001A"]).toEqual({ premiere: "2026-01-01", identite: expect.objectContaining({ nom: "Collège Jules-Verne" }) });
     expect(apres["0440002B"]!.premiere).toBe("2026-11-23");
-    expect(apres["0440099Z"]).toMatchObject({ disparuLe: "2026-11-23", identite: { nom: "Collège Disparu" } });
+    expect(apres["0440099Z"]).toMatchObject({ disparuLe: "2020-08-31", identite: { nom: "Collège Disparu" } });
     expect(Object.keys(apres)).toHaveLength(16); // + 2 fiches historiques
   });
 

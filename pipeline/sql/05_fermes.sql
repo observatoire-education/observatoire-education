@@ -83,7 +83,9 @@ order by uai;
 
 -- Pages conservées : UAI du registre absentes du périmètre actuel, et fiches historiques des fermés.
 create or replace table disparus as
-select uai, famille, secteur, dep, aca, disparu_le from registre where uai not in (select uai from etablissements)
+select r.uai, r.famille, r.secteur, r.dep, r.aca, coalesce(f.date_fermeture::varchar, r.disparu_le) as disparu_le
+from registre r left join fermes f using (uai)
+where r.uai not in (select uai from etablissements)
 union all
 select uai, famille, secteur, dep, aca, date_fermeture::varchar from historiques
 order by uai;
