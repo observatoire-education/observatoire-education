@@ -2,5 +2,9 @@
   "SITE_URL": "https://observatoireeducation.fr",
   "DOMAINE": "observatoireeducation.fr",
   "DEPOT": "observatoire-education/observatoire-education",
-  "INDEXABLE": true
+  "INDEXABLE": true,
+  "UMAMI": {
+    "SCRIPT": "https://stats.bonnet.pro/script.js",
+    "ID": "2f6dec40-066b-421d-b424-6925b0948fc5"
+  }
 }

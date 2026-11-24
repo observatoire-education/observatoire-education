@@ -1,0 +1,10 @@
+{
+  "SITE_URL": "https://observatoireeducation.fr",
+  "DOMAINE": "observatoireeducation.fr",
+  "DEPOT": "observatoire-education/observatoire-education",
+  "INDEXABLE": false,
+  "UMAMI": {
+    "SCRIPT": "https://stats.example.test/script.js",
+    "ID": "00000000-0000-0000-0000-000000000000"
+  }
+}

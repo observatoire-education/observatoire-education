@@ -11,6 +11,9 @@ import { dbAvecRegistre, identiteTest, manifestTest } from "./aide.ts";
 const RACINE = resolve(import.meta.dir, "..");
 export const DIST_TEST = join(RACINE, ".cache", "dist-test");
 const DONNEES_TEST = join(RACINE, ".cache", "data-test");
+/** Configuration du site d'essai, indépendante de celle de production (noindex, Umami fictif). */
+const CONFIG_TEST = join(RACINE, "tests", "fixtures", "observatoire.config.json");
+export const UMAMI_TEST = JSON.parse(readFileSync(CONFIG_TEST, "utf8")).UMAMI as { SCRIPT: string; ID: string };
 
 /** Une page disparue figure dans le site d'essai. */
 export const REGISTRE_TEST: Registre = {
@@ -29,7 +32,7 @@ export function siteTest(): Promise<string> {
     await exporter(fiches, db, manifest, DONNEES_TEST);
     const p = Bun.spawn(["bun", "run", "astro", "build"], {
       cwd: join(RACINE, "site"),
-      env: { ...process.env, OBS_DATA: DONNEES_TEST, OBS_DIST: DIST_TEST },
+      env: { ...process.env, OBS_DATA: DONNEES_TEST, OBS_DIST: DIST_TEST, OBS_CONFIG: CONFIG_TEST },
       stdout: "pipe",
       stderr: "pipe",
     });

@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, test } from "bun:test";
-import { doc, octets, page, siteTest, texte } from "./site.ts";
+import { doc, octets, page, siteTest, texte, UMAMI_TEST } from "./site.ts";
 
 beforeAll(async () => {
   await siteTest();
@@ -43,7 +43,7 @@ describe("fiche établissement", () => {
     expect(h).toContain('role="img"');
     expect(h).not.toContain("observablehq");
     expect([...doc("etablissement/0440001A").querySelectorAll("script")].map((s) => s.getAttribute("src"))).toEqual([
-      "/js/theme.js", "/js/fiche.js",
+      "/js/theme.js", UMAMI_TEST.SCRIPT, "/js/fiche.js",
     ]);
   });
 

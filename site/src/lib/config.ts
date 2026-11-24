@@ -7,6 +7,8 @@ export interface Config {
   DOMAINE: string;
   DEPOT: string;
   INDEXABLE: boolean;
+  /** Mesure d'audience Umami auto-hébergée (facultative). */
+  UMAMI?: { SCRIPT: string; ID: string };
 }
 
 export const CONFIG: Config = JSON.parse(

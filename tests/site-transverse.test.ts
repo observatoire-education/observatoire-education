@@ -4,7 +4,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { ecrireFichiersHebergement, verifierDist } from "../scripts/garde-fous.ts";
-import { DIST_TEST, doc, page, siteTest, texte } from "./site.ts";
+import { DIST_TEST, doc, page, siteTest, texte, UMAMI_TEST } from "./site.ts";
 
 beforeAll(async () => {
   await siteTest();
@@ -70,9 +70,10 @@ describe("contrôles transverses du HTML", () => {
     }
   });
 
-  test("aucune ressource tierce chargée par les pages", () => {
+  test("aucune ressource tierce chargée par les pages, hormis la mesure d'audience", () => {
     // seulement ce que le navigateur télécharge : scripts, styles, images, icônes
-    // (la balise canonical déclare l'adresse de la page, sans rien charger)
+    // (la balise canonical déclare l'adresse de la page, sans rien charger) ;
+    // seule exception : le script Umami auto-hébergé déclaré dans la configuration
     for (const p of toutesLesPages()) {
       const d = doc(p);
       const charges = [
@@ -81,7 +82,8 @@ describe("contrôles transverses du HTML", () => {
           .filter((l) => /stylesheet|icon|preload|modulepreload|manifest/.test(l.getAttribute("rel") ?? ""))
           .map((l) => l.getAttribute("href")!),
       ];
-      for (const url of charges) expect(`${p} : ${url}`).not.toMatch(/ : (https?:)?\/\//);
+      for (const url of charges.filter((u) => u !== UMAMI_TEST.SCRIPT)) expect(`${p} : ${url}`).not.toMatch(/ : (https?:)?\/\//);
+      expect(d.querySelector(`script[src="${UMAMI_TEST.SCRIPT}"]`)?.getAttribute("data-website-id")).toBe(UMAMI_TEST.ID);
     }
   });
 });
