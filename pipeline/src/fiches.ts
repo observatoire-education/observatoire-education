@@ -160,11 +160,17 @@ async function identitesHistoriques(db: Db): Promise<Map<string, { identite: Ide
   );
 }
 
-/** Les sources effectivement utilisées par la fiche, dans l'ordre du registre, avec le millésime le plus récent. */
+/**
+ * Les sources effectivement utilisées par la fiche, dans l'ordre du registre, avec le millésime le plus récent.
+ * L'identité vient de l'Annuaire, ou du jeu des fermés pour une fiche historique (`historique`) ; le jeu des fermés
+ * date aussi la fermeture affichée (`fermes` : la fiche ou l'un de ses prédécesseurs a une date de fermeture).
+ */
 function sourcesUtilisees(
   manifest: Manifest, indicateurs: Indicateur[], repartitions: Repartition[], eleves: Fiche["eleves"], resultats: ResultatsVoie[],
+  { historique = false, fermes = false }: { historique?: boolean; fermes?: boolean } = {},
 ): SourceRef[] {
-  const rentrees = new Map<SourceId, number | null>([["annuaire", null]]);
+  const rentrees = new Map<SourceId, number | null>([[historique ? "fermes" : "annuaire", null]]);
+  if (fermes) rentrees.set("fermes", null);
   const noter = (id: SourceId | null, rentree: number | null) => {
     if (!id) return;
     const r = rentrees.get(id);
@@ -218,14 +224,18 @@ export function millesimesAffiches(f: Fiche): Map<SourceId, Set<number>> {
 
 const parDate = (a: { le: string; millesime: number }, b: { le: string; millesime: number }) => a.le.localeCompare(b.le) || a.millesime - b.millesime;
 
-/** Rattache à chaque source de chaque fiche les corrections d'un millésime que la fiche affiche. Idempotent. */
+/**
+ * Rattache à chaque source de chaque fiche les corrections d'un millésime que la fiche affiche, dont la version
+ * corrigée est la version actuelle de la source. Idempotent.
+ */
 export function attacherCorrections(fiches: Fiche[], corrections: EntreeCorrection[], manifest: Manifest): void {
   const sourcesBudget = toutesSources(manifest);
+  const actuelle = (e: EntreeCorrection) => e.corrigee === manifest.derniere(e.source)?.sha256;
   for (const f of fiches) {
     const collectivite = (f.budget.colleges ?? f.budget.lycees)?.id;
     // Un exercice corrigé et affiché porte sa propre source, même s'il n'est pas le dernier exercice du bloc budget.
     for (const ex of (f.budget.colleges ?? f.budget.lycees)?.exercices ?? []) {
-      const touche = corrections.some((e) => e.source === ex.source && e.millesime === ex.exercice && !!collectivite && collectivitesCorrigees(e).has(collectivite));
+      const touche = corrections.some((e) => actuelle(e) && e.source === ex.source && e.millesime === ex.exercice && !!collectivite && collectivitesCorrigees(e).has(collectivite));
       const s = touche && sourcesBudget.find((x) => x.id === ex.source);
       const v = s && manifest.derniere(s.id);
       if (s && v && !f.sources.some((x) => x.id === s.id)) {
@@ -237,6 +247,8 @@ export function attacherCorrections(fiches: Fiche[], corrections: EntreeCorrecti
       const trouvees = corrections
         .filter((e) => {
           if (e.source !== s.id || !affiches.get(e.source)?.has(e.millesime)) return false;
+          // Une correction ne décrit les chiffres affichés que si sa version corrigée est la version actuelle.
+          if (!actuelle(e)) return false;
           return e.source.startsWith("budget_") ? !!collectivite && collectivitesCorrigees(e).has(collectivite) : e.cles.includes(f.uai);
         })
         .map((e) => resoudreCorrection(manifest, e))
@@ -334,6 +346,13 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
   const avecFiche = new Set(fiches.map((f) => f.uai));
   const gardes = liens.filter((l) => avecFiche.has(l.de) && avecFiche.has(l.vers));
   attacherSuccesseurs(fiches, gardes);
+  // Sources connues seulement maintenant : la date de fermeture affichée (fiche ou prédécesseur) vient du jeu des fermés.
+  for (const f of fiches) {
+    f.sources = sourcesUtilisees(manifest, f.indicateurs, f.repartitions, f.eleves, f.resultats, {
+      historique: f.disparuLe !== null && historiques.has(f.uai),
+      fermes: f.fermeLe !== null || f.predecesseurs.some((p) => p.fermeLe !== null),
+    });
+  }
   if (opts.rapport) {
     Object.assign(opts.rapport, {
       regle1: gardes.filter((l) => l.regle === 1).length, regle2: gardes.filter((l) => l.regle === 2).length,

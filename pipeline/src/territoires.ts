@@ -13,6 +13,7 @@ import type { Manifest } from "./archive.ts";
 import type { Budgets } from "./budget-eleves.ts";
 import { collectivitesCorrigees, type EntreeCorrection, resoudreCorrection } from "./corrections.ts";
 import type { Db } from "./db.ts";
+import { depCanonique } from "./normalise.ts";
 import { dernieresSessions, type DernieresSessions, type IpsRentree, nuages, resume, VOIES_NUAGE } from "./resultats.ts";
 import { calculerSegregation } from "./segregation.ts";
 import { calculerIpsHistorique, derniereRentreeIps, ipsCourant, type NiveauIps } from "./ips-historique.ts";
@@ -336,14 +337,14 @@ export async function exporterTerritoires(
   const collectivitesTriees = (cles: Iterable<string>): BudgetCollectivite[] =>
     [...cles].sort((a, b) => (a.startsWith("colleges") === b.startsWith("colleges") ? a.localeCompare(b) : a.startsWith("colleges") ? -1 : 1))
       .map((c) => budgets.collectivites.get(c)!);
-  /** Corrections de ségrégation (clé = département) et de budget (collectivité montrée par la page) d'un territoire. */
+  /** Corrections de ségrégation (clé = département brut de la source, « 044 », comparé au code canonique) et de budget (collectivité montrée par la page) d'un territoire. */
   const correctionsDe = (dep: string | null, collectivites: BudgetCollectivite[]): Pick<DonneesTerritoire, "corrections"> => {
     if (corrections.length && !manifest) throw new Error("exporterTerritoires : le manifeste est nécessaire pour résoudre les corrections");
     // Exercices montrés par la page, par collectivité.
     const exercices = new Map(collectivites.map((c) => [c.id as string, new Set(c.exercices.map((x) => x.exercice))]));
     const trouvees = corrections
       .filter((e) =>
-        e.source === "segregation" ? dep !== null && e.cles.includes(dep)
+        e.source === "segregation" ? dep !== null && e.cles.some((c) => depCanonique(c) === dep)
           : e.source.startsWith("budget_") && [...collectivitesCorrigees(e)].some((id) => exercices.get(id)?.has(e.millesime)))
       .map((e) => ({ source: e.source, ...resoudreCorrection(manifest!, e) }))
       .sort((a, b) => a.source.localeCompare(b.source) || a.le.localeCompare(b.le) || a.millesime - b.millesime);

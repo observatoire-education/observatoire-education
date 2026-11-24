@@ -11,6 +11,9 @@ import { ecrireRegistre, lireRegistre, mettreAJourRegistre, type Registre } from
 import type { BudgetCollectivite } from "@obs/shared/donnees";
 import { calculerBudgets } from "../pipeline/src/budget-eleves.ts";
 import { dbAvecRegistre, dbTest, identiteTest, manifestTest } from "./aide.ts";
+import { comparerVersions } from "../pipeline/src/corrections.ts";
+import { connexion, executer, litteral } from "../pipeline/src/duck.ts";
+import { SOURCES } from "../pipeline/src/sources.ts";
 
 const dossiers: string[] = [];
 const temporaire = async () => {
@@ -146,6 +149,28 @@ describe("établissements fermés", () => {
     });
   });
 
+  test("source de la date de fermeture : jeu des fermés sur les fiches qui affichent une date", async () => {
+    const ids = (f: Fiche) => f.sources.map((s) => s.id);
+    // Fiche historique : l'identité vient du jeu des fermés, qui remplace l'Annuaire.
+    expect(ids(fiche("0440101A"))).toContain("fermes");
+    expect(ids(fiche("0440101A"))).not.toContain("annuaire");
+    // Successeur actif dont les prédécesseurs ont une date de fermeture.
+    expect(fiche("0440103C").predecesseurs.every((p) => p.fermeLe !== null)).toBe(true);
+    expect(ids(fiche("0440103C"))).toEqual(expect.arrayContaining(["annuaire", "fermes"]));
+    // Fiche active sans prédécesseur : pas de jeu des fermés.
+    expect(ids(fiche("0440001A"))).not.toContain("fermes");
+    // Fiche fermée tirée du registre (identité de l'Annuaire) avec une date officielle : les deux sources.
+    const registre: Registre = { "0440022S": { premiere: "2026-01-01", identite: identiteTest("Collège Oublié"), disparuLe: "2026-10-01" } };
+    const f = (await assemblerFiches(await dbAvecRegistre(registre), manifest, registre, maintenant)).find((x) => x.uai === "0440022S")!;
+    expect(f.fermeLe).toBe("2018-08-31");
+    expect(ids(f)).toEqual(expect.arrayContaining(["annuaire", "fermes"]));
+    // Fiche disparue sans date officielle : pas de jeu des fermés.
+    const r2: Registre = { "0440097X": { premiere: "2026-01-01", identite: identiteTest("Collège Parti"), disparuLe: "2026-10-01" } };
+    const g = (await assemblerFiches(await dbAvecRegistre(r2), manifest, r2, maintenant)).find((x) => x.uai === "0440097X")!;
+    expect(g.fermeLe).toBeNull();
+    expect(ids(g)).not.toContain("fermes");
+  });
+
   test("fermé que rien ne cite : pas de fiche", () => {
     expect(fiches.some((f) => f.uai === "0440022S")).toBe(false);
   });
@@ -225,7 +250,8 @@ describe("registre des pages", () => {
     expect(f).toMatchObject({ nom: "Collège Disparu", disparuLe: "2020-08-31", voisins: null });
     const ips = f.indicateurs.find((i) => i.code === "ips")!;
     expect(ips.mesure).toMatchObject({ valeur: 88, rentree: 2024 }); // encore présent dans la source
-    expect(f.sources.map((x) => x.id)).toEqual(["annuaire", "ips_colleges", "ival_gt"]);
+    // Sa date de fermeture officielle vient du jeu des fermés.
+    expect(f.sources.map((x) => x.id)).toEqual(["annuaire", "ips_colleges", "fermes", "ival_gt"]);
   });
 
   test("disparition absente des fermés officiels : datée de cette collecte", async () => {
@@ -548,6 +574,18 @@ describe("budget des fiches et des territoires", () => {
       expect(toutes.filter((f) => f.uai !== "0440001A").flatMap((f) => f.sources).some((s) => s.corrections)).toBe(false);
     });
 
+    test("correction dont la version corrigée n'est plus la version actuelle : absente", async () => {
+      const m = await manifestCorrige();
+      // Une troisième version publiée depuis : la correction « a → ips_colleges… » ne décrit plus les chiffres affichés.
+      m.ajouter("ips_colleges", {
+        sha256: "d".repeat(64), tag: "t", fichier: "ips_colleges-apres.parquet", url: "https://exemple.org/ips-apres.parquet",
+        modified: "2026-11-23T00:00:00Z", collecteLe: "2026-11-23T02:17:00Z", lignes: 10,
+      });
+      m.rendreActuelle("ips_colleges", "d".repeat(64));
+      const toutes = await assemblerFiches(db, m, {}, maintenant, { corrections: [entree(2024, ["0440001A"])] });
+      expect(toutes.flatMap((f) => f.sources).some((s) => s.corrections)).toBe(false);
+    });
+
     test("correction d'un millésime que la fiche n'affiche pas : absente", async () => {
       const m = await manifestCorrige();
       const toutes = await assemblerFiches(db, m, {}, maintenant, { corrections: [entree(2015, ["0440001A"])] });
@@ -611,6 +649,17 @@ describe("budget des fiches et des territoires", () => {
     });
 
     test("correction de ségrégation : page du département seulement", async () => {
+      // Deux versions de la fixture (dep « 044 ») dont la seconde modifie la ligne 2024 de la Loire-Atlantique.
+      const duck = await connexion();
+      const dossier = await temporaire();
+      const csv = join(import.meta.dir, "fixtures", "segregation.csv");
+      const avant = join(dossier, "avant.parquet");
+      const apres = join(dossier, "apres.parquet");
+      await executer(duck, `copy (select * from read_csv(${litteral(csv)}, all_varchar = true)) to ${litteral(avant)} (format parquet)`);
+      await executer(duck, `copy (select * replace (case when annee = '2024' and dep = '044' then '0.999' else i_entropie_tot end as i_entropie_tot)
+        from read_csv(${litteral(csv)}, all_varchar = true)) to ${litteral(apres)} (format parquet)`);
+      const diff = await comparerVersions(duck, SOURCES.segregation, avant, apres);
+      expect(diff).toEqual([{ millesime: 2024, cles: [expect.stringMatching(/^0?44$/)] }]);
       const m = await manifestCorrige();
       m.ajouter("segregation", {
         sha256: "b".repeat(64), tag: "t", fichier: "segregation.parquet", url: "https://exemple.org/seg-avant.parquet",
@@ -618,7 +667,7 @@ describe("budget des fiches et des territoires", () => {
       });
       m.rendreActuelle("segregation", "segregation".padEnd(64, "0"));
       const sortie = join(await temporaire(), "data");
-      const e = { source: "segregation" as const, millesime: 2024, cles: ["44"], precedente: "b".repeat(64), corrigee: "segregation".padEnd(64, "0"), le: "2026-11-22T02:17:00Z" };
+      const e = { source: "segregation" as const, millesime: 2024, cles: diff[0]!.cles, precedente: "b".repeat(64), corrigee: "segregation".padEnd(64, "0"), le: "2026-11-22T02:17:00Z" };
       const actives = fiches.filter((f) => f.disparuLe === null);
       await exporterTerritoires(actives, db, sortie, 2025, undefined, [e], m);
       const d44: DonneesTerritoire = await lire(sortie, "departements", "44.json");

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Manifest } from "../pipeline/src/archive.ts";
 import { collecter, type ClientSources } from "../pipeline/src/collect.ts";
-import { ajouterCorrections, comparerVersions, type EntreeCorrection, lireCorrections } from "../pipeline/src/corrections.ts";
+import { ajouterCorrections, comparerVersions, type EntreeCorrection, lireCorrections, rattraperCorrections } from "../pipeline/src/corrections.ts";
 import { DepotLocal } from "../pipeline/src/depot.ts";
 import { connexion, executer, litteral } from "../pipeline/src/duck.ts";
 import { SOURCES, type Source, sourceBudget } from "../pipeline/src/sources.ts";
@@ -150,6 +150,33 @@ describe("collecter et corrections", () => {
     expect((await readdir(join(dossier, "tmp"))).filter((f) => f.includes("precedente") || f.includes("corrigee"))).toEqual([]);
   });
 
+  test("filtre changé : la nouvelle version n'est pas comparée à l'ancienne (périmètre différent)", async () => {
+    const dossier = await mkdtemp(join(racine, "collect-"));
+    const manifest = Manifest.lire(join(dossier, "manifest.json"));
+    const depot = new DepotLocal(join(dossier, "depot"));
+    const corrections = join(dossier, "corrections.json");
+    const budget = { v: "1" };
+    const base = client({ modified: "M1", rows: [l("A", "2024-2025")] });
+    const c: ClientSources = {
+      ...base,
+      async telechargerParquet(s, dest) {
+        if (s.id !== "budget_2024") return base.telechargerParquet(s, dest);
+        const ligneB = (i: number): Ligne => ({ exer: "2024", categ: "DEPT", ndept: "044", cregi: "52", lbudg: `CD${i}`, fonction: "221", obnetdeb: budget.v });
+        await parquet(s, Array.from({ length: 10 }, (_, i) => ligneB(i)), dest);
+        return { chemin: dest, url: `${s.api}/${s.datasetId}/exports/parquet?where=nouveau` };
+      },
+    };
+    const o = (jour: string) => ({ manifest, client: c, depot, maintenant: new Date(jour), tmp: join(dossier, "tmp"), corrections });
+    await collecter(o("2026-11-22T02:00:00Z"));
+    expect(manifest.versions("budget_2024")).toHaveLength(1);
+    manifest.derniere("budget_2024")!.requete = "https://exemple.test/ancien-filtre";
+    budget.v = "2";
+    const j = await collecter(o("2026-11-23T02:00:00Z"));
+    expect(j.filter((x) => x.source === "budget_2024").map((x) => x.action)).toEqual(["telecharge"]);
+    expect(manifest.versions("budget_2024")).toHaveLength(2);
+    expect(lireCorrections(corrections).filter((e) => e.source === "budget_2024")).toEqual([]);
+  });
+
   test("sans option corrections : aucune comparaison", async () => {
     const dossier = await mkdtemp(join(racine, "collect-"));
     const manifest = Manifest.lire(join(dossier, "manifest.json"));
@@ -179,5 +206,51 @@ describe("collecter et corrections", () => {
       ["erreur", "comparaison des versions : introuvable"],
     ]);
     expect(manifest.versions("ips_colleges")).toHaveLength(2);
+  });
+});
+
+describe("rattrapage des corrections", () => {
+  const version = (id: string, sha: string, fichier: string, jour: string, requete?: string) => ({
+    sha256: sha, tag: `archives-${id}`, fichier, url: `https://exemple.test/${fichier}`, modified: jour,
+    collecteLe: `${jour}T02:00:00.000Z`, lignes: 2, ...(requete ? { requete } : {}),
+  });
+
+  test("deux versions locales → une entrée ; une paire en échec n'empêche pas les autres ; requêtes différentes sautées", async () => {
+    const dossier = await mkdtemp(join(racine, "rattrapage-"));
+    const manifest = Manifest.lire(join(dossier, "manifest.json"));
+    // ips_colleges : v1 → v2 corrige B en 2024.
+    const v1 = await parquet(ips, [l("A", "2024-2025"), l("B", "2024-2025")], join(dossier, "ips1.parquet"));
+    const v2 = await parquet(ips, [l("A", "2024-2025"), l("B", "2024-2025", "99")], join(dossier, "ips2.parquet"));
+    manifest.ajouter("ips_colleges", version("ips_colleges", "1".repeat(64), v1, "2026-11-20"));
+    manifest.ajouter("ips_colleges", version("ips_colleges", "2".repeat(64), v2, "2026-11-21"));
+    // effectifs_colleges : la version précédente est introuvable → échec journalisé, on continue.
+    const eff = SOURCES.effectifs_colleges;
+    const e2 = await parquet(eff, [{ rentree_scolaire: "2024" }], join(dossier, "eff2.parquet"));
+    manifest.ajouter("effectifs_colleges", version("effectifs_colleges", "3".repeat(64), join(dossier, "absent.parquet"), "2026-11-20"));
+    manifest.ajouter("effectifs_colleges", version("effectifs_colleges", "4".repeat(64), e2, "2026-11-21"));
+    // budget_2024 : filtre changé entre les deux versions → paire sautée, même si les valeurs diffèrent.
+    const bud = sourceBudget(2024, "jeu");
+    const ligneB = (v: string): Ligne => ({ exer: "2024", categ: "DEPT", ndept: "044", cregi: "52", lbudg: "CD44", obnetdeb: v });
+    const b1 = await parquet(bud, [ligneB("1")], join(dossier, "b1.parquet"));
+    const b2 = await parquet(bud, [ligneB("2")], join(dossier, "b2.parquet"));
+    manifest.ajouter("budget_2024", version("budget_2024", "5".repeat(64), b1, "2026-11-20", "https://exemple.test/ancien"));
+    manifest.ajouter("budget_2024", version("budget_2024", "6".repeat(64), b2, "2026-11-21", "https://exemple.test/nouveau"));
+    // Dépôt local : la « version » est le chemin du fichier.
+    const depot = {
+      publier: () => Promise.reject(new Error("lecture seule")),
+      recuperer: async (v: { fichier: string }, dest: string) => {
+        if (!(await Bun.file(v.fichier).exists())) throw new Error(`introuvable : ${v.fichier}`);
+        await Bun.write(dest, Bun.file(v.fichier));
+      },
+    };
+    const corrections = join(dossier, "corrections.json");
+    const sortie: string[] = [];
+    const r = await rattraperCorrections({ manifest, depot, duck, tmp: join(dossier, "tmp"), corrections, journal: (x) => sortie.push(x) });
+    expect(lireCorrections(corrections)).toEqual([
+      { source: "ips_colleges", millesime: 2024, cles: ["B"], precedente: "1".repeat(64), corrigee: "2".repeat(64), le: "2026-11-21T02:00:00.000Z" },
+    ]);
+    expect(r.echecs).toBe(1);
+    expect(sortie.some((x) => x.includes("effectifs_colleges") && x.includes("introuvable"))).toBe(true);
+    expect(sortie.some((x) => x.includes("budget_2024") && x.includes("requête"))).toBe(true);
   });
 });

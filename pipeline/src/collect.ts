@@ -116,7 +116,8 @@ async function traiter(s: Source, opts: OptionsCollecte, duck: DuckDBConnection)
     if (motif) return { action: "rejete", modified: meta.modified, lignes: desc.lignes, motif };
 
     const sha = await empreinte(fichier);
-    const precedente = opts.corrections && s.millesime ? manifest.derniere(s.id) : undefined;
+    // Pas de comparaison quand le filtre a changé : les deux versions ne couvrent pas le même périmètre.
+    const precedente = opts.corrections && s.millesime && !filtreChange ? manifest.derniere(s.id) : undefined;
     manifest.marquerVu(s.id, meta.modified);
     if (manifest.connait(s.id, sha)) {
       manifest.rendreActuelle(s.id, sha);

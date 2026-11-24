@@ -1,13 +1,15 @@
 // Corrections de millésime : une nouvelle version d'une source millésimée qui modifie ou retire des lignes
 // d'un millésime déjà publié. Seules les valeurs publiées comptent (colonnes requises, texte rogné).
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+import { mkdir, rm } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import type { DuckDBConnection } from "@duckdb/node-api";
 import type { Correction, SourceId } from "@obs/shared/types";
 import type { Manifest } from "./archive.ts";
+import type { Depot } from "./depot.ts";
 import { collectiviteDuBudget } from "./budget.ts";
 import { ident, lignes, litteral } from "./duck.ts";
-import type { Source } from "./sources.ts";
+import { type Source, toutesSources } from "./sources.ts";
 
 export interface EntreeCorrection {
   source: SourceId;
@@ -101,4 +103,57 @@ export function collectivitesCorrigees(e: EntreeCorrection): Set<string> {
     if (id) ids.add(id);
   }
   return ids;
+}
+
+/**
+ * Rattrapage : compare chaque paire de versions consécutives du manifeste et ajoute les corrections de millésime
+ * à `corrections` (idempotent), source par source. Une paire en échec est journalisée et n'arrête pas les autres ;
+ * une paire dont la requête archivée diffère (filtre changé, périmètre différent) est sautée.
+ */
+export async function rattraperCorrections(o: {
+  manifest: Manifest; depot: Pick<Depot, "recuperer">; duck: DuckDBConnection; tmp: string; corrections: string;
+  journal?: (ligne: string) => void;
+}): Promise<{ entrees: number; echecs: number }> {
+  const journal = o.journal ?? ((l: string) => console.log(l));
+  let entrees = 0;
+  let echecs = 0;
+  await mkdir(o.tmp, { recursive: true });
+  try {
+    for (const s of toutesSources(o.manifest)) {
+      if (!s.millesime) continue;
+      const versions = o.manifest.versions(s.id);
+      const trouvees: EntreeCorrection[] = [];
+      for (let i = 1; i < versions.length; i++) {
+        const [avant, apres] = [versions[i - 1]!, versions[i]!];
+        const paire = `${s.id} ${avant.sha256.slice(0, 12)} → ${apres.sha256.slice(0, 12)}`;
+        if ((avant.requete ?? null) !== (apres.requete ?? null)) {
+          journal(`${paire} : requête différente, paire sautée`);
+          continue;
+        }
+        const [a, n] = [join(o.tmp, "avant.parquet"), join(o.tmp, "apres.parquet")];
+        try {
+          await o.depot.recuperer(avant, a);
+          await o.depot.recuperer(apres, n);
+          for (const t of await comparerVersions(o.duck, s, a, n)) {
+            trouvees.push({ source: s.id, millesime: t.millesime, cles: t.cles, precedente: avant.sha256, corrigee: apres.sha256, le: apres.collecteLe });
+          }
+        } catch (e) {
+          echecs++;
+          journal(`${paire} : échec, ${e instanceof Error ? e.message : String(e)}`);
+        } finally {
+          await rm(a, { force: true });
+          await rm(n, { force: true });
+        }
+      }
+      // Écrit source par source : un arrêt en cours de route garde ce qui a déjà été trouvé.
+      if (trouvees.length) {
+        ajouterCorrections(o.corrections, trouvees);
+        entrees += trouvees.length;
+        journal(`${s.id} : ${trouvees.length} correction(s) de millésime`);
+      }
+    }
+  } finally {
+    await rm(o.tmp, { recursive: true, force: true });
+  }
+  return { entrees, echecs };
 }
