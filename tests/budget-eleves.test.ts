@@ -40,7 +40,7 @@ const dep44 = (c: Map<string, BudgetCollectivite>) => c.get("colleges|dep-44")!;
 const exo = (c: BudgetCollectivite, e: number) => c.exercices.find((x) => x.exercice === e)!;
 
 describe("elevesParCollectivite", () => {
-  test("par niveau, secteur et rentrée ; erea écartés ; une fiche sans valeur ne compte pas", () => {
+  test("par niveau, secteur et rentrée ; erea compté aux lycées ; une fiche sans valeur ne compte pas", () => {
     const fiches = [
       fiche("A", { eleves: [[2023, 400]] }),
       fiche("B", { eleves: [[2023, 100]], secteur: "prive_sous_contrat" }),
@@ -50,7 +50,7 @@ describe("elevesParCollectivite", () => {
     ];
     const m = elevesParCollectivite(fiches, 2023);
     expect(m.get("colleges|dep-44")).toEqual({ public: 400, prive: 100 });
-    expect(m.get("lycees|reg-52")).toEqual({ public: 70, prive: 0 });
+    expect(m.get("lycees|reg-52")).toEqual({ public: 100, prive: 0 });
     expect(m.size).toBe(2);
   });
 
@@ -197,10 +197,12 @@ describe("calculerBudgets", () => {
       [...lignes, [2019, "dep-44", "colleges", "public", "personnel", 1],
         [2024, "reg-52", "lycees", "public", "fonctionnement_hors_personnel", 700]],
       [],
-      [[2024, "dep-44", 123]],
+      [[2024, "dep-44", 123], [2024, "reg-52", 456], [2024, "ctu-corse", 789]],
     );
     const f = [...fiches, fiche("L", { famille: "lpo", eleves: [[2023, 70]] }),
-      fiche("Q", { dep: "23", codeCommune: "23096", eleves: [[2023, 10]] })];
+      fiche("Q", { dep: "23", codeCommune: "23096", eleves: [[2023, 10]] }),
+      fiche("K", { dep: "2A", codeCommune: "2A004", eleves: [[2023, 5]] }),
+      fiche("KL", { dep: "2A", codeCommune: "2A004", famille: "lp", eleves: [[2023, 5]] })];
     const { collectivites } = await calculerBudgets(db, f);
     const c = dep44(collectivites);
     expect(c.exercices.map((x) => x.exercice)).toEqual([2024]);
@@ -209,7 +211,12 @@ describe("calculerBudgets", () => {
     const l = collectivites.get("lycees|reg-52")!;
     expect(l.mentions).toEqual(["agricole"]);
     expect(exo(l, 2024).public.horsPersonnel.parEleve).toBe(10);
-    expect(exo(l, 2024).citesScolaires).toBeNull();
+    // fonction 24 d'une région : portée par ses lycées, jamais par ses collèges
+    expect(exo(l, 2024).citesScolaires).toBe(456);
+    // collectivité unique : sur les lycées seulement
+    expect(exo(collectivites.get("lycees|ctu-corse")!, 2024).citesScolaires).toBe(789);
+    expect(exo(collectivites.get("colleges|ctu-corse")!, 2024).citesScolaires).toBeNull();
+    expect(exo(c, 2024).citesScolaires).toBe(123);
     const creuse = collectivites.get("colleges|dep-23")!;
     expect(creuse.mentions).toEqual(["cites_scolaires"]);
     expect(creuse.partCitesScolaires).toBe(9.1);

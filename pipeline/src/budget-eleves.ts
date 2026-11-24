@@ -10,10 +10,9 @@ import type { Db } from "./db.ts";
 
 const NIVEAUX: NiveauBudget[] = ["colleges", "lycees"];
 
-/** Niveau de budget d'une famille d'établissement ; null pour les EREA (hors périmètre). */
-function niveauDe(famille: Fiche["famille"]): NiveauBudget | null {
-  if (famille === "college") return "colleges";
-  return famille === "erea" ? null : "lycees";
+/** Niveau de budget d'une famille d'établissement : collèges, ou lycées (legt, lpo, lp, erea). */
+function niveauDe(famille: Fiche["famille"]): NiveauBudget {
+  return famille === "college" ? "colleges" : "lycees";
 }
 
 /**
@@ -24,7 +23,6 @@ export function elevesParCollectivite(fiches: Fiche[], rentree: number): Map<str
   const r = new Map<string, ParSecteur<number>>();
   for (const f of fiches) {
     const niveau = niveauDe(f.famille);
-    if (!niveau) continue;
     const valeur = f.indicateurs.find((i) => i.code === "eleves")?.historique.find(([an]) => an === rentree)?.[1];
     if (valeur === undefined || valeur === null) continue;
     const id = collectiviteDe(niveau, f.dep, f.codeCommune);
@@ -44,13 +42,13 @@ interface Ligne { exercice: number; collectivite: string; niveau: NiveauBudget; 
 
 /** Montants d'une collectivité pour un exercice : les lignes de `budget_postes` (par secteur et poste), les élèves, le statut. */
 function exercice(
-  n: number, lignes: Map<string, number>, detaille: boolean, eleves: ParSecteur<number>, cites: number | null,
+  n: number, lignes: Map<string, number>, nonDetaille: boolean, eleves: ParSecteur<number>, cites: number | null,
 ): ExerciceBudget {
   const pub = eleves.public > 0 ? eleves.public : null;
   const priv = eleves.prive > 0 ? eleves.prive : null;
   const v = (secteur: string, poste: string) => lignes.get(`${secteur}|${poste}`);
   let sortie: Pick<ExerciceBudget, "public" | "prive">;
-  if (detaille) {
+  if (nonDetaille) {
     const nd = absent("fonction_non_detaillee");
     sortie = { public: { horsPersonnel: nd, avecPersonnel: nd, investissement: nd }, prive: { fonctionnement: nd, investissement: nd } };
   } else if (lignes.size === 0) {
@@ -105,6 +103,9 @@ function moyenne(exercices: ExerciceBudget[], p: Poste): MoyenneBudget {
   return { valeur: n > 0 ? total / eleves : null, n };
 }
 
+/** Niveau qui porte les cités scolaires : lycées pour les régions et collectivités uniques, collèges pour les autres. */
+const niveauDesCites = (id: IdCollectivite): NiveauBudget => (id.startsWith("reg-") || id.startsWith("ctu-") ? "lycees" : "colleges");
+
 /**
  * Budgets de chaque collectivité (clé `${niveau}|${id}`) pour tous les exercices ≥ `EXERCICE_MIN` présents dans
  * les balances, et moyennes France. Une collectivité sans élève dans les fiches n'a pas de budget.
@@ -115,13 +116,13 @@ export async function calculerBudgets(
   const postes = await db.sql<Ligne>(
     `select exercice::int as exercice, collectivite, niveau, secteur, poste, montant from budget_postes where exercice >= ${EXERCICE_MIN}`,
   );
-  const nonDetaille = await db.sql<{ exercice: number; collectivite: string; niveau: string }>(
+  const lignesNonDetaillees = await db.sql<{ exercice: number; collectivite: string; niveau: string }>(
     `select exercice::int as exercice, collectivite, niveau from budget_non_detaille where exercice >= ${EXERCICE_MIN}`,
   );
   const cites = await db.sql<{ exercice: number; collectivite: string; montant: number }>(
     `select exercice::int as exercice, collectivite, montant from budget_cites where exercice >= ${EXERCICE_MIN}`,
   );
-  const exercices = [...new Set([...postes, ...nonDetaille, ...cites].map((l) => l.exercice))].sort((a, b) => a - b);
+  const exercices = [...new Set([...postes, ...lignesNonDetaillees, ...cites].map((l) => l.exercice))].sort((a, b) => a - b);
 
   const lignes = new Map<string, Map<string, number>>(); // `${exercice}|${niveau}|${collectivite}` → `${secteur}|${poste}` → montant
   for (const l of postes) {
@@ -130,7 +131,7 @@ export async function calculerBudgets(
     m.set(`${l.secteur}|${l.poste}`, l.montant);
     lignes.set(cle, m);
   }
-  const detaille = new Set(nonDetaille.map((l) => `${l.exercice}|${l.niveau}|${l.collectivite}`));
+  const nonDetaille = new Set(lignesNonDetaillees.map((l) => `${l.exercice}|${l.niveau}|${l.collectivite}`));
   const citesParCle = new Map(cites.map((c) => [`${c.exercice}|${c.collectivite}`, c.montant]));
   const eleves = new Map(exercices.map((e) => [e, elevesParCollectivite(fiches, e - 1)]));
 
@@ -143,10 +144,10 @@ export async function calculerBudgets(
     const [niveau, id] = cle.split("|") as [NiveauBudget, IdCollectivite];
     const parExercice = exercices.map((e) =>
       exercice(
-        e, lignes.get(`${e}|${niveau}|${id}`) ?? new Map(), detaille.has(`${e}|${niveau}|${id}`),
+        e, lignes.get(`${e}|${niveau}|${id}`) ?? new Map(), nonDetaille.has(`${e}|${niveau}|${id}`),
         eleves.get(e)!.get(cle) ?? { public: 0, prive: 0 },
-        // Les cités scolaires (fonction 24) sont des dépenses des départements : rattachées aux collèges.
-        niveau === "colleges" ? (citesParCle.get(`${e}|${id}`) ?? null) : null,
+        // Cités scolaires (fonction 24) : au niveau du financeur, jamais aux deux.
+        niveauDesCites(id) === niveau ? (citesParCle.get(`${e}|${id}`) ?? null) : null,
       ),
     );
     const mentions: BudgetCollectivite["mentions"] = [];
