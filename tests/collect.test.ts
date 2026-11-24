@@ -39,6 +39,9 @@ async function fabriquer(s: Source, r: Reglage, dest: string): Promise<void> {
     select = `select *, ${litteral(r.bruit ?? "a")} as fax from (${select}
       union all select ${colonnes.map((c) => (c === "type_etablissement" ? `'Ecole'` : `'E' || i::varchar`) + ` as "${c}"`).join(", ")} from range(3) t(i))
       order by 1 ${r.inverse ? "desc" : "asc"}`;
+  } else if (s.filtre) {
+    // extrait filtré : le portail peut renvoyer les mêmes lignes dans un autre ordre
+    select = `select * from (${select}) order by 1 ${r.inverse ? "desc" : "asc"}`;
   }
   await executer(duck, `copy (${select}) to ${litteral(dest)} (format parquet)`);
 }
@@ -224,6 +227,15 @@ describe("budget : exercices et découverte", () => {
     const v = manifest.derniere("budget_2024")!;
     expect(v.requete).toContain("exports/parquet?where=");
     expect(manifest.derniere("annuaire")!.requete).toBeUndefined();
+  });
+
+  test("extrait budget réordonné par le portail : même empreinte, aucune nouvelle version", async () => {
+    const f = fauxClient({});
+    await collecter(opts(f.client));
+    f.reglages.budget_2024 = { modified: "M2", inverse: true }; // nouvelle date, mêmes lignes dans un autre ordre
+    const j = await collecter(opts(f.client));
+    expect(ligne(j, "budget_2024")).toMatchObject({ action: "inchange", motif: "contenu identique" });
+    expect(manifest.versions("budget_2024")).toHaveLength(1);
   });
 
   test("filtre changé : requête archivée différente, même « modified » → retéléchargé ; identique → inchangé", async () => {

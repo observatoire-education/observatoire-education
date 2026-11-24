@@ -101,6 +101,9 @@ async function traiter(s: Source, opts: OptionsCollecte, duck: DuckDBConnection)
       await reduire(duck, s, brut, reduit);
       fichier = reduit;
       desc = await decrireParquet(duck, reduit);
+    } else if (s.filtre) {
+      await trier(duck, brut, reduit);
+      fichier = reduit;
     }
     const motif = motifRejet(s, desc, filtreChange ? undefined : manifest.derniere(s.id));
     if (motif) return { action: "rejete", modified: meta.modified, lignes: desc.lignes, motif };
@@ -144,6 +147,19 @@ async function reduire(duck: DuckDBConnection, s: Source, src: string, dest: str
     duck,
     `copy (select ${cols} from read_parquet(${litteral(src)})
       where type_etablissement in (${types}) order by all)
+     to ${litteral(dest)} (format parquet, compression zstd)`,
+  );
+}
+
+/**
+ * Extrait filtré (budget) : toutes les colonnes et toutes les lignes, dans un ordre stable. Le portail ne garantit
+ * pas l'ordre de l'export : sans ce tri, les mêmes lignes réordonnées donneraient une nouvelle empreinte et une
+ * nouvelle version archivée.
+ */
+async function trier(duck: DuckDBConnection, src: string, dest: string): Promise<void> {
+  await executer(
+    duck,
+    `copy (select * from read_parquet(${litteral(src)}) order by all)
      to ${litteral(dest)} (format parquet, compression zstd)`,
   );
 }
