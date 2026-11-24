@@ -148,7 +148,11 @@ describe("premier degré sur les territoires", () => {
     const arias = [...b.querySelectorAll("svg[role=img]")].map((s) => s.getAttribute("aria-label")!);
     expect(arias.some((a) => a.startsWith("Écoles : 2014 3"))).toBe(true);
     expect(arias.some((a) => a.includes("2019 2"))).toBe(true); // fusion des Tilleuls : deux écoles fermées
+    expect(arias.some((a) => a.includes("29 en 2025"))).toBe(true); // 0440105E (0 classe) hors du total
     expect(b.outerHTML).not.toMatch(/NaN/);
+    const t = b.textContent!.replace(/\s+/g, " ");
+    expect(t).toContain("1 école sans nombre de classes publié, non comptée");
+    expect(t).toContain("la fusion de deux écoles en une compte pour deux fermetures");
   });
 
   test("département : communes qui ont ou ont eu une école, par lettre, noms seuls", () => {

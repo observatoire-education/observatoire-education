@@ -281,12 +281,15 @@ describe("premier degré sur les territoires (spec, section 6.8)", () => {
     expect(d.bornes).toHaveLength(d.public.length + 1);
   });
 
-  test("historique : écoles ouvertes et classes par rentrée ; 0 classe d'une école rend le total inconnu", () => {
+  test("historique : écoles et classes par rentrée ; une école sans classes publiées (0) est hors du total, comptée à part", () => {
     expect(dep.premierDegre!.historique).toEqual([
       [2014, 3, 11], [2015, 3, 11], [2016, 2, 8], [2017, 2, 8], [2018, 2, 8],
-      [2019, 6, 31], [2020, 6, 31], [2021, 6, 31], [2022, 6, 31], [2023, 6, 31], [2024, 6, 31], [2025, 6, null],
+      // 2025 : 0440105E publie 0 classe → total des autres écoles (31 − 2), pas un total inconnu (règle des territoires)
+      [2019, 6, 31], [2020, 6, 31], [2021, 6, 31], [2022, 6, 31], [2023, 6, 31], [2024, 6, 31], [2025, 6, 29],
     ]);
+    expect(dep.premierDegre!.sansClasses).toEqual([[2025, 1]]);
     expect(france.premierDegre!.historique).toEqual(dep.premierDegre!.historique);
+    expect(france.premierDegre!.sansClasses).toEqual([[2025, 1]]);
   });
 
   test("fermetures : écoles fermées par année depuis 2012", () => {

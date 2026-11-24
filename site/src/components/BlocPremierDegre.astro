@@ -22,6 +22,9 @@ const rentreesHistorique = p.historique.map(([r]) => r);
 const fermetures = fermeturesParAnnee(p.fermetures, p.rentrees.eleves);
 const lettres = parInitiale(communes.filter((c) => communesDisponibles().has(c.code)));
 const nIps = [...p.distributionIps.public, ...p.distributionIps.prive].reduce((a, b) => a + b, 0);
+/** Écoles sans nombre de classes publié, hors des totaux de classes (et des élèves par classe) : dit par rentrée. */
+const sansClasses = (r: number, n: number) => `${r} : ${L.sansClasses(n, entier(n))}`;
+const sansClassesRentree = p.sansClasses.find(([r]) => r === p.rentrees.eleves);
 ---
 <section id="premier-degre">
   <h2>{L.titre}</h2>
@@ -38,7 +41,7 @@ const nIps = [...p.distributionIps.public, ...p.distributionIps.prive].reduce((a
       <div class="c">{p.ipsMoyen.calculee ? <>public · privé s. c.<span class="mention"> · {L.ipsCalcule}</span></> : L.ipsDepp}</div></div>
     <div><div class="k">{L.horsContrat}</div><div class="v">{entier(p.horsContrat)} {L.ecole(p.horsContrat)}</div><div class="c" style="font-family:var(--sans)">{LIBELLES.nonCouvert}</div></div>
   </div>
-  <p class="src" style="border:0">{L.noteElevesParClasse}</p>
+  <p class="src" style="border:0">{L.noteElevesParClasse}{sansClassesRentree && ` ${sansClasses(...sansClassesRentree)}.`}</p>
 
   {(nIps > 0 || courbe) && (
     <div class="cols2" style="margin-top:14px">
@@ -54,6 +57,7 @@ const nIps = [...p.distributionIps.public, ...p.distributionIps.prive].reduce((a
           <div class="lab"><span>{L.evolution}</span><span class="yr">{Math.min(...rentreesHistorique)} → {Math.max(...rentreesHistorique)}</span></div>
           <Fragment set:html={courbe} />
           <div class="legend"><span class="me">écoles (axe de gauche)</span><span>- - - classes (axe de droite)</span></div>
+          {p.sansClasses.length > 0 && <p class="src">{p.sansClasses.map(([r, n]) => sansClasses(r, n)).join(" ; ")}.</p>}
         </div>
       )}
     </div>
@@ -64,6 +68,7 @@ const nIps = [...p.distributionIps.public, ...p.distributionIps.prive].reduce((a
       <div class="card">
         <div class="lab"><span>{L.fermetures}</span><span class="yr">{fermetures[0]![0]} → {fermetures.at(-1)![0]}</span></div>
         <Fragment set:html={svgBarres(fermetures)} />
+        <p class="src">{L.noteFermetures}</p>
       </div>
     </div>
   )}

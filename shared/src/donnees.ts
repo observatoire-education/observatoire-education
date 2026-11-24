@@ -190,10 +190,13 @@ export interface SynthesePremierDegre {
   rentrees: { eleves: number | null; ips: number | null };
   /**
    * [rentrée, écoles ouvertes, classes] par rentrée croissante (effectifs des écoles, écoles ouvertes et fermées
-   * depuis) ; classes null si une école comptée ne les publie pas (0 classe), comme sur la page commune.
+   * depuis). Classes : Σ des écoles qui les publient (> 0) ; null si aucune ne les publie. Les autres sont comptées
+   * dans `sansClasses` (règle des territoires ; la page commune rend le total inconnu).
    */
   historique: [number, number, number | null][];
-  /** [année, écoles fermées cette année-là] depuis 2012, années sans fermeture omises. */
+  /** [rentrée, écoles sans nombre de classes publié (null ou 0)], rentrées où il y en a au moins une. */
+  sansClasses: [number, number][];
+  /** [année, écoles fermées cette année-là] depuis 2012, une par école (une fusion de deux écoles : deux), années sans fermeture omises. */
   fermetures: [number, number][];
   /** Écoles privées hors contrat ouvertes (Annuaire) : nombre seulement. */
   horsContrat: number;

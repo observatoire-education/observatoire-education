@@ -190,6 +190,10 @@ export const LIBELLES_PREMIER_DEGRE = {
   communes: "Communes du département",
   noteCommunes: "Communes qui ont, ou ont eu depuis 2012, au moins une école.",
   noteElevesParClasse: "Élèves par classe : Σ élèves ÷ Σ classes des écoles qui publient leurs classes.",
+  /** « {n} école(s) sans nombre de classes publié, non comptée(s) » ; `texte` : n formaté par l'appelant. */
+  sansClasses: (n: number, texte: string): string =>
+    n > 1 ? `${texte} écoles sans nombre de classes publié, non comptées` : `${texte} école sans nombre de classes publié, non comptée`,
+  noteFermetures: "Une fermeture par école : la fusion de deux écoles en une compte pour deux fermetures.",
 } as const;
 
 /** « Preel-CP » (typologie des classes) → « Préélémentaire-CP ». */

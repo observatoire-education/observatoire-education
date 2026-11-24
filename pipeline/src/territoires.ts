@@ -357,7 +357,8 @@ export async function synthesesPremierDegre(
   const rentreeEleves = rentrees.eleves?.rentree ?? null;
   const rentreeIps = rentrees.ips?.rentree ?? null;
   // Écoles ouvertes et classes par département, académie et rentrée (écoles ouvertes et fermées depuis, d'après les
-  // effectifs des écoles) ; une école sans classes publiées (null ou 0) rend le total des classes inconnu.
+  // effectifs des écoles). Territoires : une école sans classes publiées (null ou 0) sort du total des classes et est
+  // comptée à part (`sansClasses`) ; la page commune garde la règle stricte (total inconnu).
   const series = await db.sql<{ dep: string; aca: string; rentree: number; ecoles: number; classes: number | null; sans_classes: number }>(`
     select f.dep, f.aca, h.rentree, count(*)::integer as ecoles, sum(h.classes)::integer as classes,
       count(*) filter (where h.classes is null or h.classes = 0)::integer as sans_classes
@@ -405,14 +406,15 @@ export async function synthesesPremierDegre(
     const g = ouvertes.filter((f) => t.contient(f));
     const [pub, priv] = [deSecteur(g, "public"), deSecteur(g, "prive_sous_contrat")];
     const point = ipsHistorique.serie(t.niveau, "maternelle", t.code).find((p) => p.rentree === rentreeIps);
-    const parRentree = new Map<number, { ecoles: number; classes: number; inconnues: boolean }>();
+    const parRentree = new Map<number, { ecoles: number; classes: number; sansClasses: number }>();
     for (const s of series.filter((x) => t.contient(x))) {
-      const x = parRentree.get(s.rentree) ?? { ecoles: 0, classes: 0, inconnues: false };
+      const x = parRentree.get(s.rentree) ?? { ecoles: 0, classes: 0, sansClasses: 0 };
       x.ecoles += s.ecoles;
       x.classes += s.classes ?? 0;
-      x.inconnues ||= s.sans_classes > 0;
+      x.sansClasses += s.sans_classes;
       parRentree.set(s.rentree, x);
     }
+    const rentreesTriees = [...parRentree].sort((a, b) => a[0] - b[0]);
     const parAnnee = new Map<number, number>();
     for (const l of fermes.filter((x) => t.contient(x))) parAnnee.set(l.annee, (parAnnee.get(l.annee) ?? 0) + l.n);
     return {
@@ -422,8 +424,8 @@ export async function synthesesPremierDegre(
       ipsMoyen: { public: point?.public ?? null, prive: point?.prive ?? null, calculee: point?.calculee ?? false },
       distributionIps: { public: distribution(ipsDe(pub)), prive: distribution(ipsDe(priv)), bornes: BORNES_IPS },
       rentrees: { eleves: rentreeEleves, ips: rentreeIps },
-      historique: [...parRentree].sort((a, b) => a[0] - b[0])
-        .map(([r, x]): [number, number, number | null] => [r, x.ecoles, x.inconnues || x.classes === 0 ? null : x.classes]),
+      historique: rentreesTriees.map(([r, x]): [number, number, number | null] => [r, x.ecoles, x.classes === 0 ? null : x.classes]),
+      sansClasses: rentreesTriees.filter(([, x]) => x.sansClasses > 0).map(([r, x]): [number, number] => [r, x.sansClasses]),
       fermetures: [...parAnnee].sort((a, b) => a[0] - b[0]),
       horsContrat: horsContrat.filter((l) => t.contient(l)).length,
     };
