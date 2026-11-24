@@ -92,9 +92,10 @@ describe("fiche école", () => {
   });
 
   // 25 000 octets jusqu'au lot 1 ; relevé à 26 000 par le bloc des rattachements, à 27 500 par le bloc
-  // « Autour de l'école », puis à 29 700 par le bloc « Moyens de la commune » (29 601 ; plafond permis : 30 000).
-  test("poids : la fiche 0440202B fait 29 700 octets au plus", () => {
-    expect(octets(fiche("0440202B"))).toBeLessThanOrEqual(29_700);
+  // « Autour de l'école », puis à 30 000 (plafond permis) par le bloc « Moyens de la commune » (29 601) et la mention
+  // de correction du budget de Nantes que porte la fixture (29 932).
+  test("poids : la fiche 0440202B fait 30 000 octets au plus", () => {
+    expect(octets(fiche("0440202B"))).toBeLessThanOrEqual(30_000);
   });
 
   test("fiche A4 d'une école : « Fiche pour le conseil d'école »", () => {

@@ -7,7 +7,7 @@ import type { DuckDBConnection } from "@duckdb/node-api";
 import type { Correction, SourceId } from "@obs/shared/types";
 import type { Manifest } from "./archive.ts";
 import type { Depot } from "./depot.ts";
-import { collectiviteDuBudget } from "./budget.ts";
+import { collectiviteDuBudget, fonctionNormalisee } from "./budget.ts";
 import { ident, lignes, litteral } from "./duck.ts";
 import { type Source, toutesSources } from "./sources.ts";
 
@@ -106,13 +106,29 @@ export function correctionEnVigueur(manifest: Manifest, e: EntreeCorrection): bo
   return actuelle.sha256 === corrigee.sha256 || actuelle.collecteLe > corrigee.collecteLe;
 }
 
-/** Collectivités (id) touchées par une correction de budget : clés `categ|ndept|cregi|lbudg`. */
+/**
+ * Collectivités (id) touchées par une correction de budget : clés `categ|ndept|cregi|lbudg|insee|fonction`, ou
+ * `categ|ndept|cregi|lbudg` pour les corrections archivées avant l'ajout d'`insee` et de `fonction` (lues comme avant).
+ * Fonctions des écoles (21x) : la commune (la Ville de Paris est la commune 75056) ; une ligne 21x d'une autre
+ * collectivité, ou une ligne hors 21x d'une commune, n'est affichée nulle part.
+ */
 export function collectivitesCorrigees(e: EntreeCorrection): Set<string> {
   const ids = new Set<string>();
   for (const cle of e.cles) {
-    const [categ = "", ndept = "", cregi = "", ...reste] = cle.split("|");
-    const id = collectiviteDuBudget({ categ, ndept: ndept || null, cregi: cregi || null, lbudg: reste.join("|") });
-    if (id) ids.add(id);
+    const parts = cle.split("|");
+    const [categ = "", ndept = "", cregi = ""] = parts;
+    const complete = parts.length >= 6;
+    const lbudg = (complete ? parts.slice(3, -2) : parts.slice(3)).join("|");
+    const insee = complete ? parts.at(-2) || null : null;
+    const id = collectiviteDuBudget({ categ, ndept: ndept || null, cregi: cregi || null, lbudg, insee });
+    if (!id) continue;
+    if (!complete) {
+      ids.add(id);
+      continue;
+    }
+    const ecoles = fonctionNormalisee(parts.at(-1)!) === "21";
+    if (ecoles && id === "paris") ids.add("com-75056");
+    else if (ecoles === id.startsWith("com-") && id !== "syndicats") ids.add(id);
   }
   return ids;
 }

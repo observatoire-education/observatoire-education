@@ -430,6 +430,25 @@ describe("écoles : dépenses de la commune pour ses écoles", () => {
     expect(texte("commune/44150")).toContain("Balances comptables des collectivités");
   });
 
+  test("budget de la commune corrigé par la DGFiP : mention sur la fiche d'une école publique et sur la page commune", () => {
+    const mention = "Millésime 2024 corrigé par le producteur le 21/11/2026";
+    const fiche = [...doc("etablissement/0440202B").querySelectorAll("#sources li")].find((x) => x.textContent!.includes(mention));
+    expect(fiche).toBeDefined();
+    expect(fiche!.querySelectorAll("a[href*='budget_2024-avant']")).toHaveLength(1);
+    expect(texte("commune/44109")).toContain(mention);
+    // École privée : pas de budget, pas de mention ; Saint-Aubin : commune non corrigée.
+    expect(texte("etablissement/0440203C")).not.toContain(mention);
+    expect(texte("commune/44150")).not.toContain(mention);
+  });
+
+  test("correction limitée aux écoles de Paris (21x) : aucune mention sur les collèges ni la page de Paris", () => {
+    for (const p of ["etablissement/0751501A", "etablissement/0751502B", "departement/75"]) {
+      expect(texte(p)).not.toContain("Millésime 2024 corrigé");
+    }
+    // Les collèges de Loire-Atlantique ne sont pas touchés par la correction de Nantes.
+    expect(texte("etablissement/0440001A")).not.toContain("Millésime 2024 corrigé par le producteur le 21/11/2026");
+  });
+
   test("pages département, région et France : aucune commune dans les budgets ni les CSV", () => {
     for (const n of ["colleges", "lycees"]) expect(page(`france/budget-${n}.csv`)).not.toContain("com-");
     expect(page("departement/44")).not.toContain('data-collectivite="com-');

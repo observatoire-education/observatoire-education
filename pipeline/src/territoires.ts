@@ -592,8 +592,10 @@ export async function exporterTerritoires(
   // Les communes (budget de leurs écoles) n'ont leur bloc que sur leur page et sur les fiches de leurs écoles publiques.
   const franceSecondDegre = budgets.france.filter((m) => m.niveau !== "ecoles");
   const franceEcoles = budgets.france.filter((m) => m.niveau === "ecoles");
+  // Même clé que le budget des écoles et que les pages commune des écoles : la commune d'aujourd'hui.
+  const communeDuBudget = budgets.communeDe ?? communeDeRattachement;
   const communesEcolesPubliques = new Set(
-    toutes.filter((f) => estEcole(f.famille) && f.secteur === "public").map((f) => communeDeRattachement(f.codeCommune)),
+    toutes.filter((f) => estEcole(f.famille) && f.secteur === "public").map((f) => communeDuBudget(f.codeCommune)),
   );
   /** Page commune : le budget de la commune pour ses écoles ; à défaut, le motif si elle a une école publique ouverte. */
   const budgetCommune = (code: string): BudgetTerritoire => {
@@ -632,8 +634,10 @@ export async function exporterTerritoires(
     const premier = groupe[0]!;
     const ref: RefTerritoire = { niveau: "commune", code, libelle: libelleCommune(code, groupe) };
     communesParDep.set(premier.dep, [...(communesParDep.get(premier.dep) ?? []), ref]);
+    const budget = budgetCommune(code);
     const donnees: DonneesTerritoire = {
-      budget: budgetCommune(code), // collèges et lycées : pas de bloc sur les pages commune ; écoles : la commune
+      budget, // collèges et lycées : pas de bloc sur les pages commune ; écoles : la commune
+      ...correctionsDe(null, budget.collectivites),
       ref, parents: [FRANCE, ...regionParent(groupe), refAcademie(premier), refDepartement(premier)], rentree,
       familles: familles(groupe, (_, g) => calculee(g), { liste: true, niveaux: null, territoire: ["commune", code] }),
       horsContrat: horsContrat((l) => communeDeRattachement(l.code_commune) === code),
@@ -646,8 +650,10 @@ export async function exporterTerritoires(
   for (const [code, c] of ecolesCommunes) {
     if (communes.has(code)) continue;
     const region = regionDe(c.dep.code);
+    const budget = budgetCommune(code);
     const donnees: DonneesTerritoire = {
-      budget: budgetCommune(code),
+      budget,
+      ...correctionsDe(null, budget.collectivites),
       ref: { niveau: "commune", code, libelle: c.libelle },
       parents: [
         FRANCE, ...(region ? [refRegion(region)] : []), { niveau: "academie", code: c.aca.code, libelle: c.aca.libelle },

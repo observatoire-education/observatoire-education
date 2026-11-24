@@ -440,7 +440,8 @@ export function sourceBudget(exercice: number, datasetId: string): Source {
     filtre: FILTRE_BUDGET,
     colonnesRequises: COLONNES_BUDGET,
     referentiel: false,
-    millesime: { colonne: "exer", cles: ["categ", "ndept", "cregi", "lbudg"] },
+    // insee : la commune ; fonction : distingue les écoles de la Ville de Paris (21x) de ses collèges (221).
+    millesime: { colonne: "exer", cles: ["categ", "ndept", "cregi", "lbudg", "insee", "fonction"] },
   };
 }
 

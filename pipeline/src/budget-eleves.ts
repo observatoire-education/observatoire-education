@@ -9,12 +9,44 @@ import { estEcole, estSecondDegre } from "@obs/shared/libelles";
 import { communeDeRattachement, LIBELLES_PLM } from "@obs/shared/territoires";
 import type { Fiche, FamilleSecondDegre } from "@obs/shared/types";
 import { AGRICOLE, CITES_SCOLAIRES, EXERCICE_MIN, SEUIL_PERSONNEL_PAR_ELEVE } from "./budget-constantes.ts";
+import { chargerCommunes, type TableCommunes } from "./communes.ts";
 import type { Db } from "./db.ts";
 
 const NIVEAUX: NiveauBudget[] = ["colleges", "lycees", "ecoles"];
 
-/** Collectivité des écoles d'une commune : la commune (pour un arrondissement, Paris, Lyon ou Marseille). */
-export const communeDuBudget = (codeCommune: string): IdCollectivite => `com-${communeDeRattachement(codeCommune)}`;
+/**
+ * Code de la commune d'aujourd'hui, celui des pages commune : arrondissement → Paris, Lyon ou Marseille ; ancien code
+ * (commune fusionnée) → commune en vigueur, si le Code officiel géographique est chargé.
+ */
+export type CommuneDe = (codeCommune: string) => string;
+const communeSansCog: CommuneDe = (code) => communeDeRattachement(code);
+export const communeAvecCog = (t: TableCommunes): CommuneDe => (code) => t.actuelle(communeDeRattachement(code));
+
+/** Collectivité des écoles d'une commune : la commune d'aujourd'hui. */
+export const communeDuBudget = (codeCommune: string, communeDe: CommuneDe = communeSansCog): IdCollectivite =>
+  `com-${communeDe(codeCommune)}`;
+
+const vuePresente = async (db: Db, nom: string) =>
+  (await db.sql<{ n: number }>(`select count(*)::int as n from information_schema.tables where table_name = '${nom}'`))[0]!.n > 0;
+
+/**
+ * Communes d'aujourd'hui qui en ont absorbé d'autres (fusion simple, commune nouvelle, fusion-association : mouvements
+ * 31, 32, 33 du Code officiel géographique) et date de la dernière absorption. La balance d'un exercice antérieur porte
+ * la commune d'avant, sans les écoles des communes absorbées.
+ */
+async function fusionsDesCommunes(db: Db, communeDe: CommuneDe): Promise<Map<string, string>> {
+  if (!(await vuePresente(db, "src_cog_mouvements"))) return new Map();
+  const r = await db.sql<{ av: string; ap: string; le: string }>(
+    `select distinct trim(com_av) as av, trim(com_ap) as ap, trim(date_eff) as le from src_cog_mouvements
+     where trim(mod) in ('31', '32', '33') and trim(typecom_av) = 'COM' and trim(typecom_ap) = 'COM' and trim(com_av) <> trim(com_ap)`,
+  );
+  const fusions = new Map<string, string>();
+  for (const { ap, le } of r) {
+    const code = communeDe(ap);
+    if ((fusions.get(code) ?? "") < le) fusions.set(code, le);
+  }
+  return fusions;
+}
 
 /** Niveau de budget d'une famille du second degré : collèges, ou lycées (legt, lpo, lp, erea). Les écoles n'en ont pas. */
 export function niveauDe(famille: FamilleSecondDegre): NiveauBudget {
@@ -26,14 +58,16 @@ export function niveauDe(famille: FamilleSecondDegre): NiveauBudget {
  * pour les rentrées où elles avaient des élèves ; une fiche sans valeur pour la rentrée ne compte pas.
  * Écoles : seulement les écoles publiques, comptées pour leur commune (`ecoles|com-44109`).
  */
-export function elevesParCollectivite(fiches: Fiche[], rentree: number): Map<string, ParSecteur<number>> {
+export function elevesParCollectivite(
+  fiches: Fiche[], rentree: number, communeDe: CommuneDe = communeSansCog,
+): Map<string, ParSecteur<number>> {
   const r = new Map<string, ParSecteur<number>>();
   for (const f of fiches) {
     if (estEcole(f.famille) && f.secteur !== "public") continue; // le budget des communes va à leurs écoles publiques
     const valeur = f.indicateurs.find((i) => i.code === "eleves")?.historique.find(([an]) => an === rentree)?.[1];
     if (valeur === undefined || valeur === null) continue;
     const niveau: NiveauBudget = estSecondDegre(f.famille) ? niveauDe(f.famille) : "ecoles";
-    const id = niveau === "ecoles" ? communeDuBudget(f.codeCommune) : collectiviteDe(niveau, f.dep, f.codeCommune);
+    const id = niveau === "ecoles" ? communeDuBudget(f.codeCommune, communeDe) : collectiviteDe(niveau, f.dep, f.codeCommune);
     if (!id) continue;
     const cle = `${niveau}|${id}`;
     const e = r.get(cle) ?? { public: 0, prive: 0 };
@@ -50,17 +84,22 @@ interface Ligne { exercice: number; collectivite: string; niveau: NiveauBudget; 
 
 /**
  * Montants d'une collectivité pour un exercice : les lignes de `budget_postes` (par secteur et poste), les élèves, le
- * statut. Sans aucune ligne : `non_disponible`, ou pour une commune `budget_communal_non_publie`.
+ * statut. Sans aucune ligne : `non_disponible`, ou pour une commune `budget_communal_non_publie`. Commune qui en a
+ * absorbé d'autres après le début de l'exercice : `commune_fusionnee_apres_exercice` (les élèves comptés sont ceux de
+ * toutes ses écoles d'aujourd'hui, la balance ne couvre que la commune d'avant).
  */
 function exercice(
   n: number, lignes: Map<string, number>, nonDetaille: boolean, eleves: ParSecteur<number>, cites: number | null,
-  niveau: NiveauBudget,
+  niveau: NiveauBudget, fusionneeApres = false,
 ): ExerciceBudget {
   const pub = eleves.public > 0 ? eleves.public : null;
   const priv = eleves.prive > 0 ? eleves.prive : null;
   const v = (secteur: string, poste: string) => lignes.get(`${secteur}|${poste}`);
   let sortie: Pick<ExerciceBudget, "public" | "prive">;
-  if (nonDetaille) {
+  if (fusionneeApres) {
+    const nd = absent("commune_fusionnee_apres_exercice");
+    sortie = { public: { horsPersonnel: nd, avecPersonnel: nd, investissement: nd }, prive: { fonctionnement: nd, investissement: nd } };
+  } else if (nonDetaille) {
     const nd = absent("fonction_non_detaillee");
     sortie = { public: { horsPersonnel: nd, avecPersonnel: nd, investissement: nd }, prive: { fonctionnement: nd, investissement: nd } };
   } else if (lignes.size === 0) {
@@ -115,13 +154,16 @@ function moyenne(exercices: ExerciceBudget[], p: Poste): MoyenneBudget {
   return { valeur: n > 0 ? total / eleves : null, n };
 }
 
-/** Nom de chaque commune des écoles (`com-44109` → « Nantes ») ; Paris, Lyon et Marseille pour leurs arrondissements. */
-function nomsDesCommunes(fiches: Fiche[]): Map<IdCollectivite, string> {
+/**
+ * Nom de chaque commune des écoles (`com-44109` → « Nantes ») : Paris, Lyon et Marseille pour leurs arrondissements,
+ * sinon le nom du Code officiel géographique, à défaut celui de la fiche.
+ */
+function nomsDesCommunes(fiches: Fiche[], communeDe: CommuneDe, t: TableCommunes | null): Map<IdCollectivite, string> {
   const r = new Map<IdCollectivite, string>();
   for (const f of fiches) {
     if (!estEcole(f.famille)) continue;
-    const code = communeDeRattachement(f.codeCommune);
-    const nom = LIBELLES_PLM[code as keyof typeof LIBELLES_PLM] ?? f.commune;
+    const code = communeDe(f.codeCommune);
+    const nom = LIBELLES_PLM[code as keyof typeof LIBELLES_PLM] ?? t?.nom(code) ?? f.commune;
     if (!r.has(`com-${code}`) || f.disparuLe === null) r.set(`com-${code}`, nom);
   }
   return r;
@@ -134,9 +176,11 @@ const niveauDesCites = (id: IdCollectivite): NiveauBudget => (id.startsWith("reg
  * Budgets de chaque collectivité (clé `${niveau}|${id}`) pour tous les exercices ≥ `EXERCICE_MIN` présents dans
  * les balances, et moyennes France. Une collectivité sans élève dans les fiches n'a pas de budget.
  */
-export async function calculerBudgets(
-  db: Db, fiches: Fiche[],
-): Promise<{ collectivites: Map<string, BudgetCollectivite>; france: MoyennesBudgetFrance[] }> {
+export async function calculerBudgets(db: Db, fiches: Fiche[]): Promise<Budgets> {
+  // Code officiel géographique : absent des bases de test du budget seul (alors arrondissements seulement).
+  const t = (await vuePresente(db, "src_cog_communes")) && (await vuePresente(db, "src_cog_mouvements")) ? await chargerCommunes(db) : null;
+  const communeDe = t ? communeAvecCog(t) : communeSansCog;
+  const fusions = await fusionsDesCommunes(db, communeDe);
   const postes = await db.sql<Ligne>(
     `select exercice::int as exercice, collectivite, niveau, secteur, poste, montant from budget_postes where exercice >= ${EXERCICE_MIN}`,
   );
@@ -157,7 +201,7 @@ export async function calculerBudgets(
   }
   const nonDetaille = new Set(lignesNonDetaillees.map((l) => `${l.exercice}|${l.niveau}|${l.collectivite}`));
   const citesParCle = new Map(cites.map((c) => [`${c.exercice}|${c.collectivite}`, c.montant]));
-  const eleves = new Map(exercices.map((e) => [e, elevesParCollectivite(fiches, e - 1)]));
+  const eleves = new Map(exercices.map((e) => [e, elevesParCollectivite(fiches, e - 1, communeDe)]));
 
   // Collectivités connues : celles qui ont des élèves à l'une des rentrées des exercices publiés. Communes : seulement
   // celles qui ont des lignes pour l'un des exercices (les autres n'ont pas de budget, la fiche dit pourquoi).
@@ -166,7 +210,7 @@ export async function calculerBudgets(
   for (const m of eleves.values()) {
     for (const [cle, e] of m) if (e.public + e.prive > 0 && (!cle.startsWith("ecoles|") || communesPubliees.has(cle))) cles.add(cle);
   }
-  const noms = nomsDesCommunes(fiches);
+  const noms = nomsDesCommunes(fiches, communeDe, t);
 
   const collectivites = new Map<string, BudgetCollectivite>();
   for (const cle of [...cles].sort()) {
@@ -178,6 +222,7 @@ export async function calculerBudgets(
         // Cités scolaires (fonction 24) : au niveau du financeur, jamais aux deux.
         niveauDesCites(id) === niveau ? (citesParCle.get(`${e}|${id}`) ?? null) : null,
         niveau,
+        niveau === "ecoles" && (fusions.get(id.slice(4)) ?? "") > `${e}-01-01`,
       ),
     );
     const mentions: BudgetCollectivite["mentions"] = [];
@@ -205,12 +250,14 @@ export async function calculerBudgets(
       }),
     };
   });
-  return { collectivites, france };
+  return { collectivites, france, communeDe };
 }
 
 export interface Budgets {
   collectivites: Map<string, BudgetCollectivite>;
   france: MoyennesBudgetFrance[];
+  /** Commune d'aujourd'hui d'un code commune (écoles) ; à défaut, arrondissements seulement. */
+  communeDe?: CommuneDe;
 }
 
 /**
@@ -221,7 +268,7 @@ export interface Budgets {
 export function budgetDeFiche(f: Pick<Fiche, "famille" | "secteur" | "dep" | "codeCommune">, budgets: Budgets): Fiche["budget"] {
   if (estEcole(f.famille)) {
     if (f.secteur !== "public") return { france: [] };
-    const commune = budgets.collectivites.get(`ecoles|${communeDuBudget(f.codeCommune)}`) ?? null;
+    const commune = budgets.collectivites.get(`ecoles|${communeDuBudget(f.codeCommune, budgets.communeDe)}`) ?? null;
     const france = budgets.france.filter((m) => m.niveau === "ecoles");
     return commune ? { ecoles: commune, france } : { ecoles: null, france, motif: "budget_communal_non_publie" };
   }

@@ -60,9 +60,20 @@ export function siteTest(): Promise<string> {
       modified: "2025-11-01T00:00:00Z", collecteLe: "2025-11-22T02:17:00Z", lignes: 10,
     });
     manifest.rendreActuelle("budget_2023", "budget_2023".padEnd(64, "0"));
+    // budget_2024 corrigé pour la commune de Nantes (écoles) et pour les seules écoles de la Ville de Paris (fonction 21x).
+    manifest.ajouter("budget_2024", {
+      sha256: "d".repeat(64), tag: "archives-budget_2024-2025", fichier: "budget_2024-avant.parquet",
+      url: "https://github.com/org/depot/releases/download/archives-budget_2024-2025/budget_2024-avant.parquet",
+      modified: "2025-11-01T00:00:00Z", collecteLe: "2025-11-22T02:17:00Z", lignes: 10,
+    });
+    manifest.rendreActuelle("budget_2024", "budget_2024".padEnd(64, "0"));
     const corrections: EntreeCorrection[] = [{
       source: "budget_2023", millesime: 2023, cles: ["DEPT|044|052|DEP LOIRE-ATLANTIQUE"], precedente: "c".repeat(64),
       corrigee: "budget_2023".padEnd(64, "0"), le: "2026-11-22T02:17:00Z",
+    }, {
+      source: "budget_2024", millesime: 2024,
+      cles: ["Commune|044|052|NANTES|109|212", "PARIS|075|011|VILLE DE PARIS|056|93211"], precedente: "d".repeat(64),
+      corrigee: "budget_2024".padEnd(64, "0"), le: "2026-11-21T02:17:00Z",
     }, {
       source: "ips_colleges", millesime: 2024, cles: ["0440001A"], precedente: "a".repeat(64),
       corrigee: "ips_colleges".padEnd(64, "0"), le: "2026-11-22T02:17:00Z",

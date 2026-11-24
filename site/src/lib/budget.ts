@@ -28,6 +28,8 @@ export function absenceBudget(statut: StatutBudget, niveau: NiveauBudget): strin
       return L.absences.aucuneContributionIdentifiee;
     case "budget_communal_non_publie":
       return L.absences.budgetCommunalNonPublie;
+    case "commune_fusionnee_apres_exercice":
+      return L.absences.communeFusionneeApresExercice;
     case "ok":
     case "non_disponible":
       return LIBELLES.nonDisponible;

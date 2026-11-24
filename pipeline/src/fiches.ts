@@ -249,7 +249,7 @@ export function millesimesAffiches(f: Fiche): Map<SourceId, Set<number>> {
   for (const r of f.repartitions) if (r.statut === "ok") noter(r.source, r.rentree);
   for (const s of f.eleves?.source ?? []) noter(s, f.eleves!.rentree);
   for (const [s, rentree] of millesimesClasses(f.classes)) noter(s, rentree);
-  for (const ex of (f.budget.colleges ?? f.budget.lycees)?.exercices ?? []) noter(ex.source, ex.exercice);
+  for (const ex of (f.budget.colleges ?? f.budget.lycees ?? f.budget.ecoles)?.exercices ?? []) noter(ex.source, ex.exercice);
   for (const r of f.resultats) for (const [session] of r.historique) noter(r.source, session);
   for (const r of f.resultats) noter(r.source, r.session);
   return affiches;
@@ -265,9 +265,9 @@ export function attacherCorrections(fiches: Fiche[], corrections: EntreeCorrecti
   const sourcesBudget = toutesSources(manifest);
   const actuelle = (e: EntreeCorrection) => correctionEnVigueur(manifest, e);
   for (const f of fiches) {
-    const collectivite = (f.budget.colleges ?? f.budget.lycees)?.id;
+    const collectivite = (f.budget.colleges ?? f.budget.lycees ?? f.budget.ecoles)?.id;
     // Un exercice corrigé et affiché porte sa propre source, même s'il n'est pas le dernier exercice du bloc budget.
-    for (const ex of (f.budget.colleges ?? f.budget.lycees)?.exercices ?? []) {
+    for (const ex of (f.budget.colleges ?? f.budget.lycees ?? f.budget.ecoles)?.exercices ?? []) {
       const touche = corrections.some((e) => actuelle(e) && e.source === ex.source && e.millesime === ex.exercice && !!collectivite && collectivitesCorrigees(e).has(collectivite));
       const s = touche && sourcesBudget.find((x) => x.id === ex.source);
       const v = s && manifest.derniere(s.id);

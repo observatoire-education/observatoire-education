@@ -306,4 +306,41 @@ describe("communes : dépenses pour leurs écoles", () => {
     const c = france.find((x) => x.niveau === "colleges")!.exercices.find((x) => x.exercice === 2024)!;
     expect(c.public.horsPersonnel).toEqual({ valeur: 10, n: 1 });
   });
+
+  test("commune nouvelle : exercices d'avant la fusion non calculés ; école sous un ancien code comptée à la commune d'aujourd'hui", async () => {
+    const db = await dbBudget([
+      [2023, "com-44400", "ecoles", "public", "fonctionnement_hors_personnel", 30_000],
+      [2024, "com-44400", "ecoles", "public", "fonctionnement_hors_personnel", 60_000],
+      [2025, "com-44400", "ecoles", "public", "fonctionnement_hors_personnel", 60_000],
+    ]);
+    // 44400 absorbe 44401 le 2024-01-01 (commune nouvelle) : la balance 2023 de 44400 ne couvre pas les écoles de 44401.
+    await db.executer(`create table src_cog_communes (typecom varchar, com varchar, libelle varchar, comparent varchar);
+      insert into src_cog_communes values ('COM', '44400', 'Bourg-Nouveau', null), ('COMD', '44400', 'Bourg', '44400'),
+        ('COMD', '44401', 'Hameau', '44400');
+      create table src_cog_mouvements (mod varchar, date_eff varchar, typecom_av varchar, com_av varchar, libelle_av varchar,
+        typecom_ap varchar, com_ap varchar, libelle_ap varchar);
+      insert into src_cog_mouvements values
+        ('32', '2024-01-01', 'COM', '44400', 'Bourg', 'COM', '44400', 'Bourg-Nouveau'),
+        ('32', '2024-01-01', 'COM', '44401', 'Hameau', 'COM', '44400', 'Bourg-Nouveau');`);
+    const f = [
+      fiche("B1", { famille: "primaire", dep: "44", codeCommune: "44400", eleves: [[2022, 100], [2023, 100], [2024, 100]] }),
+      fiche("B2", { famille: "maternelle", dep: "44", codeCommune: "44401", eleves: [[2022, 50], [2023, 50], [2024, 50]] }),
+    ];
+    const budgets = await calculerBudgets(db, f);
+    const c = budgets.collectivites.get("ecoles|com-44400")!;
+    expect(c.libelle).toBe("Bourg-Nouveau");
+    const e2023 = exo(c, 2023);
+    for (const m of [e2023.public.horsPersonnel, e2023.public.avecPersonnel, e2023.public.investissement]) {
+      expect(m).toEqual({ total: null, parEleve: null, statut: "commune_fusionnee_apres_exercice" });
+    }
+    expect(exo(c, 2024).public.horsPersonnel).toEqual({ total: 60_000, parEleve: 400, statut: "ok" });
+    expect(budgets.collectivites.has("ecoles|com-44401")).toBe(false);
+    expect(budgetDeFiche({ famille: "maternelle", secteur: "public", dep: "44", codeCommune: "44401" }, budgets).ecoles?.id).toBe("com-44400");
+    expect(absenceBudget("commune_fusionnee_apres_exercice", "ecoles")).toBe(
+      "Commune fusionnée après cet exercice : montant par élève non calculé",
+    );
+    // La moyenne France ne compte pas l'exercice non calculé.
+    expect(budgets.france.find((m) => m.niveau === "ecoles")!.exercices.find((x) => x.exercice === 2023)!.public.horsPersonnel)
+      .toEqual({ valeur: null, n: 0 });
+  });
 });

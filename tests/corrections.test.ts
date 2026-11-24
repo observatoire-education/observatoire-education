@@ -4,7 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Manifest } from "../pipeline/src/archive.ts";
 import { collecter, type ClientSources } from "../pipeline/src/collect.ts";
-import { ajouterCorrections, comparerVersions, type EntreeCorrection, lireCorrections, rattraperCorrections } from "../pipeline/src/corrections.ts";
+import {
+  ajouterCorrections, collectivitesCorrigees, comparerVersions, type EntreeCorrection, lireCorrections, rattraperCorrections,
+} from "../pipeline/src/corrections.ts";
 import { DepotLocal } from "../pipeline/src/depot.ts";
 import { connexion, executer, litteral } from "../pipeline/src/duck.ts";
 import { SOURCES, type Source, sourceBudget } from "../pipeline/src/sources.ts";
@@ -88,7 +90,39 @@ describe("comparerVersions", () => {
     });
     const a = await parquet(s, [ligneB("2023", "CD44", "1"), ligneB("2024", "CD44", "1")]);
     const b = await parquet(s, [ligneB("2023", "CD44", "2"), ligneB("2024", "CD44", "1")]);
-    expect(await comparerVersions(duck, s, a, b)).toEqual([{ millesime: 2023, cles: ["DEPT|044|52|CD44"] }]);
+    expect(await comparerVersions(duck, s, a, b)).toEqual([{ millesime: 2023, cles: ["DEPT|044|52|CD44|x|x"] }]); // insee et fonction : « x » de l'aide
+  });
+
+  test("clé du budget : commune (insee) et fonction comprises", async () => {
+    const s = sourceBudget(2024, "jeu");
+    const l = (fonction: string, v: string): Ligne => ({
+      exer: "2024", categ: "Commune", ndept: "044", cregi: "052", lbudg: "NANTES", insee: "109", fonction, obnetdeb: v,
+    });
+    const a = await parquet(s, [l("212", "1"), l("211", "1")]);
+    const b = await parquet(s, [l("212", "2"), l("211", "1")]);
+    expect(await comparerVersions(duck, s, a, b)).toEqual([{ millesime: 2024, cles: ["Commune|044|052|NANTES|109|212"] }]);
+  });
+});
+
+describe("collectivitesCorrigees", () => {
+  const ids = (...cles: string[]) =>
+    [...collectivitesCorrigees({ source: "budget_2024", millesime: 2024, cles, precedente: "p", corrigee: "c", le: "2026-11-23" })].sort();
+
+  test("commune : son code INSEE ; Ville de Paris : la commune 75056 pour les fonctions des écoles, « paris » sinon", () => {
+    expect(ids("Commune|044|052|NANTES|109|212")).toEqual(["com-44109"]);
+    expect(ids("PARIS|075|011|VILLE DE PARIS|056|93211")).toEqual(["com-75056"]);
+    expect(ids("PARIS|075|011|VILLE DE PARIS|056|93221")).toEqual(["paris"]);
+    expect(ids("DEPT|044|052|DEP LOIRE-ATLANTIQUE||93221")).toEqual(["dep-44"]);
+  });
+
+  test("clés à quatre parties (archivées avant l'ajout d'insee et de fonction) : lues comme avant", () => {
+    expect(ids("DEPT|044|052|DEP LOIRE-ATLANTIQUE")).toEqual(["dep-44"]);
+    expect(ids("PARIS|075|011|VILLE DE PARIS")).toEqual(["paris"]);
+  });
+
+  test("syndicats et lignes hors périmètre : aucune collectivité affichée", () => {
+    expect(ids("SYND|044|052|SIVOS X||212")).toEqual([]);
+    expect(ids("DEPT|044|052|DEP LOIRE-ATLANTIQUE||212")).toEqual([]);
   });
 });
 

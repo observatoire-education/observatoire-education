@@ -279,6 +279,8 @@ export type StatutBudget =
   | "aucune_contribution_identifiee"
   /** Écoles : la commune n'a aucune ligne dans les fonctions des écoles des balances pour l'exercice. */
   | "budget_communal_non_publie"
+  /** Écoles : la commune en a absorbé d'autres après le début de l'exercice ; montant par élève non calculé. */
+  | "commune_fusionnee_apres_exercice"
   | "non_disponible";
 
 /** Pourquoi une fiche ou une page commune n'a pas de collectivité pour son budget. */

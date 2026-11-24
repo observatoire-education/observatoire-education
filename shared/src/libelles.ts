@@ -339,6 +339,7 @@ export const LIBELLES_BUDGET = {
     personnelNonRattacheEcoles: "personnel non rattaché aux écoles dans les comptes de la commune",
     budgetCommunalNonPublie:
       "Budget par fonction non publié pour cette commune (seules les communes de 3 500 habitants et plus le publient)",
+    communeFusionneeApresExercice: "Commune fusionnée après cet exercice : montant par élève non calculé",
   },
   moyenne: {
     calculee: "moyenne calculée par l'observatoire",
