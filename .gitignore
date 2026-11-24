@@ -8,3 +8,4 @@ site/.astro/
 .DS_Store
 .env
 .env.*
+.superpowers/
