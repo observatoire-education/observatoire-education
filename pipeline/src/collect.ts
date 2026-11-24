@@ -5,7 +5,8 @@ import { appendFile, mkdir, rename, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { DuckDBConnection } from "@duckdb/node-api";
 import type { SourceId } from "@obs/shared/types";
-import { decrireParquet, empreinte, type Manifest, motifRejet } from "./archive.ts";
+import { decrireParquet, empreinte, type Manifest, motifRejet, type Version } from "./archive.ts";
+import { ajouterCorrections, comparerVersions } from "./corrections.ts";
 import type { Depot } from "./depot.ts";
 import { connexion, executer, ident, litteral } from "./duck.ts";
 import { ErreurParquetInvalide, type OdsClient, urlExport } from "./ods.ts";
@@ -32,11 +33,13 @@ export interface OptionsCollecte {
   tmp: string;
   /** Fichier JSONL auquel ajouter les lignes du journal. */
   journal?: string;
+  /** Fichier corrections.json : s'il est absent, les versions ne sont pas comparées. */
+  corrections?: string;
 }
 
 const TYPES_RETENUS = ["Collège", "Lycée", "EREA"];
 
-type Resultat = Omit<LigneJournal, "date" | "source">;
+type Resultat = Omit<LigneJournal, "date" | "source"> & { suite?: Omit<LigneJournal, "date" | "source"> };
 
 export async function collecter(opts: OptionsCollecte): Promise<LigneJournal[]> {
   await mkdir(opts.tmp, { recursive: true });
@@ -46,7 +49,11 @@ export async function collecter(opts: OptionsCollecte): Promise<LigneJournal[]> 
   const essayer = async (id: SourceId, tache: () => Promise<Resultat | null>) => {
     try {
       const r = await tache();
-      if (r) journal.push({ date, source: id, ...r });
+      if (r) {
+        const { suite, ...ligne } = r;
+        journal.push({ date, source: id, ...ligne });
+        if (suite) journal.push({ date, source: id, ...suite });
+      }
     } catch (e) {
       const motif = e instanceof Error ? e.message : String(e);
       journal.push({ date, source: id, action: e instanceof ErreurParquetInvalide ? "rejete" : "erreur", motif });
@@ -109,6 +116,7 @@ async function traiter(s: Source, opts: OptionsCollecte, duck: DuckDBConnection)
     if (motif) return { action: "rejete", modified: meta.modified, lignes: desc.lignes, motif };
 
     const sha = await empreinte(fichier);
+    const precedente = opts.corrections && s.millesime ? manifest.derniere(s.id) : undefined;
     manifest.marquerVu(s.id, meta.modified);
     if (manifest.connait(s.id, sha)) {
       manifest.rendreActuelle(s.id, sha);
@@ -132,10 +140,49 @@ async function traiter(s: Source, opts: OptionsCollecte, duck: DuckDBConnection)
     } finally {
       await rm(final, { force: true });
     }
-    return { action: "telecharge", modified: meta.modified, sha256: sha, lignes: desc.lignes };
+    let comparaison: string | undefined;
+    if (precedente) {
+      try {
+        await detecterCorrections(s, opts, duck, precedente, manifest.derniere(s.id)!);
+      } catch (e) {
+        comparaison = `comparaison des versions : ${e instanceof Error ? e.message : String(e)}`;
+      }
+    }
+    // La version reste archivée même si la comparaison échoue : l'échec s'ajoute au journal.
+    return {
+      action: "telecharge", modified: meta.modified, sha256: sha, lignes: desc.lignes,
+      ...(comparaison ? { suite: { action: "erreur" as const, motif: comparaison } } : {}),
+    };
   } finally {
     await rm(brut, { force: true });
     await rm(reduit, { force: true });
+  }
+}
+
+/** Compare la version précédente à la nouvelle et ajoute les corrections de millésime à `opts.corrections`. */
+async function detecterCorrections(
+  s: Source,
+  opts: OptionsCollecte,
+  duck: DuckDBConnection,
+  precedente: Version,
+  corrigee: Version,
+): Promise<void> {
+  const ancien = join(opts.tmp, `${s.id}.precedente.parquet`);
+  const nouveau = join(opts.tmp, `${s.id}.corrigee.parquet`);
+  try {
+    await opts.depot.recuperer(precedente, ancien);
+    await opts.depot.recuperer(corrigee, nouveau);
+    const touches = await comparerVersions(duck, s, ancien, nouveau);
+    ajouterCorrections(
+      opts.corrections!,
+      touches.map((t) => ({
+        source: s.id, millesime: t.millesime, cles: t.cles,
+        precedente: precedente.sha256, corrigee: corrigee.sha256, le: corrigee.collecteLe,
+      })),
+    );
+  } finally {
+    await rm(ancien, { force: true });
+    await rm(nouveau, { force: true });
   }
 }
 

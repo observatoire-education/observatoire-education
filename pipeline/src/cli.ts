@@ -22,6 +22,7 @@ export const CHEMINS = {
   manifest: "archives/manifest.json",
   journal: "archives/journal.jsonl",
   registre: "archives/registre-pages.json",
+  corrections: "archives/corrections.json",
   tmp: ".cache/tmp",
   depotLocal: ".cache/depot",
   cache: ".cache/archives",
@@ -46,6 +47,7 @@ async function collect(): Promise<void> {
     maintenant: new Date(),
     tmp: CHEMINS.tmp,
     journal: CHEMINS.journal,
+    corrections: CHEMINS.corrections,
   });
   for (const l of journal) {
     const detail = [l.lignes !== undefined ? `${l.lignes} lignes` : "", l.motif ?? ""].filter(Boolean).join(" · ");
@@ -102,10 +104,12 @@ async function data(): Promise<void> {
   db.fermer();
 }
 
-const commande = process.argv[2];
-if (commande === "collect") await collect();
-else if (commande === "data") await data();
-else {
-  console.error("usage : bun pipeline/src/cli.ts collect | data");
-  process.exit(2);
+if (import.meta.main) {
+  const commande = process.argv[2];
+  if (commande === "collect") await collect();
+  else if (commande === "data") await data();
+  else {
+    console.error("usage : bun pipeline/src/cli.ts collect | data");
+    process.exit(2);
+  }
 }
