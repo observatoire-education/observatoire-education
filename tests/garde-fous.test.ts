@@ -1,10 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { comparer, echantillonUrls, normaliserCorps } from "../scripts/comparer-hebergements.ts";
-import { ecrireFichiersHebergement, LIMITES, OCTETS_RECHERCHE_MAX, verifierDist } from "../scripts/garde-fous.ts";
+import {
+  ecrireFichiersHebergement, LIMITES, OCTETS_PAGE_MAX, OCTETS_RECHERCHE_MAX, poidsPages, verifierDist,
+} from "../scripts/garde-fous.ts";
 
 async function dossierTemp<T>(f: (d: string) => Promise<T> | T): Promise<T> {
   const d = await mkdtemp(join(tmpdir(), "obs-gf-"));
@@ -43,12 +45,44 @@ describe("garde-fous de dist/ (Cloudflare Workers)", () => {
 
   test("aucun plafond sur le poids total", () =>
     dossierTemp(async (d) => {
-      // 1 Go de poids total en 41 fichiers de 24 Mio.
-      const taille = 24 * 1024 * 1024;
-      for (let i = 0; i < 41; i++) await Bun.write(join(d, `f${i}.bin`), new Uint8Array(taille));
-      const r = verifierDist(d);
+      // Limites réduites : 41 fichiers de 24 octets, chacun sous les 25 octets par fichier, en pèsent 984 au total.
+      for (let i = 0; i < 41; i++) await writeFile(join(d, `f${i}.bin`), "x".repeat(24));
+      const r = verifierDist(d, { fichiers: 100, octetsParFichier: 25 });
       expect(r.fichiers).toBe(41);
-      expect(r.octets).toBeGreaterThan(1e9);
+      expect(r.octets).toBe(41 * 24);
+    }));
+
+  test("poids des pages : médiane, 95e centile et maximum (avec le fichier) des fiches et des pages commune", () =>
+    dossierTemp(async (d) => {
+      for (let i = 1; i <= 20; i++) {
+        await mkdir(join(d, "etablissement", `E${i}`), { recursive: true });
+        await writeFile(join(d, "etablissement", `E${i}`, "index.html"), "x".repeat(i * 100));
+      }
+      await mkdir(join(d, "commune", "44109"), { recursive: true });
+      await writeFile(join(d, "commune", "44109", "index.html"), "x".repeat(500));
+      // Hors du rapport : le CSV d'une commune, la page d'un autre niveau.
+      await writeFile(join(d, "commune", "44109", "etablissements.csv"), "x".repeat(900_000));
+      await mkdir(join(d, "departement", "44"), { recursive: true });
+      await writeFile(join(d, "departement", "44", "index.html"), "x".repeat(900_000));
+      const p = poidsPages(d);
+      expect(p.etablissement).toEqual({ pages: 20, mediane: 1000, centile95: 1900, max: 2000, fichier: join(d, "etablissement", "E20", "index.html") });
+      expect(p.commune).toEqual({ pages: 1, mediane: 500, centile95: 500, max: 500, fichier: join(d, "commune", "44109", "index.html") });
+      expect(() => verifierDist(d)).not.toThrow();
+    }));
+
+  test("poids des pages : au plus 150 000 octets par fiche ou page commune, l'erreur nomme le fichier", () =>
+    dossierTemp(async (d) => {
+      expect(OCTETS_PAGE_MAX).toBe(150_000);
+      for (const p of ["etablissement/0440001A", "commune/44109"]) {
+        await mkdir(join(d, p), { recursive: true });
+        await writeFile(join(d, p, "index.html"), "x".repeat(150_000));
+      }
+      expect(() => verifierDist(d)).not.toThrow();
+      await writeFile(join(d, "commune", "44109", "index.html"), "x".repeat(150_001));
+      expect(() => verifierDist(d)).toThrow(/commune\/44109\/index\.html pèse 150001 octets, au-delà de 150000/);
+      await writeFile(join(d, "commune", "44109", "index.html"), "x");
+      await writeFile(join(d, "etablissement", "0440001A", "index.html"), "x".repeat(150_001));
+      expect(() => verifierDist(d)).toThrow(/etablissement\/0440001A\/index\.html pèse 150001 octets/);
     }));
 
   test("ecrireFichiersHebergement n'écrit plus CNAME et supprime l'existant", () =>

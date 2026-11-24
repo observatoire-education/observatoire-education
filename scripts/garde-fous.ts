@@ -17,6 +17,53 @@ export const LIMITES: Limites = { fichiers: 95_000, octetsParFichier: 25 * 1024 
 /** Poids maximal (brut) de recherche.json, chargé au premier focus de la recherche (Cloudflare le sert compressé). Au-delà : découper l'index par département. */
 export const OCTETS_RECHERCHE_MAX = 10_000_000;
 
+/** Poids maximal (brut) d'une fiche (`etablissement/*\/index.html`) ou d'une page commune (`commune/*\/index.html`). */
+export const OCTETS_PAGE_MAX = 150_000;
+
+export interface PoidsPages {
+  pages: number;
+  mediane: number;
+  centile95: number;
+  max: number;
+  /** Le fichier le plus lourd. */
+  fichier: string;
+}
+
+/** Valeur de rang `ceil(q × n)` d'une liste triée (méthode du rang le plus proche). */
+const rang = (tries: number[], q: number) => tries[Math.max(0, Math.ceil(q * tries.length) - 1)]!;
+
+/** Poids des fiches et des pages commune de `dossier` : médiane, 95e centile, maximum et le fichier le plus lourd. */
+export function poidsPages(dossier: string): Partial<Record<"etablissement" | "commune", PoidsPages>> {
+  const r: Partial<Record<"etablissement" | "commune", PoidsPages>> = {};
+  for (const niveau of ["etablissement", "commune"] as const) {
+    const racine = join(dossier, niveau);
+    if (!existsSync(racine)) continue;
+    const pages = readdirSync(racine)
+      .map((nom) => join(racine, nom, "index.html"))
+      .filter((p) => existsSync(p))
+      .map((p) => ({ p, o: statSync(p).size }));
+    if (pages.length === 0) continue;
+    const tries = pages.map((x) => x.o).sort((a, b) => a - b);
+    const lourde = pages.reduce((a, b) => (b.o > a.o ? b : a));
+    r[niveau] = { pages: pages.length, mediane: rang(tries, 0.5), centile95: rang(tries, 0.95), max: lourde.o, fichier: lourde.p };
+  }
+  return r;
+}
+
+/** Lève une erreur qui nomme chaque fiche ou page commune au-delà de `plafond` octets. */
+function verifierPoidsPages(dossier: string, plafond = OCTETS_PAGE_MAX): void {
+  const lourdes: string[] = [];
+  for (const niveau of ["etablissement", "commune"]) {
+    const racine = join(dossier, niveau);
+    if (!existsSync(racine)) continue;
+    for (const nom of readdirSync(racine)) {
+      const p = join(racine, nom, "index.html");
+      if (existsSync(p) && statSync(p).size > plafond) lourdes.push(`${p} pèse ${statSync(p).size} octets`);
+    }
+  }
+  if (lourdes.length > 0) throw new Error(`${lourdes.join(", ")}, au-delà de ${plafond} octets par fiche ou page commune`);
+}
+
 export interface Config {
   SITE_URL: string;
   DOMAINE: string;
@@ -53,6 +100,7 @@ export function verifierDist(dossier: string, limites: Limites = LIMITES): { oct
   if (fichiers > limites.fichiers) {
     throw new Error(`dist/ contient trop de fichiers : ${fichiers} > ${limites.fichiers} (voir la marge R2, spec phase Écoles 6.9)`);
   }
+  verifierPoidsPages(dossier);
   return { octets, fichiers };
 }
 
@@ -97,6 +145,9 @@ if (import.meta.main) {
     ecrireFichiersHebergement(dossier, config);
     const { octets, fichiers } = verifierDist(dossier);
     console.log(`${dossier}/ : ${(octets / 1e6).toFixed(1)} Mo, ${fichiers} fichiers (limites : ${LIMITES.fichiers} fichiers, ${LIMITES.octetsParFichier / 1024 / 1024} Mio par fichier)`);
+    for (const [niveau, p] of Object.entries(poidsPages(dossier))) {
+      console.log(`pages ${niveau} : ${p.pages}, médiane ${p.mediane} octets, 95e centile ${p.centile95}, max ${p.max} (${p.fichier}) ; plafond ${OCTETS_PAGE_MAX}`);
+    }
     console.log(config.INDEXABLE ? "référencement autorisé" : "aperçu non référencé (noindex, robots.txt Disallow)");
   } catch (e) {
     console.error(e instanceof Error ? e.message : e);
