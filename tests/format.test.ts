@@ -77,8 +77,9 @@ describe("absences et libellés", () => {
   });
 
   test("codes des indicateurs et répartitions", () => {
-    expect(CODES_INDICATEURS).toHaveLength(16);
+    expect(CODES_INDICATEURS).toHaveLength(17);
     expect(CODES_INDICATEURS).toContain("eleves_par_etp_vs");
+    expect(CODES_INDICATEURS).toContain("eleves_par_classe");
     expect(CODES_REPARTITIONS).toEqual(["sexe_enseignants", "statuts", "ages", "anciennete", "sexe_eleves", "lv1", "lv2"]);
   });
 });

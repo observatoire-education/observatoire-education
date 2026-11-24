@@ -100,6 +100,8 @@ async function data(): Promise<void> {
   console.log(`  successeurs : ${successeurs.regle1} règle 1, ${successeurs.regle2} règle 2, ${successeurs.manuels} manuels, ${successeurs.ambigus} ambigus, ${successeurs.sansFiche} sans fiche`);
   const ignores = await db.sql<{ source: string; n: number }>("select source, n from resultats_ignores order by source");
   console.log(`  résultats ignorés (UAI sans fiche) : ${ignores.map((l) => `${l.source} ${l.n}`).join(", ") || "aucun"}`);
+  const ecoles = await db.sql<{ source: string; n: number }>("select source, n from ecoles_ignorees order by source");
+  console.log(`  écoles ignorées (UAI sans fiche) : ${ecoles.map((l) => `${l.source} ${l.n}`).join(", ") || "aucune"}`);
   const [{ n: inconnus } = { n: 0 }] = await db.sql<{ n: number }>("select count(*)::integer as n from budget_inconnus");
   console.log(`  ${inconnus} budget(s) de collectivité non identifiée dans les balances`);
   const budgets = await calculerBudgets(db, fiches);

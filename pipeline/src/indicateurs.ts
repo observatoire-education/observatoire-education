@@ -3,7 +3,7 @@
 // moyennes Σ numérateurs / Σ dénominateurs par territoire, famille, secteur et rentrée.
 // TypeScript : assemblage en objets Indicateur / Repartition.
 import {
-  CODES_INDICATEURS, type CodeIndicateur, type CodeRepartition, INDICATEURS, REPARTITIONS,
+  CODES_INDICATEURS, type CodeIndicateur, type CodeRepartition, estEcole, FAMILLES_SECOND_DEGRE, INDICATEURS, REPARTITIONS,
 } from "@obs/shared/libelles";
 import type {
   Comparaison, Famille, Indicateur, Mesure, Niveau, PartsReference, Repartition, Secteur, SourceId,
@@ -48,7 +48,27 @@ export const MESURES: DefMesure[] = [
     code: "part_filles", num: "filles_pub", den: "filles_pub + garcons_pub", facteur: 100, source: "effectifs",
     couverture: "least(100, 100 * (filles_pub + garcons_pub) / nullif(eleves, 0))",
   },
+  // Écoles : non disponible si les classes valent 0 ou sont absentes (den > 0 exigé).
+  { code: "eleves_par_classe", num: "eleves", den: "classes", source: "effectifs" },
 ];
+
+/**
+ * Indicateurs des écoles : ceux que publient les jeux du premier degré (effectifs et classes, IPS sans écart-type,
+ * enseignants sans statut ni vie scolaire, élèves sans répartition par sexe). Les autres ne sont pas affichés
+ * comme absences sur une fiche d'école.
+ */
+export const INDICATEURS_ECOLES: readonly CodeIndicateur[] = [
+  "eleves", "ips", "etp_enseignants", "eleves_par_etp_ens", "part_enseignantes", "part_moins_35", "part_50_plus",
+  "part_anciennete_moins_2", "part_anciennete_8_plus", "eleves_par_classe",
+];
+
+/** Indicateurs propres aux écoles, absents des fiches du second degré. */
+const SEULEMENT_ECOLES: readonly CodeIndicateur[] = ["eleves_par_classe"];
+
+/** Indicateurs de la fiche d'un établissement de cette famille, dans l'ordre de CODES_INDICATEURS. */
+export function codesIndicateurs(f: Famille): CodeIndicateur[] {
+  return CODES_INDICATEURS.filter((c) => (estEcole(f) ? INDICATEURS_ECOLES.includes(c) : !SEULEMENT_ECOLES.includes(c)));
+}
 
 /**
  * Couverture minimale (en % des élèves) pour afficher une part calculée sur les seuls niveaux publiés
@@ -86,12 +106,15 @@ const repLangue = (code: "lv1" | "lv2", rang: 1 | 2): DefRepartition => ({
 
 export const DEF_REPARTITIONS: DefRepartition[] = [
   repPersonnels("sexe_enseignants", ["etp_femmes", "etp_ens - etp_femmes"]),
-  repPersonnels("statuts", ["etp_agreges", "etp_certifies", "etp_plp", "etp_autres_tit", "etp_non_tit"]),
+  // statuts : agrégés, certifiés, PLP… propres au second degré
+  { ...repPersonnels("statuts", ["etp_agreges", "etp_certifies", "etp_plp", "etp_autres_tit", "etp_non_tit"]), familles: [...FAMILLES_SECOND_DEGRE] },
   repPersonnels("ages", ["etp_moins_35", "etp_35_49", "etp_50_plus"]),
   repPersonnels("anciennete", ["etp_anc_moins_2", "etp_anc_2_4", "etp_anc_5_7", "etp_anc_8_plus"]),
   {
     code: "sexe_eleves",
     source: "effectifs_colleges",
+    // les effectifs des écoles ne sont pas publiés par sexe
+    familles: [...FAMILLES_SECOND_DEGRE],
     sql: `select uai, rentree, sources[1] as source, [filles_pub, garcons_pub]::double[] as cats,
             least(100, 100 * (filles_pub + garcons_pub) / nullif(eleves, 0)) as couverture
           from effectifs`,
@@ -126,7 +149,7 @@ create or replace table base as
 select
   coalesce(e.uai, p.uai) as uai,
   coalesce(e.rentree, p.rentree) as rentree,
-  e.eleves, e.filles_pub, e.garcons_pub, e.sources[1] as source_effectifs,
+  e.eleves, e.filles_pub, e.garcons_pub, e.classes, e.sources[1] as source_effectifs,
   p.* exclude (uai, rentree)
 from effectifs e
 full outer join personnels p on p.uai = e.uai and p.rentree = e.rentree;
@@ -243,7 +266,7 @@ export async function calculerIndicateurs(db: Db): Promise<Map<string, Indicateu
   for (const e of etabs) {
     const prive = e.secteur === "prive_sous_contrat";
     const liste: Indicateur[] = [];
-    for (const code of CODES_INDICATEURS) {
+    for (const code of codesIndicateurs(e.famille)) {
       const brut = mesures.get(cle(e.uai, code)) ?? [];
       const serie = brut.filter((l): l is typeof l & { valeur: number } => l.valeur !== null);
       const derniereLigne = serie.at(-1);

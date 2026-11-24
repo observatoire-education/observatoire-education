@@ -1,7 +1,7 @@
 // Définition déclarative des niveaux et des langues dans les jeux d'effectifs.
 // Sert à générer le SQL (eleves.ts) et les colonnes requises de la collecte (sources.ts) :
 // toute colonne lue par le calcul est exigée à la collecte.
-import type { SourceId } from "@obs/shared/types";
+import type { Famille, SourceId } from "@obs/shared/types";
 
 /** Une partie d'un niveau : ses élèves et, si la source les publie, filles et garçons. */
 export interface Composante {
@@ -11,10 +11,15 @@ export interface Composante {
 }
 
 export interface DefNiveau {
-  /** Ordre d'affichage, unique tous jeux confondus (collèges 1-4, GT 11-13, pro 21-26). */
+  /** Ordre d'affichage, unique tous jeux confondus (collèges 1-4, GT 11-13, pro 21-26, écoles 31-36). */
   ordre: number;
   libelle: string;
   composantes: Composante[];
+  /**
+   * Familles qui affichent ce niveau (toutes si absent). Hors de ces familles, le niveau n'est gardé
+   * que s'il compte des élèves (une maternelle n'a pas de ligne « CP » vide).
+   */
+  familles?: Famille[];
 }
 
 export interface DefLangue {
@@ -29,9 +34,15 @@ export interface DefJeu {
   source: SourceId;
   rentree: string;
   uai: string;
+  /** Secteur déclaré par le jeu (lu pour les écoles fermées, qui n'en ont plus dans l'Annuaire). */
+  secteur?: string;
   total: string;
   segpa?: string;
   ulis?: string;
+  /** Élèves des unités d'enseignement externalisées (écoles). */
+  ueea?: string;
+  /** Nombre de classes (écoles). */
+  classes?: string;
   niveaux: DefNiveau[];
   langues: DefLangue[];
 }
@@ -154,16 +165,45 @@ const LYCEES_PRO: DefJeu = {
   langues: [],
 };
 
-export const JEUX_EFFECTIFS = [COLLEGES, LYCEES_GT, LYCEES_PRO] as const;
+// --- Écoles (premier degré) : niveaux hors ULIS, sans répartition par sexe ---
+
+const MATERNELLE: Famille[] = ["maternelle", "primaire"];
+const ELEMENTAIRE: Famille[] = ["elementaire", "primaire"];
+
+const ECOLES: DefJeu = {
+  source: "effectifs_ecoles",
+  rentree: "rentree_scolaire",
+  uai: "numero_ecole",
+  secteur: "secteur",
+  total: "nombre_total_eleves",
+  ulis: "nombre_eleves_ulis",
+  ueea: "nombre_eleves_ueea",
+  classes: "nombre_total_classes",
+  niveaux: [
+    { ordre: 31, libelle: "Préélémentaire", familles: MATERNELLE, composantes: [sansSexe("nombre_eleves_preelementaire_hors_ulis")] },
+    ...(["CP", "CE1", "CE2", "CM1", "CM2"] as const).map((n, i) => ({
+      ordre: 32 + i,
+      libelle: n,
+      familles: ELEMENTAIRE,
+      composantes: [sansSexe(`nombre_eleves_${n.toLowerCase()}_hors_ulis`)],
+    })),
+  ],
+  langues: [],
+};
+
+export const JEUX_EFFECTIFS = [COLLEGES, LYCEES_GT, LYCEES_PRO, ECOLES] as const;
 
 /** Toutes les colonnes lues pour un jeu, dans un ordre stable et sans doublon. */
 export function colonnesDe(j: DefJeu): string[] {
   const cols = [
     j.rentree,
     j.uai,
+    ...(j.secteur ? [j.secteur] : []),
     j.total,
     ...(j.segpa ? [j.segpa] : []),
     ...(j.ulis ? [j.ulis] : []),
+    ...(j.ueea ? [j.ueea] : []),
+    ...(j.classes ? [j.classes] : []),
     ...j.niveaux.flatMap((n) => n.composantes.flatMap((c) => [c.eleves, c.filles, c.garcons])),
     ...j.langues.flatMap((l) => l.colonnes),
   ];

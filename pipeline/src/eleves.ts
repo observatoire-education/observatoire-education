@@ -31,20 +31,26 @@ const rentree = (j: DefJeu) => `rentree(${ident(j.rentree)})`;
 const perimetre = "where uai in (select uai from fiches_etab) and rentree is not null";
 
 function selectNiveaux(j: DefJeu): string[] {
-  return j.niveaux.map(
-    (n) => `select ${uai(j)} as uai, ${rentree(j)} as rentree, ${n.ordre} as ordre, ${litteral(n.libelle)} as libelle,
+  return j.niveaux.map((n) => {
+    const select = `select ${uai(j)} as uai, ${rentree(j)} as rentree, ${n.ordre} as ordre, ${litteral(n.libelle)} as libelle,
       ${somme(n.composantes.map((c) => c.eleves))} as eleves,
       ${sexe(n.composantes, "filles")} as filles,
       ${sexe(n.composantes, "garcons")} as garcons
-    from src_${j.source}`,
-  );
+    from src_${j.source}`;
+    if (!n.familles) return select;
+    // Hors des familles du niveau, la ligne n'est gardée que si elle compte des élèves.
+    return `select * from (${select}) where eleves > 0
+      or uai in (select uai from fiches_etab where famille in (${n.familles.map(litteral).join(", ")}))`;
+  });
 }
 
 function selectTotaux(j: DefJeu, ordreSource: number): string {
   return `select ${uai(j)} as uai, ${rentree(j)} as rentree, ${litteral(j.source)} as source, ${ordreSource} as ordre_source,
       ${nb(j.total)} as eleves,
       ${j.segpa ? nb(j.segpa) : "null::double"} as segpa,
-      ${j.ulis ? nb(j.ulis) : "null::double"} as ulis
+      ${j.ulis ? nb(j.ulis) : "null::double"} as ulis,
+      ${j.ueea ? nb(j.ueea) : "null::double"} as ueea,
+      ${j.classes ? nb(j.classes) : "null::double"} as classes
     from src_${j.source}`;
 }
 
@@ -92,6 +98,8 @@ select j.uai, j.rentree,
   any_value(s.garcons_pub) as garcons_pub,
   max(j.segpa) as segpa,
   max(j.ulis) as ulis,
+  max(j.ueea) as ueea,
+  max(j.classes) as classes,
   list(j.source order by j.ordre_source) as sources
 from effectifs_jeux j
 left join sexes s on s.uai = j.uai and s.rentree = j.rentree
@@ -109,8 +117,9 @@ order by uai, rentree, rang, ordre;
 /** Élèves de la dernière rentrée connue de chaque établissement du périmètre. */
 export async function calculerEleves(db: Db): Promise<Map<string, Eleves>> {
   const totaux = await db.sql<{
-    uai: string; rentree: number; eleves: number | null; segpa: number | null; ulis: number | null; sources: SourceId[];
-  }>(`select uai, rentree, eleves, segpa, ulis, sources from effectifs
+    uai: string; rentree: number; eleves: number | null; segpa: number | null; ulis: number | null; ueea: number | null;
+    sources: SourceId[];
+  }>(`select uai, rentree, eleves, segpa, ulis, ueea, sources from effectifs
       qualify row_number() over (partition by uai order by rentree desc) = 1`);
   const niveaux = await db.sql<NiveauEleves & { uai: string }>(
     `select n.uai, n.libelle, n.eleves, n.filles, n.garcons
@@ -119,16 +128,20 @@ export async function calculerEleves(db: Db): Promise<Map<string, Eleves>> {
      order by n.uai, n.ordre`,
   );
   const parUai = Map.groupBy(niveaux, (n) => n.uai);
+  // Le champ UEEA n'existe que pour les jeux qui le publient (écoles).
+  const avecUeea = new Set<SourceId>(JEUX_EFFECTIFS.filter((j) => j.ueea).map((j) => j.source));
   const resultat = new Map<string, Eleves>();
   for (const t of totaux) {
-    resultat.set(t.uai, {
+    const e: Eleves = {
       rentree: t.rentree,
       total: t.eleves,
       niveaux: (parUai.get(t.uai) ?? []).map(({ libelle, eleves, filles, garcons }) => ({ libelle, eleves, filles, garcons })),
       segpa: t.segpa,
       ulis: t.ulis,
       source: t.sources,
-    });
+    };
+    if (t.sources.some((s) => avecUeea.has(s))) e.ueea = t.ueea;
+    resultat.set(t.uai, e);
   }
   return resultat;
 }

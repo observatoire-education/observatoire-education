@@ -135,6 +135,19 @@ describe("écoles", () => {
     }
   });
 
+  test("classes et élèves par classe sur la fiche d'une école, pas sur celle d'un collège", () => {
+    const f = fiche("0440202B");
+    expect(f.classes).toMatchObject({ rentree: 2025, total: 8 });
+    expect(f.indicateurs.find((i) => i.code === "eleves_par_classe")!.mesure.statut).toBe("ok");
+    expect(f.sources.map((s) => s.id)).toEqual(["annuaire", "effectifs_ecoles", "classes_ecoles", "ecoles_ep"]);
+    expect(f.sources.find((s) => s.id === "ecoles_ep")!.rentree).toBe(2018); // dernière rentrée affichée de la série
+    expect(millesimesAffiches(f).get("ecoles_ep")).toEqual(new Set([2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018]));
+    expect(millesimesAffiches(f).get("classes_ecoles")).toEqual(new Set([2025]));
+    expect(fiche("0440108H").classes!.types).toBeNull();
+    expect(fiche("0440001A")).not.toHaveProperty("classes");
+    expect(fiche("0440001A").indicateurs.map((i) => i.code)).not.toContain("eleves_par_classe");
+  });
+
   test("absentes des territoires", async () => {
     const actives = fiches.filter((f) => f.disparuLe === null);
     expect(communesRetenues(actives).get("44109")!.some((f) => estEcole(f.famille))).toBe(false);

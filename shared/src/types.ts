@@ -112,6 +112,29 @@ export interface Eleves {
   niveaux: NiveauEleves[];
   segpa: number | null;
   ulis: number | null;
+  /** Élèves des unités d'enseignement externalisées (écoles seulement). */
+  ueea?: number | null;
+  source: SourceId[];
+}
+
+/** Un type de classe d'une école (typologie des classes) : « CE1 », « CM1-CM2 »… */
+export interface TypeClasses {
+  libelle: string;
+  /** Nombre de niveaux réunis dans la classe (segments séparés par « - »). */
+  niveaux: number;
+  classes: number;
+}
+
+/** Classes d'une école. */
+export interface Classes {
+  rentree: number;
+  total: number | null;
+  /** [rentrée, élèves, classes] par rentrée croissante, série complète (effectifs_ecoles, puis ecoles_ep). */
+  historique: [number, number | null, number | null][];
+  /** Source de chaque point de l'historique, quand elle change le long de la série. */
+  sourcesHistorique?: SourceId[];
+  /** null si la typologie n'est pas publiée pour la rentrée. */
+  types: TypeClasses[] | null;
   source: SourceId[];
 }
 
@@ -242,6 +265,8 @@ export interface Fiche extends Identite {
   indicateurs: Indicateur[];
   repartitions: Repartition[];
   eleves: Eleves | null;
+  /** Classes : présent pour les écoles seulement (null = aucune donnée de classes). */
+  classes?: Classes | null;
   /** null = voisins non calculables (coordonnées absentes ou page disparue). */
   voisins: Voisin[] | null;
   /** Résultats aux examens, dans l'ordre brevet général, brevet pro, bac GT, bac pro ; [] si aucun. */

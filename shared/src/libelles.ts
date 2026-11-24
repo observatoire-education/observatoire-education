@@ -96,6 +96,7 @@ export const CODES_INDICATEURS = [
   "part_anciennete_moins_2",
   "part_anciennete_8_plus",
   "part_filles",
+  "eleves_par_classe",
 ] as const;
 export type CodeIndicateur = (typeof CODES_INDICATEURS)[number];
 
@@ -126,6 +127,7 @@ export const INDICATEURS: Record<CodeIndicateur, DefIndicateur> = {
   part_anciennete_moins_2: { libelle: "Part d'enseignants présents depuis moins de 2 ans", genre: "part", decimales: 1 },
   part_anciennete_8_plus: { libelle: "Part d'enseignants présents depuis 8 ans ou plus", genre: "part", decimales: 1 },
   part_filles: { libelle: "Part de filles", genre: "part", decimales: 1 },
+  eleves_par_classe: { libelle: "Élèves par classe", genre: "ratio", decimales: 1 },
 };
 
 // --- Répartitions (barres empilées) ---

@@ -289,11 +289,8 @@ export const SOURCES: Record<SourceId, Source> = {
     "effectifs_ecoles",
     "fr-en-ecoles-effectifs-nb_classes",
     "Effectifs d’élèves par école",
-    noms(
-      "rentree_scolaire,numero_ecole,secteur,nombre_total_classes,nombre_total_eleves",
-      "nombre_eleves_preelementaire_hors_ulis,nombre_eleves_elementaire_hors_ulis,nombre_eleves_ulis,nombre_eleves_ueea",
-      "nombre_eleves_cp_hors_ulis,nombre_eleves_ce1_hors_ulis,nombre_eleves_ce2_hors_ulis,nombre_eleves_cm1_hors_ulis,nombre_eleves_cm2_hors_ulis",
-    ),
+    // les colonnes que lit le calcul des élèves et des classes (colonnes-eleves.ts)
+    colonnesDe(JEUX_EFFECTIFS[3]),
     false,
     parUai("rentree_scolaire", "numero_ecole"),
   ),

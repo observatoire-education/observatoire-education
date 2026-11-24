@@ -54,6 +54,17 @@ describe("elevesParCollectivite", () => {
     expect(m.size).toBe(2);
   });
 
+  test("les élèves des écoles ne comptent pas (budget des communes)", () => {
+    const fiches = [
+      fiche("A", { eleves: [[2023, 400]] }),
+      fiche("S", { eleves: [[2023, 200]], famille: "primaire" }),
+      fiche("M", { eleves: [[2023, 90]], famille: "maternelle", secteur: "prive_sous_contrat" }),
+    ];
+    const m = elevesParCollectivite(fiches, 2023);
+    expect(m.get("colleges|dep-44")).toEqual({ public: 400, prive: 0 });
+    expect(m.size).toBe(1);
+  });
+
   test("une fiche disparue compte dans les élèves des exercices où elle avait des élèves", async () => {
     const fiches = [
       fiche("A", { eleves: [[2022, 400], [2023, 400]] }),

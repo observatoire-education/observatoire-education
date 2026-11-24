@@ -3,13 +3,14 @@ import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { DonneesSource, EntreeIndex } from "@obs/shared/donnees";
 import type {
-  CodeIndicateur, Famille, FamilleEcole, FamilleSecondDegre, Fiche, Identite, Indicateur, Mesure, Repartition, ResultatsVoie, Secteur, Site, SourceId, SourceRef, Voisin,
+  Classes, CodeIndicateur, Famille, FamilleEcole, FamilleSecondDegre, Fiche, Identite, Indicateur, Mesure, Repartition, ResultatsVoie, Secteur, Site, SourceId, SourceRef, Voisin,
 } from "@obs/shared/types";
-import { FAMILLES_SECOND_DEGRE } from "@obs/shared/libelles";
+import { estEcole, FAMILLES_SECOND_DEGRE } from "@obs/shared/libelles";
 import type { Manifest } from "./archive.ts";
 import type { Db } from "./db.ts";
 import { budgetDeFiche, calculerBudgets } from "./budget-eleves.ts";
 import { collectivitesCorrigees, correctionEnVigueur, type EntreeCorrection, resoudreCorrection } from "./corrections.ts";
+import { calculerClasses } from "./ecoles.ts";
 import { calculerEleves } from "./eleves.ts";
 import { calculerResultats, dernieresSessions, resume } from "./resultats.ts";
 import { calculerIndicateurs, calculerRepartitions } from "./indicateurs.ts";
@@ -173,6 +174,16 @@ async function identitesHistoriques(db: Db): Promise<Map<string, { identite: Ide
   );
 }
 
+/** Millésimes des classes d'une école, avec leur source : chaque point de la série, et la typologie de la dernière rentrée. */
+function millesimesClasses(c: Classes | null | undefined): [SourceId, number][] {
+  if (!c) return [];
+  const serie = c.source.find((s) => s !== "classes_ecoles")!;
+  return [
+    ...c.historique.map(([rentree], k): [SourceId, number] => [c.sourcesHistorique?.[k] ?? serie, rentree]),
+    ...(c.types ? [["classes_ecoles", c.rentree] as [SourceId, number]] : []),
+  ];
+}
+
 /**
  * Les sources effectivement utilisées par la fiche, dans l'ordre du registre, avec le millésime le plus récent.
  * L'identité vient de l'Annuaire, ou du jeu des fermés pour une fiche historique (`historique`) ; le jeu des fermés
@@ -180,6 +191,7 @@ async function identitesHistoriques(db: Db): Promise<Map<string, { identite: Ide
  */
 function sourcesUtilisees(
   manifest: Manifest, indicateurs: Indicateur[], repartitions: Repartition[], eleves: Fiche["eleves"], resultats: ResultatsVoie[],
+  classes: Classes | null | undefined,
   { historique = false, fermes = false }: { historique?: boolean; fermes?: boolean } = {},
 ): SourceRef[] {
   const rentrees = new Map<SourceId, number | null>([[historique ? "fermes" : "annuaire", null]]);
@@ -196,6 +208,7 @@ function sourcesUtilisees(
   for (const r of repartitions) if (r.statut === "ok") noter(r.source, r.rentree);
   for (const s of eleves?.source ?? []) noter(s, eleves!.rentree);
   for (const r of resultats) noter(r.source, r.session); // la « rentrée » d'une source de résultats est sa session
+  for (const [s, rentree] of millesimesClasses(classes)) noter(s, rentree);
 
   return Object.values(SOURCES)
     .filter((s) => rentrees.has(s.id))
@@ -229,6 +242,7 @@ export function millesimesAffiches(f: Fiche): Map<SourceId, Set<number>> {
   }
   for (const r of f.repartitions) if (r.statut === "ok") noter(r.source, r.rentree);
   for (const s of f.eleves?.source ?? []) noter(s, f.eleves!.rentree);
+  for (const [s, rentree] of millesimesClasses(f.classes)) noter(s, rentree);
   for (const ex of (f.budget.colleges ?? f.budget.lycees)?.exercices ?? []) noter(ex.source, ex.exercice);
   for (const r of f.resultats) for (const [session] of r.historique) noter(r.source, session);
   for (const r of f.resultats) noter(r.source, r.session);
@@ -314,6 +328,7 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
   const indicateurs = await calculerIndicateurs(db);
   const repartitions = await calculerRepartitions(db);
   const eleves = await calculerEleves(db);
+  const classes = await calculerClasses(db);
   const resultats = await calculerResultats(db);
   const voisins = await calculerVoisins(db, 6, 30, indicateurs, resultats);
   const actives = await identitesActives(db);
@@ -329,14 +344,17 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
     const rep = repartitions.get(uai) ?? [];
     const el = eleves.get(uai) ?? null;
     const res = resultats.get(uai) ?? [];
+    // classes : écoles seulement (le champ est absent des fiches du second degré)
+    const cl = estEcole(identite.famille) ? (classes.get(uai) ?? null) : undefined;
     return {
       uai, ...identite, disparuLe, fermeLe: disparuLe === null ? null : (fermetures.get(uai) ?? null),
       successeurs: [], predecesseurs: [], // remplacés plus bas, quand toutes les fiches sont connues
       indicateurs: ind, repartitions: rep, eleves: el,
+      ...(cl === undefined ? {} : { classes: cl }),
       budget: { france: [] }, // remplacé plus bas, quand toutes les fiches (disparues comprises) sont connues
       voisins: disparuLe === null ? (voisins.get(uai) ?? null) : null,
       resultats: res,
-      sources: sourcesUtilisees(manifest, ind, rep, el, res),
+      sources: sourcesUtilisees(manifest, ind, rep, el, res, cl),
     };
   };
 
@@ -361,7 +379,7 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
   attacherSuccesseurs(fiches, gardes);
   // Sources connues seulement maintenant : la date de fermeture affichée (fiche ou prédécesseur) vient du jeu des fermés.
   for (const f of fiches) {
-    f.sources = sourcesUtilisees(manifest, f.indicateurs, f.repartitions, f.eleves, f.resultats, {
+    f.sources = sourcesUtilisees(manifest, f.indicateurs, f.repartitions, f.eleves, f.resultats, f.classes, {
       historique: f.disparuLe !== null && historiques.has(f.uai),
       fermes: f.fermeLe !== null || f.predecesseurs.some((p) => p.fermeLe !== null),
     });
