@@ -1,6 +1,7 @@
 // Mise en forme du bloc « Moyens de la collectivité » : absences, montants, comparaisons à la moyenne France.
 import type { MontantBudget, MoyenneBudget, StatutBudget } from "@obs/shared/donnees";
 import type { NiveauBudget } from "@obs/shared/collectivites";
+import { lireSources } from "./donnees";
 import { ecart, entier } from "@obs/shared/format";
 import { LIBELLES, LIBELLES_BUDGET as L } from "@obs/shared/libelles";
 
@@ -40,7 +41,7 @@ export function montantBudget(m: MontantBudget, niveau: NiveauBudget): { texte: 
 /** « +2 429 (8 011) » et le nombre de collectivités de la moyenne ; null si le montant est absent. */
 export function comparaisonBudget(m: MontantBudget, moyenne: MoyenneBudget | undefined): { texte: string; n: number | null } | null {
   if (m.statut !== "ok" || m.parEleve === null) return null;
-  if (!moyenne || moyenne.valeur === null) return { texte: "moyenne non disponible", n: null };
+  if (!moyenne || moyenne.valeur === null) return { texte: L.moyenne.nonDisponible, n: null };
   return { texte: ecart(m.parEleve, moyenne.valeur, 0), n: moyenne.n };
 }
 
@@ -53,3 +54,6 @@ export function ecartSigne(a: number, b: number): string {
 
 /** Niveau de budget d'une famille d'établissement : collèges, ou lycées (lycées GT, polyvalents, professionnels, EREA). */
 export const niveauDe = (famille: Famille): NiveauBudget => (famille === "college" ? "colleges" : "lycees");
+
+/** Lien vers la donnée brute archivée d'un exercice (`budget_N`), si elle est connue. */
+export const brutBudget = (id: string): string | undefined => lireSources()[id]?.actuelle?.url;

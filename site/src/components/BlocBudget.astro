@@ -6,7 +6,7 @@ import type { NiveauBudget } from "@obs/shared/collectivites";
 import type { BudgetCollectivite, MoyennesBudgetFrance } from "@obs/shared/donnees";
 import { nombre } from "@obs/shared/format";
 import { LIBELLES_BUDGET as L } from "@obs/shared/libelles";
-import { absenceBudget, comparaisonBudget, ecartSigne, millions, montantBudget } from "../lib/budget";
+import { absenceBudget, brutBudget, comparaisonBudget, ecartSigne, millions, montantBudget } from "../lib/budget";
 import { svgEvolutionBudget } from "../lib/plot";
 import Absence from "./Absence.astro";
 import Cellule from "./Cellule.astro";
@@ -44,6 +44,9 @@ const priv = e ? { montant: montantBudget(e.prive.fonctionnement, niveau), cmp: 
 // Mise en regard : seulement si le personnel compris du public et la contribution au privé sont présents.
 const pu = e?.public.avecPersonnel;
 const pr = e?.prive.fonctionnement;
+const inv = e && e.prive.investissement.statut === "ok" && e.prive.investissement.parEleve !== null
+  ? { montant: montantBudget(e.prive.investissement, niveau), cmp: comparaisonBudget(e.prive.investissement, moy?.prive.investissement) }
+  : null;
 const regard = pu && pr && pu.statut === "ok" && pu.parEleve !== null && pr.statut === "ok" && pr.parEleve !== null
   ? { public: nombre(pu.parEleve, 0), ecart: ecartSigne(pr.parEleve, pu.parEleve) }
   : null;
@@ -63,9 +66,9 @@ const secteurs = secteurEnPremier === "prive" ? (["prive", "public"] as const) :
       <div class="cols2 budget">
         {secteurs.map((s) => s === "public" ? (
           <div class="card">
-            <div class="lab"><span>{budget.libelle} · public</span><span class="yr">exercice {e.exercice}</span></div>
+            <div class="lab"><span>{budget.libelle} · {L.interface.public}</span><span class="yr">{L.interface.exercice(e.exercice)}</span></div>
             <div class="table-wrap"><table class="cmp mini-t">
-              <thead><tr><th>{L.unites.parEleve}</th><th class="n">Montant</th><th class="n">Écart (moyenne)</th></tr></thead>
+              <thead><tr><th>{L.unites.parEleve}</th><th class="n">{L.interface.montant}</th><th class="n">{L.interface.ecartMoyenne}</th></tr></thead>
               <tbody>
                 {lignesPublic.map((l) => (
                   <tr>
@@ -79,20 +82,27 @@ const secteurs = secteurEnPremier === "prive" ? (["prive", "public"] as const) :
           </div>
         ) : priv && (
           <div class="card">
-            <div class="lab"><span>{budget.libelle} · privé sous contrat</span><span class="yr">exercice {e.exercice}</span></div>
+            <div class="lab"><span>{budget.libelle} · {L.interface.prive}</span><span class="yr">{L.interface.exercice(e.exercice)}</span></div>
             <div class="table-wrap"><table class="cmp mini-t">
-              <thead><tr><th>{L.unites.parElevePrive}</th><th class="n">Montant</th><th class="n">Écart (moyenne)</th></tr></thead>
+              <thead><tr><th>{L.unites.parElevePrive}</th><th class="n">{L.interface.montant}</th><th class="n">{L.interface.ecartMoyenne}</th></tr></thead>
               <tbody>
                 <tr>
                   <td>{contribution}</td>
                   <td class="n pri"><Cellule texte={priv.montant.texte} absent={priv.montant.absent} gras={!priv.montant.absent} /></td>
                   <td class="n">{priv.cmp && <>{priv.cmp.texte}{priv.cmp.n !== null && <small class="mute">{L.moyenne.de(priv.cmp.n)}</small>}</>}</td>
                 </tr>
+                {inv && (
+                  <tr>
+                    <td>{L.postes.investissement}</td>
+                    <td class="n pri"><Cellule texte={inv.montant.texte} absent={inv.montant.absent} gras /></td>
+                    <td class="n">{inv.cmp && <>{inv.cmp.texte}{inv.cmp.n !== null && <small class="mute">{L.moyenne.de(inv.cmp.n)}</small>}</>}</td>
+                  </tr>
+                )}
                 {regard && (
                   <tr class="regard">
                     <td>{L.postes.avecPersonnel} (public)</td>
                     <td class="n pub">{regard.public}</td>
-                    <td class="n">Écart avec le public : {regard.ecart}</td>
+                    <td class="n">{L.interface.ecartAvecPublic} : {regard.ecart}</td>
                   </tr>
                 )}
               </tbody>
@@ -102,15 +112,15 @@ const secteurs = secteurEnPremier === "prive" ? (["prive", "public"] as const) :
       </div>
       {svg && (
         <div class="card" style="margin-top:14px">
-          <div class="lab"><span>Évolution · {L.unites.parEleve}</span><span class="yr">{budget.exercices[0]!.exercice} → {budget.exercices.at(-1)!.exercice}</span></div>
+          <div class="lab"><span>{L.interface.evolution} · {L.unites.parEleve}</span><span class="yr">{budget.exercices[0]!.exercice} → {budget.exercices.at(-1)!.exercice}</span></div>
           <Fragment set:html={svg} />
-          <div class="legend"><span class="sect pub">public</span><span class="sect pri">privé sous contrat</span></div>
+          <div class="legend"><span class="sect pub">{L.interface.public}</span><span class="sect pri">{L.interface.prive}</span></div>
         </div>
       )}
       {budget.mentions.includes("agricole") && <p class="mute mention-budget">{L.mentionAgricole}</p>}
       {budget.mentions.includes("cites_scolaires") && partCites !== undefined && <p class="mute mention-budget">{L.mentionCitesScolaires(nombre(partCites, 1))}</p>}
       {e.citesScolaires !== null && e.citesScolaires > 0 && <p class="mute mention-budget">{L.citesScolairesHorsMontants(millions(e.citesScolaires))}</p>}
-      <div class="src">{L.source(e.exercice)} · {L.moyenne.calculee}</div>
+      <div class="src">{L.source(e.exercice)} · {L.moyenne.calculee}{brutBudget(e.source) && <> · <a href={brutBudget(e.source)}>{L.interface.donneeBrute}</a></>}</div>
     </>
   )}
 </div>

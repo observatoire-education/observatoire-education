@@ -173,7 +173,22 @@ export const LIBELLES_BUDGET = {
   },
   moyenne: {
     calculee: "moyenne calculée par l'observatoire",
-    de: (n: number) => `moyenne de ${n} collectivités`,
+    de: (n: number) => `moyenne de ${n} collectivité${n > 1 ? "s" : ""}`,
+    nonDisponible: "moyenne non disponible",
+  },
+  /** Textes d'interface du bloc (en-têtes, repères). */
+  interface: {
+    montant: "Montant",
+    ecartMoyenne: "Écart (moyenne)",
+    ecartAvecPublic: "Écart avec le public",
+    public: "public",
+    prive: "privé sous contrat",
+    collectivite: "Collectivité",
+    evolution: "Évolution",
+    exercice: (n: number) => `exercice ${n}`,
+    investissementPrive: "Investissement (privé)",
+    sourceSansExercice: "DGFiP, balances comptables",
+    donneeBrute: "donnée brute",
   },
   source: (exercice: number) =>
     `DGFiP, balances comptables, exercice ${exercice} · élèves à la rentrée ${exercice - 1} (DEPP)`,

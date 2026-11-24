@@ -232,7 +232,8 @@ describe("export des données du site", () => {
     expect(france.carte.genre).toBe("departements");
 
     const sources: Record<string, DonneesSource> = await Bun.file(join(sortie, "sources.json")).json();
-    expect(Object.keys(sources)).toHaveLength(7);
+    expect(Object.keys(sources).filter((k) => !k.startsWith("budget_"))).toHaveLength(7);
+    expect(Object.keys(sources)).toContain("budget_2024");
     expect(sources.ips_colleges!.actuelle!.collecteLe).toBe("2026-11-22T02:17:00Z");
   });
 

@@ -11,7 +11,7 @@ import { budgetDeFiche, calculerBudgets } from "./budget-eleves.ts";
 import { calculerEleves } from "./eleves.ts";
 import { calculerIndicateurs, calculerRepartitions } from "./indicateurs.ts";
 import type { Registre } from "./registre.ts";
-import { SOURCES } from "./sources.ts";
+import { SOURCES, toutesSources } from "./sources.ts";
 import { ecrireJson, exporterTerritoires } from "./territoires.ts";
 
 // --- Voisinage ---
@@ -150,6 +150,24 @@ function sourcesUtilisees(
     });
 }
 
+/** Budget de la collectivité de chaque fiche, et source (dernier exercice affiché) parmi les sources de la fiche. */
+export function attacherBudgets(fiches: Fiche[], budgets: Parameters<typeof budgetDeFiche>[1], manifest: Manifest): void {
+  const sourcesBudget = toutesSources(manifest);
+  for (const f of fiches) {
+    f.budget = budgetDeFiche(f, budgets);
+    f.sources = f.sources.filter((x) => !x.id.startsWith("budget_"));
+    const ex = (f.budget.colleges ?? f.budget.lycees)?.exercices.at(-1);
+    const s = ex && sourcesBudget.find((x) => x.id === ex.source);
+    const v = s && manifest.derniere(s.id);
+    if (s && v) {
+      f.sources.push({
+        id: s.id, producteur: s.producteur, titre: s.titre, pageUrl: s.pageUrl,
+        rentree: ex.rentree, collecteLe: v.collecteLe, brutUrl: v.url,
+      });
+    }
+  }
+}
+
 /**
  * Une fiche par établissement actif, et une par page conservée (UAI du registre sortie du périmètre).
  * `registre` doit être celui avec lequel `db` a été ouverte.
@@ -184,7 +202,7 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
   }
   // Les dénominateurs comptent aussi les établissements fermés : toutes les fiches, actives et disparues.
   const budgets = await calculerBudgets(db, fiches);
-  for (const f of fiches) f.budget = budgetDeFiche(f, budgets);
+  attacherBudgets(fiches, budgets, manifest);
   return fiches.sort((a, b) => a.uai.localeCompare(b.uai));
 }
 
@@ -206,7 +224,7 @@ export async function exporter(fiches: Fiche[], db: Db, manifest: Manifest, sort
   await exporterTerritoires(actives, db, sortie, rentree, await calculerBudgets(db, fiches));
 
   const sources: Record<string, DonneesSource> = Object.fromEntries(
-    Object.values(SOURCES).map((s) => [s.id, {
+    toutesSources(manifest).map((s) => [s.id, {
       id: s.id, titre: s.titre, producteur: s.producteur, pageUrl: s.pageUrl,
       actuelle: manifest.derniere(s.id) ?? null, versions: manifest.versions(s.id),
     }]),

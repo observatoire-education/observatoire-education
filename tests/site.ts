@@ -4,8 +4,8 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { parseHTML } from "linkedom";
-import { budgetDeFiche, calculerBudgets } from "../pipeline/src/budget-eleves.ts";
-import { assemblerFiches, exporter } from "../pipeline/src/fiches.ts";
+import { calculerBudgets } from "../pipeline/src/budget-eleves.ts";
+import { assemblerFiches, attacherBudgets, exporter } from "../pipeline/src/fiches.ts";
 import type { Registre } from "../pipeline/src/registre.ts";
 import { dbAvecRegistre, identiteTest, manifestTest } from "./aide.ts";
 
@@ -51,7 +51,7 @@ export function siteTest(): Promise<string> {
       if (h && i) i.historique = [...h, ...i.historique.filter(([a]) => !h.some(([b]) => a === b))].sort((a, b) => a[0] - b[0]);
     }
     const budgets = await calculerBudgets(db, fiches);
-    for (const f of fiches) f.budget = budgetDeFiche(f, budgets);
+    attacherBudgets(fiches, budgets, manifest);
     await exporter(fiches, db, manifest, DONNEES_TEST);
     const p = Bun.spawn(["bun", "run", "astro", "build"], {
       cwd: join(RACINE, "site"),

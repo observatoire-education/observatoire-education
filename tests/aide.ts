@@ -71,7 +71,7 @@ export async function repartitionsDe(uai: string): Promise<Repartition[]> {
 /** Manifest avec une version fictive par source, collectée le 22/11/2026. */
 export function manifestTest(dossier: string): Manifest {
   const m = Manifest.lire(join(dossier, "manifest.json"));
-  for (const s of Object.values(SOURCES)) {
+  for (const s of [...Object.values(SOURCES), ...[2023, 2024].map((e) => sourceBudget(e, EXERCICES_BUDGET[e]!))]) {
     m.ajouter(s.id, {
       sha256: `${s.id}`.padEnd(64, "0"), tag: `archives-${s.id}-2026`, fichier: `${s.id}.parquet`,
       url: `https://github.com/org/depot/releases/download/archives-${s.id}-2026/${s.id}.parquet`,

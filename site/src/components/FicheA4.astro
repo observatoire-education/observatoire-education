@@ -68,7 +68,7 @@ const niveauBudget = niveauDe(f.famille);
 const budget = (niveauBudget === "colleges" ? f.budget.colleges : f.budget.lycees) ?? null;
 const exBudget = budget?.exercices.at(-1);
 const moyBudget = exBudget ? f.budget.france.find((m) => m.niveau === niveauBudget)?.exercices.find((x) => x.exercice === exBudget.exercice) : undefined;
-const renvoiBudget = `[${f.sources.length + 1}]`;
+const renvoiBudget = renvoi(exBudget?.source);
 const contribution = niveauBudget === "colleges" ? LIBELLES_BUDGET.postes.contributionColleges : LIBELLES_BUDGET.postes.contributionLycees;
 const lignesBudget = exBudget ? [
   { libelle: LIBELLES_BUDGET.postes.horsPersonnel, m: exBudget.public.horsPersonnel, moy: moyBudget?.public.horsPersonnel, secteur: "public" as const, unite: LIBELLES_BUDGET.unites.parEleve },
@@ -140,7 +140,7 @@ const nd = (v: number | null) => (v === null ? "n. d." : entier(v));
         ))}
         {!budget && (
           <tr>
-            <td>{LIBELLES_BUDGET.titre} <sup>{renvoiBudget}</sup></td>
+            <td>{LIBELLES_BUDGET.titre}</td>
             <td class="n me np">n. d.</td>
             <td class="hist" colspan="6">{absenceBudget(f.budget.motif ?? "collectivite_non_identifiee", niveauBudget)}</td>
           </tr>
@@ -204,7 +204,6 @@ const nd = (v: number | null) => (v === null ? "n. d." : entier(v));
       {f.sources.map((s) => (
         <li>{s.producteur}, {s.titre}{s.rentree !== null && ` · rentrée ${anneeScolaire(s.rentree)}`} · collecté le {date(s.collecteLe)}{s.id.startsWith("ips_") ? " · moyennes publiées par la DEPP" : s.id === "annuaire" ? "" : " · moyennes calculées (Σ / Σ)"}.</li>
       ))}
-      <li>{exBudget ? LIBELLES_BUDGET.source(exBudget.exercice) : "DGFiP, balances comptables"} · {LIBELLES_BUDGET.moyenne.calculee}.</li>
     </ol>
     <div>
       « non publié » : {LIBELLES.nonPubliePrive} (la DEPP ne publie pas les ETP de vie scolaire des établissements privés sous contrat).

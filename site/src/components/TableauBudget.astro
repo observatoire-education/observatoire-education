@@ -3,7 +3,7 @@
 import type { NiveauBudget } from "@obs/shared/collectivites";
 import type { BudgetCollectivite } from "@obs/shared/donnees";
 import { LIBELLES_BUDGET as L } from "@obs/shared/libelles";
-import { montantBudget } from "../lib/budget";
+import { brutBudget, montantBudget } from "../lib/budget";
 import Cellule from "./Cellule.astro";
 
 interface Props { collectivites: BudgetCollectivite[]; niveau: NiveauBudget }
@@ -15,17 +15,17 @@ const contribution = niveau === "colleges" ? L.postes.contributionColleges : L.p
 <div class="moyens moyens-tableau">
   <div class="card" style="padding:4px 6px"><div class="table-wrap">
     <table class="cmp mini-t budget">
-      <caption class="mute">{L.unites.parEleve} ({contribution} : {L.unites.parElevePrive}) · exercice {exercice}</caption>
+      <caption class="mute">{L.unites.parEleve} ({contribution} : {L.unites.parElevePrive}) · {L.interface.exercice(exercice)}</caption>
       <thead><tr>
-        <th>Collectivité</th>
+        <th>{L.interface.collectivite}</th>
         <th class="n">{L.postes.horsPersonnel}</th><th class="n">{L.postes.avecPersonnel}</th>
-        <th class="n">{L.postes.investissement}</th><th class="n">{contribution}</th>
+        <th class="n">{L.postes.investissement}</th><th class="n">{contribution}</th><th class="n">{L.interface.investissementPrive}</th>
       </tr></thead>
       <tbody>
         {lignes.map((c) => {
           const e = c.exercices.at(-1);
           const cellules = e
-            ? [[e.public.horsPersonnel, "pub"], [e.public.avecPersonnel, "pub"], [e.public.investissement, "pub"], [e.prive.fonctionnement, "pri"]] as const
+            ? [[e.public.horsPersonnel, "pub"], [e.public.avecPersonnel, "pub"], [e.public.investissement, "pub"], [e.prive.fonctionnement, "pri"], [e.prive.investissement, "pri"]] as const
             : [];
           return (
             <tr>
@@ -40,5 +40,5 @@ const contribution = niveau === "colleges" ? L.postes.contributionColleges : L.p
       </tbody>
     </table>
   </div></div>
-  <div class="src">{L.source(exercice)} · {L.moyenne.calculee}</div>
+  <div class="src">{L.source(exercice)} · {L.moyenne.calculee}{brutBudget(`budget_${exercice}`) && <> · <a href={brutBudget(`budget_${exercice}`)}>{L.interface.donneeBrute}</a></>}</div>
 </div>

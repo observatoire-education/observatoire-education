@@ -97,6 +97,30 @@ describe("fiche : bloc Moyens de la collectivité", () => {
     expect(moyens("9770001G")).not.toContain(L.postes.horsPersonnel);
   });
 
+  test("investissement du privé : ligne propre, sans écart avec le public ; absent si non ok", () => {
+    const t = moyens("0440001A");
+    expect(t).toContain("1\u202f346");
+    expect(t.match(/Investissement/g)).toHaveLength(2); // public et privé
+    expect(moyens("0751501A")).not.toMatch(/Investissement[^D]*non disponible[^D]*Investissement/);
+    expect((moyens("0751501A").match(/Investissement/g) ?? []).length).toBe(1);
+  });
+
+  test("source du bloc liée à la donnée brute, et listée dans « Sources de cette page »", () => {
+    const d = doc("etablissement/0440001A");
+    const lien = d.querySelector("section#moyens .src a");
+    expect(lien?.getAttribute("href")).toContain("budget_2024");
+    const sources = (d.querySelector("section#sources")!.textContent ?? "");
+    expect(sources).toContain("DGFiP");
+    expect(sources).toContain("Balances comptables des collectivités");
+    const liens = [...d.querySelectorAll("section#sources a")].map((a) => a.getAttribute("href") ?? "");
+    expect(liens.some((h) => h.includes("budget_2024"))).toBe(true);
+  });
+
+  test("singulier : « moyenne de 1 collectivité »", () => {
+    expect(L.moyenne.de(1)).toBe("moyenne de 1 collectivité");
+    expect(L.moyenne.de(2)).toBe("moyenne de 2 collectivités");
+  });
+
   test("source en ligne de source, collectivité nommée", () => {
     const t = moyens("0440001A");
     expect(t).toContain("Département de Loire-Atlantique");
@@ -122,7 +146,7 @@ describe("fiche A4 : moyennes seules, pas d'écart", () => {
     expect(budget[2]).toContain("30 769");
     expect(budget[2]).toContain("21 951");
     // le numéro de source de la ligne figure au pied de la fiche
-    expect(a4("0440001A")).toContain("DGFiP, balances comptables, exercice 2024 · élèves à la rentrée 2023 (DEPP)");
+    expect(a4("0440001A")).toContain("DGFiP, Balances comptables des collectivités, présentation croisée nature-fonction 2024");
     expect(budget[0]).toMatch(/\[\d+\]/);
   });
 
@@ -191,6 +215,13 @@ describe("pages de territoire", () => {
     const lignes = [...doc("france").querySelectorAll("section#college .moyens table tbody tr")];
     expect(lignes.length).toBeGreaterThan(1);
     expect(texte("france")).toContain(L.titre);
+  });
+
+  test("tableau des collectivités : colonne d'investissement du privé et lien vers la donnée brute", () => {
+    const d = doc("academie/17");
+    const entetes = [...d.querySelectorAll("section#college .moyens table thead th")].map((t) => t.textContent);
+    expect(entetes).toContain(L.interface.investissementPrive);
+    expect(d.querySelector("section#college .moyens .src a")?.getAttribute("href")).toContain("budget_2024");
   });
 
   test("commune : aucun bloc", () => {
