@@ -89,6 +89,7 @@ describe("voisinage", () => {
 describe("fiches", () => {
   test("une fiche par établissement du périmètre, triées par UAI", () => {
     expect(fiches.map((f) => f.uai)).toEqual([
+      "0350001A", "0350002B", "0350003C", "0350004D", "0350005E", "0350011L", "0350012M", "0350013N", "0350014P", "0350015R",
       "0440001A", "0440002B", "0440003C", "0440005E", "0440006F", "0440007G", "0440020P", "0440021R", "0440023T", "0440099Z", "0440101A", "0440102B", "0440103C", "0440200E",
       "0750701C", "0751501A", "0751502B", "6200001F", "9711023K", "9750001C", "9770001G",
     ]);
@@ -254,7 +255,7 @@ describe("registre des pages", () => {
     expect(apres["0440001A"]).toEqual({ premiere: "2026-01-01", identite: expect.objectContaining({ nom: "Collège Jules-Verne" }) });
     expect(apres["0440002B"]!.premiere).toBe("2026-11-23");
     expect(apres["0440099Z"]).toMatchObject({ disparuLe: "2020-08-31", identite: { nom: "Collège Disparu" } });
-    expect(Object.keys(apres)).toHaveLength(21); // + 5 fiches historiques
+    expect(Object.keys(apres)).toHaveLength(31); // + 5 fiches historiques + 10 d'Ille-et-Vilaine (nuages)
   });
 
   test("lecture et écriture : une ligne par UAI, triée", async () => {
@@ -263,7 +264,7 @@ describe("registre des pages", () => {
     const r = mettreAJourRegistre({}, fiches, "2026-11-23");
     ecrireRegistre(chemin, r);
     const texte = await Bun.file(chemin).text();
-    expect(texte.split("\n")).toHaveLength(21 + 3); // accolades, 21 entrées, fin de fichier
+    expect(texte.split("\n")).toHaveLength(31 + 3); // accolades, 31 entrées, fin de fichier
     expect(texte.indexOf("0440001A")).toBeLessThan(texte.indexOf("6200001F"));
     expect(lireRegistre(chemin)).toEqual(r);
   });
@@ -278,8 +279,8 @@ describe("export des données du site", () => {
     expect(f.nom).toBe("Collège Jules-Verne");
 
     const index: EntreeIndex[] = await Bun.file(join(sortie, "index.json")).json();
-    expect(index).toHaveLength(21);
-    expect(index[0]).toEqual({ u: "0440001A", n: "Collège Jules-Verne", c: "Nantes", d: "44", f: "college", s: "public" });
+    expect(index).toHaveLength(31);
+    expect(index[0]).toEqual({ u: "0350001A", n: "Collège Les Ajoncs", c: "Rennes", d: "35", f: "college", s: "public" });
 
     const dep: DonneesTerritoire = await Bun.file(join(sortie, "departements", "44.json")).json();
     expect(dep).toMatchObject({ horsContrat: 1, rentree: 2025 });
@@ -342,7 +343,7 @@ describe("export des données du site", () => {
     expect(france.ref.code).toBe("FR");
     expect(france.parents).toEqual([]);
     expect(france.enfants.map((e) => `${e.ref.niveau} ${e.ref.code}`)).toContain("academie 17");
-    expect(france.familles.college!.compte).toEqual({ public: 8, prive: 3 });
+    expect(france.familles.college!.compte).toEqual({ public: 11, prive: 5 }); // + 3 publics et 2 privés d'Ille-et-Vilaine
     expect(france.familles.college!.ipsMoyen.calculee).toBe(false);
     expect(france.familles.college!.liste).toEqual([]);
     expect(france.horsContrat).toBe(1);
@@ -442,7 +443,7 @@ describe("budget des fiches et des territoires", () => {
     expect(reg.budget.france.map((m) => m.niveau)).toEqual(["colleges", "lycees"]);
     const regions = await readdir(join(sortie, "regions"));
     expect(regions).not.toContain("975.json");
-    expect(regions.sort()).toEqual(["01.json", "11.json", "52.json", "94.json"]);
+    expect(regions.sort()).toEqual(["01.json", "11.json", "52.json", "53.json", "94.json"]);
   });
 
   test("fil d'Ariane des données : département → [France, région, académie] ; 975 → [France, académie]", async () => {
@@ -460,7 +461,7 @@ describe("budget des fiches et des territoires", () => {
   test("France : toutes les collectivités, régions, carte du budget par collectivité", async () => {
     const sortie = await sortieBudget();
     const france: DonneesFrance = await lire(sortie, "france.json");
-    expect(france.regions.map((r) => r.code).sort()).toEqual(["01", "11", "52", "94"]);
+    expect(france.regions.map((r) => r.code).sort()).toEqual(["01", "11", "52", "53", "94"]);
     expect(france.regions.every((r) => r.niveau === "region")).toBe(true);
     expect(france.budget.collectivites.map((c) => `${c.niveau}|${c.id}`)).toContain("colleges|dep-44");
     expect(france.carteBudget.genre).toBe("collectivites");

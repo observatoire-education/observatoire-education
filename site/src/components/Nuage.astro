@@ -1,0 +1,16 @@
+---
+// Nuage IPS × réussite d'un territoire (SVG rendu au build) : titre, figure, note. Aucun nom écrit hors des `<title>`.
+import type { Nuage } from "@obs/shared/donnees";
+import { LIBELLES_NUAGES } from "@obs/shared/libelles";
+import { anneeScolaire } from "../lib/affichage";
+import { svgNuage } from "../lib/plot";
+
+interface Props { n: Nuage }
+const { n } = Astro.props;
+---
+<div class="card nuage" data-voie={n.voie}>
+  <div class="lab"><span>{LIBELLES_NUAGES.titres[n.voie]}</span><span class="yr">session {n.session} · IPS {anneeScolaire(n.rentreeIps)}</span></div>
+  <Fragment set:html={svgNuage(n)} />
+  <div class="legend"><span class="sect pub">publics</span><span class="sect pri">privés sous contrat</span></div>
+  <div class="src">{LIBELLES_NUAGES.note}{n.ipsEnsemble && <> {LIBELLES_NUAGES.noteIpsEnsemble}</>}</div>
+</div>

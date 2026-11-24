@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { dbTest } from "./aide.ts";
-import { calculerResultats, dernieresSessions, resume } from "../pipeline/src/resultats.ts";
+import type { Fiche, ResultatsVoie, Secteur } from "@obs/shared/types";
+import { calculerResultats, dernieresSessions, type IpsRentree, nuages, resume } from "../pipeline/src/resultats.ts";
 
 const un = async (q: string) => (await (await dbTest()).sql(q))[0] as Record<string, unknown>;
 
@@ -58,7 +59,10 @@ describe("normalisation des résultats", () => {
     expect(pub!.valeur).toBeCloseTo((80 * 100 + 70 * 50) / 150, 10);
     expect(pub!.n).toBe(2);
     expect(await db.sql(q("academie", "17", "public"))).toEqual([{ valeur: pub!.valeur, n: 2 }]);
-    expect(await db.sql(q("france", "FR", "public"))).toEqual([{ valeur: pub!.valeur, n: 2 }]);
+    // France : les trois collèges publics d'Ille-et-Vilaine (fixtures des nuages) s'ajoutent aux deux de Loire-Atlantique
+    const [fr] = await db.sql<{ valeur: number; n: number }>(q("france", "FR", "public"));
+    expect(fr!.valeur).toBeCloseTo((80 * 100 + 70 * 50 + 80 * 100 + 85 * 60 + 90 * 40) / 350, 10);
+    expect(fr!.n).toBe(5);
   });
 
   test("un établissement sans taux n'entre pas dans la moyenne", async () => {
@@ -98,11 +102,15 @@ describe("résultats sur les fiches", () => {
   test("comparaisons du taux : département, académie, France, public et privé", async () => {
     const c = (await fiche("0440001A"))![0]!.valeurs[0]!.comparaisons;
     expect(c.map((x) => x.niveau)).toEqual(["departement", "academie", "france"]);
-    for (const x of c) {
+    for (const x of c.slice(0, 2)) {
       expect(x.public).toBeCloseTo((80 * 100 + 70 * 50) / 150, 10);
       expect(x.prive).toBe(60);
       expect(x.n).toEqual({ public: 2, prive: 1 });
     }
+    // France : s'ajoutent trois collèges publics et deux privés d'Ille-et-Vilaine (fixtures des nuages)
+    expect(c[2]!.public).toBeCloseTo((80 * 100 + 70 * 50 + 80 * 100 + 85 * 60 + 90 * 40) / 350, 10);
+    expect(c[2]!.prive).toBeCloseTo((60 * 20 + 95 * 120 + 93 * 80) / 220, 10);
+    expect(c[2]!.n).toEqual({ public: 5, prive: 3 });
     // le taux d'accès a ses propres moyennes
     expect((await fiche("0440001A"))![0]!.valeurs[2]!.comparaisons[0]).toMatchObject({ public: 97, prive: 99, n: { public: 2, prive: 1 } });
     // moyenne absente pour une session : null avec n 0 (le bac pro 2025 n'a pas de moyenne de mentions privée)
@@ -154,5 +162,76 @@ describe("résultats sur les fiches", () => {
     const r = (await fiche("0440023T"))!;
     expect(r[0]!.session).toBe(2022);
     expect(resume({ famille: "college", resultats: r }, S)).toEqual([]);
+  });
+});
+
+describe("nuages IPS × réussite", () => {
+  const R = 2025; // rentrée d'IPS = session 2026 − 1
+  const SESS = { ivac: 2026, ival_gt: 2026, ival_pro: 2026 };
+  type Ips = Map<string, IpsRentree>;
+  const res = (voie: ResultatsVoie["voie"], taux: number | null, va: number | null = 1, session = 2026, effectif: number | null = 10): ResultatsVoie => ({
+    voie, source: voie === "bac_gt" ? "ival_gt" : voie === "bac_pro" ? "ival_pro" : "ivac", session, effectif,
+    valeurs: [{ code: "taux_reussite", valeur: taux, statut: taux === null ? "non_publie" : "ok", va, statutVa: "ok", comparaisons: [] }],
+    mentions: null, historique: [], rupture: null,
+  });
+  const fiche = (uai: string, resultats: ResultatsVoie[], secteur: Secteur = "public"): Fiche =>
+    ({ uai, nom: `Étab ${uai}`, commune: "Nantes", secteur, resultats, indicateurs: [] } as unknown as Fiche);
+  const colleges = (n: number) => Array.from({ length: n }, (_, i) => fiche(`C${i}`, [res("brevet_general", 70 + i, i)]));
+  const ipsColleges = (n: number): Ips => new Map(Array.from({ length: n }, (_, i) => [`C${i}`, { gt: null, pro: null, ips: 90 + 5 * i }]));
+
+  test("nuage des collèges d'un département : un point par collège avec IPS et taux", () => {
+    const [n] = nuages(colleges(5), ipsColleges(5), R, SESS);
+    expect(n).toMatchObject({ voie: "brevet_general", session: 2026, rentreeIps: R, ipsEnsemble: false });
+    expect(n!.points).toHaveLength(5);
+    expect(n!.points[0]).toEqual({ uai: "C0", nom: "Étab C0", commune: "Nantes", secteur: "public", ips: 90, taux: 70, va: 0, effectif: 10 });
+    expect(n!.moyennes).toEqual({ ips: 100, taux: 72 });
+    const f = colleges(5);
+    f[0]!.resultats[0]!.effectif = 30;
+    expect(nuages(f, ipsColleges(5), R, SESS)[0]!.moyennes.ips).toBeCloseTo((90 * 30 + 95 * 10 + 100 * 10 + 105 * 10 + 110 * 10) / 70, 10);
+    f.forEach((x) => (x.resultats[0]!.effectif = 0));
+    expect(nuages(f, ipsColleges(5), R, SESS)[0]!.moyennes).toEqual({ ips: null, taux: null });
+  });
+
+  test("point sans taux : exclu", () => {
+    const ips = ipsColleges(5);
+    ips.set("X", { gt: null, pro: null, ips: 100 }).set("Z", { gt: null, pro: null, ips: 100 });
+    const f = [...colleges(5), fiche("X", [res("brevet_general", null)]), fiche("Z", [res("brevet_general", 80)]), fiche("Y", [res("brevet_general", 80)])];
+    // X : taux absent ; Y : IPS absent de la rentrée
+    expect(nuages(f, ips, R, SESS)[0]!.points.map((p) => p.uai)).toEqual(["C0", "C1", "C2", "C3", "C4", "Z"]);
+    // session plus ancienne que la dernière de la source : exclu
+    const g = [...colleges(5), fiche("Z", [res("brevet_general", 80, 1, 2025)])];
+    expect(nuages(g, ips, R, SESS)[0]!.points).toHaveLength(5);
+  });
+
+  test("LPO dans les deux nuages de lycées", () => {
+    const ips: Ips = new Map();
+    const f = Array.from({ length: 5 }, (_, i) => {
+      ips.set(`L${i}`, { gt: 100 + i, pro: 90 + i, ips: 99 });
+      return fiche(`L${i}`, [res("bac_gt", 90 + i), res("bac_pro", 80 + i)]);
+    });
+    const n = nuages(f, ips, R, SESS);
+    expect(n.map((x) => x.voie)).toEqual(["bac_gt", "bac_pro"]);
+    expect(n[0]!.points.map((p) => p.ips)).toEqual([100, 101, 102, 103, 104]);
+    expect(n[1]!.points.map((p) => p.ips)).toEqual([90, 91, 92, 93, 94]);
+    expect(n.every((x) => !x.ipsEnsemble)).toBe(true);
+    // un lycée sans IPS par voie : pas de repli par point, il est exclu (4 points restent : pas de nuage)
+    ips.set("L0", { gt: null, pro: null, ips: 99 });
+    expect(nuages(f, ips, R, SESS)).toEqual([]);
+  });
+
+  test("moins de 5 points : pas de nuage", () => {
+    expect(nuages(colleges(4), ipsColleges(4), R, SESS)).toEqual([]);
+  });
+
+  test("IPS par voie absent : ipsEnsemble = true", () => {
+    const f = Array.from({ length: 5 }, (_, i) => fiche(`L${i}`, [res("bac_gt", 90 + i)]));
+    const n = nuages(f, new Map(f.map((x, i) => [x.uai, { gt: null, pro: null, ips: 110 + i }])), R, SESS);
+    expect(n).toHaveLength(1);
+    expect(n[0]).toMatchObject({ voie: "bac_gt", ipsEnsemble: true });
+    expect(n[0]!.points.map((p) => p.ips)).toEqual([110, 111, 112, 113, 114]);
+  });
+
+  test("rentrée d'IPS différente de session − 1 : aucun point", () => {
+    expect(nuages(colleges(5), ipsColleges(5), 2024, SESS)).toEqual([]);
   });
 });

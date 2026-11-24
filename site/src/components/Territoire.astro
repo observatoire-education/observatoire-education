@@ -21,6 +21,7 @@ import Cellule from "./Cellule.astro";
 import LegendeCourbeIps from "./LegendeCourbeIps.astro";
 import ListeEtablissements from "./ListeEtablissements.astro";
 import ListeTerritoires from "./ListeTerritoires.astro";
+import Nuage from "./Nuage.astro";
 import TableauBudget from "./TableauBudget.astro";
 
 interface Props { d: DonneesTerritoire }
@@ -271,6 +272,13 @@ const badges = [
       </section>
     );
   })}
+
+  {(d.nuages ?? []).length > 0 && (
+    <section id="nuages">
+      <h2>Résultats</h2>
+      {d.nuages!.map((n) => <Nuage n={n} />)}
+    </section>
+  )}
 
   {niveau === "france" && (
     <section id="regions">

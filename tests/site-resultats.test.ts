@@ -1,4 +1,6 @@
 import { beforeAll, describe, expect, test } from "bun:test";
+import type { Nuage } from "@obs/shared/donnees";
+import { optionsNuage } from "../site/src/lib/plot.ts";
 import { celluleReussite, celluleVa, vaSignee } from "../site/src/lib/resultats.ts";
 import { doc, siteTest, texte } from "./site.ts";
 
@@ -155,5 +157,72 @@ describe("voisins et listes", () => {
     for (const c of ["etablissement/0440001A", "etablissement/0440103C", "etablissement/0440003C", "departement/44"]) {
       expect(t(c)).not.toMatch(/\b(rang|classement|top|meilleur(e)?s?|pire)s?\b/i);
     }
+  });
+});
+
+describe("nuages IPS × réussite", () => {
+  const sec = (c: string, voie: string) => doc(c).querySelector(`#nuages .nuage[data-voie='${voie}']`);
+
+  test("page département : nuage, formes pleines et contour, <title> par point, aucun nom écrit hors <title>", () => {
+    const n = sec("departement/35", "brevet_general")!;
+    expect(n).not.toBeNull();
+    expect(norm(n.querySelector(".lab")!.textContent!)).toContain("Collèges : IPS et réussite au brevet (série générale)");
+    const pts = [...n.querySelectorAll("svg circle")];
+    expect(pts).toHaveLength(5);
+    // Plot porte fill et stroke sur le groupe de points
+    const g = (c: Element, a: string) => c.parentElement!.getAttribute(a);
+    expect(pts.filter((c) => g(c, "fill") === "var(--pub)")).toHaveLength(3);
+    const prives = pts.filter((c) => g(c, "fill") === "none");
+    expect(prives).toHaveLength(2);
+    expect(prives.every((c) => g(c, "stroke") === "var(--pri)")).toBe(true);
+    expect(new Set(pts.map((c) => c.getAttribute("r")))).toEqual(new Set(["3"]));
+    const titres = pts.map((c) => norm(c.querySelector("title")!.textContent!));
+    expect(titres).toContain("Collège Les Ajoncs (Rennes) · Public · IPS 98,0 · réussite 80 % · valeur ajoutée +1 · 100 candidats");
+    expect(titres).toContain("Collège Saint-Joseph (Vitré) · Privé sous contrat · IPS 118,0 · réussite 93 % · valeur ajoutée −1 · 80 candidats");
+    expect(titres).toContain("Collège Les Chênes (Vitré) · Public · IPS 92,0 · réussite 90 % · valeur ajoutée non publiée · 40 candidats");
+    const svg = n.querySelector("svg")!;
+    expect(svg.querySelectorAll("circle text").length).toBe(0);
+    for (const x of svg.querySelectorAll("title")) x.remove();
+    expect(svg.outerHTML).not.toMatch(/Ajoncs|Bruyères|Chênes|Sainte-Anne|Saint-Joseph/);
+  });
+
+  test("page académie : nuage des collèges et des lycées GT", () => {
+    expect(sec("academie/14", "brevet_general")).not.toBeNull();
+    expect(sec("academie/14", "bac_gt")).not.toBeNull();
+    expect(sec("academie/14", "bac_pro")).toBeNull();
+    expect(norm(sec("academie/14", "bac_gt")!.querySelector(".lab")!.textContent!)).toContain("Lycées : IPS de la voie générale et technologique et réussite au bac");
+  });
+
+  test("note sous le nuage", () => {
+    const x = norm(sec("departement/35", "brevet_general")!.textContent!.replace(/\s+/g, " "));
+    expect(x).toContain("Chaque point est un établissement. Lignes : moyennes du territoire. Survolez un point pour son nom et ses valeurs ; le tableau des établissements donne les mêmes chiffres.");
+    expect(x).not.toContain("IPS de l'ensemble de l'établissement");
+  });
+
+  test("aucune droite de régression (une seule ligne par axe)", () => {
+    const svg = sec("departement/35", "bac_gt")!.querySelector("svg")!;
+    expect(svg.querySelectorAll("[class~='moyenne-ips']").length).toBe(1);
+    expect(svg.querySelectorAll("[class~='moyenne-taux']").length).toBe(1);
+  });
+
+  test("optionsNuage : fonction pure, une règle par axe", () => {
+    const n: Nuage = {
+      voie: "bac_gt", session: 2025, rentreeIps: 2024, ipsEnsemble: false, moyennes: { ips: 100, taux: 90 },
+      points: [{ uai: "A", nom: "A", commune: "X", secteur: "public", ips: 100, taux: 90, va: null, effectif: null }],
+    };
+    const o = optionsNuage(n);
+    expect(JSON.stringify(optionsNuage(n))).toBe(JSON.stringify(o));
+    expect(o.marks).toHaveLength(4);
+    expect(optionsNuage({ ...n, moyennes: { ips: null, taux: null } }).marks).toHaveLength(2);
+  });
+
+  test("page France, commune et département sous 5 points : pas de nuage", () => {
+    expect(doc("france").querySelector("#nuages")).toBeNull();
+    expect(doc("departement/44").querySelector("#nuages")).toBeNull();
+    expect(doc("commune/44109").querySelector("#nuages")).toBeNull();
+  });
+
+  test("aucun mot de palmarès dans les pages à nuages", () => {
+    for (const c of ["departement/35", "academie/14"]) expect(t(c)).not.toMatch(/\b(rang|classement|top|meilleur(e)?s?|pire)s?\b/i);
   });
 });

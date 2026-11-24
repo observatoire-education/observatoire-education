@@ -13,7 +13,7 @@ import type { Manifest } from "./archive.ts";
 import type { Budgets } from "./budget-eleves.ts";
 import { collectivitesCorrigees, type EntreeCorrection, resoudreCorrection } from "./corrections.ts";
 import type { Db } from "./db.ts";
-import { dernieresSessions, type DernieresSessions, resume } from "./resultats.ts";
+import { dernieresSessions, type DernieresSessions, type IpsRentree, nuages, resume } from "./resultats.ts";
 import { calculerIpsHistorique, derniereRentreeIps, ipsCourant, type NiveauIps } from "./ips-historique.ts";
 
 // --- Aides partagées avec fiches.ts ---
@@ -230,6 +230,18 @@ export async function exporterTerritoires(
   const ipsHistorique = await calculerIpsHistorique(db);
   const rentreeIps = await derniereRentreeIps(db);
   const sessions = await dernieresSessions(db);
+  // Nuages IPS × réussite (départements et académies) : IPS de la rentrée de chaque dernière session moins un.
+  const rentreesNuages = [...new Set(Object.values(sessions).map((x) => x! - 1))].sort();
+  const ipsNuages = new Map<number, Map<string, IpsRentree>>();
+  for (const r of rentreesNuages) {
+    ipsNuages.set(r, new Map((await db.sql<{ uai: string; gt: number | null; pro: number | null; ips: number | null }>(
+      `select uai, ips_gt as gt, ips_pro as pro, ips from ips where rentree = ${r}`,
+    )).map((l) => [l.uai, { gt: l.gt, pro: l.pro, ips: l.ips }] as const)));
+  }
+  const nuagesDe = (groupe: Fiche[]) => {
+    const n = rentreesNuages.flatMap((r) => nuages(groupe, ipsNuages.get(r)!, r, sessions));
+    return n.length ? { nuages: n } : {};
+  };
   const ips = { dep: await ipsMoyens(db, "dep"), aca: await ipsMoyens(db, "aca"), nat: await ipsMoyens(db, "nat") };
   const horsContratLignes = await db.sql<{ dep: string; aca: string; code_commune: string }>(
     "select dep, aca, code_commune from classement where motif = 'prive_hors_contrat'",
@@ -369,6 +381,7 @@ export async function exporterTerritoires(
       }),
       horsContrat: horsContrat((l) => l.dep === dep),
       enfants: [], communes: (communesParDep.get(dep) ?? []).sort(parLibelle), carte: points(groupe),
+      ...nuagesDe(groupe),
     };
     await ecrireJson(join(sortie, "departements", `${dep}.json`), donnees);
   }
@@ -386,6 +399,7 @@ export async function exporterTerritoires(
         .map(([dep, g]) => ligne(refDepartement(g[0]!), g, ips.dep.get(`college|${dep}`)))
         .sort((a, b) => parLibelle(a.ref, b.ref)),
       communes: [], carte: valeursCarte(groupe),
+      ...nuagesDe(groupe),
     };
     await ecrireJson(join(sortie, "academies", `${aca}.json`), donnees);
   }

@@ -2,10 +2,11 @@
 // Couleurs en variables CSS : le thème sombre s'applique sans recalcul.
 import * as Plot from "@observablehq/plot";
 import { parseHTML } from "linkedom";
-import type { ExerciceBudget } from "@obs/shared/donnees";
+import type { ExerciceBudget, Nuage, PointNuage } from "@obs/shared/donnees";
 import type { PointIps } from "@obs/shared/types";
-import { nombre } from "@obs/shared/format";
-import { LIBELLES_BUDGET } from "@obs/shared/libelles";
+import { FINE, nombre } from "@obs/shared/format";
+import { LIBELLES_BUDGET, LIBELLES_NUAGES, SECTEURS } from "@obs/shared/libelles";
+import { vaSignee } from "./resultats";
 
 const { document } = parseHTML("<!doctype html><html><body></body></html>");
 
@@ -197,4 +198,44 @@ export function svgEvolutionBudget(exercices: ExerciceBudget[]): string {
   const decrit = (nom: string, s: typeof pub) =>
     `${nom} : ${s.map((d) => `${d.annee} ${d.v === null ? "non disponible" : nombre(d.v, 0)}`).join(", ")}`;
   return svg(p, `Évolution en € par élève. ${decrit(`Public, ${poste.toLowerCase()}`, pub)}${avec ? `. ${decrit("Privé sous contrat, contribution", pri)}` : ""}`);
+}
+
+/** Infobulle d'un point : « nom (commune) · secteur · IPS x · réussite y % · valeur ajoutée ±z · n candidats ». */
+export function titrePoint(voie: Nuage["voie"], p: PointNuage): string {
+  const taux = nombre(p.taux, Number.isInteger(p.taux) ? 0 : 1);
+  return [
+    `${p.nom} (${p.commune})`, SECTEURS[p.secteur], `IPS ${nombre(p.ips)}`, `réussite ${taux}${FINE}%`,
+    p.va === null ? LIBELLES_NUAGES.vaNonPubliee : `valeur ajoutée ${vaSignee(p.va)}`,
+    ...(p.effectif === null ? [] : [`${nombre(p.effectif, 0)} ${LIBELLES_NUAGES.effectif[voie]}`]),
+  ].join(" · ");
+}
+
+/**
+ * Options Plot d'un nuage IPS × réussite : fonction pure des données (réutilisable dans le navigateur, sans
+ * `document`). Public : disque plein ; privé : contour sans remplissage ; rayon fixe, aucune couleur selon la valeur,
+ * aucun texte sur les points (l'infobulle `title` porte le nom). Une seule ligne par axe : la moyenne du territoire.
+ */
+export function optionsNuage(n: Nuage): Plot.PlotOptions {
+  const titre = (p: PointNuage) => titrePoint(n.voie, p);
+  const publics = n.points.filter((p) => p.secteur === "public");
+  const prives = n.points.filter((p) => p.secteur !== "public");
+  const ips = domaine([...n.points.map((p) => p.ips), n.moyennes.ips]);
+  const taux = domaine([...n.points.map((p) => p.taux), n.moyennes.taux]);
+  return {
+    width: 640, height: 380, marginLeft: 44, marginRight: 14, marginTop: 12, marginBottom: 40, style: STYLE,
+    x: { domain: ips, label: LIBELLES_NUAGES.axeIps, labelAnchor: "center", tickFormat: (d: number) => nombre(d, 0) },
+    y: { domain: [taux[0], Math.min(100, taux[1])], label: LIBELLES_NUAGES.axeTaux, labelAnchor: "center", tickFormat: (d: number) => nombre(d, 0) },
+    marks: [
+      ...(n.moyennes.ips === null ? [] : [Plot.ruleX([n.moyennes.ips], { stroke: "var(--muted)", strokeDasharray: "4 3", className: "moyenne-ips" })]),
+      ...(n.moyennes.taux === null ? [] : [Plot.ruleY([n.moyennes.taux], { stroke: "var(--muted)", strokeDasharray: "4 3", className: "moyenne-taux" })]),
+      Plot.dot(publics, { x: "ips", y: "taux", r: 3, fill: "var(--pub)", title: titre }),
+      Plot.dot(prives, { x: "ips", y: "taux", r: 3, fill: "none", stroke: "var(--pri)", strokeWidth: 1.5, title: titre }),
+    ],
+  };
+}
+
+/** SVG d'un nuage, rendu au build (coordonnées à une décimale, comme les cartes). */
+export function svgNuage(n: Nuage): string {
+  const p = Plot.plot({ document, ...optionsNuage(n) });
+  return svg(p, `${LIBELLES_NUAGES.titres[n.voie]} : ${n.points.length} établissements`, 1);
 }

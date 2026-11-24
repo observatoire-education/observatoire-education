@@ -245,3 +245,18 @@ export const LIBELLES_RESULTATS = {
   session: (s: number) => `session ${s}`,
   reussite: "Réussite",
 } as const;
+
+/** Libellés des nuages IPS × réussite (pages département et académie). */
+export const LIBELLES_NUAGES = {
+  titres: {
+    brevet_general: "Collèges : IPS et réussite au brevet (série générale)",
+    bac_gt: "Lycées : IPS de la voie générale et technologique et réussite au bac",
+    bac_pro: "Lycées : IPS de la voie professionnelle et réussite au bac",
+  },
+  note: "Chaque point est un établissement. Lignes : moyennes du territoire. Survolez un point pour son nom et ses valeurs ; le tableau des établissements donne les mêmes chiffres.",
+  noteIpsEnsemble: "IPS de l'ensemble de l'établissement (l'IPS par voie n'est pas publié pour cette rentrée).",
+  axeIps: "IPS",
+  axeTaux: "Taux de réussite (%)",
+  vaNonPubliee: "valeur ajoutée non publiée",
+  effectif: { brevet_general: "candidats", bac_gt: "présents", bac_pro: "présents" },
+} as const;

@@ -104,6 +104,24 @@ export type CarteDonnees =
   | { genre: "departements"; valeurs: ValeurCarte[] }
   | { genre: "collectivites"; valeurs: { id: IdCollectivite; deps: string[]; budget: number | null }[] };
 
+/** Un établissement d'un nuage IPS × réussite. */
+export interface PointNuage {
+  uai: string; nom: string; commune: string; secteur: Secteur;
+  ips: number; taux: number; va: number | null; effectif: number | null;
+}
+
+/** Nuage IPS × réussite d'un territoire pour une voie : un point par établissement, au moins cinq. */
+export interface Nuage {
+  voie: "brevet_general" | "bac_gt" | "bac_pro";
+  session: number;
+  rentreeIps: number;
+  /** true : IPS d'ensemble faute d'IPS par voie publié. */
+  ipsEnsemble: boolean;
+  /** Moyennes pondérées par l'effectif sur les points du nuage ; null si l'effectif total est nul. */
+  moyennes: { ips: number | null; taux: number | null };
+  points: PointNuage[];
+}
+
 export interface DonneesTerritoire {
   ref: RefTerritoire;
   /** Du plus large au plus proche ; [] pour la France. */
@@ -119,6 +137,8 @@ export interface DonneesTerritoire {
   budget: BudgetTerritoire;
   /** Page région : académies de la région ; sinon absent. */
   academies?: RefTerritoire[];
+  /** Départements et académies : nuages IPS × réussite d'au moins 5 points ; absent sinon. */
+  nuages?: Nuage[];
   /** Corrections de millésime des données affichées sur la page (ségrégation du département, budgets) ; absent si aucune. */
   corrections?: (Correction & { source: SourceId })[];
 }

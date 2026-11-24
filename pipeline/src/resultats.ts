@@ -1,6 +1,6 @@
 // Résultats aux examens d'une fiche : brevet (IVAC) et baccalauréat (IVAL), à partir des tables `resultats`
 // et `moyennes_resultats`. Une valeur absente n'est jamais un zéro : elle porte le statut « non_publie ».
-import type { ParSecteur } from "@obs/shared/donnees";
+import type { Nuage, ParSecteur, PointNuage } from "@obs/shared/donnees";
 import type { Famille, Fiche, Niveau, ResultatsVoie, ResumeResultat, SourceId, ValeurResultat, VoieResultat } from "@obs/shared/types";
 import type { CodeResultat, StatutResultat } from "@obs/shared/types";
 import type { Db } from "./db.ts";
@@ -126,5 +126,52 @@ export function resume(f: Pick<Fiche, "famille" | "resultats">, dernieres: Derni
     const r = f.resultats.find((x) => x.voie === voie);
     const v = r?.valeurs.find((x) => x.code === "taux_reussite");
     return r && v && r.session === dernieres[r.source] ? [{ voie, session: r.session, taux: v.valeur, va: v.va }] : [];
+  });
+}
+
+/** Nombre minimal de points pour qu'un nuage soit affiché. */
+export const MIN_POINTS_NUAGE = 5;
+
+const VOIES_NUAGE: Nuage["voie"][] = ["brevet_general", "bac_gt", "bac_pro"];
+
+/** Moyenne pondérée par l'effectif ; null si l'effectif total est nul (jamais un zéro). */
+function moyennePonderee(points: PointNuage[], valeur: (p: PointNuage) => number): number | null {
+  const total = points.reduce((a, p) => a + (p.effectif ?? 0), 0);
+  return total > 0 ? points.reduce((a, p) => a + valeur(p) * (p.effectif ?? 0), 0) / total : null;
+}
+
+/** IPS d'un établissement à une rentrée : de la voie GT, de la voie pro, et de l'ensemble de l'établissement. */
+export interface IpsRentree { gt: number | null; pro: number | null; ips: number | null }
+
+/**
+ * Nuages IPS × réussite d'un groupe de fiches actives : un par voie, avec au moins 5 points. Un point : voie à la
+ * dernière session de sa source (`dernieres`), dont la rentrée `session − 1` est `rentreeIps` (année scolaire de
+ * l'examen), taux publié, IPS de cette rentrée (`ipsParVoie`). Brevet : IPS de l'établissement. Bac : IPS de la voie ;
+ * si aucun lycée n'a d'IPS par voie à cette rentrée, IPS d'ensemble pour tous les points du nuage (`ipsEnsemble`).
+ */
+export function nuages(groupe: Fiche[], ipsParVoie: Map<string, IpsRentree>, rentreeIps: number, dernieres: DernieresSessions): Nuage[] {
+  const parVoie = (k: "gt" | "pro") => [...ipsParVoie.values()].some((v) => v[k] !== null);
+  return VOIES_NUAGE.flatMap((voie): Nuage[] => {
+    const bac = voie !== "brevet_general";
+    const cle = voie === "bac_gt" ? "gt" : "pro";
+    const ensemble = bac && !parVoie(cle);
+    const points: PointNuage[] = [];
+    for (const f of groupe) {
+      const r = f.resultats.find((x) => x.voie === voie);
+      if (!r || r.session !== dernieres[r.source] || r.session - 1 !== rentreeIps) continue;
+      const v = r.valeurs.find((x) => x.code === "taux_reussite");
+      if (!v || v.valeur === null) continue;
+      const i = ipsParVoie.get(f.uai);
+      const ips = (!bac || ensemble ? i?.ips : i?.[cle]) ?? null;
+      if (ips === null) continue;
+      points.push({ uai: f.uai, nom: f.nom, commune: f.commune, secteur: f.secteur, ips, taux: v.valeur, va: v.va, effectif: r.effectif });
+    }
+    if (points.length < MIN_POINTS_NUAGE) return [];
+    points.sort((a, b) => a.nom.localeCompare(b.nom, "fr") || a.uai.localeCompare(b.uai));
+    return [{
+      voie, session: rentreeIps + 1, rentreeIps, ipsEnsemble: ensemble,
+      moyennes: { ips: moyennePonderee(points, (p) => p.ips), taux: moyennePonderee(points, (p) => p.taux) },
+      points,
+    }];
   });
 }
