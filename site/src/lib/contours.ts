@@ -35,7 +35,9 @@ function charger(): Charge {
   for (const c of communes) {
     communesParCode.set(c.properties.code, c);
     const dep = c.properties.dep ?? "";
-    communesParDep.set(dep, [...(communesParDep.get(dep) ?? []), c]);
+    const liste = communesParDep.get(dep) ?? [];
+    liste.push(c);
+    communesParDep.set(dep, liste);
   }
   const charge = { departements, communes, communesParCode, communesParDep };
   cache = { dossier, charge };

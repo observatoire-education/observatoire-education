@@ -70,14 +70,19 @@ const departements = (await toutes("departement", "code_insee")).map((f) => ({
   geometry: f.geometry,
   properties: { code: f.properties.code_insee ?? "" },
 }));
-const communes = (await toutes("commune", "code_insee,code_insee_du_departement")).map((f) => ({
-  type: "Feature" as const,
-  geometry: f.geometry,
-  properties: { code: f.properties.code_insee ?? "", dep: f.properties.code_insee_du_departement ?? "" },
-}));
+const canonique = (d: string) => /^(\d\d|2A|2B|97\d)$/.test(d);
+// Le service donne « NR » pour Saint-Pierre-et-Miquelon : on déduit alors le département du code commune.
+const depDe = (code: string, brut: string | undefined) =>
+  brut && canonique(brut) ? brut : code.startsWith("97") ? code.slice(0, 3) : code.slice(0, 2);
+const communes = (await toutes("commune", "code_insee,code_insee_du_departement")).map((f) => {
+  const code = f.properties.code_insee ?? "";
+  return { type: "Feature" as const, geometry: f.geometry, properties: { code, dep: depDe(code, f.properties.code_insee_du_departement) } };
+});
 
 if (departements.some((f) => vide(f.properties.code))) throw new Error("département sans code");
 if (communes.some((f) => vide(f.properties.code) || vide(f.properties.dep))) throw new Error("commune sans code ou sans département");
+const horsNorme = communes.filter((f) => !canonique(f.properties.dep));
+if (horsNorme.length) throw new Error(`département non canonique pour ${horsNorme.length} communes (ex. ${horsNorme[0]?.properties.code})`);
 for (const insee of ["75056", "69123", "13055"]) {
   if (!communes.some((f) => f.properties.code === insee)) throw new Error(`commune ${insee} absente du jeu de contours`);
 }
