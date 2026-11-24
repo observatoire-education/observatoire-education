@@ -36,6 +36,7 @@ export type SourceId =
   | "personnels_ecoles"
   | "classes_ecoles"
   | "ecoles_ep"
+  | "carte_scolaire"
   | `budget_${number}`;
 
 /** Une valeur, son statut et son origine (source et rentrée de septembre). */
@@ -250,6 +251,19 @@ export interface LienEtab {
   nom: string;
   /** Date ISO de fermeture de l'établissement lié, null s'il est ouvert. */
   fermeLe: string | null;
+}
+
+/**
+ * Rapprochement de l'adresse d'une école avec la carte scolaire des collèges publics : commune entièrement
+ * rattachée, tronçon de voie, adresse non rapprochée (commune absente de la carte, voie ou numéro introuvable,
+ * ambiguïté), ou département dont la carte n'est pas publiée.
+ */
+export type StatutSecteur = "commune" | "voie" | "non_rapproche" | "carte_non_publiee";
+
+/** Collège(s) public(s) dont le secteur couvre l'adresse de l'école, triés par nom ; liste vide hors « commune » et « voie ». */
+export interface SecteurCollege {
+  statut: StatutSecteur;
+  colleges: LienEtab[];
 }
 
 export interface Fiche extends Identite {

@@ -32,10 +32,11 @@ afterAll(async () => {
 });
 
 describe("registre des sources", () => {
-  test("vingt-quatre sources, l'annuaire est le référentiel", () => {
-    expect(Object.keys(SOURCES)).toHaveLength(24);
+  test("vingt-cinq sources, l'annuaire et la carte scolaire sont les référentiels", () => {
+    expect(Object.keys(SOURCES)).toHaveLength(25);
     expect(SOURCES.annuaire.referentiel).toBe(true);
-    expect(Object.values(SOURCES).filter((s) => s.referentiel)).toHaveLength(1);
+    expect(SOURCES.carte_scolaire.referentiel).toBe(true);
+    expect(Object.values(SOURCES).filter((s) => s.referentiel)).toHaveLength(2);
   });
 
   test("producteurs et pages", () => {

@@ -39,6 +39,9 @@ async function fabriquer(s: Source, r: Reglage, dest: string): Promise<void> {
     select = `select *, ${litteral(r.bruit ?? "a")} as fax from (${select}
       union all select ${colonnes.map((c) => (c === "type_etablissement" ? `'Ecole'` : `'E' || i::varchar`) + ` as "${c}"`).join(", ")} from range(3) t(i))
       order by 1 ${r.inverse ? "desc" : "asc"}`;
+  } else if (id === "carte_scolaire") {
+    // colonne non requise (libellé de la commune), ordre des lignes variable
+    select = `select *, ${litteral(r.bruit ?? "a")} as libelle_commune from (${select}) order by 1 ${r.inverse ? "desc" : "asc"}`;
   } else if (s.filtre) {
     // extrait filtré : le portail peut renvoyer les mêmes lignes dans un autre ordre
     select = `select * from (${select}) order by 1 ${r.inverse ? "desc" : "asc"}`;
@@ -129,7 +132,7 @@ describe("collecte", () => {
     const n = f.telechargements.length;
     await collecter(opts(f.client));
     expect(f.telechargements.filter((s) => s === "ips_colleges").length).toBe(2);
-    expect(f.telechargements.length).toBe(n + 1); // seul l'annuaire, référentiel, est retéléchargé
+    expect(f.telechargements.length).toBe(n + 2); // seuls les référentiels (annuaire, carte scolaire) sont retéléchargés
   });
 
   test("retour à un contenu déjà archivé : il redevient la version actuelle", async () => {
@@ -212,12 +215,24 @@ describe("collecte", () => {
     expect(cols.map((c) => c.column_name)).toEqual(SOURCES.annuaire.colonnesRequises);
   });
 
+  test("carte scolaire : référentiel réduit à ses colonnes requises, toutes ses lignes gardées, puis dédupliqué", async () => {
+    const f = fauxClient({ carte_scolaire: { modified: "C1" } });
+    const j1 = await collecter(opts(f.client));
+    expect(ligne(j1, "carte_scolaire")).toMatchObject({ action: "telecharge", lignes: 10 });
+    f.reglages.carte_scolaire = { modified: "C1", inverse: true, bruit: "b" };
+    const j2 = await collecter(opts(f.client));
+    expect(ligne(j2, "carte_scolaire")).toMatchObject({ action: "inchange", motif: "contenu identique" });
+    const chemin = (await assurerCache(manifest, depot, join(racine, "cache"))).carte_scolaire;
+    const cols = await lignes<{ column_name: string }>(duck, `describe select * from read_parquet(${litteral(chemin)})`);
+    expect(cols.map((c) => c.column_name)).toEqual(SOURCES.carte_scolaire.colonnesRequises);
+  });
+
   test("journal : une ligne par source", async () => {
     const journal = join(racine, "journal.jsonl");
     await collecter(opts(fauxClient({}).client, { journal }));
     await collecter(opts(fauxClient({}).client, { journal }));
     const l = (await Bun.file(journal).text()).trim().split("\n").map((x) => JSON.parse(x));
-    expect(l).toHaveLength(60); // vingt-quatre sources et six exercices du budget, deux fois
+    expect(l).toHaveLength(62); // vingt-cinq sources et six exercices du budget, deux fois
     expect(l[0]).toMatchObject({ date: "2026-11-23T02:17:00.000Z", source: "annuaire" });
   });
 
@@ -321,7 +336,7 @@ describe("budget : exercices et découverte", () => {
   test("aucun jeu : aucune ligne de journal pour l'exercice", async () => {
     const j = await collecter(opts(fauxClient({}).client));
     expect(j.filter((l) => l.source === "budget_2026")).toEqual([]);
-    expect(j).toHaveLength(30);
+    expect(j).toHaveLength(31);
   });
 
   test("un extrait budget sans la colonne fonction est rejeté", async () => {
@@ -344,7 +359,7 @@ describe("cache local", () => {
     await collecter(opts(fauxClient({}).client));
     const cache = join(racine, "cache");
     const chemins = await assurerCache(manifest, depot, cache);
-    expect(Object.keys(chemins)).toHaveLength(30);
+    expect(Object.keys(chemins)).toHaveLength(31);
     await Bun.write(chemins.ips_lycees, "corrompu");
     const encore = await assurerCache(manifest, depot, cache);
     expect(await empreinte(encore.ips_lycees)).toBe(manifest.derniere("ips_lycees")!.sha256);

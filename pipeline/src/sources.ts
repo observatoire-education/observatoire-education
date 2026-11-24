@@ -343,6 +343,21 @@ export const SOURCES: Record<SourceId, Source> = {
     false,
     parUai("rs"),
   ),
+  // Référentiel sans millésime (environ 500 000 tronçons, export Parquet de 7 Mo) : une commune entière
+  // (type_et_libelle vide) ou un tronçon de voie (numéros de début et de fin, parité P, I ou PI) par ligne.
+  carte_scolaire: {
+    ...source(
+      "carte_scolaire",
+      "fr-en-carte-scolaire-colleges-publics",
+      "Carte scolaire des collèges publics",
+      noms(
+        "code_departement,code_insee,lieu_dit,type_et_libelle,n_de_voie_debut,indice_de_repetition_debut",
+        "n_de_voie_fin,indice_de_repetition_fin,parite,code_rne",
+      ),
+      true,
+    ),
+    producteur: "MEN-DGESCO",
+  },
 };
 
 // --- Budget des collectivités (DGFiP, data.economie.gouv.fr) : un jeu par exercice, extrait filtré ---

@@ -9,6 +9,7 @@ import { type Depot, DepotGithub, DepotLocal } from "./depot.ts";
 import { assemblerFiches, exporter, type RapportSuccesseurs } from "./fiches.ts";
 import { OdsClient } from "./ods.ts";
 import { ecrireRegistre, lireRegistre, mettreAJourRegistre } from "./registre.ts";
+import { calculerSecteurs, type RapportSecteurs } from "./secteurs.ts";
 import { derniereRentreeIps } from "./ips-historique.ts";
 import { controlerPonderation, ipsMoyens, verifierPonderation } from "./territoires.ts";
 
@@ -102,6 +103,12 @@ async function data(): Promise<void> {
   console.log(`  résultats ignorés (UAI sans fiche) : ${ignores.map((l) => `${l.source} ${l.n}`).join(", ") || "aucun"}`);
   const ecoles = await db.sql<{ source: string; n: number }>("select source, n from ecoles_ignorees order by source");
   console.log(`  écoles ignorées (UAI sans fiche) : ${ecoles.map((l) => `${l.source} ${l.n}`).join(", ") || "aucune"}`);
+  const rapportSecteurs: RapportSecteurs = { sansFiche: 0 };
+  const secteurs = await calculerSecteurs(db, rapportSecteurs);
+  const parStatut = Map.groupBy(secteurs.values(), (s) => s.statut);
+  const taux = (n: number) => `${((100 * n) / Math.max(secteurs.size, 1)).toFixed(1).replace(".", ",")} %`;
+  console.log(`  collège de secteur de ${secteurs.size} écoles : ${[...parStatut].map(([s, l]) => `${s} ${l.length} (${taux(l.length)})`).join(", ")}`);
+  console.log(`    ${rapportSecteurs.sansFiche} collège(s) de la carte scolaire sans fiche, écarté(s)`);
   const [{ n: inconnus } = { n: 0 }] = await db.sql<{ n: number }>("select count(*)::integer as n from budget_inconnus");
   console.log(`  ${inconnus} budget(s) de collectivité non identifiée dans les balances`);
   const budgets = await calculerBudgets(db, fiches);

@@ -187,14 +187,17 @@ async function detecterCorrections(
   }
 }
 
-/** Annuaire : colonnes requises seulement, second degré seulement, ordre stable → empreinte stable. */
+/**
+ * Référentiel : colonnes requises seulement, ordre stable → empreinte stable. Annuaire : types d'établissement
+ * retenus seulement ; carte scolaire : toutes les lignes.
+ */
 async function reduire(duck: DuckDBConnection, s: Source, src: string, dest: string): Promise<void> {
   const cols = s.colonnesRequises.map(ident).join(", ");
   const types = TYPES_RETENUS.map(litteral).join(", ");
+  const where = s.id === "annuaire" ? `where type_etablissement in (${types})` : "";
   await executer(
     duck,
-    `copy (select ${cols} from read_parquet(${litteral(src)})
-      where type_etablissement in (${types}) order by all)
+    `copy (select ${cols} from read_parquet(${litteral(src)}) ${where} order by all)
      to ${litteral(dest)} (format parquet, compression zstd)`,
   );
 }
