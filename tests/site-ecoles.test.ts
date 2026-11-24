@@ -399,6 +399,19 @@ describe("pages commune étendues", () => {
     expect(t).not.toContain("Privé hors contrat");
   });
 
+  test("commune sans contour (44888) : absence des écoles les plus proches dite, pas de tableau", () => {
+    const p = doc("commune/44888").querySelector("#ecoles-proches")!;
+    expect(propre(p.querySelector("h2")?.textContent)).toBe("Écoles les plus proches");
+    expect(propre(p.querySelector(".na")?.textContent)).toBe("Position de la commune non disponible : écoles les plus proches non calculées");
+    expect(p.querySelector("table")).toBeNull();
+    expect(texte("commune/44888")).toContain("Plus d'école dans la commune depuis 2020");
+  });
+
+  test("courbe de Saint-Aubin : classes non publiées en 2025 (0 classe d'une école), jamais un total partiel", () => {
+    const svg = doc("commune/44150").querySelector("#ecoles svg")!;
+    expect(svg.getAttribute("aria-label")).toEndWith("non disponible en 2025");
+  });
+
   test("CSV : pas de CSV pour une nouvelle page commune, lien vers celui du département, qui contient les écoles", () => {
     expect(existe("commune/44150/etablissements.csv")).toBe(false);
     expect(existe("commune/44903/etablissements.csv")).toBe(false);

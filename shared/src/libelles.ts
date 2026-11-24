@@ -165,6 +165,8 @@ export const LIBELLES_COMMUNE_ECOLES = {
   /** Depuis le centre d'une commune sans école : pas d'« autre » école. */
   aucuneAMoinsDe: (km: number): string => `Aucune école à moins de ${km} km`,
   noteProches: "Distances mesurées depuis le centre de la commune.",
+  /** Commune sans contour (créée après l'édition des contours IGN) : pas de centre, pas de calcul. */
+  sansCentre: "Position de la commune non disponible : écoles les plus proches non calculées",
 } as const;
 
 /** « Preel-CP » (typologie des classes) → « Préélémentaire-CP ». */

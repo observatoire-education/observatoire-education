@@ -38,22 +38,22 @@ export interface OptionsOuverture {
   etapes?: Etape[];
 }
 
-/** Table `registre` (uai, famille, secteur, dep, aca, disparu_le), créée avant les étapes. */
+/** Table `registre` (uai, famille, secteur, dep, aca, code_commune, disparu_le), créée avant les étapes. */
 async function chargerRegistre(c: DuckDBConnection, registre: Registre): Promise<void> {
   const lignes = Object.entries(registre).map(([uai, e]) => ({
-    uai, famille: e.identite.famille, secteur: e.identite.secteur, dep: e.identite.dep, aca: e.identite.aca,
+    uai, famille: e.identite.famille, secteur: e.identite.secteur, dep: e.identite.dep, aca: e.identite.aca, code_commune: e.identite.codeCommune ?? null,
     disparu_le: e.disparuLe ?? null,
   }));
   await c.run(
     `create or replace table registre as
      select unnest(from_json($1::json,
-       '[{"uai":"VARCHAR","famille":"VARCHAR","secteur":"VARCHAR","dep":"VARCHAR","aca":"VARCHAR","disparu_le":"VARCHAR"}]'),
+       '[{"uai":"VARCHAR","famille":"VARCHAR","secteur":"VARCHAR","dep":"VARCHAR","aca":"VARCHAR","code_commune":"VARCHAR","disparu_le":"VARCHAR"}]'),
        recursive := true)`,
     [JSON.stringify(lignes)],
   );
   if (lignes.length === 0) {
     await c.run(`create or replace table registre (uai varchar, famille varchar, secteur varchar, dep varchar,
-      aca varchar, disparu_le varchar)`);
+      aca varchar, code_commune varchar, disparu_le varchar)`);
   }
 }
 

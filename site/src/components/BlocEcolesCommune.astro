@@ -11,6 +11,7 @@ import { svgCartePoints } from "../lib/cartes";
 import { contourCommune } from "../lib/contours";
 import { valeur } from "../lib/affichage";
 import { svgElevesClasses } from "../lib/plot";
+import Absence from "./Absence.astro";
 import BlocEcolesProches from "./BlocEcolesProches.astro";
 import Cellule from "./Cellule.astro";
 
@@ -92,3 +93,9 @@ const fermeesCommune = e.fermees.filter((f) => !dansUnePartie.has(f.uai));
   </section>
 )}
 {e.plusProches && <BlocEcolesProches p={e.plusProches} rentree={e.rentrees.eleves} commune={true} />}
+{e.plusDEcoleDepuis !== null && e.plusProches === null && (
+  <section id="ecoles-proches">
+    <h2>{LC.titreProches}</h2>
+    <div class="card"><Absence texte={LC.sansCentre} /></div>
+  </section>
+)}

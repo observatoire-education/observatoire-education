@@ -9,7 +9,7 @@ import {
   communesRetenues, ecolesDesCommunes, type EcolesDUneCommune, libelleListe, controlerPonderation, moyennePonderee, verifierPonderation,
 } from "../pipeline/src/territoires.ts";
 import { partPrive } from "../site/src/lib/territoire.ts";
-import { dbTest, FIXTURES, identiteTest, manifestTest } from "./aide.ts";
+import { dbAvecRegistre, dbTest, FIXTURES, identiteTest, manifestTest } from "./aide.ts";
 
 describe("libellé de commune", () => {
   const fiche = (codeCommune: string, commune: string) =>
@@ -137,6 +137,7 @@ describe("part du privé d'un territoire", () => {
 
 describe("écoles des communes (pages commune étendues)", () => {
   let parCommune: Map<string, EcolesDUneCommune>;
+  let avecRegistre: Map<string, EcolesDUneCommune>;
   beforeAll(async () => {
     const db = await dbTest();
     const dossier = await mkdtemp(join(tmpdir(), "obs-territoires-"));
@@ -144,7 +145,16 @@ describe("écoles des communes (pages commune étendues)", () => {
     const avant = process.env.OBS_CONTOURS;
     process.env.OBS_CONTOURS = join(FIXTURES, "contours");
     try {
-      parCommune = await ecolesDesCommunes(db, fiches.filter((f) => f.disparuLe === null));
+      const actives = fiches.filter((f) => f.disparuLe === null);
+      parCommune = await ecolesDesCommunes(db, actives);
+      // 0449999Z (élèves en 2025, inconnue de l'Annuaire et des fermés) : page du registre, dernière commune 44901.
+      const registre = await dbAvecRegistre({
+        "0449999Z": {
+          premiere: "2024-01-01", disparuLe: "2026-10-01",
+          identite: { ...identiteTest("École disparue"), famille: "elementaire", commune: "Les Landes", codeCommune: "44901" },
+        },
+      });
+      avecRegistre = await ecolesDesCommunes(registre, actives);
     } finally {
       if (avant === undefined) delete process.env.OBS_CONTOURS;
       else process.env.OBS_CONTOURS = avant;
@@ -153,7 +163,7 @@ describe("écoles des communes (pages commune étendues)", () => {
   });
 
   test("une entrée par commune d'aujourd'hui qui a ou a eu une école depuis 2012 ; aucune pour un code disparu", () => {
-    expect([...parCommune.keys()].sort()).toEqual(["44109", "44150", "44903"]);
+    expect([...parCommune.keys()].sort()).toEqual(["44109", "44150", "44888", "44903"]);
   });
 
   test("Saint-Aubin : écoles ouvertes, jamais « plus d'école » ; Le Moulin a sa partie, avec son école fermée", () => {
@@ -171,11 +181,26 @@ describe("écoles des communes (pages commune étendues)", () => {
     expect(e.rentrees).toEqual({ eleves: 2025, ips: 2024 });
   });
 
-  test("historique de la commune : somme des écoles, ouvertes et fermées, par rentrée", () => {
+  test("historique de la commune : somme des écoles, ouvertes et fermées, par rentrée ; 0 classe d'une école rend le total inconnu", () => {
     expect(parCommune.get("44150")!.ecoles.historique).toEqual([
       [2014, 70, 3], [2015, 70, 3],
-      [2019, 55, 3], [2020, 55, 3], [2021, 55, 3], [2022, 55, 3], [2023, 55, 3], [2024, 55, 3], [2025, 55, 1],
+      // 2025 : 0440105E publie 45 élèves et 0 classe (non publié) : les classes de la commune sont inconnues
+      [2019, 55, 3], [2020, 55, 3], [2021, 55, 3], [2022, 55, 3], [2023, 55, 3], [2024, 55, 3], [2025, 55, null],
     ]);
+  });
+
+  test("historique : une page du registre sortie de l'Annuaire sans entrée dans les fermés compte dans sa commune", () => {
+    expect(parCommune.get("44903")!.ecoles.historique).toEqual([]);
+    expect(avecRegistre.get("44903")!.ecoles.historique).toEqual([[2025, 50, 2]]);
+    // ni école ouverte ni école fermée de plus : seulement les chiffres de la commune
+    expect(avecRegistre.get("44903")!.ecoles.fermees.map((f) => f.uai)).toEqual(["0440111N"]);
+  });
+
+  test("commune sans contour (centre inconnu) : pas d'écoles proches calculées", () => {
+    const c = parCommune.get("44888")!;
+    expect(c.libelle).toBe("Les Sables"); // inconnue du Code officiel géographique de test : nom de ses écoles
+    expect(c.ecoles.plusDEcoleDepuis).toBe(2020);
+    expect(c.ecoles.plusProches).toBeNull();
   });
 
   test("Val-de-l'Erdre : plus d'école depuis 2018, école fermée sans fiche avec son ancienne commune, écoles proches depuis le centre", () => {

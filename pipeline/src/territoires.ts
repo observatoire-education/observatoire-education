@@ -193,15 +193,20 @@ export async function ecolesDesCommunes(db: Db, actives: Fiche[], table?: TableC
     from fermes
     where famille in (${enSql(FAMILLES_ECOLES)}) and date_fermeture >= date '2012-01-01' and nullif(code_commune, '') is not null
       and uai not in (select uai from etablissements)`);
-  // Élèves et classes par commune d'alors et par rentrée ; une école sans nombre rend le total inconnu.
+  // Élèves et classes par commune d'alors et par rentrée ; une école sans nombre rend le total inconnu (0 classe est
+  // une absence de donnée, comme sur la fiche). Écoles : ouvertes, fermées, et pages du registre sorties de l'Annuaire
+  // sans entrée dans la liste des fermés (commune de leur dernière identité connue).
   const series = await db.sql<{ code: string; rentree: number; eleves: number | null; sans_eleves: number; classes: number | null; sans_classes: number }>(`
     select c.code, h.rentree, sum(h.eleves)::integer as eleves, count(*) filter (where h.eleves is null)::integer as sans_eleves,
-      sum(h.classes)::integer as classes, count(*) filter (where h.classes is null)::integer as sans_classes
+      sum(h.classes)::integer as classes, count(*) filter (where h.classes is null or h.classes = 0)::integer as sans_classes
     from classes_historique h
     join (
       select uai, code_commune as code from etablissements
       union all
       select uai, code_commune from fermes where uai not in (select uai from etablissements)
+      union all
+      select uai, code_commune from registre
+      where uai not in (select uai from etablissements) and uai not in (select uai from fermes)
     ) c using (uai)
     where h.source = 'effectifs_ecoles' and nullif(c.code, '') is not null
     group by all`);
