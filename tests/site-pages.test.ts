@@ -142,7 +142,9 @@ describe("sources, méthode, 404, sitemap", () => {
     expect(t).toContain("collectivité non identifiée dans les balances de la DGFiP");
     expect(t).toContain("aucune contribution au privé identifiée");
     expect(t).toContain("euros courants");
-    expect(t).toContain("de 2020 à 2025");
+    expect(t).toContain("depuis 2020");
+    expect(t).toContain("fonction collèges non détaillée dans les comptes de la collectivité");
+    expect(t).toContain("classé en fonctionnement hors personnel");
   });
 
   test("méthode : périmètre, moyennes, voisinage, absences, pages conservées", () => {

@@ -1,5 +1,7 @@
 # Observatoire citoyen de l'éducation en France, phase 3 (budget des collectivités par élève, pages région) : plan d'implémentation
 
+> **Amendement (2026-11-24) :** les exercices publiés sont 2020 à 2025 (et non 2020 à 2024) ; voir les amendements du contrôleur et `docs/budget-controles.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal :** afficher, pour chaque collectivité qui finance des collèges ou des lycées, ses dépenses en euros par élève, séparées public / privé, de l'exercice 2020 à 2024, sur les fiches et les pages de territoire. Ajouter 18 pages région.

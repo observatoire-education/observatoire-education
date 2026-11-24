@@ -68,11 +68,11 @@ export async function repartitionsDe(uai: string): Promise<Repartition[]> {
 
 // --- Manifest et registre de test (tâche 7) ---
 
-/** Manifest avec une version fictive par source, collectée le 22/11/2026. */
 /** Requête archivée fictive d'un exercice du budget. */
 export const requeteTest = (id: string, datasetId: string): string =>
   `https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/${datasetId}/exports/parquet?where=${id}`;
 
+/** Manifest avec une version fictive par source, collectée le 22/11/2026. */
 export function manifestTest(dossier: string): Manifest {
   const m = Manifest.lire(join(dossier, "manifest.json"));
   for (const s of [...Object.values(SOURCES), ...[2023, 2024].map((e) => sourceBudget(e, EXERCICES_BUDGET[e]!))]) {
