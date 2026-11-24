@@ -4,7 +4,7 @@ import { entier, nombre, part } from "@obs/shared/format";
 import { FAMILLES_PLURIEL, LIBELLES } from "@obs/shared/libelles";
 import type { LigneListe } from "@obs/shared/donnees";
 import type { Famille } from "@obs/shared/types";
-import { celluleReussite, celluleVa, triReussite, triVa } from "../lib/resultats";
+import { celluleReussite, celluleVa, noteSessions, triReussite, triVa } from "../lib/resultats";
 import { valeurTri } from "../lib/territoire";
 import Cellule from "./Cellule.astro";
 
@@ -13,6 +13,7 @@ const { famille, liste } = Astro.props;
 const id = `liste-${famille}`;
 const nd = LIBELLES.nonDisponible;
 const aEp = liste.some((l) => l.ep);
+const sessions = noteSessions(liste.map((l) => l.reussite));
 ---
 <div class="filters" data-filtres={id}>
   <div class="g"><span>Secteur</span>
@@ -68,3 +69,4 @@ const aEp = liste.some((l) => l.ep);
     </tbody>
   </table>
 </div></div>
+{sessions && <div class="src" style="border:0" data-sessions={id}>{sessions}</div>}

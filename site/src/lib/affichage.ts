@@ -57,3 +57,14 @@ export function texteCouverture(m: { couverture?: number; statut: Mesure["statut
 /** « 2025 » pour la carte d'un indicateur, ou rien. */
 export const annee = (m: Mesure): string => (m.rentree === null ? "" : String(m.rentree));
 export const anneeScolaire = (r: number | null): string => (r === null ? "" : `${r}-${r + 1}`);
+
+/**
+ * Complément d'une ligne de source sur la fiche A4 : « moyennes publiées par la DEPP » pour les jeux actuels d'IPS,
+ * sauf si les comparaisons d'IPS de la fiche sont calculées par l'observatoire (IPS d'une rentrée sans moyenne
+ * publiée) ; rien pour les autres jeux d'IPS, l'Annuaire et les résultats ; « moyennes calculées » sinon.
+ */
+export function mentionMoyennesA4(id: SourceId, ipsCalculee: boolean): string {
+  if (id === "ips_colleges" || id === "ips_lycees" || id === "ips_erea") return ipsCalculee ? "" : " · moyennes publiées par la DEPP";
+  if (id.startsWith("ips_") || id === "annuaire" || id === "ivac" || id.startsWith("ival_")) return "";
+  return " · moyennes calculées (Σ / Σ)";
+}

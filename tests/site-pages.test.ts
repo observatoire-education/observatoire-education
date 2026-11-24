@@ -39,8 +39,10 @@ describe("page département", () => {
   test("CSV de la liste, généré au build", () => {
     const csv = page("departement/44/etablissements.csv");
     const lignes = csv.trim().split("\n");
-    expect(lignes[0]).toBe("uai;nom;famille;secteur;commune;ep;eleves;eleves_par_etp_ens;eleves_par_etp_vs;part_enseignantes;ips");
+    expect(lignes[0]).toBe("uai;nom;famille;secteur;commune;ep;eleves;eleves_par_etp_ens;eleves_par_etp_vs;part_enseignantes;ips;session_brevet;reussite_brevet;va_brevet;session_bac_gt;reussite_bac_gt;va_bac_gt;session_bac_pro;reussite_bac_pro;va_bac_pro");
     expect(lignes.find((l) => l.startsWith("0440002B"))).toContain(";non_publie_prive;");
+    // Résultats du collège Saint-Exemple : brevet, session 2025, 60 % et +1 ; colonnes du bac vides.
+    expect(lignes.find((l) => l.startsWith("0440002B"))!.split(";").slice(-9)).toEqual(["2025", "60", "1", "", "", "", "", "", ""]);
     expect(lignes).toHaveLength(1 + 8); // 8 établissements actifs dans le 44
   });
 
@@ -139,9 +141,8 @@ describe("sources, méthode, 404, sitemap", () => {
     expect(t).toContain("Meurthe-et-Moselle");
     expect(t).toContain("Lot-et-Garonne");
     expect(t).toContain("fonction 24");
-    expect(t).toContain("Les établissements fermés dont la page est conservée sont comptés");
-    expect(t).toContain("fermés avant la mise en ligne de l'observatoire (fin 2026)");
-    expect(t).toContain("0,35 %");
+    expect(t).toContain("Les établissements fermés qui ont une page sont comptés pour les rentrées où ils avaient des élèves");
+    expect(t).not.toContain("fermés avant la mise en ligne de l'observatoire (fin 2026)");
     expect(t).toContain("EREA");
     expect(t).toContain("BTS, CPGE");
     expect(t).not.toContain("fermé depuis ne sont pas comptés");

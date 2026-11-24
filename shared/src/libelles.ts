@@ -244,6 +244,9 @@ export const LIBELLES_RESULTATS = {
   rupture: "Réforme du baccalauréat : les séries changent à partir de la session 2021.",
   session: (s: number) => `session ${s}`,
   reussite: "Réussite",
+  /** Note sous les listes et les voisins : session de chaque source de résultats affichée. */
+  noteSessions: "Réussite et valeur ajoutée",
+  sourcesCourtes: { brevet_general: "brevet", brevet_pro: "brevet", bac_gt: "bac GT", bac_pro: "bac pro" },
 } as const;
 
 /** Libellés des nuages IPS × réussite (pages département et académie). */
@@ -253,7 +256,7 @@ export const LIBELLES_NUAGES = {
     bac_gt: "Lycées : IPS de la voie générale et technologique et réussite au bac",
     bac_pro: "Lycées : IPS de la voie professionnelle et réussite au bac",
   },
-  note: "Chaque point est un établissement. Lignes : moyennes du territoire. Survolez un point pour son nom et ses valeurs ; le tableau des établissements donne les mêmes chiffres.",
+  note: "Chaque point est un établissement. Lignes : moyennes des points du nuage. Survolez un point pour son nom et ses valeurs ; le tableau des établissements donne le taux de réussite et la valeur ajoutée, et l'IPS de la dernière rentrée.",
   noteIpsEnsemble: "IPS de l'ensemble de l'établissement (l'IPS par voie n'est pas publié pour cette rentrée).",
   axeIps: "IPS",
   axeTaux: "Taux de réussite (%)",

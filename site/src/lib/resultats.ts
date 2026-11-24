@@ -33,12 +33,32 @@ export const celluleReussite = (r: ResumeResultat[], famille?: Famille): string 
 export const celluleVa = (r: ResumeResultat[], famille?: Famille): string =>
   cellule(r, famille, (x) => (x.va === null ? null : vaSignee(x.va)));
 
+/**
+ * Note sous un tableau de résumés : « Réussite et valeur ajoutée : session 2025 » pour une seule source,
+ * « … : bac GT : session 2025 · bac pro : session 2025 » pour plusieurs. Seules les sources dont au moins
+ * un chiffre est affiché sont datées ; aucune : pas de note.
+ */
+export function noteSessions(listes: ResumeResultat[][]): string | null {
+  const parSource = new Map<string, Set<number>>();
+  for (const r of listes.flat()) {
+    if (r.taux === null && r.va === null) continue;
+    const s = LIBELLES_RESULTATS.sourcesCourtes[r.voie];
+    (parSource.get(s) ?? parSource.set(s, new Set()).get(s)!).add(r.session);
+  }
+  if (parSource.size === 0) return null;
+  const sessions = (x: Set<number>) => [...x].sort((a, b) => a - b).map(LIBELLES_RESULTATS.session).join(", ");
+  const ordre = Object.values(LIBELLES_RESULTATS.sourcesCourtes) as string[];
+  const mentions = [...parSource].sort(([a], [b]) => ordre.indexOf(a) - ordre.indexOf(b));
+  const corps = mentions.length === 1 ? sessions(mentions[0]![1]) : mentions.map(([s, x]) => `${s} : ${sessions(x)}`).join(" · ");
+  return `${LIBELLES_RESULTATS.noteSessions} : ${corps}`;
+}
+
 /** Clé de tri : le premier chiffre présent, « » sinon (absence toujours en fin). */
 export const triReussite = (r: ResumeResultat[]): string => {
-  const x = r[0]?.taux;
+  const x = r.find((y) => y.taux !== null)?.taux;
   return x === null || x === undefined ? "" : String(x);
 };
 export const triVa = (r: ResumeResultat[]): string => {
-  const x = r[0]?.va;
+  const x = r.find((y) => y.va !== null)?.va;
   return x === null || x === undefined ? "" : String(x);
 };

@@ -6,7 +6,7 @@ import Fermeture from "./Fermeture.astro";
 import { date, entier, estSession, nombre } from "@obs/shared/format";
 import { academie, type CodeIndicateur, CONTRATS, FAMILLES, FAMILLES_PLURIEL, INDICATEURS, LIBELLES, LIBELLES_BUDGET, LIBELLES_RESULTATS as LR, SECTEURS } from "@obs/shared/libelles";
 import type { Fiche, Mesure, Niveau, ResultatsVoie, Secteur, SourceId, ValeurResultat } from "@obs/shared/types";
-import { anneeScolaire, formater, indicateur, reference } from "../lib/affichage";
+import { anneeScolaire, formater, indicateur, mentionMoyennesA4, reference } from "../lib/affichage";
 import { absenceBudget, montantBudget, niveauDe } from "../lib/budget";
 import { CONFIG, lienPermanent } from "../lib/config";
 import { tauxEntier, vaSignee } from "../lib/resultats";
@@ -16,6 +16,7 @@ const { f, genereLe } = Astro.props;
 const lien = lienPermanent(`/etablissement/${f.uai}/`);
 const qr = await QRCode.toString(lien, { type: "svg", margin: 0, errorCorrectionLevel: "M" });
 const prive = f.secteur === "prive_sous_contrat";
+const ipsCalculee = indicateur(f, "ips").comparaisons.some((c) => c.calculee);
 
 // Numéro de chaque source dans le pied de page.
 const numero = new Map<SourceId, number>(f.sources.map((s, i) => [s.id, i + 1]));
@@ -244,7 +245,7 @@ const nd = (v: number | null) => (v === null ? "n. d." : entier(v));
     <div><b>Sources</b> (Licence Ouverte 2.0 ; versions archivées et téléchargeables sur la page « Sources ») :</div>
     <ol>
       {f.sources.map((s) => (
-        <li>{s.producteur}, {s.titre}{s.rentree !== null && (estSession(s.id) ? ` · session ${s.rentree}` : ` · rentrée ${anneeScolaire(s.rentree)}`)} · collecté le {date(s.collecteLe)}{["ips_colleges", "ips_lycees", "ips_erea"].includes(s.id) ? " · moyennes publiées par la DEPP" : s.id.startsWith("ips_") || s.id === "annuaire" || s.id === "ivac" || s.id.startsWith("ival_") ? "" : " · moyennes calculées (Σ / Σ)"}.</li>
+        <li>{s.producteur}, {s.titre}{s.rentree !== null && (estSession(s.id) ? ` · session ${s.rentree}` : ` · rentrée ${anneeScolaire(s.rentree)}`)} · collecté le {date(s.collecteLe)}{mentionMoyennesA4(s.id, ipsCalculee)}.</li>
       ))}
     </ol>
     <div>

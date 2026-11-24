@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import type { Nuage } from "@obs/shared/donnees";
 import { optionsNuage } from "../site/src/lib/plot.ts";
-import { celluleReussite, celluleVa, vaSignee } from "../site/src/lib/resultats.ts";
+import { celluleReussite, celluleVa, noteSessions, triReussite, triVa, vaSignee } from "../site/src/lib/resultats.ts";
 import { doc, siteTest, texte } from "./site.ts";
 
 beforeAll(async () => {
@@ -26,6 +26,21 @@ describe("mise en forme", () => {
     expect(norm(celluleReussite([r("bac_gt", 92, 3)], "lpo"))).toBe("GT 92 %");
     expect(celluleVa([r("bac_gt", 92, 3), r("bac_pro", 85, -1)], "lpo")).toBe("GT +3 · pro −1");
     expect(celluleReussite([], "college")).toBe("non disponible");
+  });
+  test("clés de tri : première valeur non nulle", () => {
+    const r = [{ voie: "bac_gt" as const, session: 2025, taux: null, va: null }, { voie: "bac_pro" as const, session: 2025, taux: 70, va: -1 }];
+    expect(triReussite(r)).toBe("70");
+    expect(triVa(r)).toBe("-1");
+    expect(triReussite([{ ...r[0]! }])).toBe("");
+  });
+  test("note des sessions : une mention par source présente", () => {
+    const r = (voie: "brevet_general" | "bac_gt" | "bac_pro", session: number, taux: number | null = 80) => ({ voie, session, taux, va: null });
+    expect(noteSessions([[r("brevet_general", 2025)], [r("brevet_general", 2025)]])).toBe("Réussite et valeur ajoutée : session 2025");
+    expect(noteSessions([[r("bac_gt", 2025), r("bac_pro", 2024)], [r("bac_pro", 2024)]]))
+      .toBe("Réussite et valeur ajoutée : bac GT : session 2025 · bac pro : session 2024");
+    // Une source sans aucune valeur n'est pas datée ; aucune valeur du tout : pas de note.
+    expect(noteSessions([[r("bac_gt", 2025), r("bac_pro", 2025, null)]])).toBe("Réussite et valeur ajoutée : session 2025");
+    expect(noteSessions([[r("bac_gt", 2025, null)], []])).toBeNull();
   });
 });
 
@@ -124,6 +139,13 @@ describe("voisins et listes", () => {
     const l = norm(doc("etablissement/0440003C").querySelector("#voisins")!.textContent!);
     expect(l).toContain("pro 70 %");
     expect(l).toContain("pro −1");
+    // Réussite et valeur ajoutée datées sous le tableau.
+    expect(norm(doc("etablissement/0440001A").querySelector("#voisins .sessions")!.textContent!.trim())).toBe("Réussite et valeur ajoutée : session 2025");
+  });
+
+  test("listes : réussite et valeur ajoutée datées sous le tableau", () => {
+    const n = doc("departement/44").querySelector("[data-sessions='liste-college']");
+    expect(norm(n!.textContent!.trim())).toBe("Réussite et valeur ajoutée : session 2025");
   });
 
   test("liste du département : colonnes réussite et valeur ajoutée triables, tri par défaut par nom", () => {
@@ -195,7 +217,8 @@ describe("nuages IPS × réussite", () => {
 
   test("note sous le nuage", () => {
     const x = norm(sec("departement/35", "brevet_general")!.textContent!.replace(/\s+/g, " "));
-    expect(x).toContain("Chaque point est un établissement. Lignes : moyennes du territoire. Survolez un point pour son nom et ses valeurs ; le tableau des établissements donne les mêmes chiffres.");
+    expect(x).toContain("Chaque point est un établissement. Lignes : moyennes des points du nuage. Survolez un point pour son nom et ses valeurs ; le tableau des établissements donne le taux de réussite et la valeur ajoutée, et l'IPS de la dernière rentrée.");
+    expect(x).not.toContain("les mêmes chiffres");
     expect(x).not.toContain("IPS de l'ensemble de l'établissement");
   });
 

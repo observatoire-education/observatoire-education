@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, test } from "bun:test";
+import { mentionMoyennesA4 } from "../site/src/lib/affichage.ts";
 import { doc, siteTest } from "./site.ts";
 
 beforeAll(async () => {
@@ -15,6 +16,17 @@ describe("fiche imprimable A4", () => {
     expect(ips("(2016-2021)")).not.toContain("moyennes publiées par la DEPP");
     expect(ips("(2022)")).not.toContain("moyennes publiées par la DEPP");
     expect(sources.filter((s) => s.includes("moyennes publiées par la DEPP")).length).toBe(1);
+  });
+
+  test("sources de l'A4 : pas de « publiées par la DEPP » quand les comparaisons d'IPS de la fiche sont calculées", () => {
+    expect(mentionMoyennesA4("ips_colleges", false)).toBe(" · moyennes publiées par la DEPP");
+    expect(mentionMoyennesA4("ips_lycees", false)).toBe(" · moyennes publiées par la DEPP");
+    expect(mentionMoyennesA4("ips_colleges", true)).toBe("");
+    expect(mentionMoyennesA4("ips_lycees", true)).toBe("");
+    expect(mentionMoyennesA4("ips_erea", true)).toBe("");
+    expect(mentionMoyennesA4("ips_colleges_2016", false)).toBe("");
+    expect(mentionMoyennesA4("ivac", false)).toBe("");
+    expect(mentionMoyennesA4("effectifs_colleges", true)).toBe(" · moyennes calculées (Σ / Σ)");
   });
 
   test("bloc A4 : moyennes seules, sources numérotées, QR", () => {

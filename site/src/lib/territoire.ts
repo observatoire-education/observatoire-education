@@ -3,7 +3,7 @@ import { comparerCollectivites, type NiveauBudget } from "@obs/shared/collectivi
 import type { BudgetCollectivite, DonneesTerritoire, LigneListe, LigneTerritoire, SyntheseFamille } from "@obs/shared/donnees";
 import { entier } from "@obs/shared/format";
 import { FAMILLES } from "@obs/shared/libelles";
-import type { Famille } from "@obs/shared/types";
+import type { Famille, ResumeResultat } from "@obs/shared/types";
 
 export const ORDRE_FAMILLES: Famille[] = ["college", "legt", "lpo", "lp", "erea"];
 
@@ -29,7 +29,17 @@ export const valeurTri = (v: number | null): string => (v === null ? "" : String
 const COLONNES_CSV = [
   "uai", "nom", "famille", "secteur", "commune", "ep", "eleves", "eleves_par_etp_ens", "eleves_par_etp_vs",
   "part_enseignantes", "ips",
+  "session_brevet", "reussite_brevet", "va_brevet", "session_bac_gt", "reussite_bac_gt", "va_bac_gt",
+  "session_bac_pro", "reussite_bac_pro", "va_bac_pro",
 ] as const;
+
+/** Résumés d'une ligne : brevet (série générale, sinon professionnelle), bac GT, bac pro ; vide si absent, jamais 0. */
+const colonnesReussite = (r: ResumeResultat[]): (number | null)[] =>
+  [
+    r.find((x) => x.voie === "brevet_general") ?? r.find((x) => x.voie === "brevet_pro"),
+    r.find((x) => x.voie === "bac_gt"),
+    r.find((x) => x.voie === "bac_pro"),
+  ].flatMap((x) => [x?.session ?? null, x?.taux ?? null, x?.va ?? null]);
 
 /**
  * Champ CSV. Un texte qui commence par =, +, -, @, tabulation ou retour chariot est préfixé d'une
@@ -65,7 +75,7 @@ export function csvTerritoire(d: DonneesTerritoire): string {
     s.liste.map((l: LigneListe) => [
       l.uai, l.nom, famille, l.secteur, l.commune, l.ep, l.eleves, l.elevesParEtpEns,
       l.elevesParEtpVs ?? (l.statutVs === "non_publie_prive" ? "non_publie_prive" : null),
-      l.partEnseignantes, l.ips,
+      l.partEnseignantes, l.ips, ...colonnesReussite(l.reussite),
     ]),
   ));
 }

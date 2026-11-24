@@ -32,6 +32,24 @@ describe("CSV des territoires", () => {
     expect(ligne).toContain(";-1.5;");
   });
 
+  test("département : session, réussite et valeur ajoutée par source, vides si absentes (jamais 0)", () => {
+    const d = dep("Lycée");
+    d.familles.college!.liste[0]!.reussite = [
+      { voie: "bac_gt", session: 2025, taux: 92, va: -2 },
+      { voie: "bac_pro", session: 2025, taux: null, va: null },
+    ];
+    const [entete, ligne] = csvTerritoire(d).trim().split("\n");
+    const cols = entete!.split(";");
+    expect(cols.slice(-9)).toEqual([
+      "session_brevet", "reussite_brevet", "va_brevet", "session_bac_gt", "reussite_bac_gt", "va_bac_gt",
+      "session_bac_pro", "reussite_bac_pro", "va_bac_pro",
+    ]);
+    expect(ligne!.split(";").slice(-9)).toEqual(["", "", "", "2025", "92", "-2", "2025", "", ""]);
+    const brevet = dep("Collège");
+    brevet.familles.college!.liste[0]!.reussite = [{ voie: "brevet_general", session: 2025, taux: 80, va: 0 }];
+    expect(csvTerritoire(brevet).trim().split("\n")[1]!.split(";").slice(-9)).toEqual(["2025", "80", "0", "", "", "", "", "", ""]);
+  });
+
   test("académie : une ligne par département, point décimal, écart vide si absent", () => {
     const aca: DonneesTerritoire = {
       ...dep("x"),

@@ -138,6 +138,14 @@ describe("méthode et sources de la phase 4", () => {
     const t = texte("methode");
     expect(t).toContain("session 2025");
     expect(t).toContain("successeurs-manuels.json");
+    // Le nuage date l'IPS de la rentrée session − 1, le tableau celui de la dernière rentrée.
+    expect(t).not.toContain("le tableau des établissements donne les mêmes chiffres");
+    expect(t).toContain("l'IPS de la dernière rentrée, qui peut différer de celui du nuage");
+    // Sans élèves avant 2019, un fermé d'avant la rentrée 2019 ne compte pas dans les moyennes 2016-2018.
+    expect(t).toContain("un établissement fermé avant la rentrée 2019 n'a pas d'élèves en 2019 et ne compte donc pas dans les moyennes calculées de ces rentrées");
+    // Dénominateurs du budget : les fiches historiques comptent désormais.
+    expect(t).not.toContain("seuls ceux fermés avant la mise en ligne de l'observatoire");
+    expect(t).toContain("y compris ceux fermés depuis 2019 qui ont une page historique parce qu'une source les cite");
   });
 
   test("/sources/ liste les onze nouvelles sources avec leurs versions", () => {

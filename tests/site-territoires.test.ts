@@ -78,7 +78,7 @@ describe("page commune", () => {
 
   test("CSV des établissements de la commune", () => {
     const lignes = page("commune/44109/etablissements.csv").trim().split("\n");
-    expect(lignes[0]).toBe("uai;nom;famille;secteur;commune;ep;eleves;eleves_par_etp_ens;eleves_par_etp_vs;part_enseignantes;ips");
+    expect(lignes[0]).toBe("uai;nom;famille;secteur;commune;ep;eleves;eleves_par_etp_ens;eleves_par_etp_vs;part_enseignantes;ips;session_brevet;reussite_brevet;va_brevet;session_bac_gt;reussite_bac_gt;va_bac_gt;session_bac_pro;reussite_bac_pro;va_bac_pro");
     expect(lignes.some((l) => l.startsWith("0440001A;"))).toBe(true);
   });
 
