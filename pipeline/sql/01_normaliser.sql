@@ -12,6 +12,8 @@ select
   secteur(statut_public_prive, type_contrat_prive) as secteur_brut,
   trim(type_contrat_prive) as contrat_brut,
   trim(adresse_1) as adresse,
+  adresse_normalisee(adresse_1) as adresse_n,
+  try_cast(left(trim(date_ouverture::varchar), 10) as date) as date_ouverture,
   trim(code_postal::varchar) as code_postal,
   trim(code_commune::varchar) as code_commune,
   trim(nom_commune) as commune,
@@ -81,7 +83,7 @@ create or replace table etablissements as
 select
   uai, nom, famille, secteur_brut as secteur,
   case when secteur_brut = 'prive_sous_contrat' then contrat_brut end as contrat,
-  adresse, code_postal, code_commune, commune, dep, dep_libelle, aca, aca_libelle,
+  adresse, adresse_n, date_ouverture, code_postal, code_commune, commune, dep, dep_libelle, aca, aca_libelle,
   lat, lon, ep, segpa, ulis, internat
 from classement
 where motif is null

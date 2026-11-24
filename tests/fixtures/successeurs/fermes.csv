@@ -1,0 +1,8 @@
+numero_uai,appellation_officielle,secteur_public_prive_libe,date_ouverture,date_fermeture,adresse_uai,code_postal_uai,code_commune,libelle_commune,code_departement,libelle_departement,code_academie,libelle_academie,nature_uai_libe,latitude,longitude
+0440101A,Lycée général du Port,Public,1950-09-01,2020-08-31,"1 quai du Port",44000,44001,Ville 44001,044,Loire-Atlantique,17,Nantes,LYCEE ENSEIGNT GENERAL ET TECHNOLOGIQUE,47.2,-1.55
+0440102B,Lycée professionnel du Port,Public,1950-09-01,2020-08-31,"2 quai du Port",44000,44001,Ville 44001,044,Loire-Atlantique,17,Nantes,LYCEE PROFESSIONNEL,47.2,-1.55
+0440111A,Collège Ancien Port,Public,1965-09-01,2019-08-31,"3 rue du Port",44000,44002,Ville 44002,044,Loire-Atlantique,17,Nantes,COLLEGE,47.2,-1.55
+0440121A,Collège Fermé Ambigu,Public,1965-09-01,2019-08-31,"5 rue Fermée",44000,44003,Ville 44003,044,Loire-Atlantique,17,Nantes,COLLEGE,47.2,-1.55
+0440131A,Collège Fermé Public,Public,1965-09-01,2019-08-31,"5 rue Fermée",44000,44004,Ville 44004,044,Loire-Atlantique,17,Nantes,COLLEGE,47.2,-1.55
+0440141A,Collège A,Public,1960-09-01,2015-08-31,"1 rue A",44000,44005,Ville 44005,044,Loire-Atlantique,17,Nantes,COLLEGE,47.2,-1.55
+0440142B,Collège B,Public,2015-09-01,2019-08-31,"1 rue B",44000,44005,Ville 44005,044,Loire-Atlantique,17,Nantes,COLLEGE,47.2,-1.55

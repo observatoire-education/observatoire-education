@@ -12,6 +12,7 @@ import { calculerEleves } from "./eleves.ts";
 import { calculerIndicateurs, calculerRepartitions } from "./indicateurs.ts";
 import type { Registre } from "./registre.ts";
 import { SOURCES, toutesSources } from "./sources.ts";
+import { appliquerManuels, attacherSuccesseurs, deduireSuccesseurs, lireManuels, type Manuels, verifierCycles } from "./successeurs.ts";
 import { ecrireJson, exporterTerritoires } from "./territoires.ts";
 
 // --- Voisinage ---
@@ -189,11 +190,22 @@ export function attacherBudgets(fiches: Fiche[], budgets: Parameters<typeof budg
   }
 }
 
+/** Chiffres du journal des successeurs, remplis par assemblerFiches. */
+export interface RapportSuccesseurs {
+  regle1: number; regle2: number; manuels: number; ambigus: number; sansFiche: number;
+}
+
+export interface OptionsAssemblage {
+  rapport?: RapportSuccesseurs;
+  /** Fichier manuel des successeurs (par défaut pipeline/successeurs-manuels.json). */
+  manuels?: Manuels;
+}
+
 /**
  * Une fiche par établissement actif, et une par page conservée (UAI du registre sortie du périmètre).
  * `registre` doit être celui avec lequel `db` a été ouverte.
  */
-export async function assemblerFiches(db: Db, manifest: Manifest, registre: Registre, maintenant: Date): Promise<Fiche[]> {
+export async function assemblerFiches(db: Db, manifest: Manifest, registre: Registre, maintenant: Date, opts: OptionsAssemblage = {}): Promise<Fiche[]> {
   const indicateurs = await calculerIndicateurs(db);
   const repartitions = await calculerRepartitions(db);
   const eleves = await calculerEleves(db);
@@ -212,6 +224,7 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
     const el = eleves.get(uai) ?? null;
     return {
       uai, ...identite, disparuLe, fermeLe: disparuLe === null ? null : (fermetures.get(uai) ?? null),
+      successeurs: [], predecesseurs: [], // remplacés plus bas, quand toutes les fiches sont connues
       indicateurs: ind, repartitions: rep, eleves: el,
       budget: { france: [] }, // remplacé plus bas, quand toutes les fiches (disparues comprises) sont connues
       voisins: disparuLe === null ? (voisins.get(uai) ?? null) : null,
@@ -229,6 +242,20 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
     const entree = registre[uai];
     if (!entree) continue;
     fiches.push(fiche(uai, entree.identite, fermetures.get(uai) ?? entree.disparuLe ?? aujourdhui));
+  }
+  // Successeurs : déduits, corrigés par le fichier manuel, sans cycle ; seuls les liens entre fiches sont gardés.
+  const { liens: deduits, ambigus } = await deduireSuccesseurs(db);
+  const connues = new Set([...fiches.map((f) => f.uai), ...(await db.sql<{ uai: string }>("select uai from fermes")).map((r) => r.uai)]);
+  const liens = appliquerManuels(deduits, opts.manuels ?? lireManuels(), connues);
+  verifierCycles(liens);
+  const avecFiche = new Set(fiches.map((f) => f.uai));
+  const gardes = liens.filter((l) => avecFiche.has(l.de) && avecFiche.has(l.vers));
+  attacherSuccesseurs(fiches, gardes);
+  if (opts.rapport) {
+    Object.assign(opts.rapport, {
+      regle1: gardes.filter((l) => l.regle === 1).length, regle2: gardes.filter((l) => l.regle === 2).length,
+      manuels: gardes.filter((l) => l.regle === "manuel").length, ambigus: ambigus.length, sansFiche: liens.length - gardes.length,
+    });
   }
   // Les dénominateurs comptent aussi les établissements fermés : toutes les fiches, actives et disparues.
   const budgets = await calculerBudgets(db, fiches);

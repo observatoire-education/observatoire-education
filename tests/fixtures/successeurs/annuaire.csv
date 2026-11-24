@@ -1,0 +1,8 @@
+identifiant_de_l_etablissement,nom_etablissement,type_etablissement,statut_public_prive,type_contrat_prive,libelle_nature,adresse_1,code_postal,code_commune,nom_commune,code_departement,libelle_departement,code_academie,libelle_academie,latitude,longitude,appartenance_education_prioritaire,segpa,ulis,hebergement,etat,multi_uai,date_ouverture
+0440103C,Lycée polyvalent du Port,Lycée,Public,SANS OBJET,LYCEE POLYVALENT,"1 quai Neuf",44000,44001,Ville 44001,044,Loire-Atlantique,17,Nantes,47.2,-1.55,,0,0,0,OUVERT,0,2020-09-01
+0440112B,Collège Les Quais,Collège,Public,SANS OBJET,COLLEGE,"3, Rue du  PORT",44000,44002,Ville 44002,044,Loire-Atlantique,17,Nantes,47.2,-1.55,,0,0,0,OUVERT,0,1970-09-01
+0440113C,Collège Autre Rue,Collège,Public,SANS OBJET,COLLEGE,"9 rue Lointaine",44000,44002,Ville 44002,044,Loire-Atlantique,17,Nantes,47.2,-1.55,,0,0,0,OUVERT,0,1970-09-01
+0440122B,Collège Nord,Collège,Public,SANS OBJET,COLLEGE,"1 rue Nord",44000,44003,Ville 44003,044,Loire-Atlantique,17,Nantes,47.2,-1.55,,0,0,0,OUVERT,0,2019-09-01
+0440123C,Collège Sud,Collège,Public,SANS OBJET,COLLEGE,"2 rue Sud",44000,44003,Ville 44003,044,Loire-Atlantique,17,Nantes,47.2,-1.55,,0,0,0,OUVERT,0,2019-09-01
+0440132B,Collège Saint-Privé,Collège,Privé,CONTRAT D'ASSOCIATION TOUTES CLASSES,COLLEGE,"1 rue Privée",44000,44004,Ville 44004,044,Loire-Atlantique,17,Nantes,47.2,-1.55,,0,0,0,OUVERT,0,2019-09-01
+0440143C,Collège C,Collège,Public,SANS OBJET,COLLEGE,"1 rue C",44000,44005,Ville 44005,044,Loire-Atlantique,17,Nantes,47.2,-1.55,,0,0,0,OUVERT,0,2019-09-01

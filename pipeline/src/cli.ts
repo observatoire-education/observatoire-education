@@ -5,7 +5,7 @@ import { calculerBudgets, statutsDernierExercice } from "./budget-eleves.ts";
 import { assurerCache, collecter } from "./collect.ts";
 import { ouvrir } from "./db.ts";
 import { type Depot, DepotGithub, DepotLocal } from "./depot.ts";
-import { assemblerFiches, exporter } from "./fiches.ts";
+import { assemblerFiches, exporter, type RapportSuccesseurs } from "./fiches.ts";
 import { OdsClient } from "./ods.ts";
 import { ecrireRegistre, lireRegistre, mettreAJourRegistre } from "./registre.ts";
 import { controlerPonderation, ipsMoyens, verifierPonderation } from "./territoires.ts";
@@ -63,7 +63,8 @@ async function data(): Promise<void> {
   const db = await ouvrir(chemins, { registre });
   // Les dates du registre sont celles des données (collecte de l'annuaire), pas celle du build.
   const dateDonnees = new Date(manifest.derniere("annuaire")!.collecteLe);
-  const fiches = await assemblerFiches(db, manifest, registre, dateDonnees);
+  const successeurs: RapportSuccesseurs = { regle1: 0, regle2: 0, manuels: 0, ambigus: 0, sansFiche: 0 };
+  const fiches = await assemblerFiches(db, manifest, registre, dateDonnees, { rapport: successeurs });
   // Contrôle de la moyenne pondérée (pages communes) : appliquée aux départements, elle doit retrouver la DEPP.
   // En cas d'échec, rien n'est écrit ni publié.
   // n = 0 (jointure IPS cassée, table vide) est aussi un échec.
@@ -88,6 +89,7 @@ async function data(): Promise<void> {
   const [{ n: historiques } = { n: 0 }] = await db.sql<{ n: number }>("select count(*)::integer as n from historiques");
   const [{ n: sansFamille } = { n: 0 }] = await db.sql<{ n: number }>("select count(*)::integer as n from historiques_exclus");
   console.log(`  ${historiques} fiche(s) historique(s) d'établissements fermés, ${sansFamille} fermé(s) cité(s) exclu(s) (famille, secteur ou date inconnus)`);
+  console.log(`  successeurs : ${successeurs.regle1} règle 1, ${successeurs.regle2} règle 2, ${successeurs.manuels} manuels, ${successeurs.ambigus} ambigus, ${successeurs.sansFiche} sans fiche`);
   const [{ n: inconnus } = { n: 0 }] = await db.sql<{ n: number }>("select count(*)::integer as n from budget_inconnus");
   console.log(`  ${inconnus} budget(s) de collectivité non identifiée dans les balances`);
   const budgets = await calculerBudgets(db, fiches);
