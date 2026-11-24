@@ -64,6 +64,7 @@ describe("fiches", () => {
   test("une fiche par établissement du périmètre, triées par UAI", () => {
     expect(fiches.map((f) => f.uai)).toEqual([
       "0440001A", "0440002B", "0440003C", "0440005E", "0440006F", "0440007G", "6200001F",
+      "9711023K", "9750001C", "9770001G",
     ]);
   });
 
@@ -135,7 +136,7 @@ describe("registre des pages", () => {
     expect(apres["0440001A"]).toEqual({ premiere: "2026-01-01", identite: expect.objectContaining({ nom: "Collège Jules-Verne" }) });
     expect(apres["0440002B"]!.premiere).toBe("2026-11-23");
     expect(apres["0440099Z"]).toMatchObject({ disparuLe: "2026-11-23", identite: { nom: "Collège Disparu" } });
-    expect(Object.keys(apres)).toHaveLength(8);
+    expect(Object.keys(apres)).toHaveLength(11);
   });
 
   test("lecture et écriture : une ligne par UAI, triée", async () => {
@@ -144,7 +145,7 @@ describe("registre des pages", () => {
     const r = mettreAJourRegistre({}, fiches, "2026-11-23");
     ecrireRegistre(chemin, r);
     const texte = await Bun.file(chemin).text();
-    expect(texte.split("\n")).toHaveLength(7 + 3); // accolades, 7 entrées, fin de fichier
+    expect(texte.split("\n")).toHaveLength(10 + 3); // accolades, 10 entrées, fin de fichier
     expect(texte.indexOf("0440001A")).toBeLessThan(texte.indexOf("6200001F"));
     expect(lireRegistre(chemin)).toEqual(r);
   });
@@ -159,7 +160,7 @@ describe("export des données du site", () => {
     expect(f.nom).toBe("Collège Jules-Verne");
 
     const index: EntreeIndex[] = await Bun.file(join(sortie, "index.json")).json();
-    expect(index).toHaveLength(7);
+    expect(index).toHaveLength(10);
     expect(index[0]).toEqual({ u: "0440001A", n: "Collège Jules-Verne", c: "Nantes", d: "44", f: "college", s: "public" });
 
     const dep: DonneesDepartement = await Bun.file(join(sortie, "departements", "44.json")).json();
@@ -176,7 +177,7 @@ describe("export des données du site", () => {
     expect(await Bun.file(join(sortie, "departements", "2A.json")).exists()).toBe(true);
 
     const france: DonneesFrance = await Bun.file(join(sortie, "france.json")).json();
-    expect(france.familles.college!.compte).toEqual({ public: 3, prive: 2 });
+    expect(france.familles.college!.compte).toEqual({ public: 6, prive: 2 });
     expect(france.horsContrat).toBe(1);
     expect(france.academies.find((a) => a.aca === "17")!.departements).toEqual([{ dep: "44", libelle: "Loire-Atlantique" }]);
 

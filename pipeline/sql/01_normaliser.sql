@@ -15,8 +15,9 @@ select
   trim(code_postal::varchar) as code_postal,
   trim(code_commune::varchar) as code_commune,
   trim(nom_commune) as commune,
-  dep_canonique(code_departement) as dep,
-  trim(libelle_departement) as dep_libelle,
+  -- Saint-Barthélemy (977) et Saint-Martin (978) : rattachées à la Guadeloupe, comme dans les données de la DEPP
+  case when dep_canonique(code_departement) in ('977', '978') then '971' else dep_canonique(code_departement) end as dep,
+  case when dep_canonique(code_departement) in ('977', '978') then 'Guadeloupe' else trim(libelle_departement) end as dep_libelle,
   trim(code_academie::varchar) as aca,
   trim(libelle_academie) as aca_libelle,
   nombre(latitude) as lat,
@@ -63,7 +64,7 @@ select *,
     -- l'UAI sert à nommer des fichiers et des URL : format strict, 7 chiffres et une lettre
     when not regexp_matches(uai, '^[0-9]{7}[A-Z]$') then 'uai_invalide'
     when etat is distinct from 'OUVERT' then 'ferme'
-    when dep in ('975', '977', '978') or dep like '98%' then 'hors_perimetre_geographique'
+    when dep like '98%' then 'hors_perimetre_geographique'
     when type_etablissement not in ('Collège', 'Lycée', 'EREA') then 'type_hors_perimetre'
     when secteur_brut = 'prive_hors_contrat' then 'prive_hors_contrat'
     when secteur_brut is null then 'secteur_inconnu'

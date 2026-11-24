@@ -89,7 +89,7 @@ describe("tables canoniques", () => {
       "0440004D": "prive_hors_contrat",
       "0440008H": "secteur_inconnu",
       "0440009J": "famille_inconnue",
-      "9770001G": "hors_perimetre_geographique",
+      "9870001A": "hors_perimetre_geographique",
       "../X/0440010K": "uai_invalide", // l'UAI sert à nommer des fichiers et des URL : format strict
     });
   });
@@ -98,8 +98,20 @@ describe("tables canoniques", () => {
     const r = await db.sql<{ uai: string; dep: string }>("select uai, dep from etablissements order by uai");
     expect(r.map((x) => x.uai)).toEqual([
       "0440001A", "0440002B", "0440003C", "0440005E", "0440006F", "0440007G", "6200001F",
+      "9711023K", "9750001C", "9770001G",
     ]);
     expect(r.find((x) => x.uai === "6200001F")!.dep).toBe("2A");
+  });
+
+  test("Saint-Barthélemy et Saint-Martin avec la Guadeloupe, Saint-Pierre-et-Miquelon à part", async () => {
+    const lignes = await db.sql(
+      "select uai, dep, dep_libelle, aca, code_commune from etablissements where uai in ('9770001G', '9711023K', '9750001C') order by uai",
+    );
+    expect(lignes).toEqual([
+      { uai: "9711023K", dep: "971", dep_libelle: "Guadeloupe", aca: "32", code_commune: "97801" },
+      { uai: "9750001C", dep: "975", dep_libelle: "Saint-Pierre-et-Miquelon", aca: "44", code_commune: "97502" },
+      { uai: "9770001G", dep: "971", dep_libelle: "Guadeloupe", aca: "32", code_commune: "97701" },
+    ]);
   });
 
   test("identité d'un collège public", async () => {

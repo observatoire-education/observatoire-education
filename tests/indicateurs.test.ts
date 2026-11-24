@@ -90,7 +90,7 @@ describe("indicateurs situés", () => {
 
   test("chaque établissement a les seize indicateurs, dans l'ordre", async () => {
     const tous = await calculerIndicateurs(await dbTest());
-    expect(tous.size).toBe(7);
+    expect(tous.size).toBe(10);
     for (const liste of tous.values()) expect(liste.map((i) => i.code)).toEqual([...CODES_INDICATEURS]);
   });
 });
