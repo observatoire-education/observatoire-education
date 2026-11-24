@@ -93,6 +93,22 @@ describe("écoles fermées", () => {
     ]);
   });
 
+  test("école fermée citée par la seule éducation prioritaire : fiche, secteur d'après ecoles_ep", async () => {
+    const base = await dbTest();
+    expect(await base.sql("select secteur from fermes where uai = '0440110M'")).toEqual([{ secteur: "public" }]);
+    const fiches = await assemblerFiches(base, manifestTest(dossier), {}, maintenant);
+    expect(fiches.find((x) => x.uai === "0440110M")).toMatchObject({ famille: "maternelle", secteur: "public", fermeLe: "2013-07-05" });
+  });
+
+  test("ecoles_ignorees compte toute UAI sans fiche, fermée ou non", async () => {
+    // Dans ce scénario, 0440107G est fermée mais hors périmètre (école de plein air) : sans fiche, elle est comptée.
+    expect(await db.sql("select uai from fiches_etab where uai = '0440107G'")).toEqual([]);
+    expect(await db.sql(`select
+      (select n from ecoles_ignorees where source = 'effectifs_ecoles') as n,
+      (select count(distinct (uai, rentree))::integer from ecoles_effectifs_brut where uai not in (select uai from fiches_etab)) as sans_fiche,
+      (select count(*)::integer from ecoles_effectifs_brut where uai = '0440107G') as fermee`)).toEqual([{ n: 55, sans_fiche: 55, fermee: 5 }]);
+  });
+
   test("une école fermée que rien ne cite n'a pas de fiche", async () => {
     const fiches = await assemblerFiches(db, manifestTest(dossier), {}, maintenant);
     expect(fiches.map((x) => x.uai)).not.toContain("0440161A");

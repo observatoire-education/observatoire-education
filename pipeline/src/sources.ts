@@ -339,7 +339,7 @@ export const SOURCES: Record<SourceId, Source> = {
     "ecoles_ep",
     "fr-en-ecoles-ep",
     "Écoles éducation prioritaire",
-    ["rs", "uai", "appartep", "nbeleves", "nbclasses"],
+    ["rs", "uai", "appartep", "nbeleves", "nbclasses", "secteurn"],
     false,
     parUai("rs"),
   ),

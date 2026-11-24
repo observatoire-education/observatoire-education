@@ -18,8 +18,8 @@ select upper(trim(uai)) as uai, rentree(annee) as rentree, trim(type_classe) as 
 from src_classes_ecoles
 where uai is not null and rentree(annee) is not null and nullif(trim(type_classe), '') is not null;
 
--- Lignes d'UAI sans fiche, par source (une par UAI et rentrée). Les écoles fermées de la liste des fermés
--- n'y sont pas : elles relèvent des fiches historiques et de leurs exclusions.
+-- Lignes d'UAI sans aucune fiche, par source (une par UAI et rentrée). Une école fermée citée a une fiche
+-- historique ; celle qui n'en a pas (hors périmètre, sans secteur) y est comptée comme les UAI inconnues.
 create or replace table ecoles_ignorees as
 select source, count(distinct (uai, rentree))::integer as n
 from (
@@ -28,7 +28,6 @@ from (
   union all select 'ecoles_ep', uai, rentree from ecoles_ep_brut
 ) b
 where not exists (select 1 from fiches_etab f where f.uai = b.uai)
-  and not exists (select 1 from fermes x where x.uai = b.uai)
 group by source
 order by source;
 

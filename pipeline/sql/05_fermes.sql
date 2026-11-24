@@ -16,7 +16,7 @@ group by uai;
 
 -- Secteur déclaré par les sources qui citent l'établissement (la liste des fermés ne le donne pas : « - »).
 -- Le millésime le plus récent l'emporte. Valeurs : public / privé sous contrat (en capitales dans les effectifs
--- des écoles), ou PU / PR pour l'IVAC.
+-- des écoles et l'éducation prioritaire, qui ne publie que PUBLIC), ou PU / PR pour l'IVAC.
 create or replace table secteur_cites as
 select uai, arg_max(secteur, millesime) as secteur
 from (
@@ -34,6 +34,8 @@ from (
     union all select numero_ecole, rentree_scolaire, secteur from src_effectifs_ecoles
     union all select uai, rentree_scolaire, secteur from src_ips_ecoles_2016
     union all select uai, rentree_scolaire, secteur from src_ips_ecoles
+    union all select uai, annee, libelle_secteur from src_classes_ecoles
+    union all select uai, rs, secteurn from src_ecoles_ep
   )
   union all
   select upper(trim(uai)), session(session),
@@ -84,7 +86,8 @@ where regexp_matches(uai, '^[0-9]{7}[A-Z]$')
 qualify row_number() over (partition by uai order by date_fermeture desc nulls last) = 1
 order by uai;
 
--- UAI citées par une source historique (IPS, valeur ajoutée des collèges, résultats des lycées, effectifs des écoles).
+-- UAI citées par une source chiffrée historique (IPS, valeur ajoutée des collèges, résultats des lycées ;
+-- pour les écoles : effectifs, typologie des classes, éducation prioritaire).
 create or replace table cites as
 select distinct uai from (
   select upper(trim(uai)) as uai from src_ips_colleges_2016
@@ -99,6 +102,8 @@ select distinct uai from (
   union all select upper(trim(numero_ecole)) from src_effectifs_ecoles
   union all select upper(trim(uai)) from src_ips_ecoles_2016
   union all select upper(trim(uai)) from src_ips_ecoles
+  union all select upper(trim(uai)) from src_classes_ecoles
+  union all select upper(trim(uai)) from src_ecoles_ep
 )
 where uai is not null
 order by uai;
