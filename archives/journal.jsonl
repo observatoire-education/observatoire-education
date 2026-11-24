@@ -18,3 +18,16 @@
 {"date":"2026-11-24T12:18:03.613Z","source":"budget_2023","action":"telecharge","modified":"2024-12-06T13:57:17+00:00","sha256":"2a8b70baa07a20caa069c62b3b3d9229df07c8c2d91da876f911a823d45e71bc","lignes":7029}
 {"date":"2026-11-24T12:18:03.613Z","source":"budget_2024","action":"telecharge","modified":"2025-12-09T16:38:00+00:00","sha256":"5fae262873ebc258c2b3fdef536511f04963259865f65ea1a309580b5526ff4a","lignes":7193}
 {"date":"2026-11-24T12:18:03.613Z","source":"budget_2025","action":"telecharge","modified":"2026-07-13T16:06:26+00:00","sha256":"3de38f7411d758473f7b7012078d222f0c30ed148513e529f52c7a782fc114dd","lignes":7294}
+{"date":"2026-11-24T12:30:09.297Z","source":"annuaire","action":"inchange","modified":"2026-11-24T06:01:26.405000+00:00","sha256":"d249fc70d62f69f78ab63749ec03dd6b4b21a28115a3eea54ac3bcd6e838919a","lignes":14905,"motif":"contenu identique"}
+{"date":"2026-11-24T12:30:09.297Z","source":"ips_colleges","action":"inchange","modified":"2026-09-01T09:31:02.578000+00:00"}
+{"date":"2026-11-24T12:30:09.297Z","source":"ips_lycees","action":"inchange","modified":"2026-06-10T08:20:49.021000+00:00"}
+{"date":"2026-11-24T12:30:09.297Z","source":"effectifs_colleges","action":"inchange","modified":"2026-07-27T10:24:40.709000+00:00"}
+{"date":"2026-11-24T12:30:09.297Z","source":"effectifs_lycees_gt","action":"inchange","modified":"2026-07-27T08:15:52.712000+00:00"}
+{"date":"2026-11-24T12:30:09.297Z","source":"effectifs_lycees_pro","action":"inchange","modified":"2026-07-27T10:21:28.880000+00:00"}
+{"date":"2026-11-24T12:30:09.297Z","source":"personnels","action":"inchange","modified":"2026-10-26T12:56:29.896000+00:00"}
+{"date":"2026-11-24T12:30:09.297Z","source":"budget_2020","action":"inchange","modified":"2021-12-17T08:18:43.488000+00:00"}
+{"date":"2026-11-24T12:30:09.297Z","source":"budget_2021","action":"inchange","modified":"2022-12-22T16:43:32+00:00"}
+{"date":"2026-11-24T12:30:09.297Z","source":"budget_2022","action":"inchange","modified":"2023-12-07T12:04:35+00:00"}
+{"date":"2026-11-24T12:30:09.297Z","source":"budget_2023","action":"inchange","modified":"2024-12-06T13:57:17+00:00"}
+{"date":"2026-11-24T12:30:09.297Z","source":"budget_2024","action":"inchange","modified":"2025-12-09T16:38:00+00:00"}
+{"date":"2026-11-24T12:30:09.297Z","source":"budget_2025","action":"inchange","modified":"2026-07-13T16:06:26+00:00"}
