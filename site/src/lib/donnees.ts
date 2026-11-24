@@ -26,8 +26,7 @@ const codes = (dossier: string): string[] =>
 /** Données d'un territoire ; celles des communes (un millier) ne sont pas gardées en mémoire. */
 export const lireTerritoire = (ref: Pick<RefTerritoire, "niveau" | "code">): DonneesTerritoire =>
   ref.niveau === "france"
-    ? // `academies` de la France a une forme propre (académies et leurs départements) ; la page ne lit que les champs communs.
-      (lireFrance() as unknown as DonneesTerritoire)
+    ? lireFrance()
     : lire<DonneesTerritoire>(`${DOSSIERS[ref.niveau]}/${ref.code}.json`, ref.niveau !== "commune");
 export const departementsDisponibles = (): string[] => codes("departements");
 export const academiesDisponibles = (): string[] => codes("academies");

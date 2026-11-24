@@ -49,6 +49,10 @@ describe("collectivités", () => {
     expect(libelleCollectivite("ctu-guyane")).toBe("Collectivité territoriale de Guyane");
     expect(libelleCollectivite("dep-976")).toBe("Département de Mayotte");
   });
+  test("collectivité inconnue : erreur, pas l'identifiant brut", () => {
+    expect(() => libelleCollectivite("dep-987")).toThrow("collectivité inconnue");
+    expect(() => libelleCollectivite("xx")).toThrow();
+  });
   test("chemin d'une page région", () => {
     expect(cheminTerritoire({ niveau: "region", code: "52", libelle: "Pays de la Loire" })).toBe("/region/52/");
   });

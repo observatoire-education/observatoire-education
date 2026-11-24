@@ -1,6 +1,7 @@
 // Point d'entrée : `bun pipeline/src/cli.ts collect | data`.
 import { readFileSync } from "node:fs";
 import { Manifest } from "./archive.ts";
+import { calculerBudgets, statutsDernierExercice } from "./budget-eleves.ts";
 import { assurerCache, collecter } from "./collect.ts";
 import { ouvrir } from "./db.ts";
 import { type Depot, DepotGithub, DepotLocal } from "./depot.ts";
@@ -86,6 +87,12 @@ async function data(): Promise<void> {
   )) console.log(`  exclus ${motif.padEnd(28)} ${n}`);
   const [{ n: inconnus } = { n: 0 }] = await db.sql<{ n: number }>("select count(*)::integer as n from budget_inconnus");
   console.log(`  ${inconnus} budget(s) de collectivité non identifiée dans les balances`);
+  const budgets = await calculerBudgets(db, fiches);
+  const exercice = budgets.france[0]?.exercices.at(-1)?.exercice;
+  console.log(`  ${budgets.collectivites.size} collectivités ; fonctionnement hors personnel du public, exercice ${exercice}, par statut :`);
+  for (const [niveau, statuts] of Object.entries(statutsDernierExercice(budgets))) {
+    console.log(`    ${niveau.padEnd(9)} ${Object.entries(statuts).map(([s, n]) => `${s} ${n}`).join(", ") || "aucune"}`);
+  }
   console.log(`données écrites dans ${CHEMINS.donnees}/ en ${Math.round(performance.now() - debut)} ms`);
   db.fermer();
 }

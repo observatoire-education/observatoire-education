@@ -146,5 +146,11 @@ export interface Fiche extends Identite {
   voisins: Voisin[] | null;
   sources: SourceRef[];
   /** Moyens de la collectivité ; seul le niveau de la famille est présent, null = collectivité non identifiée. */
-  budget: { colleges?: BudgetCollectivite | null; lycees?: BudgetCollectivite | null; france: MoyennesBudgetFrance[] };
+  budget: {
+    colleges?: BudgetCollectivite | null;
+    lycees?: BudgetCollectivite | null;
+    france: MoyennesBudgetFrance[];
+    /** Pourquoi la collectivité est null : aucune (Mayotte) ou non identifiée (Saint-Martin, Saint-Barthélemy, Saint-Pierre-et-Miquelon). */
+    motif?: "aucune_collectivite" | "collectivite_non_identifiee";
+  };
 }

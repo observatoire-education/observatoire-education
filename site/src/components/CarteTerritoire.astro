@@ -22,7 +22,7 @@ const VUES: { vue: VueCarte; id: string; libelle: string }[] = [
 let points: { svg: string; absents: string[] } | null = null;
 let departements: { vue: VueCarte; id: string; libelle: string; metropole: string; encarts: { code: string; svg: string }[] }[] = [];
 let absents: string[] = [];
-const libellesDep = new Map(lireFrance().academies.flatMap((a) => a.departements.map((x) => [x.dep, x.libelle] as const)));
+const libellesDep = new Map(lireFrance().academiesEtDepartements.flatMap((a) => a.departements.map((x) => [x.dep, x.libelle] as const)));
 
 if (carte.genre === "points") {
   if (carte.points.length) {

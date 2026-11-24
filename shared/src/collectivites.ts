@@ -121,5 +121,5 @@ export function libelleCollectivite(id: IdCollectivite): string {
     const complement = DEPARTEMENTS[id.slice(4)];
     if (complement) return `Département ${complement}`;
   }
-  return id;
+  throw new Error(`collectivité inconnue : ${id}`);
 }

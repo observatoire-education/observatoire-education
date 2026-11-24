@@ -1,6 +1,6 @@
 // Montants par élève des collectivités et moyennes France.
 // Un exercice N est divisé par les élèves de la rentrée N−1 (DEPP) ; fiches disparues comprises.
-import { collectiviteDe, libelleCollectivite, type IdCollectivite, type NiveauBudget } from "@obs/shared/collectivites";
+import { collectiviteDe, libelleCollectivite, motifSansCollectivite, type IdCollectivite, type NiveauBudget } from "@obs/shared/collectivites";
 import type {
   BudgetCollectivite, ExerciceBudget, MontantBudget, MoyenneBudget, MoyennesBudgetFrance, ParSecteur, StatutBudget,
 } from "@obs/shared/donnees";
@@ -11,7 +11,7 @@ import type { Db } from "./db.ts";
 const NIVEAUX: NiveauBudget[] = ["colleges", "lycees"];
 
 /** Niveau de budget d'une famille d'établissement : collèges, ou lycées (legt, lpo, lp, erea). */
-function niveauDe(famille: Fiche["famille"]): NiveauBudget {
+export function niveauDe(famille: Fiche["famille"]): NiveauBudget {
   return famille === "college" ? "colleges" : "lycees";
 }
 
@@ -176,4 +176,35 @@ export async function calculerBudgets(
     };
   });
   return { collectivites, france };
+}
+
+export interface Budgets {
+  collectivites: Map<string, BudgetCollectivite>;
+  france: MoyennesBudgetFrance[];
+}
+
+/**
+ * Bloc budget d'une fiche : la collectivité du niveau de sa famille et les moyennes France de ce niveau.
+ * Collectivité null (avec son motif) si aucune n'est rattachée ou si elle n'a aucun élève dans les fiches.
+ */
+export function budgetDeFiche(f: Pick<Fiche, "famille" | "dep" | "codeCommune">, budgets: Budgets): Fiche["budget"] {
+  const niveau = niveauDe(f.famille);
+  const id = collectiviteDe(niveau, f.dep, f.codeCommune);
+  const france = budgets.france.filter((m) => m.niveau === niveau);
+  const collectivite = id ? (budgets.collectivites.get(`${niveau}|${id}`) ?? null) : null;
+  const cle = niveau === "colleges" ? "colleges" : "lycees";
+  return collectivite
+    ? { [cle]: collectivite, france }
+    : { [cle]: null, france, motif: id ? "collectivite_non_identifiee" : motifSansCollectivite(f.dep, f.codeCommune) };
+}
+
+/** Nombre de collectivités par statut du fonctionnement hors personnel du public, au dernier exercice, par niveau. */
+export function statutsDernierExercice(budgets: Budgets): Record<NiveauBudget, Record<string, number>> {
+  const r: Record<NiveauBudget, Record<string, number>> = { colleges: {}, lycees: {} };
+  for (const c of budgets.collectivites.values()) {
+    const e = c.exercices.at(-1);
+    const statut = e?.public.horsPersonnel.statut ?? "non_disponible";
+    r[c.niveau][statut] = (r[c.niveau][statut] ?? 0) + 1;
+  }
+  return r;
 }

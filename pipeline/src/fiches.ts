@@ -7,6 +7,7 @@ import type {
 } from "@obs/shared/types";
 import type { Manifest } from "./archive.ts";
 import type { Db } from "./db.ts";
+import { budgetDeFiche, calculerBudgets } from "./budget-eleves.ts";
 import { calculerEleves } from "./eleves.ts";
 import { calculerIndicateurs, calculerRepartitions } from "./indicateurs.ts";
 import type { Registre } from "./registre.ts";
@@ -169,7 +170,7 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
     return {
       uai, ...identite, disparuLe,
       indicateurs: ind, repartitions: rep, eleves: el,
-      budget: { france: [] }, // provisoire : calculé à la tâche 7
+      budget: { france: [] }, // remplacé plus bas, quand toutes les fiches (disparues comprises) sont connues
       voisins: disparuLe === null ? (voisins.get(uai) ?? null) : null,
       sources: sourcesUtilisees(manifest, ind, rep, el),
     };
@@ -181,6 +182,9 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
     if (!entree) continue;
     fiches.push(fiche(uai, entree.identite, entree.disparuLe ?? aujourdhui));
   }
+  // Les dénominateurs comptent aussi les établissements fermés : toutes les fiches, actives et disparues.
+  const budgets = await calculerBudgets(db, fiches);
+  for (const f of fiches) f.budget = budgetDeFiche(f, budgets);
   return fiches.sort((a, b) => a.uai.localeCompare(b.uai));
 }
 
@@ -199,7 +203,7 @@ export async function exporter(fiches: Fiche[], db: Db, manifest: Manifest, sort
 
   const actives = fiches.filter((f) => f.disparuLe === null);
   const [{ r: rentree } = { r: null }] = await db.sql<{ r: number | null }>("select max(rentree) as r from effectifs");
-  await exporterTerritoires(actives, db, sortie, rentree);
+  await exporterTerritoires(actives, db, sortie, rentree, await calculerBudgets(db, fiches));
 
   const sources: Record<string, DonneesSource> = Object.fromEntries(
     Object.values(SOURCES).map((s) => [s.id, {

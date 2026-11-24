@@ -4,9 +4,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { DonneesFrance, DonneesSource, DonneesTerritoire, EntreeIndex } from "@obs/shared/donnees";
 import type { Fiche } from "@obs/shared/types";
+import { budgetDeFiche } from "../pipeline/src/budget-eleves.ts";
 import { assemblerFiches, calculerVoisins, distanceKm, exporter } from "../pipeline/src/fiches.ts";
 import { exporterTerritoires } from "../pipeline/src/territoires.ts";
 import { ecrireRegistre, lireRegistre, mettreAJourRegistre, type Registre } from "../pipeline/src/registre.ts";
+import type { BudgetCollectivite } from "@obs/shared/donnees";
+import { calculerBudgets } from "../pipeline/src/budget-eleves.ts";
 import { dbAvecRegistre, dbTest, identiteTest, manifestTest } from "./aide.ts";
 
 const dossiers: string[] = [];
@@ -167,8 +170,9 @@ describe("export des données du site", () => {
     const dep: DonneesTerritoire = await Bun.file(join(sortie, "departements", "44.json")).json();
     expect(dep).toMatchObject({ horsContrat: 1, rentree: 2025 });
     expect(dep.ref).toEqual({ niveau: "departement", code: "44", libelle: "Loire-Atlantique" });
-    expect(dep.parents.map((p) => p.niveau)).toEqual(["france", "academie"]);
-    expect(dep.parents[1]).toEqual({ niveau: "academie", code: "17", libelle: "Nantes" });
+    expect(dep.parents.map((p) => p.niveau)).toEqual(["france", "region", "academie"]);
+    expect(dep.parents[1]).toEqual({ niveau: "region", code: "52", libelle: "Pays de la Loire" });
+    expect(dep.parents[2]).toEqual({ niveau: "academie", code: "17", libelle: "Nantes" });
     expect(dep.communes).toContainEqual({ niveau: "commune", code: "44109", libelle: "Nantes" });
     expect(dep.enfants).toEqual([]);
     expect(dep.carte.genre).toBe("points");
@@ -191,7 +195,8 @@ describe("export des données du site", () => {
 
     const commune: DonneesTerritoire = await Bun.file(join(sortie, "communes", "44109.json")).json();
     expect(commune.ref).toEqual({ niveau: "commune", code: "44109", libelle: "Nantes" });
-    expect(commune.parents.map((p) => `${p.niveau} ${p.code}`)).toEqual(["france FR", "academie 17", "departement 44"]);
+    expect(commune.parents.map((p) => `${p.niveau} ${p.code}`)).toEqual(["france FR", "region 52", "academie 17", "departement 44"]);
+    expect(commune.budget).toEqual({ collectivites: [], france: [] });
     const colCommune = commune.familles.college!;
     expect(colCommune.ipsMoyen.calculee).toBe(true);
     const avecIpsEtEleves = (secteur: string) =>
@@ -207,7 +212,7 @@ describe("export des données du site", () => {
 
     const aca: DonneesTerritoire = await Bun.file(join(sortie, "academies", "17.json")).json();
     expect(aca.ref).toEqual({ niveau: "academie", code: "17", libelle: "Nantes" });
-    expect(aca.parents.map((p) => p.niveau)).toEqual(["france"]);
+    expect(aca.parents.map((p) => `${p.niveau} ${p.code}`)).toEqual(["france FR", "region 52"]);
     const ligne44 = aca.enfants.find((e) => e.ref.niveau === "departement" && e.ref.code === "44")!;
     expect(ligne44.ref.libelle).toBe("Loire-Atlantique");
     expect(ligne44.ecartIpsColleges).toBe(15); // 121,4 − 106,4
@@ -223,7 +228,7 @@ describe("export des données du site", () => {
     expect(france.familles.college!.ipsMoyen.calculee).toBe(false);
     expect(france.familles.college!.liste).toEqual([]);
     expect(france.horsContrat).toBe(1);
-    expect(france.academies.find((a) => a.aca === "17")!.departements).toEqual([{ dep: "44", libelle: "Loire-Atlantique" }]);
+    expect(france.academiesEtDepartements.find((a) => a.aca === "17")!.departements).toEqual([{ dep: "44", libelle: "Loire-Atlantique" }]);
     expect(france.carte.genre).toBe("departements");
 
     const sources: Record<string, DonneesSource> = await Bun.file(join(sortie, "sources.json")).json();
@@ -251,4 +256,135 @@ describe("export des données du site", () => {
     const dep: DonneesTerritoire = await Bun.file(join(sortie, "departements", "44.json")).json();
     expect(dep.communes).toEqual([]);
   });
+});
+
+const avecEleves = (f: Fiche): Fiche => ({
+  ...f,
+  indicateurs: f.indicateurs.map((i) =>
+    i.code === "eleves" && ["0440001A", "0440003C"].includes(f.uai)
+      ? { ...i, historique: [[2022, 500], [2023, 600], ...i.historique] }
+      : i),
+});
+const budgets = await calculerBudgets(db, fiches.map(avecEleves));
+
+describe("budget des fiches et des territoires", () => {
+  // Les fixtures n'ont pas d'élèves aux rentrées 2022 et 2023 : on en ajoute à deux fiches pour que
+  // les exercices 2023 et 2024 des balances de test aient des dénominateurs.
+  const fichesBudget = fiches.map(avecEleves);
+  const budgetDe = (uai: string) => budgetDeFiche(fichesBudget.find((f) => f.uai === uai)!, budgets);
+  const sortieBudget = async () => {
+    const sortie = join(await temporaire(), "data");
+    await exporterTerritoires(fichesBudget.filter((f) => f.disparuLe === null), db, sortie, 2025, budgets);
+    return sortie;
+  };
+  const lire = async <T>(sortie: string, ...chemin: string[]): Promise<T> => Bun.file(join(sortie, ...chemin)).json();
+
+  test("assemblerFiches attache à chaque fiche le budget de sa collectivité", async () => {
+    const attendu = await calculerBudgets(db, fiches);
+    for (const f of fiches) expect(f.budget).toEqual(budgetDeFiche(f, attendu));
+  });
+
+  test("fiche collège de Loire-Atlantique : budget dep-44, pas de lycées", () => {
+    const b = budgetDe("0440001A");
+    expect(b.colleges?.id).toBe("dep-44");
+    expect(b.lycees).toBeUndefined();
+    expect(b.motif).toBeUndefined();
+    expect(b.france.map((m) => m.niveau)).toEqual(["colleges"]);
+  });
+
+  test("fiche de lycée : collectivité de la région, moyennes des lycées", () => {
+    const b = budgetDe("0440003C");
+    expect(b.colleges).toBeUndefined();
+    expect(b.lycees?.id).toBe("reg-52");
+    expect(b.france.map((m) => m.niveau)).toEqual(["lycees"]);
+  });
+
+  test("Saint-Pierre-et-Miquelon : budget null, collectivité non identifiée", () => {
+    expect(fiche("9750001C").budget).toMatchObject({ colleges: null, motif: "collectivite_non_identifiee" });
+  });
+
+  test("Mayotte : budget null, aucune collectivité", () => {
+    const f = { famille: "college", dep: "976", codeCommune: "97611" } as const;
+    expect(budgetDeFiche(f, { collectivites: new Map(), france: [] })).toEqual({ colleges: null, france: [], motif: "aucune_collectivite" });
+  });
+
+  test("page région : parents [France], IPS moyens calculés, départements et académies, budget de la région", async () => {
+    const sortie = await sortieBudget();
+    const reg: DonneesTerritoire = await lire(sortie, "regions", "52.json");
+    expect(reg.ref).toEqual({ niveau: "region", code: "52", libelle: "Pays de la Loire" });
+    expect(reg.parents).toEqual([{ niveau: "france", code: "FR", libelle: "France" }]);
+    expect(reg.familles.college!.ipsMoyen.calculee).toBe(true);
+    expect(reg.familles.college!.liste).toEqual([]);
+    for (const m of reg.familles.college!.moyennes) for (const c of m.comparaisons) expect(c.niveau).toBe("france");
+    expect(reg.enfants.map((e) => `${e.ref.niveau} ${e.ref.code}`)).toEqual(["departement 44"]);
+    expect(reg.academies).toEqual([{ niveau: "academie", code: "17", libelle: "Nantes" }]);
+    expect(reg.carte.genre).toBe("departements");
+    expect(reg.budget.collectivites.map((c) => `${c.niveau}|${c.id}`)).toEqual(["colleges|dep-44", "lycees|reg-52"]);
+    expect(reg.budget.france.map((m) => m.niveau)).toEqual(["colleges", "lycees"]);
+    const regions = await readdir(join(sortie, "regions"));
+    expect(regions).not.toContain("975.json");
+    expect(regions.sort()).toEqual(["01.json", "11.json", "52.json", "94.json"]);
+  });
+
+  test("fil d'Ariane des données : département → [France, région, académie] ; 975 → [France, académie]", async () => {
+    const sortie = await sortieBudget();
+    const dep44: DonneesTerritoire = await lire(sortie, "departements", "44.json");
+    expect(dep44.parents.map((p) => p.niveau)).toEqual(["france", "region", "academie"]);
+    const dep975: DonneesTerritoire = await lire(sortie, "departements", "975.json");
+    expect(dep975.parents.map((p) => p.niveau)).toEqual(["france", "academie"]);
+    expect(dep975.budget.collectivites).toEqual([]);
+    const aca975: DonneesTerritoire = await lire(sortie, "academies", `${fiche("9750001C").aca}.json`);
+    expect(aca975.parents.map((p) => p.niveau)).toEqual(["france"]);
+    expect(dep44.budget.collectivites.map((c) => c.id)).toEqual(["dep-44", "reg-52"]);
+  });
+
+  test("France : toutes les collectivités, régions, carte du budget par collectivité", async () => {
+    const sortie = await sortieBudget();
+    const france: DonneesFrance = await lire(sortie, "france.json");
+    expect(france.regions.map((r) => r.code).sort()).toEqual(["01", "11", "52", "94"]);
+    expect(france.regions.every((r) => r.niveau === "region")).toBe(true);
+    expect(france.budget.collectivites.map((c) => `${c.niveau}|${c.id}`)).toContain("colleges|dep-44");
+    expect(france.carteBudget.genre).toBe("collectivites");
+    const dep44 = france.carteBudget.valeurs.find((v) => v.id === "dep-44")!;
+    expect(dep44.budget).not.toBeNull();
+    expect(dep44.deps).toEqual(["44"]);
+    expect(france.carteBudget.valeurs.every((v) => !v.id.startsWith("reg-"))).toBe(true);
+  });
+
+  test("département du Rhône : deux collectivités des collèges ; la carte les couvre toutes les deux", async () => {
+    const modele = fiche("0440001A");
+    const rhone = [
+      { ...modele, uai: "0690001A", dep: "69", depLibelle: "Rhône", codeCommune: "69385" }, // Lyon 5e : Métropole
+      { ...modele, uai: "0690002B", dep: "69", depLibelle: "Rhône", codeCommune: "69245" }, // Tarare : Département
+    ];
+    const bud = (id: string, montant: number): BudgetCollectivite => ({
+      id, libelle: id, niveau: "colleges", mentions: [], citesScolaires: undefined,
+      exercices: [{
+        exercice: 2024, rentree: 2023, source: "budget_2024", eleves: { public: 10, prive: null }, citesScolaires: null,
+        public: {
+          horsPersonnel: { total: montant * 10, parEleve: montant, statut: "ok" },
+          avecPersonnel: { total: null, parEleve: null, statut: "personnel_non_rattache" },
+          investissement: { total: null, parEleve: null, statut: "non_disponible" },
+        },
+        prive: {
+          fonctionnement: { total: null, parEleve: null, statut: "aucun_eleve_prive" },
+          investissement: { total: null, parEleve: null, statut: "aucun_eleve_prive" },
+        },
+      }],
+    }) as unknown as BudgetCollectivite;
+    const budgets = {
+      collectivites: new Map([["colleges|ml-lyon", bud("ml-lyon", 500)], ["colleges|dep-69", bud("dep-69", 300)]]),
+      france: [],
+    };
+    const sortie = join(await temporaire(), "data");
+    await exporterTerritoires(rhone, db, sortie, 2025, budgets);
+    const dep: DonneesTerritoire = await lire(sortie, "departements", "69.json");
+    expect(dep.budget.collectivites.map((c) => c.id)).toEqual(["dep-69", "ml-lyon"]);
+    const france: DonneesFrance = await lire(sortie, "france.json");
+    expect(france.carteBudget.valeurs).toEqual([
+      { id: "dep-69", deps: ["69"], budget: 300 },
+      { id: "ml-lyon", deps: ["69"], budget: 500 },
+    ]);
+  });
+
 });

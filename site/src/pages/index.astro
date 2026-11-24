@@ -21,9 +21,9 @@ const elevesTotal = eleves("public") + eleves("prive");
 const colleges = compte(["college"]);
 const lycees = compte(["legt", "lpo", "lp"]);
 const erea = compte(["erea"]);
-const departements = france.academies.flatMap((a) => a.departements.map((d) => ({ d: d.dep, l: d.libelle, a: academie(a.libelle) })));
+const departements = france.academiesEtDepartements.flatMap((a) => a.departements.map((d) => ({ d: d.dep, l: d.libelle, a: academie(a.libelle) })));
 // Communes qui ont une page (seuil décidé par le pipeline), repérées par leur département.
-const communes = france.academies.flatMap((a) => a.departements.flatMap((d) =>
+const communes = france.academiesEtDepartements.flatMap((a) => a.departements.flatMap((d) =>
   lireTerritoire({ niveau: "departement", code: d.dep }).communes
     .filter((c) => communesDisponibles().has(c.code))
     .map((c) => ({ i: c.code, l: c.libelle, d: d.dep }))));
@@ -57,7 +57,7 @@ const derniereCollecte = sources[0]?.actuelle?.collecteLe;
     <h2>Parcourir par territoire</h2>
     <p style="margin:0 0 10px"><a href="/france/">France entière</a></p>
     <div class="acad">
-      {france.academies.map((a) => (
+      {france.academiesEtDepartements.map((a) => (
         <div><b><a href={`/academie/${a.aca}/`}>{a.libelle}</a></b>{a.departements.map((d) => <a href={`/departement/${d.dep}/`}>{d.dep} {d.libelle}</a>)}</div>
       ))}
     </div>

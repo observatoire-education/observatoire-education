@@ -118,9 +118,12 @@ export interface DonneesTerritoire {
   academies?: RefTerritoire[];
 }
 
-/** Données de la France : celles d'un territoire, plus la liste des académies et de leurs départements. */
-export interface DonneesFrance extends Omit<DonneesTerritoire, "academies"> {
-  academies: { aca: string; libelle: string; departements: { dep: string; libelle: string }[] }[];
+/** Données de la France : celles d'un territoire, plus les académies et leurs départements, les régions et la carte du budget. */
+export interface DonneesFrance extends DonneesTerritoire {
+  academiesEtDepartements: { aca: string; libelle: string; departements: { dep: string; libelle: string }[] }[];
+  regions: RefTerritoire[];
+  /** Vue « budget » de la carte : fonctionnement hors personnel par élève du public des collèges, par collectivité. */
+  carteBudget: Extract<CarteDonnees, { genre: "collectivites" }>;
 }
 
 /** Une version archivée d'une source (GitHub Release). */

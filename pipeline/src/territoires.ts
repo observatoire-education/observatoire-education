@@ -2,12 +2,14 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import type {
-  CarteDonnees, DonneesFrance, DonneesTerritoire, IpsMoyens, LigneListe, LigneTerritoire, MoyenneTerritoire,
+  BudgetCollectivite, BudgetTerritoire, CarteDonnees, DonneesFrance, DonneesTerritoire, IpsMoyens, LigneListe, LigneTerritoire, MoyenneTerritoire,
   ParSecteur, RefTerritoire, SyntheseFamille, ValeurCarte,
 } from "@obs/shared/donnees";
+import { collectiviteDe, type NiveauBudget, REGIONS, regionDe } from "@obs/shared/collectivites";
 import { CODES_INDICATEURS, INDICATEURS } from "@obs/shared/libelles";
 import { communeDeRattachement, LIBELLES_PLM, SEUIL_COMMUNE } from "@obs/shared/territoires";
 import type { Famille, Fiche, Indicateur, Mesure, Niveau, Secteur } from "@obs/shared/types";
+import type { Budgets } from "./budget-eleves.ts";
 import type { Db } from "./db.ts";
 
 // --- Aides partagées avec fiches.ts ---
@@ -187,6 +189,7 @@ const FRANCE: RefTerritoire = { niveau: "france", code: "FR", libelle: "France" 
 const SECTEURS: Secteur[] = ["public", "prive_sous_contrat"];
 const parLibelle = (a: { libelle: string }, b: { libelle: string }) => a.libelle.localeCompare(b.libelle, "fr");
 const refAcademie = (f: Fiche): RefTerritoire => ({ niveau: "academie", code: f.aca, libelle: f.acaLibelle });
+const refRegion = (code: string): RefTerritoire => ({ niveau: "region", code, libelle: REGIONS.find((r) => r.code === code)!.libelle });
 const refDepartement = (f: Fiche): RefTerritoire => ({ niveau: "departement", code: f.dep, libelle: f.depLibelle });
 
 /** Libellé d'une commune : celui de Paris, Lyon ou Marseille, sinon le nom le plus fréquent parmi ses fiches. */
@@ -196,12 +199,27 @@ function libelleCommune(code: string, groupe: Fiche[]): string {
   return noms.sort((a, b) => b.n - a.n || a.nom.localeCompare(b.nom, "fr"))[0]!.nom;
 }
 
+/** Région d'un groupe de fiches : la plus fréquente ; null si aucune (Saint-Pierre-et-Miquelon). */
+function regionDuGroupe(groupe: Fiche[]): string | null {
+  const n = new Map<string, number>();
+  for (const f of groupe) {
+    const r = regionDe(f.dep);
+    if (r) n.set(r, (n.get(r) ?? 0) + 1);
+  }
+  return [...n].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] ?? null;
+}
+
+const BUDGETS_VIDES: Budgets = { collectivites: new Map(), france: [] };
+
 /**
- * Écrit `departements/<dep>.json`, `academies/<aca>.json`, `communes/<insee>.json` et `france.json`
- * à partir des fiches actives. `rentree` : dernière rentrée des effectifs.
+ * Écrit `regions/<code>.json`, `departements/<dep>.json`, `academies/<aca>.json`, `communes/<insee>.json`
+ * et `france.json` à partir des fiches actives. `rentree` : dernière rentrée des effectifs.
+ * `budgets` : résultat de `calculerBudgets` sur toutes les fiches (actives et disparues).
  */
-export async function exporterTerritoires(actives: Fiche[], db: Db, sortie: string, rentree: number | null): Promise<void> {
-  for (const d of ["departements", "academies", "communes"]) await mkdir(join(sortie, d), { recursive: true });
+export async function exporterTerritoires(
+  actives: Fiche[], db: Db, sortie: string, rentree: number | null, budgets: Budgets = BUDGETS_VIDES,
+): Promise<void> {
+  for (const d of ["regions", "departements", "academies", "communes"]) await mkdir(join(sortie, d), { recursive: true });
   const ips = { dep: await ipsMoyens(db, "dep"), aca: await ipsMoyens(db, "aca"), nat: await ipsMoyens(db, "nat") };
   const horsContratLignes = await db.sql<{ dep: string; aca: string; code_commune: string }>(
     "select dep, aca, code_commune from classement where motif = 'prive_hors_contrat'",
@@ -279,6 +297,25 @@ export async function exporterTerritoires(actives: Fiche[], db: Db, sortie: stri
     return resultat;
   };
 
+  // Budget d'un territoire : les collectivités des collèges de ses fiches et celles des lycées de ses départements.
+  const budgetDe = (groupe: Fiche[], deps: Iterable<string>): BudgetTerritoire => {
+    const cles = new Set<string>();
+    const ajouter = (niveau: NiveauBudget, id: string | null) => {
+      if (id && budgets.collectivites.has(`${niveau}|${id}`)) cles.add(`${niveau}|${id}`);
+    };
+    for (const f of groupe) if (f.famille === "college") ajouter("colleges", collectiviteDe("colleges", f.dep, f.codeCommune));
+    for (const dep of deps) ajouter("lycees", collectiviteDe("lycees", dep, ""));
+    return { collectivites: collectivitesTriees(cles), france: budgets.france };
+  };
+  const collectivitesTriees = (cles: Iterable<string>): BudgetCollectivite[] =>
+    [...cles].sort((a, b) => (a.startsWith("colleges") === b.startsWith("colleges") ? a.localeCompare(b) : a.startsWith("colleges") ? -1 : 1))
+      .map((c) => budgets.collectivites.get(c)!);
+  const regionParent = (groupe: Fiche[]): RefTerritoire[] => {
+    const r = regionDuGroupe(groupe);
+    return r ? [refRegion(r)] : [];
+  };
+  const depsDe = (groupe: Fiche[]) => new Set(groupe.map((f) => f.dep));
+
   // Communes
   const communes = communesRetenues(actives);
   const communesParDep = new Map<string, RefTerritoire[]>();
@@ -287,8 +324,8 @@ export async function exporterTerritoires(actives: Fiche[], db: Db, sortie: stri
     const ref: RefTerritoire = { niveau: "commune", code, libelle: libelleCommune(code, groupe) };
     communesParDep.set(premier.dep, [...(communesParDep.get(premier.dep) ?? []), ref]);
     const donnees: DonneesTerritoire = {
-      budget: { collectivites: [], france: [] }, // provisoire : calculé à la tâche 6
-      ref, parents: [FRANCE, refAcademie(premier), refDepartement(premier)], rentree,
+      budget: { collectivites: [], france: [] }, // pas de bloc budget sur les pages commune
+      ref, parents: [FRANCE, ...regionParent(groupe), refAcademie(premier), refDepartement(premier)], rentree,
       familles: familles(groupe, (_, g) => calculee(g), { liste: true, niveaux: null }),
       horsContrat: horsContrat((l) => communeDeRattachement(l.code_commune) === code),
       enfants: [], communes: [], carte: points(groupe),
@@ -300,8 +337,8 @@ export async function exporterTerritoires(actives: Fiche[], db: Db, sortie: stri
   for (const [dep, groupe] of Map.groupBy(actives, (f) => f.dep)) {
     const premier = groupe[0]!;
     const donnees: DonneesTerritoire = {
-      budget: { collectivites: [], france: [] }, // provisoire : calculé à la tâche 6
-      ref: refDepartement(premier), parents: [FRANCE, refAcademie(premier)], rentree,
+      budget: budgetDe(groupe, [dep]),
+      ref: refDepartement(premier), parents: [FRANCE, ...regionParent(groupe), refAcademie(premier)], rentree,
       familles: familles(groupe, (famille) => depp(ips.dep.get(`${famille}|${dep}`)), {
         liste: true, niveaux: ["departement", "academie", "france"],
       }),
@@ -315,8 +352,8 @@ export async function exporterTerritoires(actives: Fiche[], db: Db, sortie: stri
   const parAcademie = Map.groupBy(actives, (f) => f.aca);
   for (const [aca, groupe] of parAcademie) {
     const donnees: DonneesTerritoire = {
-      budget: { collectivites: [], france: [] }, // provisoire : calculé à la tâche 6
-      ref: refAcademie(groupe[0]!), parents: [FRANCE], rentree,
+      budget: budgetDe(groupe, depsDe(groupe)),
+      ref: refAcademie(groupe[0]!), parents: [FRANCE, ...regionParent(groupe)], rentree,
       familles: familles(groupe, (famille) => depp(ips.aca.get(`${famille}|${aca}`)), { liste: false, niveaux: ["academie", "france"] }),
       horsContrat: horsContrat((l) => l.aca === aca),
       enfants: [...Map.groupBy(groupe, (f) => f.dep)]
@@ -325,6 +362,27 @@ export async function exporterTerritoires(actives: Fiche[], db: Db, sortie: stri
       communes: [], carte: valeursCarte(groupe),
     };
     await ecrireJson(join(sortie, "academies", `${aca}.json`), donnees);
+  }
+
+  // Régions
+  const regions: RefTerritoire[] = [];
+  for (const region of REGIONS) {
+    const groupe = actives.filter((f) => region.deps.includes(f.dep));
+    if (!groupe.length) continue;
+    const ref = refRegion(region.code);
+    regions.push(ref);
+    const donnees: DonneesTerritoire = {
+      budget: budgetDe(groupe, region.deps),
+      ref, parents: [FRANCE], rentree,
+      familles: familles(groupe, (_, g) => calculee(g), { liste: false, niveaux: ["france"] }),
+      horsContrat: horsContrat((l) => region.deps.includes(l.dep)),
+      enfants: [...Map.groupBy(groupe, (f) => f.dep)]
+        .map(([dep, g]) => ligne(refDepartement(g[0]!), g, ips.dep.get(`college|${dep}`)))
+        .sort((a, b) => parLibelle(a.ref, b.ref)),
+      communes: [], carte: valeursCarte(groupe),
+      academies: [...Map.groupBy(groupe, (f) => f.aca)].map(([, g]) => refAcademie(g[0]!)).sort(parLibelle),
+    };
+    await ecrireJson(join(sortie, "regions", `${region.code}.json`), donnees);
   }
 
   // France
@@ -337,8 +395,21 @@ export async function exporterTerritoires(actives: Fiche[], db: Db, sortie: stri
         .sort(parLibelle),
     }))
     .sort(parLibelle);
+  // Carte « budget » : une valeur par collectivité des collèges, avec les départements qu'elle couvre.
+  const carteBudget: DonneesFrance["carteBudget"] = {
+    genre: "collectivites",
+    valeurs: [...budgets.collectivites.values()]
+      .filter((c) => c.niveau === "colleges")
+      .map((c) => {
+        const deps = new Set(actives.filter((f) => f.famille === "college" && collectiviteDe("colleges", f.dep, f.codeCommune) === c.id).map((f) => f.dep));
+        const montant = c.exercices.at(-1)?.public.horsPersonnel;
+        return { id: c.id, deps: [...deps].sort(), budget: montant?.statut === "ok" ? montant.parEleve : null };
+      })
+      .filter((v) => v.deps.length > 0)
+      .sort((a, b) => a.id.localeCompare(b.id)),
+  };
   const france: DonneesFrance = {
-    budget: { collectivites: [], france: [] }, // provisoire : calculé à la tâche 6
+    budget: { collectivites: collectivitesTriees(budgets.collectivites.keys()), france: budgets.france },
     ref: FRANCE, parents: [], rentree,
     familles: familles(actives, (famille) => depp(ips.nat.get(`${famille}|FR`)), { liste: false, niveaux: ["france"] }),
     horsContrat: horsContratLignes.length,
@@ -346,7 +417,7 @@ export async function exporterTerritoires(actives: Fiche[], db: Db, sortie: stri
       .map(([aca, g]) => ligne(refAcademie(g[0]!), g, ips.aca.get(`college|${aca}`)))
       .sort((a, b) => parLibelle(a.ref, b.ref)),
     communes: [], carte: valeursCarte(actives),
-    academies,
+    academiesEtDepartements: academies, regions, carteBudget,
   };
   await ecrireJson(join(sortie, "france.json"), france);
 }
