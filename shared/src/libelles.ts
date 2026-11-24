@@ -99,6 +99,12 @@ export function titrePialEnDeux(famille: Famille, nom: string): { debut: string;
   return { debut: `PIAL ${article}${famille === "erea" ? f : f.toLocaleLowerCase("fr")} `, nom: court };
 }
 
+/** Regroupement pédagogique intercommunal d'une école (Annuaire de l'éducation), dans l'en-tête de la fiche. */
+export const LIBELLES_RPI = {
+  disperse: "Regroupement pédagogique intercommunal dispersé",
+  concentre: "Regroupement pédagogique intercommunal concentré",
+} as const;
+
 /** Rattachements d'une école (collège de secteur, PIAL, circonscription) et blocs de la fiche collège (spec, 6.4 et 6.5). */
 export const LIBELLES_RATTACHEMENTS = {
   titre: "Rattachements",

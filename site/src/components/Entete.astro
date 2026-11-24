@@ -2,7 +2,7 @@
 // En-tête de fiche : fil d'Ariane (France › région › académie › département › commune ; seuls les maillons dont la page existe sont des liens),
 // nom, pastilles, mention de disparition, sites multiples, actions.
 import type { RefTerritoire } from "@obs/shared/donnees";
-import { CONTRATS, FAMILLES, LIBELLES, SECTEURS } from "@obs/shared/libelles";
+import { CONTRATS, FAMILLES, LIBELLES, LIBELLES_RPI, SECTEURS } from "@obs/shared/libelles";
 import { regionDe, REGIONS } from "@obs/shared/collectivites";
 import { communeDeRattachement, LIBELLES_PLM } from "@obs/shared/territoires";
 import type { Fiche } from "@obs/shared/types";
@@ -42,6 +42,7 @@ const parents: RefTerritoire[] = [
   {f.segpa && <span class="badge">SEGPA</span>}
   {f.ulis && <span class="badge">ULIS</span>}
   {f.internat && <span class="badge">Internat</span>}
+  {f.rpi && <a class="badge" href="/methode/#rpi">{LIBELLES_RPI[f.rpi]}</a>}
   <span class="badge num">UAI {f.uai}</span>
   <span class="badge">{f.adresse}, {f.codePostal} {f.commune}</span>
 </div>

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import type { DonneesSource, EntreeIndex } from "@obs/shared/donnees";
 import type {
   Classes, CodeIndicateur, Famille, FamilleEcole, FamilleSecondDegre, Fiche, Identite, Indicateur, LigneEcole, Mesure, Rattachements,
-  Repartition, ResultatsVoie, Secteur, Site, SourceId, SourceRef, Voisin,
+  Repartition, ResultatsVoie, Rpi, Secteur, Site, SourceId, SourceRef, Voisin,
 } from "@obs/shared/types";
 import { estEcole, FAMILLES_SECOND_DEGRE } from "@obs/shared/libelles";
 import type { Manifest } from "./archive.ts";
@@ -399,6 +399,9 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
   const circonscriptions = new Map(
     (await db.sql<{ uai: string; circonscription: string | null }>("select uai, circonscription from etablissements")).map((l) => [l.uai, l.circonscription]),
   );
+  const rpis = new Map(
+    (await db.sql<{ uai: string; rpi: Rpi }>("select uai, rpi from etablissements where rpi is not null")).map((l) => [l.uai, l.rpi]),
+  );
   const rentreesListes = rentreesEcoles(actives, indicateurs);
   const ecolesSecteur = await ecolesDesSecteurs(db, secteurs, lignesEcoles(actives, indicateurs, rentreesListes));
   const disparus = await db.sql<{ uai: string }>("select uai from disparus order by uai");
@@ -433,6 +436,7 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
       indicateurs: ind, repartitions: rep, eleves: el,
       ...(cl === undefined ? {} : { classes: cl }),
       ...(rattachements === undefined ? {} : { rattachements }),
+      ...(estEcole(identite.famille) && ouverte ? { rpi: rpis.get(uai) ?? null } : {}),
       // écoles les plus proches : écoles ouvertes seulement (null sans coordonnées)
       ...(estEcole(identite.famille) && ouverte ? { ecolesProches: ecolesProches.get(uai) ?? null } : {}),
       ...secondDegre,

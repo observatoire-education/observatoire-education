@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { LIBELLES_RATTACHEMENTS as LR } from "@obs/shared/libelles";
+import { LIBELLES_RATTACHEMENTS as LR, LIBELLES_RPI } from "@obs/shared/libelles";
 import { mentionMoyennesA4 } from "../site/src/lib/affichage.ts";
 import { svgElevesClasses } from "../site/src/lib/plot.ts";
 import { DIST_TEST, doc, octets, page, siteTest, texte } from "./site.ts";
@@ -150,6 +150,29 @@ const NOTE_SECTEUR = "Le secteur de collège dépend de l'adresse de chaque fami
 const NOTE_PRIVE = "Les écoles privées ne sont pas soumises à la carte scolaire. Le collège public de secteur d'un élève dépend de l'adresse de sa famille.";
 const DEFINITION_PIAL = "Le PIAL (pôle inclusif d'accompagnement localisé) organise l'accompagnement des élèves en situation de handicap.";
 const liens = (e: Element | null | undefined) => [...(e?.querySelectorAll("a") ?? [])].map((a) => a.getAttribute("href"));
+
+describe("regroupement pédagogique intercommunal (RPI)", () => {
+  test("école en RPI dispersé : libellé exact dans l'en-tête, lien vers la méthode", () => {
+    const b = doc(fiche("0350201R")).querySelector(".badges")!;
+    const rpi = b.querySelector('a[href="/methode/#rpi"]');
+    expect(propre(rpi?.textContent)).toBe(LIBELLES_RPI.disperse);
+    expect(LIBELLES_RPI).toEqual({
+      disperse: "Regroupement pédagogique intercommunal dispersé",
+      concentre: "Regroupement pédagogique intercommunal concentré",
+    });
+  });
+
+  test("école hors RPI : rien dans l'en-tête", () => {
+    expect(texte(fiche("0440202B"))).not.toContain("Regroupement pédagogique");
+    expect(page(fiche("0440202B"))).not.toContain("#rpi");
+  });
+
+  test("la méthode définit le RPI", () => {
+    const s = doc("methode").getElementById("rpi");
+    expect(s).not.toBeNull();
+    expect(propre(s!.nextElementSibling?.textContent)).toContain("Un regroupement pédagogique intercommunal (RPI)");
+  });
+});
 
 describe("rattachements d'une école", () => {
   test("école publique : collège de secteur à l'adresse de l'école, avec lien, et la note du secteur", () => {

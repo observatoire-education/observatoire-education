@@ -165,7 +165,7 @@ describe("écoles des communes (pages commune étendues)", () => {
   });
 
   test("une entrée par commune d'aujourd'hui qui a ou a eu une école depuis 2012 ; aucune pour un code disparu", () => {
-    expect([...parCommune.keys()].sort()).toEqual(["44109", "44150", "44888", "44903"]);
+    expect([...parCommune.keys()].sort()).toEqual(["35360", "44109", "44150", "44888", "44903"]);
   });
 
   test("Saint-Aubin : écoles ouvertes, jamais « plus d'école » ; Le Moulin a sa partie, avec son école fermée", () => {

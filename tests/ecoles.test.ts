@@ -40,7 +40,7 @@ describe("écoles les plus proches", () => {
   });
 
   test("une entrée par école ouverte, aucune pour le second degré ni pour une école fermée", () => {
-    expect([...proches.keys()].sort()).toEqual(["0440104D", "0440105E", "0440108H", "0440201A", "0440202B", "0440203C"]);
+    expect([...proches.keys()].sort()).toEqual(["0350201R", "0440104D", "0440105E", "0440108H", "0440201A", "0440202B", "0440203C"]);
   });
 
   test("0440104D (élémentaire, Saint-Aubin) : écoles élémentaires ou primaires triées par distance, aucune à moins de 10 km", () => {

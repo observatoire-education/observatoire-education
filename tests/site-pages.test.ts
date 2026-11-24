@@ -95,21 +95,21 @@ describe("accueil et recherche", () => {
 
   test("recherche.json : clés courtes", () => {
     const idx = JSON.parse(page("recherche.json")) as EntreeIndex[];
-    expect(idx.length).toBe(42); // 24 actifs + 2 pages du registre + 5 fiches historiques, et 10 écoles (dont 4 fermées)
+    expect(idx.length).toBe(43); // 24 actifs + 2 pages du registre + 5 fiches historiques, et 11 écoles (dont 4 fermées)
     expect(Object.keys(idx.find((e) => e.u === "0440001A")!).sort()).toEqual(["c", "d", "f", "n", "s", "u"]);
     expect(idx.find((e) => e.u === "0440004D")).toBeUndefined();
   });
 
   test("écoles : dans la recherche, avec leur page et dans le plan du site", () => {
     const idx = JSON.parse(page("recherche.json")) as EntreeIndex[];
-    expect(idx.filter((e) => estEcole(e.f)).length).toBe(10);
+    expect(idx.filter((e) => estEcole(e.f)).length).toBe(11);
     expect(idx.find((e) => e.u === "0440202B")).toEqual({ u: "0440202B", n: "École élémentaire Jules-Ferry", c: "Nantes", d: "44", f: "elementaire", s: "public" });
     expect(page("etablissement/0440201A")).toContain("<h1>École maternelle Les Lilas</h1>");
     expect(page("sitemap.xml")).toContain("/etablissement/0440201A/");
   });
 
   test("accueil : le nombre d'établissements compte les écoles ouvertes", () => {
-    expect(texte("index.html")).toContain("des 31 établissements publics et privés sous contrat");
+    expect(texte("index.html")).toContain("des 32 établissements publics et privés sous contrat");
   });
 });
 

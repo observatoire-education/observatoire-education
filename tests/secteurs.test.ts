@@ -108,7 +108,7 @@ describe("collège de secteur à l'adresse de l'école", () => {
   test("écoles ouvertes seulement", () => {
     expect(secteurs.has("0440001A")).toBe(false);
     expect(secteurs.has("0440106F")).toBe(false); // école fermée
-    expect([...secteurs.keys()].sort()).toEqual(["0440104D", "0440105E", "0440108H", "0440201A", "0440202B", "0440203C"]);
+    expect([...secteurs.keys()].sort()).toEqual(["0350201R", "0440104D", "0440105E", "0440108H", "0440201A", "0440202B", "0440203C"]);
   });
 
   test("numéro impair, département absent de la carte, commune absente d'un département publié, ambiguïtés", async () => {

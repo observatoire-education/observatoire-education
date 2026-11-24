@@ -112,6 +112,14 @@ describe("rattachements des écoles", () => {
     });
   });
 
+  test("RPI (regroupement pédagogique intercommunal) des écoles ouvertes, d'après l'Annuaire", () => {
+    expect(fiche("0350201R").rpi).toBe("disperse");
+    expect(fiche("0440202B").rpi).toBeNull();
+    // second degré et école fermée : champ absent
+    expect("rpi" in fiche("0440001A")).toBe(false);
+    expect("rpi" in fiche("0440106F")).toBe(false);
+  });
+
   test("école fermée : pas de rattachements", () => {
     expect(fiche("0440106F").fermeLe).not.toBeNull();
     expect(fiche("0440106F").rattachements).toBeUndefined();

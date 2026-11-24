@@ -33,6 +33,8 @@ select
   -- UAI de la tête du PIAL (collège, lycée, école ou circonscription) et nom de la circonscription
   nullif(upper(trim(pial)), '') as pial,
   nullif(trim(nom_circonscription), '') as circonscription,
+  -- Regroupement pédagogique intercommunal : dispersé (classes réparties entre les écoles des communes) ou concentré
+  case when vrai(rpi_disperse) then 'disperse' when vrai(rpi_concentre) then 'concentre' end as rpi,
   trim(etat) as etat
 from src_annuaire
 where identifiant_de_l_etablissement is not null;
@@ -92,7 +94,7 @@ select
   uai, nom, famille, secteur_brut as secteur,
   case when secteur_brut = 'prive_sous_contrat' then contrat_brut end as contrat,
   adresse, adresse_n, date_ouverture, code_postal, code_commune, commune, dep, dep_libelle, aca, aca_libelle,
-  lat, lon, ep, segpa, ulis, internat, pial, circonscription
+  lat, lon, ep, segpa, ulis, internat, pial, circonscription, rpi
 from classement
 where motif is null
 order by uai;

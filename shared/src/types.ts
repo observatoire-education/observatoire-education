@@ -294,6 +294,9 @@ export interface LigneEcole {
   ips: number | null;
 }
 
+/** Regroupement pédagogique intercommunal d'une école (Annuaire de l'éducation) : classes réparties entre les écoles des communes (dispersé) ou réunies dans une seule (concentré). */
+export type Rpi = "concentre" | "disperse";
+
 /** Rattachements d'une école ouverte : collège de secteur à son adresse, PIAL et circonscription. */
 export interface Rattachements {
   secteur: SecteurCollege;
@@ -343,6 +346,8 @@ export interface Fiche extends Identite {
   classes?: Classes | null;
   /** Écoles ouvertes seulement (absent des fiches du second degré et des écoles fermées). */
   rattachements?: Rattachements;
+  /** Écoles ouvertes seulement : regroupement pédagogique intercommunal de l'Annuaire ; null hors RPI. */
+  rpi?: Rpi | null;
   /** Écoles ouvertes seulement : écoles les plus proches ; null si l'école n'a pas de coordonnées. */
   ecolesProches?: EcolesProches | null;
   /** Second degré seulement : PIAL dont l'établissement est la tête ou un membre ; null sinon. */
