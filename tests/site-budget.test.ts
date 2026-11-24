@@ -275,6 +275,12 @@ describe("aides d'affichage", () => {
     expect(comparaisonBudget(ok, { valeur: null, n: 0 })?.texte).toBe("moyenne non disponible");
   });
 
+  test("mention des cités scolaires : exercice de mesure", () => {
+    expect(L.mentionCitesScolaires("9,1", 2024)).toBe(
+      "Les comptes de la collectivité incluent des reversements entre collectivités pour des cités scolaires (environ 9,1 % des dépenses retenues, mesurée sur l'exercice 2024).",
+    );
+  });
+
   test("millions d'euros", () => {
     expect(millions(97_300_000)).toBe("97,3 M€");
     expect(millions(500_000)).toBe("0,5 M€");
