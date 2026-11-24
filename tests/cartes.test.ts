@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 
 process.env.OBS_CONTOURS = join(import.meta.dir, "fixtures", "contours");
-const { contourCommune, contourDepartement, contoursDepartements, communesDuDepartement } = await import("../site/src/lib/contours.ts");
+const { contourCommune, contourDepartement, contoursDepartements, communesDuDepartement, formesCollectivites } = await import("../site/src/lib/contours.ts");
 
 describe("contours", () => {
   test("un département connu a un contour, un département inconnu non", () => {
@@ -29,7 +29,7 @@ describe("contours", () => {
   });
 });
 
-const { DOMAINE, svgCarteDepartements, svgCartePoints, legendeCarte, projectionPour } = await import("../site/src/lib/cartes.ts");
+const { DOMAINE, svgCarteBudget, notesCarteBudget, svgCarteDepartements, svgCartePoints, legendeCarte, projectionPour } = await import("../site/src/lib/cartes.ts");
 const INTERDIT = /\b(rang|classement|top|meilleur|meilleure|meilleurs|meilleures|pire|pires)\b|<script/i;
 const valeurs = [
   { dep: "44", partPrive: 41.2, ecartIpsColleges: 15 },
@@ -70,7 +70,7 @@ describe("cartes", () => {
   });
 
   test("domaines des rampes exportés", () => {
-    expect(DOMAINE).toEqual({ prive: [0, 50], ecart_ips: [0, 40] });
+    expect(DOMAINE).toEqual({ prive: [0, 50], ecart_ips: [0, 40], budget: [0, 1000] });
   });
 
   test("valeurs hors domaine bornées sans erreur", () => {
@@ -125,5 +125,55 @@ describe("cartes", () => {
     expect(projectionPour(["976"]).type).toBe("mercator");
     expect(projectionPour(["44", "49"]).type).toBe("conic-conformal");
     expect(projectionPour(["44", "971"]).type).toBe("conic-conformal");
+  });
+});
+
+describe("carte du budget", () => {
+  /** Fixture avec le Rhône découpé en communes (Lyon et une commune du reste du Rhône). */
+  function avecContoursBudget<T>(f: () => T): T {
+    const avant = process.env.OBS_CONTOURS;
+    process.env.OBS_CONTOURS = join(import.meta.dir, "fixtures", "contours-budget");
+    try { return f(); } finally { process.env.OBS_CONTOURS = avant; }
+  }
+  const fills = (s: string) => [...s.matchAll(/fill="([^"]+)"/g)].map((m) => m[1]!).filter((c) => c.startsWith("color-mix") || c === "var(--line)");
+
+  test("Rhône et Métropole de Lyon : deux formes, valeurs distinctes", () => {
+    avecContoursBudget(() => {
+      const formes = formesCollectivites();
+      expect(formes.filter((f) => f.contour.properties.code === "69").map((f) => f.id).sort()).toEqual(["dep-69", "ml-lyon"]);
+      const { svg } = svgCarteBudget([
+        { id: "dep-69", deps: ["69"], budget: 200 }, { id: "ml-lyon", deps: ["69"], budget: 800 },
+        { id: "dep-44", deps: ["44"], budget: 500 }, { id: "cea", deps: ["67", "68"], budget: 400 },
+      ], { encartsDrom: false });
+      const couleurs = fills(svg);
+      expect(couleurs).toHaveLength(5);
+      expect(new Set(couleurs.filter((c) => c.includes("20%") || c.includes("80%"))).size).toBe(2);
+      expect(svg).not.toMatch(INTERDIT);
+    });
+  });
+
+  test("Bas-Rhin et Haut-Rhin : même valeur cea, note sous la carte", () => {
+    avecContoursBudget(() => {
+      const valeurs = [{ id: "cea", deps: ["67", "68"], budget: 400 }];
+      const { svg } = svgCarteBudget(valeurs, { encartsDrom: false });
+      const alsace = fills(svg).filter((c) => c.includes("40%"));
+      expect(alsace).toHaveLength(2);
+      expect(alsace[0]).toBe(alsace[1]!);
+      const notes = notesCarteBudget(valeurs, (d) => (d === "67" ? "Bas-Rhin" : "Haut-Rhin"), () => "Collectivité européenne d'Alsace");
+      expect(notes).toEqual(["Bas-Rhin et Haut-Rhin : valeur de la collectivité unique, Collectivité européenne d'Alsace."]);
+    });
+  });
+
+  test("collectivité sans valeur : grisée, « non disponible » dans la légende", () => {
+    avecContoursBudget(() => {
+      const { svg } = svgCarteBudget([{ id: "dep-44", deps: ["44"], budget: null }, { id: "cea", deps: ["67", "68"], budget: 400 }], { encartsDrom: false });
+      expect(fills(svg).filter((c) => c === "var(--line)").length).toBeGreaterThanOrEqual(3); // 44 et les deux formes du Rhône
+      expect(svg).not.toContain("NaN");
+    });
+    const legende = legendeCarte("budget", DOMAINE.budget);
+    expect(legende).toContain("non disponible");
+    expect(legende).toContain("Dépense de fonctionnement hors personnel par élève des collèges publics");
+    expect(legende).toContain("var(--pub-soft)");
+    expect(legende).toContain("var(--pub-ink)");
   });
 });

@@ -1,0 +1,1 @@
+{"type":"Topology","objects":{"communes":{"type":"GeometryCollection","geometries":[{"type":"Polygon","arcs":[[0]],"properties":{"code":"69123","dep":"69"}},{"type":"Polygon","arcs":[[1]],"properties":{"code":"69264","dep":"69"}}]}},"arcs":[[[4,45],[4,45.5],[4.5,45.5],[4.5,45],[4,45]],[[4,45.5],[4,46],[5,46],[5,45.5],[4,45.5]]]}

@@ -307,3 +307,38 @@ describe("svgEvolutionBudget", () => {
     expect(s).toContain(L.postes.horsPersonnel.toLowerCase());
   });
 });
+
+describe("page France : carte et CSV du budget", () => {
+  const ENTETE = "collectivite;libelle;exercice;rentree;eleves_public;eleves_prive;fonct_hors_personnel_par_eleve;fonct_avec_personnel_par_eleve;invest_public_par_eleve;contribution_prive_par_eleve;invest_prive_par_eleve;statut_personnel";
+
+  test("les deux CSV existent, une ligne d'en-tête exacte, aucune cellule « 0 » pour une absence (cellule vide et statut)", () => {
+    for (const n of ["colleges", "lycees"]) {
+      const lignes = page(`france/budget-${n}.csv`).trim().split("\n");
+      expect(lignes[0]).toBe(ENTETE);
+      expect(lignes.length).toBeGreaterThan(1);
+      for (const l of lignes.slice(1)) {
+        const c = l.split(";");
+        expect(c).toHaveLength(12);
+        // un montant absent est vide, jamais « 0 » ; le statut de la ligne dit pourquoi
+        for (const i of [4, 5, 6, 7, 8, 9, 10]) expect(c[i]).not.toBe("0");
+        if (c[7] === "") expect(c[11]).not.toBe("ok");
+      }
+    }
+    const paris = page("france/budget-colleges.csv").split("\n").filter((l) => l.startsWith("paris;"));
+    expect(paris.length).toBeGreaterThan(0);
+  });
+
+  test("tri par libellé puis exercice", () => {
+    const l = page("france/budget-colleges.csv").trim().split("\n").slice(1).map((x) => x.split(";"));
+    const cle = l.map((c) => `${c[1]}|${c[2]}`);
+    expect(cle).toEqual([...cle].sort((a, b) => { const [la, ea] = a.split("|"); const [lb, eb] = b.split("|"); return la!.localeCompare(lb!, "fr") || Number(ea) - Number(eb); }));
+  });
+
+  test("la page France lie les CSV et porte la vue « budget » de la carte", () => {
+    const d = doc("france");
+    expect(d.querySelector("a[href='/france/budget-colleges.csv']")).not.toBeNull();
+    expect(d.querySelector("a[href='/france/budget-lycees.csv']")).not.toBeNull();
+    expect(d.querySelector("input#vue-carte-budget")).not.toBeNull();
+    expect(d.querySelector("figure.vue-carte-budget")?.textContent).toContain("non disponible");
+  });
+});

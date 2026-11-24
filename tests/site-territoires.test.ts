@@ -10,23 +10,23 @@ beforeAll(async () => {
 const existe = (chemin: string) => existsSync(join(DIST_TEST, chemin));
 
 describe("page France", () => {
-  test("titre, carte à deux vues, liste des académies sans établissement", () => {
+  test("titre, carte à trois vues, liste des académies sans établissement", () => {
     const d = doc("france");
     const t = texte("france");
     expect(d.querySelector("h1")!.textContent!.trim()).toBe("France");
     expect(t).toContain("Part des élèves dans le privé sous contrat");
     expect(t).toContain("Écart d'IPS moyen privé − public des collèges");
-    expect(d.querySelectorAll("input[name=vue-carte]")).toHaveLength(2);
+    expect(d.querySelectorAll("input[name=vue-carte]")).toHaveLength(3);
     const liste = d.querySelector("#liste-territoires")!;
     expect(liste.querySelector("a[href='/academie/17/']")).not.toBeNull();
     expect(liste.querySelector("a[href^='/etablissement/']")).toBeNull();
   });
 
-  test("les deux vues forment un groupe nommé (fieldset et legend)", () => {
+  test("les vues forment un groupe nommé (fieldset et legend)", () => {
     const fieldset = doc("france").querySelector("fieldset.vues-carte")!;
     expect(fieldset).not.toBeNull();
     expect(fieldset.querySelector("legend")!.textContent!.trim()).not.toBe("");
-    expect(fieldset.querySelectorAll("input[name=vue-carte]")).toHaveLength(2);
+    expect(fieldset.querySelectorAll("input[name=vue-carte]")).toHaveLength(3);
   });
 
   test("CSV des académies", () => {

@@ -4,25 +4,30 @@ import * as Plot from "@observablehq/plot";
 import { parseHTML } from "linkedom";
 import type { Feature, FeatureCollection, Geometry } from "geojson";
 import type { PointCarte, ValeurCarte } from "@obs/shared/donnees";
-import { contoursDepartements } from "./contours";
+import { entier } from "@obs/shared/format";
+import type { CarteDonnees } from "@obs/shared/donnees";
+import { contoursDepartements, formesCollectivites } from "./contours";
 import { svg } from "./plot";
 
 const { document } = parseHTML("<!doctype html><html><body></body></html>");
 
-export type VueCarte = "prive" | "ecart_ips";
+export type VueCarte = "prive" | "ecart_ips" | "budget";
+type VueDepartements = Exclude<VueCarte, "budget">;
 
 const DROM = ["971", "972", "973", "974", "976"];
 const TITRE: Record<VueCarte, string> = {
   prive: "Part des élèves dans le privé sous contrat",
   ecart_ips: "Écart d'IPS moyen privé − public des collèges",
+  budget: "Dépense de fonctionnement hors personnel par élève des collèges publics",
 };
 const TEINTE: Record<VueCarte, [string, string]> = {
   prive: ["var(--pri-soft)", "var(--pri-ink)"],
   ecart_ips: ["var(--pub-soft)", "var(--pub-ink)"],
+  budget: ["var(--pub-soft)", "var(--pub-ink)"],
 };
 /** Domaines fixes des rampes, pour comparer les pages entre elles. */
-export const DOMAINE: Record<VueCarte, [number, number]> = { prive: [0, 50], ecart_ips: [0, 40] };
-const UNITE: Record<VueCarte, string> = { prive: " %", ecart_ips: " points" };
+export const DOMAINE: Record<VueCarte, [number, number]> = { prive: [0, 50], ecart_ips: [0, 40], budget: [0, 1000] };
+const UNITE: Record<VueCarte, string> = { prive: " %", ecart_ips: " points", budget: " €" };
 const STYLE = { background: "transparent", color: "var(--muted)", overflow: "visible" };
 
 type Fond = Feature<Geometry, { code: string; dep?: string }>;
@@ -66,7 +71,7 @@ export function projectionPour(codes: string[]): { type: string; parallels?: num
 
 export function svgCarteDepartements(
   valeurs: ValeurCarte[],
-  vue: VueCarte,
+  vue: VueDepartements,
   opts: { encartsDrom: boolean },
 ): { svg: string; absents: string[]; metropole: string; encarts: { code: string; svg: string }[] } {
   const parCode = new Map(valeurs.map((v) => [v.dep, v]));
@@ -104,6 +109,63 @@ export function svgCarteDepartements(
     if (f && parCode.has(code)) encarts.push({ code, svg: dessiner([f], { type: "mercator" }, 120, 120, `${aria} : département ${code}`) });
   }
   return { svg: metropole + encarts.map((e) => e.svg).join(""), absents, metropole, encarts };
+}
+
+type ValeursBudget = Extract<CarteDonnees, { genre: "collectivites" }>["valeurs"];
+
+/**
+ * Carte du budget : une forme par département, sauf le Rhône (Métropole de Lyon et reste du Rhône) ; chaque forme
+ * porte la valeur de sa collectivité (Bas-Rhin et Haut-Rhin : `cea`). Sans valeur, la forme est grisée.
+ */
+export function svgCarteBudget(
+  valeurs: ValeursBudget,
+  opts: { encartsDrom: boolean },
+): { svg: string; absents: string[]; metropole: string; encarts: { code: string; svg: string }[] } {
+  const parId = new Map(valeurs.map((v) => [v.id, v.budget]));
+  const formes = formesCollectivites();
+  const dessinables = new Set(formes.map((f) => f.id));
+  // Une collectivité dont aucun contour n'est connu est listée à part.
+  const absents = valeurs.filter((v) => !dessinables.has(v.id)).map((v) => v.id);
+  const aria = `Carte par collectivité : ${TITRE.budget}`;
+  const dessiner = (liste: typeof formes, projection: object, largeur: number, hauteur: number, label: string) => {
+    const features = liste.map((f) => f.contour);
+    const domain: Fonds = { type: "FeatureCollection", features };
+    const p = Plot.plot({
+      document, width: largeur, height: hauteur, margin: 2, style: STYLE,
+      projection: { ...projection, domain },
+      marks: [
+        Plot.geo(liste, {
+          geometry: (f: (typeof formes)[number]) => f.contour.geometry,
+          fill: { value: (f: (typeof formes)[number]) => couleur("budget", parId.get(f.id)), scale: null },
+          stroke: "var(--surface)", strokeWidth: 0.6,
+        }),
+      ],
+    });
+    return svg(p, label);
+  };
+  const conique = { type: "conic-conformal", parallels: [44, 49], rotate: [-3, 0] };
+  const codeDe = (f: (typeof formes)[number]) => f.contour.properties.code;
+  if (!opts.encartsDrom) {
+    const unique = dessiner(formes, projectionPour(formes.map(codeDe)), 560, 560, aria);
+    return { svg: unique, absents, metropole: unique, encarts: [] };
+  }
+  const metropole = dessiner(formes.filter((f) => !codeDe(f).startsWith("97")), conique, 560, 560, aria);
+  const encarts: { code: string; svg: string }[] = [];
+  for (const f of formes.filter((f) => codeDe(f).startsWith("97"))) {
+    encarts.push({ code: codeDe(f), svg: dessiner([f], { type: "mercator" }, 120, 120, `${aria} : département ${codeDe(f)}`) });
+  }
+  return { svg: metropole + encarts.map((e) => e.svg).join(""), absents, metropole, encarts };
+}
+
+/** Notes sous la carte du budget : collectivités qui couvrent plusieurs départements, et Lyon / Rhône. */
+export function notesCarteBudget(valeurs: ValeursBudget, libelleDep: (dep: string) => string, libelleCollectivite: (id: string) => string): string[] {
+  const notes = valeurs
+    .filter((v) => v.deps.length > 1)
+    .map((v) => `${v.deps.map(libelleDep).join(" et ")} : valeur de la collectivité unique, ${libelleCollectivite(v.id)}.`);
+  if (valeurs.some((v) => v.id === "ml-lyon") && valeurs.some((v) => v.id === "dep-69")) {
+    notes.push("La Métropole de Lyon et le reste du Département du Rhône sont deux collectivités distinctes, dessinées séparément.");
+  }
+  return notes;
 }
 
 export function svgCartePoints(
@@ -151,7 +213,7 @@ export function svgCartePoints(
 /** Rampe, bornes et case « non disponible » de la vue. */
 export function legendeCarte(vue: VueCarte, domaine: [number, number]): string {
   const [clair, fonce] = TEINTE[vue];
-  const fmt = (n: number) => String(n).replace(".", ",");
+  const fmt = (n: number) => entier(n);
   // Les valeurs hors du domaine sont ramenées aux bornes : la légende le dit.
   const bas = vue === "ecart_ips" ? `${fmt(domaine[0])} ou moins` : `${fmt(domaine[0])}${UNITE[vue]}`;
   const haut = `${fmt(domaine[1])}${UNITE[vue]} et plus`;

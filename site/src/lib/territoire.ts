@@ -1,5 +1,6 @@
 // Aides des pages de territoire (France, académie, département, commune) : synthèses, lignes de liste, CSV.
-import type { DonneesTerritoire, LigneListe, LigneTerritoire, SyntheseFamille } from "@obs/shared/donnees";
+import type { NiveauBudget } from "@obs/shared/collectivites";
+import type { BudgetCollectivite, DonneesTerritoire, LigneListe, LigneTerritoire, SyntheseFamille } from "@obs/shared/donnees";
 import { FAMILLES } from "@obs/shared/libelles";
 import type { Famille } from "@obs/shared/types";
 
@@ -76,4 +77,30 @@ export function partPrive(e: { public: number | null; prive: number | null }, au
   if (aucunPrive && e.prive === null && e.public) return 0;
   const t = e.public === null && e.prive === null ? null : (e.public ?? 0) + (e.prive ?? 0);
   return t && e.prive !== null ? (100 * e.prive) / t : null;
+}
+
+const COLONNES_CSV_BUDGET = [
+  "collectivite", "libelle", "exercice", "rentree", "eleves_public", "eleves_prive", "fonct_hors_personnel_par_eleve",
+  "fonct_avec_personnel_par_eleve", "invest_public_par_eleve", "contribution_prive_par_eleve", "invest_prive_par_eleve",
+  "statut_personnel",
+] as const;
+
+const arrondi = (v: number | null): number | null => (v === null ? null : Math.round(v * 100) / 100);
+
+/**
+ * Budget des collectivités d'un niveau, une ligne par collectivité et par exercice (tri par libellé puis exercice).
+ * Une absence est une cellule vide, jamais « 0 » ; `statut_personnel` dit pourquoi le personnel manque (« ok » sinon).
+ */
+export function csvBudget(collectivites: BudgetCollectivite[], niveau: NiveauBudget): string {
+  const lignes = [...collectivites]
+    .filter((c) => c.niveau === niveau)
+    .sort((a, b) => a.libelle.localeCompare(b.libelle, "fr"))
+    .flatMap((c) =>
+      [...c.exercices].sort((a, b) => a.exercice - b.exercice).map((e) => [
+        c.id, c.libelle, e.exercice, e.rentree, e.eleves.public, e.eleves.prive,
+        arrondi(e.public.horsPersonnel.parEleve), arrondi(e.public.avecPersonnel.parEleve), arrondi(e.public.investissement.parEleve),
+        arrondi(e.prive.fonctionnement.parEleve), arrondi(e.prive.investissement.parEleve), e.public.avecPersonnel.statut,
+      ]),
+    );
+  return csv(COLONNES_CSV_BUDGET, lignes);
 }

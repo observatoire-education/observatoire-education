@@ -2,7 +2,7 @@
 // Le dossier vient de OBS_CONTOURS, par défaut site/contours (le build s'exécute depuis site/).
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { REGIONS } from "@obs/shared/collectivites";
+import { COMMUNES_METROPOLE_LYON, REGIONS, collectiviteDe, type IdCollectivite } from "@obs/shared/collectivites";
 import type { Feature, FeatureCollection, Geometry } from "geojson";
 import { feature, merge } from "topojson-client";
 import type { GeometryCollection, MultiPolygon, Polygon, Topology } from "topojson-specification";
@@ -12,6 +12,7 @@ type Contours = FeatureCollection<Geometry, { code: string; dep?: string }>;
 
 interface Charge {
   topoDepartements: { topo: Topology; geometries: (Polygon | MultiPolygon)[] };
+  topoCommunes: { topo: Topology; geometries: (Polygon | MultiPolygon)[] };
   departements: Contour[];
   communes: Contour[];
   communesParCode: Map<string, Contour>;
@@ -37,7 +38,8 @@ function charger(): Charge {
   if (cache?.dossier === dossier) return cache.charge;
   const dep = topologie(dossier, "departements.topo.json");
   const departements = lire(dossier, "departements.topo.json");
-  const communes = lire(dossier, "communes.topo.json");
+  const com = topologie(dossier, "communes.topo.json");
+  const communes = (feature(com.topo, com.objet) as unknown as Contours).features;
   const communesParCode = new Map<string, Contour>();
   const communesParDep = new Map<string, Contour[]>();
   for (const c of communes) {
@@ -47,7 +49,7 @@ function charger(): Charge {
     liste.push(c);
     communesParDep.set(dep, liste);
   }
-  const charge = { topoDepartements: { topo: dep.topo, geometries: dep.objet.geometries as (Polygon | MultiPolygon)[] }, departements, communes, communesParCode, communesParDep };
+  const charge = { topoDepartements: { topo: dep.topo, geometries: dep.objet.geometries as (Polygon | MultiPolygon)[] }, topoCommunes: { topo: com.topo, geometries: com.objet.geometries as (Polygon | MultiPolygon)[] }, departements, communes, communesParCode, communesParDep };
   cache = { dossier, charge };
   return charge;
 }
@@ -78,4 +80,36 @@ export function contourRegion(code: string): Contour | null {
   const membres = geometries.filter((g) => region.deps.includes(String((g.properties as { code?: string } | undefined)?.code)));
   if (!membres.length) return null;
   return { type: "Feature", properties: { code }, geometry: merge(topo, membres) };
+}
+
+const propCode = (g: Polygon | MultiPolygon): string => String((g.properties as { code?: string } | undefined)?.code);
+const propDep = (g: Polygon | MultiPolygon): string => String((g.properties as { dep?: string } | undefined)?.dep);
+
+/**
+ * Formes de la carte du budget, une par département, sauf le Rhône : la Métropole de Lyon (fusion de ses communes,
+ * Lyon qu'elle soit découpée en arrondissements ou non) et le reste du Rhône sont deux formes. Le code du contour
+ * est celui du département ; `id` est la collectivité qui porte les collèges (Bas-Rhin et Haut-Rhin : `cea`, etc.).
+ * Sans contour de communes pour le Rhône, le département entier porte `dep-69`.
+ */
+export function formesCollectivites(): { id: IdCollectivite; contour: Contour }[] {
+  const { departements, topoCommunes } = charger();
+  const formes: { id: IdCollectivite; contour: Contour }[] = [];
+  for (const d of departements) {
+    const code = d.properties.code;
+    if (code !== "69") {
+      const id = collectiviteDe("colleges", code, "");
+      if (id) formes.push({ id, contour: d });
+      continue;
+    }
+    const communes = topoCommunes.geometries.filter((g) => propDep(g) === "69");
+    const lyon = communes.filter((g) => COMMUNES_METROPOLE_LYON.has(propCode(g)));
+    const reste = communes.filter((g) => !COMMUNES_METROPOLE_LYON.has(propCode(g)));
+    if (!lyon.length || !reste.length) {
+      formes.push({ id: "dep-69", contour: d });
+      continue;
+    }
+    const forme = (membres: (Polygon | MultiPolygon)[]): Contour => ({ type: "Feature", properties: { code: "69" }, geometry: merge(topoCommunes.topo, membres) });
+    formes.push({ id: "ml-lyon", contour: forme(lyon) }, { id: "dep-69", contour: forme(reste) });
+  }
+  return formes;
 }

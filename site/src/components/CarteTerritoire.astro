@@ -3,24 +3,27 @@
 // - France et académie : départements colorés, vue A (part du privé) ou B (écart d'IPS des collèges),
 //   au choix par deux boutons radio et du CSS ; les deux vues sont imprimées ;
 // - département et commune : un point par établissement (plein : public ; anneau : privé sous contrat).
+import { libelleCollectivite } from "@obs/shared/collectivites";
 import type { CarteDonnees, RefTerritoire } from "@obs/shared/donnees";
 import { LIBELLES } from "@obs/shared/libelles";
 import { anneeScolaire } from "../lib/affichage";
-import { DOMAINE, legendeCarte, svgCarteDepartements, svgCartePoints, type VueCarte } from "../lib/cartes";
+import { DOMAINE, legendeCarte, notesCarteBudget, svgCarteBudget, svgCarteDepartements, svgCartePoints, type VueCarte } from "../lib/cartes";
 import { communesDuDepartement, contourCommune, contourDepartement } from "../lib/contours";
 import { lireFrance } from "../lib/donnees";
 import Absence from "./Absence.astro";
 
-interface Props { carte: CarteDonnees; ref: RefTerritoire; rentree?: number | null }
-const { carte, ref, rentree = null } = Astro.props;
+interface Props { carte: CarteDonnees; ref: RefTerritoire; rentree?: number | null; budget?: Extract<CarteDonnees, { genre: "collectivites" }> | null }
+const { carte, ref, rentree = null, budget = null } = Astro.props;
 
-const VUES: { vue: VueCarte; id: string; libelle: string }[] = [
+const VUES: { vue: Exclude<VueCarte, "budget">; id: string; libelle: string }[] = [
   { vue: "prive", id: "vue-carte-prive", libelle: "Part des élèves dans le privé sous contrat" },
   { vue: "ecart_ips", id: "vue-carte-ecart", libelle: "Écart d'IPS moyen privé − public des collèges" },
 ];
+const VUE_BUDGET = { vue: "budget" as const, id: "vue-carte-budget", libelle: "Dépense de fonctionnement hors personnel par élève des collèges publics" };
 
+const nomCollectivite = (id: string) => { try { return libelleCollectivite(id); } catch { return id; } };
 let points: { svg: string; absents: string[] } | null = null;
-let departements: { vue: VueCarte; id: string; libelle: string; metropole: string; encarts: { code: string; svg: string }[] }[] = [];
+let departements: { vue: VueCarte; id: string; libelle: string; metropole: string; encarts: { code: string; svg: string }[]; notes?: string[] }[] = [];
 let absents: string[] = [];
 const libellesDep = new Map(lireFrance().academiesEtDepartements.flatMap((a) => a.departements.map((x) => [x.dep, x.libelle] as const)));
 
@@ -38,6 +41,12 @@ if (carte.genre === "points") {
     absents = r.absents.map((dep) => libellesDep.get(dep) ?? dep);
     return { ...v, metropole: r.metropole, encarts: r.encarts };
   });
+  if (budget && budget.valeurs.length) {
+    const r = svgCarteBudget(budget.valeurs, { encartsDrom: ref.niveau === "france" });
+    const notes = notesCarteBudget(budget.valeurs, (dep) => libellesDep.get(dep) ?? dep, nomCollectivite);
+    if (r.absents.length) notes.push(`Collectivités non représentées sur la carte (contour non disponible) : ${r.absents.map(nomCollectivite).join(", ")}.`);
+    departements.push({ ...VUE_BUDGET, metropole: r.metropole, encarts: r.encarts, notes });
+  }
 }
 const annee = rentree === null ? null : anneeScolaire(rentree);
 ---
@@ -77,11 +86,16 @@ const annee = rentree === null ? null : anneeScolaire(rentree);
             <figcaption>
               <Fragment set:html={legendeCarte(v.vue, DOMAINE[v.vue])} />
               <div class="src">
-                {v.vue === "prive"
-                  ? "Élèves des collèges et des lycées publics et privés sous contrat"
-                  : "Moyennes d'IPS des collèges publiées par la DEPP, par département"}
-                {annee && <> · rentrée {annee}</>}. Source : DEPP.
+                {v.vue === "budget"
+                  ? "Dernier exercice publié, par collectivité. Source : DGFiP, balances comptables ; élèves : DEPP."
+                  : <>
+                    {v.vue === "prive"
+                      ? "Élèves des collèges et des lycées publics et privés sous contrat"
+                      : "Moyennes d'IPS des collèges publiées par la DEPP, par département"}
+                    {annee && <> · rentrée {annee}</>}. Source : DEPP.
+                  </>}
               </div>
+              {v.notes?.map((n) => <p class="src">{n}</p>)}
             </figcaption>
           </figure>
         ))}
