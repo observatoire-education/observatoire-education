@@ -2,7 +2,6 @@
 import type { IdCollectivite } from "@obs/shared/collectivites";
 import { REGIONS } from "@obs/shared/collectivites";
 import type { Db } from "./db.ts";
-import { litteral } from "./duck.ts";
 
 export interface LigneBudget {
   categ: string;
@@ -60,10 +59,11 @@ export function collectiviteDuBudget(l: LigneBudget): IdCollectivite | null {
 
 /**
  * Fonction normalisée : 221, 222, 223 seuls ou précédés d'un chapitre 90 à 94 ;
- * 22 seul ou préfixé (`922`, `932`, `9322`) devient « 22 » (non détaillée).
+ * 22 seul ou précédé d'un chapitre 90 à 94 (`9322`) devient « 22 » (non détaillée).
+ * `922`, `932`… (chapitre + fonction 2, tout l'enseignement) sont ignorés.
  */
 const RE_DETAILLEE = "^(9[0-4])?(221|222|223)$";
-const RE_NON_DETAILLEE = "^((9[0-4])?22|9[0-4]2)$";
+const RE_NON_DETAILLEE = "^(9[0-4])?22$";
 
 export function fonctionNormalisee(code: string): "221" | "222" | "223" | "22" | null {
   if (new RegExp(RE_DETAILLEE).test(code)) return code.slice(-3) as "221" | "222" | "223";
@@ -100,7 +100,8 @@ export async function etapeBudget(db: Db): Promise<string> {
       unionAll(exercices, (e) => `select categ, ndept, cregi, lbudg from src_budget_${e}`, "", "union") +
         " order by categ, ndept, cregi, lbudg",
     );
-    const lignes = combinaisons.map((l) => ({ ...l, lbudg: l.lbudg ?? "", collectivite: collectiviteDuBudget({ ...l, lbudg: l.lbudg ?? "" }) }));
+    // lbudg reste null s'il est null à la source : la jointure compare avec `is not distinct from`.
+    const lignes = combinaisons.map((l) => ({ ...l, collectivite: collectiviteDuBudget({ ...l, lbudg: l.lbudg ?? "" }) }));
     await db.sql(
       `insert into budget_collectivites
        select unnest(from_json($1::json,

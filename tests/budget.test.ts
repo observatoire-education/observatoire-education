@@ -34,7 +34,9 @@ describe("fonctionNormalisee", () => {
     expect(fonctionNormalisee("90222")).toBe("222");
     expect(fonctionNormalisee("223")).toBe("223");
     expect(fonctionNormalisee("9322")).toBe("22");
-    expect(fonctionNormalisee("922")).toBe("22");
+    expect(fonctionNormalisee("22")).toBe("22");
+    expect(fonctionNormalisee("922")).toBeNull();
+    expect(fonctionNormalisee("932")).toBeNull();
     expect(fonctionNormalisee("2210")).toBeNull();
     expect(fonctionNormalisee("81")).toBeNull();
   });
@@ -69,6 +71,11 @@ describe("balances normalisées", () => {
       "select montant from budget_lignes where collectivite = 'dep-44' and exercice = 2023 and compte = '6068'",
     );
     expect(ordre!.montant).toBe(500_000); // 600 000 − 100 000 d'ordre
+    // 675, 676 (cessions) et 166 (emprunt) sont présents dans la fixture et exclus
+    const [bruts] = await db.sql<{ n: number }>(
+      "select count(*)::int as n from budget_lignes where collectivite = 'dep-44' and exercice = 2023 and compte in ('675', '676', '166')",
+    );
+    expect(bruts!.n).toBe(3);
     const [total] = await db.sql<{ t: number }>("select sum(montant) as t from budget_postes where collectivite = 'dep-44' and exercice = 2023");
     expect(total!.t).toBe(29_200_000); // sans 6811 (300 000) ni 1641 (400 000)
   });
@@ -103,6 +110,12 @@ describe("balances normalisées", () => {
     expect(nd).toEqual([{ exercice: 2023, niveau: "colleges" }, { exercice: 2024, niveau: "colleges" }]);
     expect(await db.sql("select 1 from budget_postes where collectivite = 'dep-56'")).toEqual([]);
     expect(await db.sql("select 1 from budget_non_detaille where collectivite = 'dep-44'")).toEqual([]);
+  });
+
+  test("budget sans libellé (lbudg nul) : ni perdu ni inconnu", async () => {
+    const db = await dbTest();
+    expect(await postes("dep-49", 2024)).toEqual({ "colleges/public/fonctionnement_hors_personnel": 5 });
+    expect(await db.sql("select 1 from budget_inconnus where ident = '49000000100'")).toEqual([]);
   });
 
   test("budgets non identifiés listés à part", async () => {
