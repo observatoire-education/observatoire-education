@@ -215,3 +215,33 @@ export const LIBELLES_BUDGET = {
   mentionCitesScolaires: (pourcent: string, exercice: number) =>
     `Les comptes de la collectivité incluent des reversements entre collectivités pour des cités scolaires (environ ${pourcent} % des dépenses retenues, mesurée sur l'exercice ${exercice}).`,
 } as const;
+
+/** Libellés de la section « Résultats » (brevet et baccalauréat). */
+export const LIBELLES_RESULTATS = {
+  titre: "Résultats",
+  voies: {
+    brevet_general: "Diplôme national du brevet, série générale",
+    brevet_pro: "Diplôme national du brevet, série professionnelle",
+    bac_gt: "Baccalauréat, voie générale et technologique",
+    bac_pro: "Baccalauréat, voie professionnelle",
+  },
+  effectif: { brevet_general: "Candidats", brevet_pro: "Candidats", bac_gt: "Présents", bac_pro: "Présents" },
+  lignes: {
+    taux_reussite: "Taux de réussite",
+    note_ecrit: "Note moyenne à l'écrit",
+    taux_mentions: "Taux de mentions",
+    tauxAccesBrevet: "Taux d'accès de la 6e à la 3e",
+    tauxAccesBac: "Taux d'accès de la seconde au bac",
+    mentions: "Mentions (assez bien · bien · très bien)",
+  },
+  colonneVa: "Valeur ajoutée",
+  aucun: "pas de résultats publiés pour cet établissement",
+  nonPublie: "non publié pour cette session",
+  vaNonPublieePro: "valeur ajoutée non publiée pour la série professionnelle",
+  phraseVa: "La valeur ajoutée compare le résultat de l'établissement à celui qu'on attendrait compte tenu de ses élèves.",
+  commentLaLire: "Comment la lire",
+  lienVa: "/methode/#valeur-ajoutee",
+  rupture: "Réforme du baccalauréat : les séries changent à partir de la session 2021.",
+  session: (s: number) => `session ${s}`,
+  reussite: "Réussite",
+} as const;

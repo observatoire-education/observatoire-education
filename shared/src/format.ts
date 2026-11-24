@@ -3,7 +3,7 @@
 import { LIBELLES_STATUT } from "./libelles.ts";
 import type { SourceId, SourceRef, Statut } from "./types.ts";
 
-const FINE = " ";
+export const FINE =" ";
 const MOINS = "−";
 const ABSENT = "—";
 

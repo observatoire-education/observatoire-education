@@ -7,6 +7,7 @@ import type { CodeIndicateur } from "@obs/shared/libelles";
 import type { Niveau, Secteur } from "@obs/shared/types";
 import Absence from "../../components/Absence.astro";
 import BlocBudget from "../../components/BlocBudget.astro";
+import BlocResultats from "../../components/BlocResultats.astro";
 import Bandeau from "../../components/Bandeau.astro";
 import Cellule from "../../components/Cellule.astro";
 import Empile from "../../components/Empile.astro";
@@ -110,7 +111,7 @@ const franceBudget = f.budget.france.find((m) => m.niveau === niveauBudget);
   <Bandeau f={f} />
   <nav class="toc" aria-label="Sommaire">
     <a href="#eleves">Élèves</a><a href="#social">Composition sociale</a><a href="#ens">Enseignants</a>
-    <a href="#vs">Vie scolaire</a><a href="#moyens">Moyens</a><a href="#voisins">Voisins</a><a href="#sources">Sources</a>
+    <a href="#vs">Vie scolaire</a><a href="#resultats">Résultats</a><a href="#moyens">Moyens</a><a href="#voisins">Voisins</a><a href="#sources">Sources</a>
   </nav>
 
   <section id="eleves">
@@ -272,6 +273,8 @@ const franceBudget = f.budget.france.find((m) => m.niveau === niveauBudget);
       </div>
     </div>
   </section>
+
+  <BlocResultats f={f} />
 
   <section id="moyens">
     <h2>{LIBELLES_BUDGET.titre}</h2>

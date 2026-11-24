@@ -4,11 +4,12 @@
 import QRCode from "qrcode";
 import Fermeture from "./Fermeture.astro";
 import { date, entier, estSession, nombre } from "@obs/shared/format";
-import { academie, type CodeIndicateur, CONTRATS, FAMILLES, FAMILLES_PLURIEL, INDICATEURS, LIBELLES, LIBELLES_BUDGET, SECTEURS } from "@obs/shared/libelles";
-import type { Fiche, Mesure, Niveau, Secteur, SourceId } from "@obs/shared/types";
+import { academie, type CodeIndicateur, CONTRATS, FAMILLES, FAMILLES_PLURIEL, INDICATEURS, LIBELLES, LIBELLES_BUDGET, LIBELLES_RESULTATS as LR, SECTEURS } from "@obs/shared/libelles";
+import type { Fiche, Mesure, Niveau, ResultatsVoie, Secteur, SourceId, ValeurResultat } from "@obs/shared/types";
 import { anneeScolaire, formater, indicateur, reference } from "../lib/affichage";
 import { absenceBudget, montantBudget, niveauDe } from "../lib/budget";
 import { CONFIG, lienPermanent } from "../lib/config";
+import { tauxEntier, vaSignee } from "../lib/resultats";
 
 interface Props { f: Fiche; genereLe: string }
 const { f, genereLe } = Astro.props;
@@ -77,6 +78,16 @@ const lignesBudget = exBudget ? [
   { libelle: contribution, m: exBudget.prive.fonctionnement, moy: moyBudget?.prive.fonctionnement, secteur: "prive" as const, unite: LIBELLES_BUDGET.unites.parElevePrive },
 ].map((l) => ({ ...l, aff: montantBudget(l.m, niveauBudget) })) : [];
 const moyenneBudget = (v: { valeur: number | null } | undefined) => (v && v.valeur !== null ? entier(v.valeur) : "n. d.");
+// Résultats : dernière session de chaque voie, moyennes seules (pas d'écart).
+const libelleRes = (v: ValeurResultat, r: ResultatsVoie) =>
+  v.code === "taux_acces" ? (r.voie.startsWith("brevet") ? LR.lignes.tauxAccesBrevet : LR.lignes.tauxAccesBac) : LR.lignes[v.code];
+const valRes = (v: ValeurResultat) => (v.statut !== "ok" || v.valeur === null ? { t: "n. d.", abs: true } : { t: v.code === "note_ecrit" ? nombre(v.valeur, 1) : tauxEntier(v.valeur), abs: false });
+const vaRes = (v: ValeurResultat) => (v.statutVa === "ok" && v.va !== null ? vaSignee(v.va) : v.statutVa === "sans_objet" ? "" : "n. d.");
+const moyRes = (v: ValeurResultat, n: Niveau, s: Secteur) => {
+  const c = v.comparaisons.find((x) => x.niveau === n);
+  const m = c ? (s === "public" ? c.public : c.prive) : undefined;
+  return m === undefined || m === null ? (v.comparaisons.length ? "n. d." : "") : nombre(m, 1);
+};
 const nd = (v: number | null) => (v === null ? "n. d." : entier(v));
 ---
 <div class="a4" aria-hidden="true">
@@ -151,6 +162,35 @@ const nd = (v: number | null) => (v === null ? "n. d." : entier(v));
     </table>
   </div>
 
+  {f.resultats.length > 0 && (
+    <div class="centre">
+      <h3>{LR.titre}, comparés aux moyennes calculées par l'observatoire</h3>
+      {f.resultats.map((r) => (
+        <table>
+          <thead>
+            <tr class="grp"><th>{LR.voies[r.voie]} · {LR.session(r.session)} <sup>{renvoi(r.source)}</sup></th><th></th><th></th><th colspan="2">{f.depLibelle}</th><th colspan="2">{academie(f.acaLibelle)}</th><th colspan="2">France</th></tr>
+            <tr><th>{LR.effectif[r.voie]} : {r.effectif === null ? "n. d." : entier(r.effectif)}</th><th>Établissement</th><th>{LR.colonneVa}</th>{COLONNES.map(([, s]) => <th><span class={`sym ${s === "public" ? "pub" : "pri"}`}></span>{s === "public" ? "public" : "privé s. c."}</th>)}</tr>
+          </thead>
+          <tbody>
+            {r.valeurs.map((v) => {
+              const e = valRes(v);
+              return (
+                <tr>
+                  <td>{libelleRes(v, r)}</td>
+                  <td class={`n me${e.abs ? " np" : ""}`}>{e.t}</td>
+                  <td class="n">{vaRes(v)}</td>
+                  {COLONNES.map(([n, s]) => <td class="n">{moyRes(v, n, s)}</td>)}
+                </tr>
+              );
+            })}
+            {r.mentions && <tr><td>{LR.lignes.mentions}</td><td class="n me" colspan="2">{[r.mentions.ab, r.mentions.b, r.mentions.tb].map(nd).join(" · ")}</td><td colspan="6"></td></tr>}
+            {r.voie === "brevet_pro" && <tr><td colspan="9" class="hist">{LR.vaNonPublieePro}</td></tr>}
+          </tbody>
+        </table>
+      ))}
+    </div>
+  )}
+
   <div class="two">
     <div>
       <h3>Élèves par niveau {renvoiEleves && <sup>{renvoiEleves}</sup>}</h3>
@@ -204,7 +244,7 @@ const nd = (v: number | null) => (v === null ? "n. d." : entier(v));
     <div><b>Sources</b> (Licence Ouverte 2.0 ; versions archivées et téléchargeables sur la page « Sources ») :</div>
     <ol>
       {f.sources.map((s) => (
-        <li>{s.producteur}, {s.titre}{s.rentree !== null && (estSession(s.id) ? ` · session ${s.rentree}` : ` · rentrée ${anneeScolaire(s.rentree)}`)} · collecté le {date(s.collecteLe)}{["ips_colleges", "ips_lycees", "ips_erea"].includes(s.id) ? " · moyennes publiées par la DEPP" : s.id.startsWith("ips_") ? "" : s.id === "annuaire" ? "" : " · moyennes calculées (Σ / Σ)"}.</li>
+        <li>{s.producteur}, {s.titre}{s.rentree !== null && (estSession(s.id) ? ` · session ${s.rentree}` : ` · rentrée ${anneeScolaire(s.rentree)}`)} · collecté le {date(s.collecteLe)}{["ips_colleges", "ips_lycees", "ips_erea"].includes(s.id) ? " · moyennes publiées par la DEPP" : s.id.startsWith("ips_") || s.id === "annuaire" || s.id === "ivac" || s.id.startsWith("ival_") ? "" : " · moyennes calculées (Σ / Σ)"}.</li>
       ))}
     </ol>
     <div>

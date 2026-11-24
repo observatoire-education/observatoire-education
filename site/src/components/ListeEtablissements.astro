@@ -4,6 +4,7 @@ import { entier, nombre, part } from "@obs/shared/format";
 import { FAMILLES_PLURIEL, LIBELLES } from "@obs/shared/libelles";
 import type { LigneListe } from "@obs/shared/donnees";
 import type { Famille } from "@obs/shared/types";
+import { celluleReussite, celluleVa, triReussite, triVa } from "../lib/resultats";
 import { valeurTri } from "../lib/territoire";
 import Cellule from "./Cellule.astro";
 
@@ -45,6 +46,8 @@ const aEp = liste.some((l) => l.ep);
       <th class="n sort" data-tri="nombre">Élèves / ETP vie scolaire</th>
       <th class="n sort" data-tri="nombre">Enseignantes</th>
       <th class="n sort" data-tri="nombre">IPS</th>
+      <th class="n sort" data-tri="nombre">Réussite</th>
+      <th class="n sort" data-tri="nombre">Valeur ajoutée</th>
     </tr></thead>
     <tbody>
       {liste.map((l) => (
@@ -58,6 +61,8 @@ const aEp = liste.some((l) => l.ep);
           <td class="n" data-v={valeurTri(l.elevesParEtpVs)}><Cellule texte={l.elevesParEtpVs === null ? (l.statutVs === "non_publie_prive" ? LIBELLES.nonPubliePrive : nd) : nombre(l.elevesParEtpVs)} absent={l.elevesParEtpVs === null} /></td>
           <td class="n" data-v={valeurTri(l.partEnseignantes)}><Cellule texte={l.partEnseignantes === null ? nd : part(l.partEnseignantes)} absent={l.partEnseignantes === null} /></td>
           <td class="n" data-v={valeurTri(l.ips)}><Cellule texte={l.ips === null ? nd : nombre(l.ips)} absent={l.ips === null} /></td>
+          <td class="n" data-v={triReussite(l.reussite)}><Cellule texte={celluleReussite(l.reussite, famille)} absent={!l.reussite.some((r) => r.taux !== null)} /></td>
+          <td class="n" data-v={triVa(l.reussite)}><Cellule texte={celluleVa(l.reussite, famille)} absent={!l.reussite.some((r) => r.va !== null)} /></td>
         </tr>
       ))}
     </tbody>

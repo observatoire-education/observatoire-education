@@ -1,0 +1,103 @@
+---
+// Section « Résultats » : un sous-bloc par voie (brevet général, brevet professionnel, bac GT, bac pro).
+// Taux : écart en premier, moyenne entre parenthèses ; valeur ajoutée : signée telle que publiée, jamais d'écart.
+import { ecart, entier, nombre } from "@obs/shared/format";
+import { LIBELLES, LIBELLES_BUDGET, LIBELLES_RESULTATS as L } from "@obs/shared/libelles";
+import type { Fiche, Niveau, ResultatsVoie, ValeurResultat } from "@obs/shared/types";
+import { source } from "../lib/affichage";
+import { svgBarres } from "../lib/plot";
+import { tauxEntier, vaSignee } from "../lib/resultats";
+import Absence from "./Absence.astro";
+import Cellule from "./Cellule.astro";
+import LigneSource from "./LigneSource.astro";
+
+interface Props { f: Fiche }
+const { f } = Astro.props;
+const resultats = f.resultats;
+
+const NIVEAUX: Niveau[] = ["departement", "academie", "france"];
+const COURT: Record<Niveau, string> = { departement: "Dép.", academie: "Acad.", france: "France", region: "Région" };
+const COLONNES = NIVEAUX.flatMap((n) => [[n, "public"], [n, "prive"]] as const);
+
+const libelleLigne = (v: ValeurResultat, voie: ResultatsVoie["voie"]) =>
+  v.code === "taux_acces" ? (voie.startsWith("brevet") ? L.lignes.tauxAccesBrevet : L.lignes.tauxAccesBac) : L.lignes[v.code];
+const formatValeur = (v: ValeurResultat) => (v.code === "note_ecrit" ? nombre(v.valeur, 1) : tauxEntier(v.valeur!));
+const present = (v: ValeurResultat) => v.statut === "ok" && v.valeur !== null;
+
+/** « +3,3 (76,7) » ; moyenne seule si l'établissement n'a pas de valeur ; absence si pas de moyenne. */
+function comparer(v: ValeurResultat, niveau: Niveau, secteur: "public" | "prive"): { texte: string; absent: boolean } {
+  const c = v.comparaisons.find((x) => x.niveau === niveau);
+  const ref = c ? c[secteur] : null;
+  if (ref === null || ref === undefined) return { texte: LIBELLES.nonDisponible, absent: true };
+  return { texte: present(v) ? ecart(v.valeur!, ref, 1) : `(${nombre(ref, 1)})`, absent: false };
+}
+const aComparaisons = (v: ValeurResultat) => v.comparaisons.length > 0;
+const sansVaPro = (r: ResultatsVoie) => r.voie === "brevet_pro";
+---
+<section id="resultats">
+  <h2>{L.titre}</h2>
+  {resultats.length === 0 ? (
+    <div class="card"><Absence texte={L.aucun} /></div>
+  ) : (
+    <>
+      <p class="mute" style="font-size:13px;margin:0 0 10px">{L.phraseVa} <a href={L.lienVa}>{L.commentLaLire}</a></p>
+      <div class="cols2">
+        {resultats.map((r) => {
+          const sc = source(f, r.source);
+          return (
+            <div class="card wide" style="grid-column:1/-1">
+              <div class="lab"><span>{L.voies[r.voie]}</span><span class="yr">{L.session(r.session)}</span></div>
+              <div class="table-wrap"><table class="mini-t cmp">
+                <thead><tr>
+                  <th></th><th class="n">Établissement</th><th class="n">{L.colonneVa}</th>
+                  {COLONNES.map(([n, s]) => <th class="n">{COURT[n]} {s === "public" ? "public" : "privé s. c."}</th>)}
+                </tr></thead>
+                <tbody>
+                  <tr>
+                    <td>{L.effectif[r.voie]}</td>
+                    <td class="n"><Cellule texte={r.effectif === null ? LIBELLES.nonDisponible : entier(r.effectif)} absent={r.effectif === null} /></td>
+                    <td colspan={2 + COLONNES.length - 1}></td>
+                  </tr>
+                  {r.valeurs.map((v) => (
+                    <tr>
+                      <td>{libelleLigne(v, r.voie)}</td>
+                      <td class="n">{present(v) ? <b>{formatValeur(v)}</b> : <Cellule texte={L.nonPublie} absent />}</td>
+                      <td class="n">
+                        {v.statutVa === "ok" && v.va !== null ? vaSignee(v.va)
+                          : v.statutVa === "non_publie" ? <Cellule texte={L.nonPublie} absent /> : ""}
+                      </td>
+                      {COLONNES.map(([n, s]) => {
+                        if (!aComparaisons(v)) return <td></td>;
+                        const c = comparer(v, n, s);
+                        return <td class={`n ${s === "public" ? "pub" : "pri"}`}><Cellule texte={c.texte} absent={c.absent} /></td>;
+                      })}
+                    </tr>
+                  ))}
+                  {r.mentions && (
+                    <tr>
+                      <td>{L.lignes.mentions}</td>
+                      <td class="n" colspan="2">{[r.mentions.ab, r.mentions.b, r.mentions.tb].map((x) => (x === null ? LIBELLES.nonDisponible : entier(x))).join(" · ")}</td>
+                      <td colspan={COLONNES.length}></td>
+                    </tr>
+                  )}
+                  {sansVaPro(r) && (
+                    <tr><td colspan={3 + COLONNES.length} class="mute">{L.vaNonPublieePro}</td></tr>
+                  )}
+                </tbody>
+              </table></div>
+              <div class="mute" style="font-size:12px;margin-top:6px">Écart à la moyenne (moyenne entre parenthèses) : {LIBELLES_BUDGET.moyenne.calculee}.</div>
+              {r.historique.length >= 2 && (
+                <>
+                  <div class="lab" style="margin-top:10px"><span>Taux de réussite, évolution</span><span class="yr">{r.historique[0]![0]} → {r.historique.at(-1)![0]}</span></div>
+                  <Fragment set:html={svgBarres(r.historique)} />
+                  {r.rupture !== null && <div class="mute" style="font-size:12px">{L.rupture}</div>}
+                </>
+              )}
+              <LigneSource s={sc} />
+            </div>
+          );
+        })}
+      </div>
+    </>
+  )}
+</section>

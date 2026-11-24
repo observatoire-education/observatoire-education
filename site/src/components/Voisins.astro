@@ -4,6 +4,7 @@ import { nombre } from "@obs/shared/format";
 import { FAMILLES_PLURIEL, LIBELLES, SECTEURS } from "@obs/shared/libelles";
 import type { Fiche } from "@obs/shared/types";
 import { absente, valeur } from "../lib/affichage";
+import { celluleReussite, celluleVa } from "../lib/resultats";
 import Absence from "./Absence.astro";
 import Cellule from "./Cellule.astro";
 
@@ -21,7 +22,7 @@ const v = f.voisins;
     <div class="card" style="padding:4px 6px">
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Établissement</th><th>Secteur</th><th>Commune</th><th class="n">Distance</th><th class="n">Élèves</th><th class="n">Élèves / ETP ens.</th><th class="n">IPS</th></tr></thead>
+          <thead><tr><th>Établissement</th><th>Secteur</th><th>Commune</th><th class="n">Distance</th><th class="n">Élèves</th><th class="n">Élèves / ETP ens.</th><th class="n">IPS</th><th class="n">Réussite</th><th class="n">Valeur ajoutée</th><th class="n">Part d'agrégés</th></tr></thead>
           <tbody>
             {v.map((x) => (
               <tr>
@@ -32,6 +33,9 @@ const v = f.voisins;
                 <td class="n"><Cellule texte={valeur("eleves", x.eleves)} absent={absente(x.eleves)} /></td>
                 <td class="n"><Cellule texte={valeur("eleves_par_etp_ens", x.elevesParEtpEns)} absent={absente(x.elevesParEtpEns)} /></td>
                 <td class="n"><Cellule texte={valeur("ips", x.ips)} absent={absente(x.ips)} /></td>
+                <td class="n"><Cellule texte={celluleReussite(x.reussite, x.famille)} absent={!x.reussite.some((r) => r.taux !== null)} /></td>
+                <td class="n"><Cellule texte={celluleVa(x.reussite, x.famille)} absent={!x.reussite.some((r) => r.va !== null)} /></td>
+                <td class="n"><Cellule texte={valeur("part_agreges", x.partAgreges)} absent={absente(x.partAgreges)} /></td>
               </tr>
             ))}
           </tbody>
