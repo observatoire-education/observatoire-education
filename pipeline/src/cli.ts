@@ -103,12 +103,14 @@ async function data(): Promise<void> {
   console.log(`  résultats ignorés (UAI sans fiche) : ${ignores.map((l) => `${l.source} ${l.n}`).join(", ") || "aucun"}`);
   const ecoles = await db.sql<{ source: string; n: number }>("select source, n from ecoles_ignorees order by source");
   console.log(`  écoles ignorées (UAI sans fiche) : ${ecoles.map((l) => `${l.source} ${l.n}`).join(", ") || "aucune"}`);
-  const rapportSecteurs: RapportSecteurs = { sansFiche: 0 };
+  const rapportSecteurs: RapportSecteurs = { sansFiche: 0, ecolesSansFiche: 0, communesDeuxCartes: 0 };
   const secteurs = await calculerSecteurs(db, rapportSecteurs);
   const parStatut = Map.groupBy(secteurs.values(), (s) => s.statut);
   const taux = (n: number) => `${((100 * n) / Math.max(secteurs.size, 1)).toFixed(1).replace(".", ",")} %`;
   console.log(`  collège de secteur de ${secteurs.size} écoles : ${[...parStatut].map(([s, l]) => `${s} ${l.length} (${taux(l.length)})`).join(", ")}`);
-  console.log(`    ${rapportSecteurs.sansFiche} collège(s) de la carte scolaire sans fiche, écarté(s)`);
+  console.log(`    ${rapportSecteurs.ecolesSansFiche} école(s) non rapprochée(s) faute de fiche pour un collège de leur secteur (${rapportSecteurs.sansFiche} collège(s) sans fiche)`);
+  // Commune citée par les cartes de deux départements : ses lignes sont réunies et rapprochées ensemble.
+  console.log(`    ${rapportSecteurs.communesDeuxCartes} commune(s) présente(s) dans les cartes de deux départements, lignes réunies`);
   const [{ n: inconnus } = { n: 0 }] = await db.sql<{ n: number }>("select count(*)::integer as n from budget_inconnus");
   console.log(`  ${inconnus} budget(s) de collectivité non identifiée dans les balances`);
   const budgets = await calculerBudgets(db, fiches);

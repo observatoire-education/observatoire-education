@@ -135,45 +135,80 @@ interface VoieTroncon {
   libelle: string;
 }
 
+/** Ensembles distincts de collèges (UAI triées) des groupes de tronçons. */
+function ensemblesDe(groupes: Iterable<Troncon[]>): Set<string> {
+  return new Set([...groupes].map((ts) => [...new Set(ts.map((t) => t.rne))].sort().join(",")));
+}
+
+/** Fin ouverte de la carte : « 9999 » veut dire « jusqu'au bout de la voie ». */
+const FIN_DE_VOIE = 9999;
+
+/**
+ * Les tronçons couvrent-ils toute la voie, de 1 à la fin, pour les numéros pairs comme impairs, sans trou ?
+ * Un début avec indice (« 41 B ») ne couvre pas le numéro seul (41) : le tronçon commence au suivant.
+ */
+function couvreToute(troncons: Troncon[]): boolean {
+  return [0, 1].every((reste) => {
+    const plages = troncons
+      .filter((t) => t.debut !== null && t.fin !== null && (t.parite === "PI" || t.parite === (reste === 0 ? "P" : "I")))
+      .map((t) => [t.debut! + (t.indice_debut === null ? 0 : 1), t.fin!] as const)
+      .sort((a, b) => a[0] - b[0]);
+    let attendu = reste === 0 ? 2 : 1; // premier numéro de cette parité pas encore couvert
+    for (const [debut, fin] of plages) {
+      if (debut > attendu) return false;
+      if (fin >= attendu) attendu = fin + (fin % 2 === reste ? 2 : 1);
+    }
+    return attendu > FIN_DE_VOIE;
+  });
+}
+
 /**
  * Collèges d'une adresse dans une commune découpée par voie, ou null si elle n'est pas rapprochée : sans voie,
- * voie absente, numéro hors des tronçons, tronçon indéterminé, ou ambiguïté. Il y a ambiguïté quand les tronçons
- * retenus viennent de voies distinctes de la carte (même libellé dans plusieurs lieux-dits d'une commune nouvelle,
- * ou libellés que seuls les articles séparent) et mènent à des collèges différents. Plusieurs collèges sur un même
+ * voie absente, numéro hors des tronçons, tronçon indéterminé, ou ambiguïté. Plusieurs collèges sur un même
  * tronçon forment un secteur multi-collèges : tous sont retenus.
  *
- * Sans numéro, l'adresse n'est rapprochée que si c'est certain : tous les tronçons de la voie (toutes plages,
- * toutes parités, tous lieux-dits) mènent au même ensemble de collèges.
+ * L'adresse ne dit pas le lieu-dit : quand la voie existe dans plusieurs lieux-dits (communes nouvelles),
+ * chacun doit la rapprocher (un tronçon qui couvre le numéro, ou toute la voie sans numéro) et vers les mêmes
+ * collèges. Dans un même lieu-dit, des libellés que seuls les articles séparent doivent aussi mener aux mêmes
+ * collèges.
+ *
+ * Sans numéro, l'adresse n'est rapprochée que si c'est certain : les tronçons de la voie la couvrent en entier
+ * (de 1 à la fin, pairs et impairs, sans trou) et tous mènent au même ensemble de collèges.
  */
 function parVoie(adresse: AdresseNormalisee, troncons: Troncon[], voies: Map<Troncon, VoieTroncon>): string[] | null {
   const { numero, indice, voie } = adresse;
   if (voie === null) return null;
+  const deLaVoie = troncons.filter((t) => voies.get(t)?.cle === voie);
+  if (deLaVoie.length === 0) return null;
+  const parLieuDit = Map.groupBy(deLaVoie, (t) => t.lieu_dit ?? "");
   if (numero === null) {
-    const deLaVoie = troncons.filter((t) => voies.get(t)?.cle === voie);
+    if (![...parLieuDit.values()].every(couvreToute)) return null;
     // une zone : mêmes lieu-dit, libellé, bornes et parité ; plusieurs collèges dans une zone = multi-collèges
     const zones = Map.groupBy(deLaVoie, (t) =>
       [t.lieu_dit, voies.get(t)!.libelle, t.debut, t.indice_debut, t.fin, t.indice_fin, t.parite].join("|"),
     );
-    const ensembles = new Set([...zones.values()].map((ts) => [...new Set(ts.map((t) => t.rne))].sort().join(",")));
-    return ensembles.size === 1 ? [...new Set(deLaVoie.map((t) => t.rne))] : null;
+    return ensemblesDe(zones.values()).size === 1 ? [...new Set(deLaVoie.map((t) => t.rne))] : null;
   }
   const retenus: Troncon[] = [];
-  for (const t of troncons) {
-    if (voies.get(t)?.cle !== voie) continue;
+  for (const t of deLaVoie) {
     const v = couvre(t, numero, indice);
     if (v === null) return null;
     if (v) retenus.push(t);
   }
-  if (retenus.length === 0) return null;
+  // chaque lieu-dit où la voie existe doit couvrir le numéro
+  if ([...parLieuDit.keys()].some((l) => !retenus.some((t) => (t.lieu_dit ?? "") === l))) return null;
   const parVoieDistincte = Map.groupBy(retenus, (t) => `${t.lieu_dit ?? ""}|${voies.get(t)!.libelle}`);
-  const ensembles = new Set([...parVoieDistincte.values()].map((ts) => [...new Set(ts.map((t) => t.rne))].sort().join(",")));
-  if (ensembles.size > 1) return null;
+  if (ensemblesDe(parVoieDistincte.values()).size > 1) return null;
   return [...new Set(retenus.map((t) => t.rne))];
 }
 
 export interface RapportSecteurs {
-  /** Collèges de la carte retenus pour au moins une école mais sans fiche : écartés. */
+  /** Collèges de la carte retenus pour au moins une école mais sans fiche. */
   sansFiche: number;
+  /** Écoles non rapprochées parce qu'un collège de leur secteur n'a pas de fiche (pas de liste partielle). */
+  ecolesSansFiche: number;
+  /** Communes présentes dans les cartes de deux départements ou plus (leurs lignes sont réunies). */
+  communesDeuxCartes: number;
 }
 
 const ecoles = `famille in (${FAMILLES_ECOLES.map(litteral).join(", ")})`;
@@ -202,6 +237,13 @@ export async function calculerSecteurs(db: Db, rapport?: RapportSecteurs): Promi
       )
     ).map((l) => l.dep),
   );
+  // Une commune peut figurer dans la carte de deux départements (commune limitrophe) : ses lignes sont réunies,
+  // comme si elles venaient d'une seule carte (rattachement entier, ou tronçons de voie rapprochés ensemble).
+  const [{ n: communesDeuxCartes } = { n: 0 }] = await db.sql<{ n: number }>(
+    `select count(*)::integer as n from (
+       select trim(code_insee) from src_carte_scolaire where nullif(trim(code_insee), '') is not null
+       group by 1 having count(distinct trim(code_departement)) > 1)`,
+  );
   const troncons = Map.groupBy(
     await db.sql<Troncon>(
       `select trim(code_insee) as insee, nullif(trim(lieu_dit), '') as lieu_dit, nullif(trim(type_et_libelle), '') as voie,
@@ -228,14 +270,19 @@ export async function calculerSecteurs(db: Db, rapport?: RapportSecteurs): Promi
     ).map((l) => [l.uai, l]),
   );
   const sansFiche = new Set<string>();
-  const liens = (rnes: string[]): LienEtab[] => {
-    const l: LienEtab[] = [];
-    for (const rne of rnes) {
-      const f = fiches.get(rne);
-      if (f) l.push({ uai: f.uai, nom: f.nom, fermeLe: f.fermeLe });
-      else sansFiche.add(rne);
+  let ecolesSansFiche = 0;
+  /** Liens vers les collèges, triés par nom ; null si l'un d'eux n'a pas de fiche (tous doivent être nommés). */
+  const liens = (rnes: string[]): LienEtab[] | null => {
+    const manquants = rnes.filter((rne) => !fiches.has(rne));
+    if (manquants.length > 0) {
+      for (const rne of manquants) sansFiche.add(rne);
+      ecolesSansFiche++;
+      return null;
     }
-    return l.sort((a, b) => a.nom.localeCompare(b.nom, "fr") || a.uai.localeCompare(b.uai));
+    return rnes
+      .map((rne) => fiches.get(rne)!)
+      .map(({ uai, nom, fermeLe }) => ({ uai, nom, fermeLe }))
+      .sort((a, b) => a.nom.localeCompare(b.nom, "fr") || a.uai.localeCompare(b.uai));
   };
 
   const resultat = new Map<string, SecteurCollege>();
@@ -250,10 +297,9 @@ export async function calculerSecteurs(db: Db, rapport?: RapportSecteurs): Promi
     const rnes = decoupee
       ? parVoie(normaliserAdresse(e.adresse ?? ""), lignes, voies)
       : [...new Set(lignes.map((t) => t.rne))];
-    const colleges = rnes ? liens(rnes) : [];
-    // Des collèges tous sans fiche : impossible de les nommer, l'adresse reste non rapprochée.
-    resultat.set(e.uai, colleges.length > 0 ? { statut: decoupee ? "voie" : "commune", colleges } : nonRapproche());
+    const colleges = rnes ? liens(rnes) : null;
+    resultat.set(e.uai, colleges && colleges.length > 0 ? { statut: decoupee ? "voie" : "commune", colleges } : nonRapproche());
   }
-  if (rapport) rapport.sansFiche = sansFiche.size;
+  if (rapport) Object.assign(rapport, { sansFiche: sansFiche.size, ecolesSansFiche, communesDeuxCartes });
   return resultat;
 }

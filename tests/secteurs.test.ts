@@ -7,7 +7,7 @@ import { connexion, executer, litteral } from "../pipeline/src/duck.ts";
 import { calculerSecteurs, normaliserAdresse, normaliserVoie, type RapportSecteurs } from "../pipeline/src/secteurs.ts";
 import { cheminsFixtures, dbTest, FIXTURES } from "./aide.ts";
 
-const rapport: RapportSecteurs = { sansFiche: 0 };
+const rapport: RapportSecteurs = { sansFiche: 0, ecolesSansFiche: 0, communesDeuxCartes: 0 };
 const secteurs = await calculerSecteurs(await dbTest(), rapport);
 
 const JULES_VERNE = { uai: "0440001A", nom: "Collège Jules-Verne", fermeLe: null };
@@ -92,7 +92,7 @@ describe("collège de secteur à l'adresse de l'école", () => {
 
   test("commune découpée : voie, numéro et parité", () => {
     expect(secteurs.get("0440201A")).toEqual({ statut: "voie", colleges: [JULES_VERNE] }); // 12, pair
-    // 3 bis rue Jules Ferry : numéros 1 à 99, pairs et impairs
+    // 3 bis rue Jules Ferry : un tronçon sur toute la voie, pairs et impairs
     expect(secteurs.get("0440202B")).toEqual({ statut: "voie", colleges: [SAINT_EXEMPLE] });
   });
 
@@ -100,9 +100,9 @@ describe("collège de secteur à l'adresse de l'école", () => {
     expect(secteurs.get("0440203C")).toEqual({ statut: "non_rapproche", colleges: [] });
   });
 
-  test("secteur multi-collèges : tous les collèges, triés par nom ; un collège sans fiche est écarté et compté", () => {
+  test("secteur multi-collèges : tous les collèges, triés par nom", () => {
     expect(secteurs.get("0440108H")).toEqual({ statut: "voie", colleges: [SAINT_EXEMPLE, SANS_GPS] });
-    expect(rapport.sansFiche).toBe(1);
+    expect(rapport).toEqual({ sansFiche: 0, ecolesSansFiche: 0, communesDeuxCartes: 0 });
   });
 
   test("écoles ouvertes seulement", () => {
@@ -120,7 +120,8 @@ describe("collège de secteur à l'adresse de l'école", () => {
         "0440104D": { code_commune: "44999" },
         // voies que seuls les articles séparent, vers deux collèges différents
         "0440203C": { adresse_1: "7 rue du Port" },
-        // même voie dans deux lieux-dits (commune nouvelle), vers deux collèges différents
+        // même voie dans deux lieux-dits (commune nouvelle) ; le numéro n'est couvert qu'à Chantenay :
+        // l'adresse ne dit pas le lieu-dit, choisir Chantenay serait une supposition
         "0440105E": { adresse_1: "4 rue des Écoles", code_commune: "44109" },
         // indices de répétition différents à la borne du tronçon : indéterminé
         "0440108H": { adresse_1: "41 ter rue des Tilleuls" },
@@ -129,7 +130,7 @@ describe("collège de secteur à l'adresse de l'école", () => {
         `${entete},,RUE DU PORT,1.0,,99.0,,PI,0440001A,N`,
         `${entete},,RUE DE PORT,1.0,,99.0,,PI,0440005E,N`,
         `${entete},CHANTENAY,RUE DES ECOLES,1.0,,99.0,,PI,0440001A,N`,
-        `${entete},DOULON,RUE DES ECOLES,1.0,,99.0,,PI,0440002B,N`,
+        `${entete},DOULON,RUE DES ECOLES,1.0,,3.0,,PI,0440002B,N`,
         `${entete},,RUE DES TILLEULS,41.0,B,9999.0,,PI,0440001A,N`,
       ],
     );
@@ -143,24 +144,50 @@ describe("collège de secteur à l'adresse de l'école", () => {
     expect(s.get("0440108H")).toEqual({ statut: "non_rapproche", colleges: [] });
   });
 
-  test("adresse sans numéro : rapprochée quand tous les tronçons de la voie mènent aux mêmes collèges", async () => {
+  test("adresse sans numéro : rapprochée quand la voie est couverte en entier et mène aux mêmes collèges", async () => {
+    const r: RapportSecteurs = { sansFiche: 0, ecolesSansFiche: 0, communesDeuxCartes: 0 };
     const db = await dbModifiee(
       {
-        "0440203C": { adresse_1: "rue Jules Ferry" }, // un seul tronçon, 1 à 99
+        "0440203C": { adresse_1: "rue Jules Ferry" }, // un seul tronçon, 1 à 9999
         "0440108H": { adresse_1: "rue des Tilleuls" }, // secteur multi-collèges sur toute la voie
         "0440105E": { adresse_1: "rue des Écoles", code_commune: "44109" }, // deux lieux-dits, deux collèges
+        "0440201A": { adresse_1: "rue des Cerisiers" }, // un seul tronçon, 1 à 99 : voie couverte en partie
+        "0440202B": { adresse_1: "rue des Peupliers" }, // pairs couverts jusqu'au bout, impairs avec un trou
       },
       [
         "044,LOIRE-ATLANTIQUE,44109,NANTES,CHANTENAY,RUE DES ECOLES,1.0,,99.0,,PI,0440001A,N",
         "044,LOIRE-ATLANTIQUE,44109,NANTES,DOULON,RUE DES ECOLES,1.0,,99.0,,PI,0440002B,N",
+        "044,LOIRE-ATLANTIQUE,44109,NANTES,,RUE DES CERISIERS,1.0,,99.0,,PI,0440001A,N",
+        "044,LOIRE-ATLANTIQUE,44109,NANTES,,RUE DES PEUPLIERS,2.0,,9998.0,,P,0440001A,N",
+        "044,LOIRE-ATLANTIQUE,44109,NANTES,,RUE DES PEUPLIERS,1.0,,41.0,,I,0440001A,N",
+        "044,LOIRE-ATLANTIQUE,44109,NANTES,,RUE DES PEUPLIERS,45.0,,9999.0,,I,0440001A,N",
       ],
     );
-    const s = await calculerSecteurs(db);
+    const s = await calculerSecteurs(db, r);
     db.fermer();
     expect(s.get("0440203C")).toEqual({ statut: "voie", colleges: [SAINT_EXEMPLE] });
     expect(s.get("0440108H")).toEqual({ statut: "voie", colleges: [SAINT_EXEMPLE, SANS_GPS] });
     expect(s.get("0440105E")).toEqual({ statut: "non_rapproche", colleges: [] });
+    expect(s.get("0440201A")).toEqual({ statut: "non_rapproche", colleges: [] });
+    expect(s.get("0440202B")).toEqual({ statut: "non_rapproche", colleges: [] });
     // rue des Lilas, découpée par parité entre deux collèges : toujours non rapprochée (base des fixtures)
     expect(secteurs.get("0440203C")).toEqual({ statut: "non_rapproche", colleges: [] });
+  });
+
+  test("un collège du secteur sans fiche : aucune liste partielle, l'école est non rapprochée et comptée", async () => {
+    const r: RapportSecteurs = { sansFiche: 0, ecolesSansFiche: 0, communesDeuxCartes: 0 };
+    const db = await dbModifiee(
+      { "0440201A": { adresse_1: "2 rue des Acacias" } },
+      [
+        "044,LOIRE-ATLANTIQUE,44109,NANTES,,RUE DES ACACIAS,1.0,,9999.0,,PI,0440001A,N",
+        "044,LOIRE-ATLANTIQUE,44109,NANTES,,RUE DES ACACIAS,1.0,,9999.0,,PI,0449998X,N",
+        // Nantes aussi dans la carte d'un autre département : ses lignes sont réunies à celles de la Loire-Atlantique
+        "049,MAINE-ET-LOIRE,44109,NANTES,,RUE DES BORDS,1.0,,9999.0,,PI,0440001A,N",
+      ],
+    );
+    const s = await calculerSecteurs(db, r);
+    db.fermer();
+    expect(s.get("0440201A")).toEqual({ statut: "non_rapproche", colleges: [] });
+    expect(r).toEqual({ sansFiche: 1, ecolesSansFiche: 1, communesDeuxCartes: 1 });
   });
 });
