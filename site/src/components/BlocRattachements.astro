@@ -1,0 +1,23 @@
+---
+// Rattachements d'une école ouverte (spec, sections 6.4 et 6.5) : collège de secteur à l'adresse de l'école (ou
+// absence dite), note sur le sens du secteur (public ou privé), PIAL, circonscription.
+import { LIBELLES_RATTACHEMENTS as LR } from "@obs/shared/libelles";
+import type { Rattachements } from "@obs/shared/types";
+import Absence from "./Absence.astro";
+import BlocPial from "./BlocPial.astro";
+
+interface Props { r: Rattachements; uai: string; prive: boolean }
+const { r, uai, prive } = Astro.props;
+const { colleges, statut } = r.secteur;
+---
+<section id="rattachements">
+  <h2>{LR.titre}</h2>
+  <div class="card">
+    {colleges.length > 0
+      ? <p class="secteur-college">{LR.introSecteur(prive)} {colleges.map((c, k) => <>{k > 0 && ", "}<a href={`/etablissement/${c.uai}/`}>{c.nom}</a> ({c.uai})</>)}</p>
+      : <Absence texte={statut === "carte_non_publiee" ? LR.carteNonPubliee : LR.nonRapprochee} />}
+    <p class="ecole-note">{prive ? LR.notePrive : LR.noteSecteur}</p>
+    {r.pial && <BlocPial pial={r.pial} uai={uai} />}
+    {r.circonscription && <p>{LR.circonscription} : {r.circonscription}</p>}
+  </div>
+</section>

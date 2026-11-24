@@ -20,8 +20,11 @@ const prive = f.secteur === "prive_sous_contrat";
 const ecole = estEcole(f.famille);
 const ipsCalculee = indicateur(f, "ips").comparaisons.some((c) => c.calculee);
 
-// Numéro de chaque source dans le pied de page.
-const numero = new Map<SourceId, number>(f.sources.map((s, i) => [s.id, i + 1]));
+// Numéro de chaque source dans le pied de page. La fiche A4 d'un collège ne reprend pas la liste des écoles de son
+// secteur : les sources de cette liste (élèves et IPS des écoles) n'y figurent pas.
+const LISTE_ECOLES = new Set<SourceId>(["effectifs_ecoles", "ips_ecoles", "ips_ecoles_2016"]);
+const sources = ecole ? f.sources : f.sources.filter((s) => !LISTE_ECOLES.has(s.id));
+const numero = new Map<SourceId, number>(sources.map((s, i) => [s.id, i + 1]));
 const renvoi = (id: SourceId | null | undefined) => (id && numero.has(id) ? `[${numero.get(id)}]` : "");
 
 /** Moyenne seule (sans écart) ; absences abrégées, définies en pied de page. */
@@ -318,7 +321,7 @@ const nd = (v: number | null) => (v === null ? "n. d." : entier(v));
   <div class="ft">
     <div><b>Sources</b> (Licence Ouverte 2.0 ; versions archivées et téléchargeables sur la page « Sources ») :</div>
     <ol>
-      {f.sources.map((s) => (
+      {sources.map((s) => (
         <li>{s.producteur}, {s.titre}{s.rentree !== null && (estSession(s.id) ? ` · session ${s.rentree}` : ` · rentrée ${anneeScolaire(s.rentree)}`)} · collecté le {date(s.collecteLe)}{mentionMoyennesA4(s.id, ipsCalculee)}.</li>
       ))}
     </ol>

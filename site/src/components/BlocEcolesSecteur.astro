@@ -1,0 +1,47 @@
+---
+// Écoles du secteur d'un collège public (spec, section 6.4) : écoles ouvertes, publiques et privées sous contrat,
+// dont l'adresse relève du secteur, triées par nom, avec un décompte par secteur. Élèves et IPS de la dernière rentrée
+// publiée pour les écoles, rentrée dite dans le titre de la colonne (d'après les sources de la fiche, citées dans la
+// section « Sources ») ; une absence en toutes lettres.
+import { entier } from "@obs/shared/format";
+import { FAMILLES, LIBELLES_RATTACHEMENTS as LR, SECTEURS } from "@obs/shared/libelles";
+import type { Fiche, LigneEcole } from "@obs/shared/types";
+import { valeur } from "../lib/affichage";
+import Absence from "./Absence.astro";
+import Cellule from "./Cellule.astro";
+
+interface Props { f: Fiche; ecoles: LigneEcole[] }
+const { f, ecoles } = Astro.props;
+const sourceEleves = f.sources.find((s) => s.id === "effectifs_ecoles");
+const sourceIps = f.sources.find((s) => s.id === "ips_ecoles" || s.id === "ips_ecoles_2016");
+const titre = (libelle: string, rentree: number | null | undefined) => (rentree ? `${libelle} ${rentree}` : libelle);
+const publiques = ecoles.filter((e) => e.secteur === "public").length;
+---
+<section id="ecoles-secteur">
+  <h2>{LR.ecolesDuSecteur}</h2>
+  <div class="card">
+    {ecoles.length === 0 ? <Absence texte={LR.aucuneEcole} /> : (
+      <>
+        <p>{LR.decompte(publiques, ecoles.length - publiques)}</p>
+        <div class="table-wrap">
+          <table class="mini-t">
+            <thead><tr><th>École</th><th>Nature</th><th>Secteur</th><th>Commune</th><th class="n">{titre("Élèves", sourceEleves?.rentree)}</th><th class="n">{titre("IPS", sourceIps?.rentree)}</th></tr></thead>
+            <tbody>
+              {ecoles.map((e) => (
+                <tr>
+                  <td><a href={`/etablissement/${e.uai}/`}>{e.nom}</a></td>
+                  <td>{FAMILLES[e.famille]}</td>
+                  <td><span class={`sect ${e.secteur === "public" ? "pub" : "pri"}`}>{e.secteur === "public" ? SECTEURS.public : "Privé s. c."}</span></td>
+                  <td>{e.commune}</td>
+                  <td class="n"><Cellule texte={e.eleves === null ? LR.nonPublie : entier(e.eleves)} absent={e.eleves === null} /></td>
+                  <td class="n"><Cellule texte={e.ips === null ? LR.nonPublie : valeur("ips", { valeur: e.ips, statut: "ok", source: null, rentree: null })} absent={e.ips === null} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </>
+    )}
+    <p class="ecole-note">{LR.noteListe} <a href="/methode/#secteur-ecole">{LR.methode}</a>. {LR.noteSecteur}</p>
+  </div>
+</section>

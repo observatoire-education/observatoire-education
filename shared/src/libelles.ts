@@ -89,6 +89,47 @@ export const LIBELLES_ECOLES = {
   ueea: "UEEA",
 } as const;
 
+const pluriel = (n: number, singulier: string, plurielle: string) => `${n} ${n > 1 ? plurielle : singulier}`;
+
+/** Titre du PIAL en deux parties : « PIAL du collège » et le nom de la tête (qui porte le lien vers sa fiche). */
+export function titrePialEnDeux(famille: Famille, nom: string): { debut: string; nom: string } {
+  const f = FAMILLES[famille];
+  const court = nom.toLocaleLowerCase("fr").startsWith(`${f.toLocaleLowerCase("fr")} `) ? nom.slice(f.length + 1) : nom;
+  const article = /^[aeiouyéèêàâîôûh]/iu.test(f) ? "de l'" : "du ";
+  return { debut: `PIAL ${article}${famille === "erea" ? f : f.toLocaleLowerCase("fr")} `, nom: court };
+}
+
+/** Rattachements d'une école (collège de secteur, PIAL, circonscription) et blocs de la fiche collège (spec, 6.4 et 6.5). */
+export const LIBELLES_RATTACHEMENTS = {
+  titre: "Rattachements",
+  /** École publique : « Collège de secteur à l'adresse de l'école : » ; privée sous contrat : « Située dans le secteur du collège public ». */
+  introSecteur: (prive: boolean): string => (prive ? "Située dans le secteur du collège public" : "Collège de secteur à l'adresse de l'école :"),
+  noteSecteur: "Le secteur de collège dépend de l'adresse de chaque famille, pas de l'école fréquentée. Source : carte scolaire des collèges publics, définie par le conseil départemental.",
+  notePrive: "Les écoles privées ne sont pas soumises à la carte scolaire. Le collège public de secteur d'un élève dépend de l'adresse de sa famille.",
+  carteNonPubliee: "Carte scolaire non publiée pour ce département",
+  nonRapprochee: "Adresse de l'école non rapprochée de la carte scolaire",
+  circonscription: "Circonscription",
+  pial: "PIAL",
+  /**
+   * « PIAL du {famille en minuscules} {nom} », avec élision devant une voyelle (« de l'école élémentaire ») ; le nom
+   * perd la famille qu'il répète (« Collège Jules-Verne » → « PIAL du collège Jules-Verne »).
+   */
+  titrePial: (famille: Famille, nom: string): string => {
+    const t = titrePialEnDeux(famille, nom);
+    return `${t.debut}${t.nom}`;
+  },
+  definitionPial: "Le PIAL (pôle inclusif d'accompagnement localisé) organise l'accompagnement des élèves en situation de handicap.",
+  enSavoirPlus: "En savoir plus",
+  ecolesDuSecteur: "Écoles de son secteur",
+  aucuneEcole: "Aucune école rapprochée de la carte scolaire",
+  /** « {n} école(s) publique(s), {m} privée(s) sous contrat » : singulier pour 0 et 1. */
+  decompte: (publiques: number, privees: number): string =>
+    `${pluriel(publiques, "école publique", "écoles publiques")}, ${pluriel(privees, "privée sous contrat", "privées sous contrat")}`,
+  noteListe: "Seules les écoles dont l'adresse a pu être rapprochée de la carte scolaire sont listées.",
+  methode: "Méthode",
+  nonPublie: "non publié",
+} as const;
+
 /** « Preel-CP » (typologie des classes) → « Préélémentaire-CP ». */
 export function libelleTypeClasse(brut: string): string {
   return brut.split("-").map((n) => (n === "Preel" ? LIBELLES_ECOLES.preelementaire : n)).join("-");

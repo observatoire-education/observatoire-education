@@ -129,6 +129,16 @@ describe("écoles du secteur d'un collège", () => {
     });
   });
 
+  test("sources des élèves et de l'IPS des écoles listées, à la rentrée retenue pour la liste", () => {
+    const rentrees = (uai: string) => fiche(uai).sources.filter((s) => s.id.includes("ecoles")).map((s) => [s.id, s.rentree]);
+    expect(rentrees("0440001A")).toEqual([["effectifs_ecoles", 2025], ["ips_ecoles", 2024]]);
+    expect(rentrees("0440005E")).toEqual([["effectifs_ecoles", 2025], ["ips_ecoles", 2024]]);
+    // aucune école listée : aucune source des écoles
+    expect(fiche("0350001A").ecolesDuSecteur).toEqual([]);
+    expect(rentrees("0350001A")).toEqual([]);
+    expect(rentrees("0440002B")).toEqual([]);
+  });
+
   test("collège privé, lycée : null", () => {
     expect(fiche("0440002B").ecolesDuSecteur).toBeNull();
     expect(fiche("0440003C").ecolesDuSecteur).toBeNull();

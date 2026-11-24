@@ -165,6 +165,22 @@ const JEUX = "https://data.education.gouv.fr/explore/dataset";
     </ul>
     <p>Une fusion peut donner plusieurs prédécesseurs à une même école : la fiche les liste tous. Les séries de chiffres ne sont jamais fusionnées : les données de l'école fermée restent sur sa page, celles de son successeur sur la sienne.</p>
 
+    <h2 id="secteur-ecole">Collège de secteur à l'adresse d'une école</h2>
+    <p>La fiche d'une école ouverte indique le ou les collèges publics dont le secteur couvre l'adresse de l'école. C'est une déduction de l'observatoire : l'adresse de l'école, prise dans l'Annuaire de l'éducation, est rapprochée de la <a href={`${JEUX}/fr-en-carte-scolaire-colleges-publics/information/`}>carte scolaire des collèges publics</a>, définie par chaque conseil départemental.</p>
+    <ul>
+      <li>Une commune entièrement rattachée à un collège, ou à un groupe de collèges, donne directement ce ou ces collèges.</li>
+      <li>Une commune découpée par voie est rapprochée tronçon par tronçon : la voie, puis le numéro et sa parité (pairs, impairs) doivent correspondre à un tronçon de la carte.</li>
+      <li>Aucun rapprochement approché : ni libellé de voie voisin, ni numéro supposé. Au moindre doute, l'adresse reste non rapprochée et la fiche le dit.</li>
+      <li>Une adresse sans numéro n'est rapprochée que si les tronçons couvrent la voie entière, numéros pairs et impairs, et mènent tous aux mêmes collèges.</li>
+      <li>Une voie présente dans plusieurs lieux-dits de la commune n'est rapprochée que si tous la rattachent aux mêmes collèges.</li>
+      <li>Un secteur partagé entre plusieurs collèges les nomme tous.</li>
+      <li>Si l'un des collèges du secteur n'a pas de fiche sur l'observatoire, l'adresse est indiquée comme non rapprochée.</li>
+    </ul>
+    <p>Le secteur de collège d'un élève dépend de l'adresse de sa famille, pas de l'école qu'il fréquente : deux élèves d'une même école peuvent relever de collèges différents. Les écoles privées sous contrat ne sont pas soumises à la carte scolaire ; leur fiche indique le collège public dont le secteur couvre leur adresse, comme un fait géographique. Sur la fiche d'un collège public, la liste des écoles de son secteur ne compte que les écoles dont l'adresse a pu être rapprochée. Un département dont la carte scolaire n'est pas publiée est signalé comme tel.</p>
+
+    <h2 id="pial">PIAL</h2>
+    <p>Le PIAL (pôle inclusif d'accompagnement localisé) organise l'accompagnement des élèves en situation de handicap, notamment l'affectation des accompagnants (AESH), pour un ensemble d'écoles et d'établissements. Chaque établissement indique dans l'Annuaire de l'éducation la tête de son pôle : un collège le plus souvent, parfois un lycée, une école ou une circonscription. La fiche nomme la tête du pôle et les autres écoles et établissements qui en font partie. Un pôle dont la tête n'a pas de fiche sur l'observatoire, comme une circonscription, n'est pas affiché.</p>
+
     <h2 id="corrections">Corrections du producteur</h2>
     <p>Une version d'une source millésimée est une correction lorsqu'au moins une ligne (clé et millésime) d'un millésime déjà présent dans la version précédente a changé de valeur sur une colonne requise, ou a disparu. Une ligne d'un millésime nouveau n'est pas une correction. Seules les valeurs publiées déclenchent la mention, jamais une moyenne calculée. La fiche donne les liens vers la version précédente et la version corrigée.</p>
 

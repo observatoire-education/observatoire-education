@@ -1,0 +1,17 @@
+---
+// PIAL d'un établissement (spec, section 6.5) : « PIAL du {famille} {nom} » lié à la tête, puis les autres membres
+// du pôle, liés, sans la page elle-même ; définition et lien vers la méthode.
+import { LIBELLES_RATTACHEMENTS as LR, titrePialEnDeux } from "@obs/shared/libelles";
+import type { Pial } from "@obs/shared/types";
+
+interface Props { pial: Pial; uai: string }
+const { pial, uai } = Astro.props;
+const { tete } = pial;
+const titre = titrePialEnDeux(tete.famille, tete.nom);
+const membres = pial.membres.filter((m) => m.uai !== uai);
+---
+<div class="pial">
+  <p>{titre.debut}{tete.uai === uai ? titre.nom : <a href={`/etablissement/${tete.uai}/`}>{titre.nom}</a>}</p>
+  {membres.length > 0 && <p>{membres.map((m, k) => <>{k > 0 && ", "}<a href={`/etablissement/${m.uai}/`}>{m.nom}</a></>)}</p>}
+  <p class="ecole-note">{LR.definitionPial} <a href="/methode/#pial">{LR.enSavoirPlus}</a></p>
+</div>

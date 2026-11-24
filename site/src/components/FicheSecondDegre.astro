@@ -1,12 +1,15 @@
 ---
 // Corps de la fiche d'un collège, d'un lycée ou d'un EREA, sous l'en-tête commun : chiffres clés situés, élèves,
-// composition sociale, enseignants, vie scolaire, résultats, moyens, voisins nommés, sources. Graphiques rendus en SVG au build.
+// composition sociale, enseignants, vie scolaire, résultats, moyens, voisins nommés, écoles du secteur et PIAL
+// (s'il y a lieu), sources. Graphiques rendus en SVG au build.
 import { entier, nombre, part } from "@obs/shared/format";
-import { LIBELLES, LIBELLES_BUDGET, NIVEAUX_TERRITORIAUX } from "@obs/shared/libelles";
+import { LIBELLES, LIBELLES_BUDGET, LIBELLES_RATTACHEMENTS as LR, NIVEAUX_TERRITORIAUX } from "@obs/shared/libelles";
 import type { CodeIndicateur } from "@obs/shared/libelles";
 import type { Fiche, Niveau, Secteur } from "@obs/shared/types";
 import Absence from "./Absence.astro";
 import BlocBudget from "./BlocBudget.astro";
+import BlocEcolesSecteur from "./BlocEcolesSecteur.astro";
+import BlocPial from "./BlocPial.astro";
 import BlocResultats from "./BlocResultats.astro";
 import Bandeau from "./Bandeau.astro";
 import Cellule from "./Cellule.astro";
@@ -101,7 +104,7 @@ const franceBudget = f.budget.france.find((m) => m.niveau === niveauBudget);
 <Bandeau f={f} />
 <nav class="toc" aria-label="Sommaire">
   <a href="#eleves">Élèves</a><a href="#social">Composition sociale</a><a href="#ens">Enseignants</a>
-  <a href="#vs">Vie scolaire</a><a href="#resultats">Résultats</a><a href="#moyens">Moyens</a><a href="#voisins">Voisins</a><a href="#sources">Sources</a>
+  <a href="#vs">Vie scolaire</a><a href="#resultats">Résultats</a><a href="#moyens">Moyens</a><a href="#voisins">Voisins</a>{f.ecolesDuSecteur && <a href="#ecoles-secteur">{LR.ecolesDuSecteur}</a>}{f.pial && <a href="#pial">{LR.pial}</a>}<a href="#sources">Sources</a>
 </nav>
 
 <section id="eleves">
@@ -273,5 +276,12 @@ const franceBudget = f.budget.france.find((m) => m.niveau === niveauBudget);
 </section>
 
 <Voisins f={f} />
+{f.ecolesDuSecteur && <BlocEcolesSecteur f={f} ecoles={f.ecolesDuSecteur} />}
+{f.pial && (
+  <section id="pial">
+    <h2>{LR.pial}</h2>
+    <div class="card"><BlocPial pial={f.pial} uai={f.uai} /></div>
+  </section>
+)}
 <Sources f={f} genereLe={genereLe} />
 <FicheA4 f={f} genereLe={genereLe} />

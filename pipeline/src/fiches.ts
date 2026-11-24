@@ -195,7 +195,7 @@ function millesimesClasses(c: Classes | null | undefined): [SourceId, number][] 
 function sourcesUtilisees(
   manifest: Manifest, indicateurs: Indicateur[], repartitions: Repartition[], eleves: Fiche["eleves"], resultats: ResultatsVoie[],
   classes: Classes | null | undefined,
-  { historique = false, fermes = false }: { historique?: boolean; fermes?: boolean } = {},
+  { historique = false, fermes = false, listes = [] }: { historique?: boolean; fermes?: boolean; listes?: RentreeListe[] } = {},
 ): SourceRef[] {
   const rentrees = new Map<SourceId, number | null>([[historique ? "fermes" : "annuaire", null]]);
   if (fermes) rentrees.set("fermes", null);
@@ -212,6 +212,8 @@ function sourcesUtilisees(
   for (const s of eleves?.source ?? []) noter(s, eleves!.rentree);
   for (const r of resultats) noter(r.source, r.session); // la « rentrée » d'une source de résultats est sa session
   for (const [s, rentree] of millesimesClasses(classes)) noter(s, rentree);
+  // Chiffres des écoles listées sur la fiche (écoles du secteur d'un collège)
+  for (const l of listes) noter(l.source, l.rentree);
 
   return Object.values(SOURCES)
     .filter((s) => rentrees.has(s.id))
@@ -327,21 +329,40 @@ export interface OptionsAssemblage {
   pial?: RapportPial;
 }
 
+/** Rentrée et source d'un chiffre des listes d'écoles. */
+export interface RentreeListe { rentree: number; source: SourceId }
+
+/**
+ * Dernière rentrée publiée pour les écoles (élèves, IPS) et la source qui la porte ; null si aucune école n'a de
+ * valeur. Les listes d'écoles titrent leurs colonnes avec ces rentrées.
+ */
+export function rentreesEcoles(actives: Map<string, Identite>, indicateurs: Map<string, Indicateur[]>): Record<"eleves" | "ips", RentreeListe | null> {
+  const mesures = (code: CodeIndicateur) =>
+    [...actives]
+      .filter(([, i]) => estEcole(i.famille))
+      .map(([uai]) => indicateurs.get(uai)?.find((i) => i.code === code)?.mesure)
+      .filter((m) => m?.statut === "ok" && m.rentree !== null && m.source !== null)
+      .map((m) => ({ rentree: m!.rentree!, source: m!.source! }));
+  const derniere = (code: CodeIndicateur): RentreeListe | null =>
+    mesures(code).reduce<RentreeListe | null>((a, m) => (a === null || m.rentree > a.rentree ? m : a), null);
+  return { eleves: derniere("eleves"), ips: derniere("ips") };
+}
+
 /**
  * Ligne de chaque école ouverte pour les listes : élèves et IPS seulement s'ils sont de la dernière rentrée
  * publiée pour les écoles (une ligne sans rentrée ne doit pas montrer un chiffre ancien comme actuel).
  */
-export function lignesEcoles(actives: Map<string, Identite>, indicateurs: Map<string, Indicateur[]>): Map<string, LigneEcole> {
+export function lignesEcoles(
+  actives: Map<string, Identite>, indicateurs: Map<string, Indicateur[]>, rentrees = rentreesEcoles(actives, indicateurs),
+): Map<string, LigneEcole> {
   const ecoles = [...actives].filter(([, i]) => estEcole(i.famille));
   const mesure = (uai: string, code: CodeIndicateur) => indicateurs.get(uai)?.find((i) => i.code === code)?.mesure;
-  const derniere = (code: CodeIndicateur) =>
-    Math.max(...ecoles.map(([uai]) => mesure(uai, code)).filter((m) => m?.statut === "ok" && m.rentree !== null).map((m) => m!.rentree!));
-  const courant = (uai: string, code: CodeIndicateur, rentree: number) => {
+  const courant = (uai: string, code: CodeIndicateur, rentree: number | undefined) => {
     const m = mesure(uai, code);
     return m?.statut === "ok" && m.rentree === rentree ? m.valeur : null;
   };
-  const rentreeEleves = derniere("eleves");
-  const rentreeIps = derniere("ips");
+  const rentreeEleves = rentrees.eleves?.rentree;
+  const rentreeIps = rentrees.ips?.rentree;
   return new Map(
     ecoles.map(([uai, i]) => [
       uai,
@@ -371,7 +392,8 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
   const circonscriptions = new Map(
     (await db.sql<{ uai: string; circonscription: string | null }>("select uai, circonscription from etablissements")).map((l) => [l.uai, l.circonscription]),
   );
-  const ecolesSecteur = await ecolesDesSecteurs(db, secteurs, lignesEcoles(actives, indicateurs));
+  const rentreesListes = rentreesEcoles(actives, indicateurs);
+  const ecolesSecteur = await ecolesDesSecteurs(db, secteurs, lignesEcoles(actives, indicateurs, rentreesListes));
   const disparus = await db.sql<{ uai: string }>("select uai from disparus order by uai");
   const historiques = await identitesHistoriques(db);
   const fermetures = new Map(
@@ -436,6 +458,7 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
     f.sources = sourcesUtilisees(manifest, f.indicateurs, f.repartitions, f.eleves, f.resultats, f.classes, {
       historique: f.disparuLe !== null && historiques.has(f.uai),
       fermes: f.fermeLe !== null || f.predecesseurs.some((p) => p.fermeLe !== null),
+      listes: f.ecolesDuSecteur?.length ? [rentreesListes.eleves, rentreesListes.ips].filter((l) => l !== null) : [],
     });
   }
   if (opts.rapport) {

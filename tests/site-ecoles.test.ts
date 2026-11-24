@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, test } from "bun:test";
+import { LIBELLES_RATTACHEMENTS as LR } from "@obs/shared/libelles";
 import { mentionMoyennesA4 } from "../site/src/lib/affichage.ts";
 import { svgElevesClasses } from "../site/src/lib/plot.ts";
 import { doc, octets, page, siteTest, texte } from "./site.ts";
@@ -31,7 +32,7 @@ describe("fiche école", () => {
   test("aucune fiche école ne montre les blocs des lots à venir ni les données sans objet", () => {
     for (const uai of ECOLES) {
       const t = texte(fiche(uai)).toLowerCase();
-      for (const mot of ["Rattachements", "Autour de l'école", "Budget", "Vie scolaire", "agrégés"]) {
+      for (const mot of ["Autour de l'école", "Budget", "Vie scolaire", "agrégés"]) {
         expect(`${uai} : ${mot} ${t.includes(mot.toLowerCase())}`).toBe(`${uai} : ${mot} false`);
       }
       expect(t).not.toContain("Voisins");
@@ -87,8 +88,9 @@ describe("fiche école", () => {
     expect(svgs[0]!.getAttribute("aria-label")).toEndWith(". Classes : 8 de 2011 à 2025");
   });
 
-  test("poids : la fiche 0440202B fait 25 000 octets au plus", () => {
-    expect(octets(fiche("0440202B"))).toBeLessThanOrEqual(25_000);
+  // 25 000 octets jusqu'au lot 1 ; relevé à 26 000 par le bloc des rattachements (plafond permis : 30 000).
+  test("poids : la fiche 0440202B fait 26 000 octets au plus", () => {
+    expect(octets(fiche("0440202B"))).toBeLessThanOrEqual(26_000);
   });
 
   test("fiche A4 d'une école : « Fiche pour le conseil d'école »", () => {
@@ -136,5 +138,147 @@ describe("svgElevesClasses", () => {
     expect(e).toContain('stroke="var(--me)"');
     expect(e).not.toContain('stroke="var(--ink)"');
     expect(e).not.toContain('text-anchor="start"');
+  });
+});
+
+const NOTE_SECTEUR = "Le secteur de collège dépend de l'adresse de chaque famille, pas de l'école fréquentée. Source : carte scolaire des collèges publics, définie par le conseil départemental.";
+const NOTE_PRIVE = "Les écoles privées ne sont pas soumises à la carte scolaire. Le collège public de secteur d'un élève dépend de l'adresse de sa famille.";
+const DEFINITION_PIAL = "Le PIAL (pôle inclusif d'accompagnement localisé) organise l'accompagnement des élèves en situation de handicap.";
+const liens = (e: Element | null | undefined) => [...(e?.querySelectorAll("a") ?? [])].map((a) => a.getAttribute("href"));
+
+describe("rattachements d'une école", () => {
+  test("école publique : collège de secteur à l'adresse de l'école, avec lien, et la note du secteur", () => {
+    const r = doc(fiche("0440201A")).querySelector("#rattachements")!;
+    expect(propre(r.querySelector("h2")?.textContent)).toBe("Rattachements");
+    const t = propre(r.textContent);
+    expect(t).toContain("Collège de secteur à l'adresse de l'école : Collège Jules-Verne (0440001A)");
+    expect(r.querySelector('.secteur-college a[href="/etablissement/0440001A/"]')).not.toBeNull();
+    expect(t).toContain(NOTE_SECTEUR);
+    expect(t).not.toContain(NOTE_PRIVE);
+    expect(t).toContain("Circonscription : NANTES 1");
+  });
+
+  test("les rattachements viennent juste après l'en-tête, en tête du sommaire", () => {
+    const d = doc(fiche("0440201A"));
+    expect(d.querySelector("main section")?.id).toBe("rattachements");
+    expect(liens(d.querySelector("nav.toc"))[0]).toBe("#rattachements");
+  });
+
+  test("école privée sous contrat non rapprochée : absence dite, note du privé", () => {
+    const r = doc(fiche("0440203C")).querySelector("#rattachements")!;
+    const t = propre(r.textContent);
+    expect(propre(r.querySelector(".na")?.textContent)).toBe("Adresse de l'école non rapprochée de la carte scolaire");
+    expect(t).toContain(NOTE_PRIVE);
+    expect(t).not.toContain(NOTE_SECTEUR);
+    expect(t).not.toContain("Collège de secteur");
+  });
+
+  test("secteur multi-collèges : tous les collèges, séparés par « , »", () => {
+    const t = propre(doc(fiche("0440108H")).querySelector("#rattachements .secteur-college")!.textContent);
+    expect(t).toBe("Collège de secteur à l'adresse de l'école : Collège Saint-Exemple (0440002B), Collège Sans GPS (0440005E)");
+  });
+
+  test("PIAL : tête liée, membres liés sans la page elle-même, définition et lien vers la méthode", () => {
+    const p = doc(fiche("0440202B")).querySelector("#rattachements .pial")!;
+    const t = propre(p.textContent);
+    expect(t).toContain("PIAL du collège Jules-Verne");
+    expect(t).toContain(DEFINITION_PIAL);
+    expect(liens(p)).toEqual(["/etablissement/0440001A/", "/etablissement/0440104D/", "/etablissement/0440201A/", "/methode/#pial"]);
+    expect(propre(p.querySelector('a[href="/methode/#pial"]')?.textContent)).toBe("En savoir plus");
+    expect(t).not.toContain("Jules-Ferry");
+  });
+
+  test("école sans PIAL : pas de ligne PIAL ; école fermée : pas de rattachements", () => {
+    expect(doc(fiche("0440105E")).querySelector("#rattachements .pial")).toBeNull();
+    expect(texte(fiche("0440105E"))).toContain("Collège de secteur à l'adresse de l'école : Collège Jules-Verne (0440001A)");
+    for (const uai of ["0440106F", "0440107G", "0440109K", "0440110M"]) {
+      expect(doc(fiche(uai)).querySelector("#rattachements")).toBeNull();
+      expect(texte(fiche(uai))).not.toContain("Rattachements");
+    }
+  });
+});
+
+describe("collège : écoles de son secteur et PIAL", () => {
+  test("écoles de son secteur : décompte, tableau trié par nom, rentrées en titre de colonne, absences en toutes lettres", () => {
+    const b = doc(fiche("0440001A")).querySelector("#ecoles-secteur")!;
+    expect(propre(b.querySelector("h2")?.textContent)).toBe("Écoles de son secteur");
+    const t = propre(b.textContent);
+    expect(t).toContain("3 écoles publiques, 0 privée sous contrat");
+    expect([...b.querySelectorAll("thead th")].map((x) => propre(x.textContent))).toEqual(["École", "Nature", "Secteur", "Commune", "Élèves 2025", "IPS 2024"]);
+    const lignes = [...b.querySelectorAll("tbody tr")].map((r) => [...r.querySelectorAll("td")].map((x) => propre(x.textContent)));
+    expect(lignes).toEqual([
+      ["École élémentaire du Bourg", "École élémentaire", "Public", "Saint-Aubin", "10", "non publié"],
+      ["École maternelle des Prés", "École maternelle", "Public", "Saint-Aubin", "45", "non publié"],
+      ["École maternelle Les Lilas", "École maternelle", "Public", "Nantes", "102", "non publié"],
+    ]);
+    expect(liens(b.querySelector("tbody"))).toEqual(["/etablissement/0440104D/", "/etablissement/0440105E/", "/etablissement/0440201A/"]);
+    expect(t).toContain("Seules les écoles dont l'adresse a pu être rapprochée de la carte scolaire sont listées.");
+    expect(propre(b.querySelector('a[href="/methode/#secteur-ecole"]')?.textContent)).toBe("Méthode");
+    expect(t).toContain(NOTE_SECTEUR);
+  });
+
+  test("collège tête de PIAL : « PIAL du collège Jules-Verne », membres liés", () => {
+    const d = doc(fiche("0440001A"));
+    const p = d.querySelector("#pial")!;
+    expect(propre(p.querySelector("h2")?.textContent)).toBe("PIAL");
+    const t = propre(p.textContent);
+    expect(t).toContain("PIAL du collège Jules-Verne");
+    expect(t).toContain(DEFINITION_PIAL);
+    expect(liens(p)).toEqual(["/etablissement/0440104D/", "/etablissement/0440202B/", "/etablissement/0440201A/", "/methode/#pial"]);
+    expect(liens(d.querySelector("nav.toc"))).toContain("#ecoles-secteur");
+    expect(liens(d.querySelector("nav.toc"))).toContain("#pial");
+  });
+
+  test("sources des écoles listées : dans les sources de la page, pas sur la fiche A4 (qui ne reprend pas la liste)", () => {
+    const d = doc(fiche("0440001A"));
+    expect(propre(d.querySelector("#sources")!.textContent)).toContain("Effectifs d’élèves par école · rentrée 2025-2026");
+    expect(propre(d.querySelector("#sources")!.textContent)).toContain("Indices de position sociale des écoles (à partir de 2022) · rentrée 2024-2025");
+    const a4 = propre(d.querySelector(".a4")!.textContent);
+    expect(a4).not.toContain("Effectifs d’élèves par école");
+    expect(a4).not.toContain("Indices de position sociale des écoles");
+  });
+
+  test("collège de la carte sans école rapprochée : bloc présent, absence factuelle", () => {
+    const b = doc(fiche("0350001A")).querySelector("#ecoles-secteur")!;
+    expect(propre(b.querySelector(".na")?.textContent)).toBe("Aucune école rapprochée de la carte scolaire");
+    expect(b.querySelector("table")).toBeNull();
+  });
+
+  test("collège privé, lycée : ni écoles du secteur ni PIAL", () => {
+    for (const uai of ["0440002B", "0440003C"]) {
+      const d = doc(fiche(uai));
+      expect(d.querySelector("#ecoles-secteur")).toBeNull();
+      expect(d.querySelector("#pial")).toBeNull();
+      expect(texte(fiche(uai))).not.toContain("Écoles de son secteur");
+    }
+  });
+});
+
+describe("méthode : secteur de collège d'une école et PIAL", () => {
+  test("ancres #secteur-ecole et #pial", () => {
+    const d = doc("methode");
+    expect(d.querySelector("#secteur-ecole")).not.toBeNull();
+    expect(propre(d.querySelector("#pial")?.textContent)).toBe("PIAL");
+  });
+});
+
+describe("libellés des rattachements", () => {
+  test("décompte des écoles, accord au pluriel", () => {
+    expect(LR.decompte(3, 0)).toBe("3 écoles publiques, 0 privée sous contrat");
+    expect(LR.decompte(1, 1)).toBe("1 école publique, 1 privée sous contrat");
+    expect(LR.decompte(6, 2)).toBe("6 écoles publiques, 2 privées sous contrat");
+  });
+
+  test("secteur d'une école privée sous contrat ; d'une école publique", () => {
+    expect(LR.introSecteur(true)).toBe("Située dans le secteur du collège public");
+    expect(LR.introSecteur(false)).toBe("Collège de secteur à l'adresse de l'école :");
+  });
+
+  test("PIAL du {famille} {nom} : élision, nom sans la famille répétée", () => {
+    expect(LR.titrePial("college", "Collège Jules-Verne")).toBe("PIAL du collège Jules-Verne");
+    expect(LR.titrePial("lpo", "Lycée polyvalent Clemenceau")).toBe("PIAL du lycée polyvalent Clemenceau");
+    expect(LR.titrePial("legt", "Lycée Guist'hau")).toBe("PIAL du lycée général et technologique Lycée Guist'hau");
+    expect(LR.titrePial("elementaire", "École élémentaire du Bourg")).toBe("PIAL de l'école élémentaire du Bourg");
+    expect(LR.titrePial("erea", "EREA Les Pins")).toBe("PIAL de l'EREA Les Pins");
   });
 });

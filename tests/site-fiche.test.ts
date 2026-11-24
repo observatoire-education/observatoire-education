@@ -93,8 +93,9 @@ describe("fiche établissement", () => {
     }
   });
 
+  // 60 000 octets jusqu'à la phase Écoles ; relevé à 63 000 par les blocs « Écoles de son secteur » et « PIAL ».
   test("poids d'une fiche complète", () => {
-    expect(octets("etablissement/0440001A")).toBeLessThanOrEqual(60_000);
+    expect(octets("etablissement/0440001A")).toBeLessThanOrEqual(63_000);
   });
 
   test("part de filles partielle : couverture dite", () => {
