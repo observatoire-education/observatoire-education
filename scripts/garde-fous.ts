@@ -1,15 +1,18 @@
-// Garde-fous de fin de build : volume de dist/ (limites de GitHub Pages) et fichiers d'hébergement.
+// Garde-fous de fin de build : volume de dist/ (limites de Cloudflare Workers, fichiers statiques) et fichiers d'hébergement.
 // `bun scripts/garde-fous.ts [dist]` : échoue (code 1) si dist/ dépasse les limites.
 import { readdirSync, readFileSync, statSync, writeFileSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
 export interface Limites {
-  octets: number;
   fichiers: number;
+  octetsParFichier: number;
 }
 
-/** 900 Mo et 50 000 fichiers : sous la limite de 1 Go de GitHub Pages, avec de la marge. */
-export const LIMITES: Limites = { octets: 900e6, fichiers: 50_000 };
+/**
+ * 95 000 fichiers (marge sous les 100 000 des fichiers statiques Workers) et 25 Mio par fichier
+ * (marge sous les 25 MiB autorisés). Plus de plafond sur le poids total.
+ */
+export const LIMITES: Limites = { fichiers: 95_000, octetsParFichier: 25 * 1024 * 1024 };
 
 export interface Config {
   SITE_URL: string;
@@ -22,6 +25,7 @@ export interface Config {
 export function verifierDist(dossier: string, limites: Limites = LIMITES): { octets: number; fichiers: number } {
   let octets = 0;
   let fichiers = 0;
+  const tropGros: string[] = [];
   const parcourir = (d: string) => {
     for (const nom of readdirSync(d)) {
       const p = join(d, nom);
@@ -30,14 +34,19 @@ export function verifierDist(dossier: string, limites: Limites = LIMITES): { oct
       else {
         octets += s.size;
         fichiers++;
+        if (s.size > limites.octetsParFichier) tropGros.push(`${p} (${s.size} octets)`);
       }
     }
   };
   parcourir(dossier);
-  if (octets > limites.octets) {
-    throw new Error(`dist/ trop volumineux : ${octets} octets > ${limites.octets} (prévoir le passage à Cloudflare Pages)`);
+  if (tropGros.length > 0) {
+    throw new Error(
+      `dist/ contient des fichiers de plus de ${limites.octetsParFichier} octets : ${tropGros.join(", ")} (voir la marge R2, spec phase Écoles 6.9)`,
+    );
   }
-  if (fichiers > limites.fichiers) throw new Error(`dist/ contient trop de fichiers : ${fichiers} > ${limites.fichiers}`);
+  if (fichiers > limites.fichiers) {
+    throw new Error(`dist/ contient trop de fichiers : ${fichiers} > ${limites.fichiers} (voir la marge R2, spec phase Écoles 6.9)`);
+  }
   return { octets, fichiers };
 }
 
@@ -62,11 +71,10 @@ export const ROBOTS_ENTRAINEMENT = [
   "Google-Extended", "anthropic-ai", "cohere-ai", "PanguBot",
 ] as const;
 
-/** CNAME seulement si un domaine est configuré ; robots.txt selon INDEXABLE, robots d'entraînement exclus. */
+/** Supprime un éventuel CNAME (hérité de GitHub Pages) ; robots.txt selon INDEXABLE, robots d'entraînement exclus. */
 export function ecrireFichiersHebergement(dossier: string, config: Config): void {
   const cname = join(dossier, "CNAME");
-  if (config.DOMAINE) writeFileSync(cname, `${config.DOMAINE}\n`);
-  else if (existsSync(cname)) rmSync(cname);
+  if (existsSync(cname)) rmSync(cname);
   writeFileSync(
     join(dossier, "robots.txt"),
     config.INDEXABLE
@@ -82,7 +90,7 @@ if (import.meta.main) {
   try {
     ecrireFichiersHebergement(dossier, config);
     const { octets, fichiers } = verifierDist(dossier);
-    console.log(`${dossier}/ : ${(octets / 1e6).toFixed(1)} Mo, ${fichiers} fichiers (limites : ${LIMITES.octets / 1e6} Mo, ${LIMITES.fichiers} fichiers)`);
+    console.log(`${dossier}/ : ${(octets / 1e6).toFixed(1)} Mo, ${fichiers} fichiers (limites : ${LIMITES.fichiers} fichiers, ${LIMITES.octetsParFichier / 1024 / 1024} Mio par fichier)`);
     console.log(config.INDEXABLE ? "référencement autorisé" : "aperçu non référencé (noindex, robots.txt Disallow)");
   } catch (e) {
     console.error(e instanceof Error ? e.message : e);

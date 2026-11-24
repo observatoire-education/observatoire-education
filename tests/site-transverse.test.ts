@@ -97,14 +97,14 @@ describe("contrôles transverses du HTML", () => {
 
 describe("garde-fous du build", () => {
   test("garde-fou de volume", () => {
-    expect(() => verifierDist(DIST_TEST, { octets: 10, fichiers: 50_000 })).toThrow(/octets/);
-    expect(() => verifierDist(DIST_TEST, { octets: 900e6, fichiers: 3 })).toThrow(/fichiers/);
+    expect(() => verifierDist(DIST_TEST, { octetsParFichier: 10, fichiers: 50_000 })).toThrow(/octets/);
+    expect(() => verifierDist(DIST_TEST, { octetsParFichier: 25 * 1024 * 1024, fichiers: 3 })).toThrow(/fichiers/);
     const r = verifierDist(DIST_TEST);
     expect(r.fichiers).toBeGreaterThan(10);
     expect(r.octets).toBeGreaterThan(1000);
   });
 
-  test("CNAME et noindex", async () => {
+  test("noindex et robots.txt", async () => {
     const d = await mkdtemp(join(tmpdir(), "obs-dist-"));
     try {
       ecrireFichiersHebergement(d, { SITE_URL: "", DOMAINE: "", DEPOT: "org/depot", INDEXABLE: false });
@@ -115,7 +115,7 @@ describe("garde-fous du build", () => {
       ecrireFichiersHebergement(d, {
         SITE_URL: "https://observatoireeducation.fr", DOMAINE: "observatoireeducation.fr", DEPOT: "org/depot", INDEXABLE: true,
       });
-      expect(await Bun.file(join(d, "CNAME")).text()).toBe("observatoireeducation.fr\n");
+      expect(await Bun.file(join(d, "CNAME")).exists()).toBe(false);
       const robots = await Bun.file(join(d, "robots.txt")).text();
       expect(robots).toStartWith("User-agent: __usage_ai-training\nUser-agent: AI2Bot\n");
       for (const r of ["GPTBot", "ClaudeBot", "CCBot", "Google-Extended", "Applebot-Extended", "Meta-ExternalAgent", "MistralAI-Training"]) {
