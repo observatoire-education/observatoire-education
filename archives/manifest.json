@@ -18,6 +18,15 @@
         "modified": "2026-11-24T06:01:26.405000+00:00",
         "collecteLe": "2026-11-24T12:18:03.613Z",
         "lignes": 14905
+      },
+      {
+        "sha256": "c77ba989fbaff1e44105eaa3074fbff5d778b50427f5128cc15a5e0e76cbcfe5",
+        "tag": "archives-annuaire-2026",
+        "fichier": "c77ba989fbaff1e4.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-annuaire-2026/c77ba989fbaff1e4.parquet",
+        "modified": "2026-11-24T06:01:26.405000+00:00",
+        "collecteLe": "2026-11-24T16:02:29.758Z",
+        "lignes": 14905
       }
     ],
     "ips_colleges": [
@@ -157,6 +166,128 @@
         "lignes": 7294,
         "requete": "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/balances-comptables-des-collectivites-et-des-etablissements-publics-locaux-avec-la-presentation-croisee-nature-fonction-2025/exports/parquet?where=categ%20in%20(%22DEPT%22%2C%22REG%22%2C%22CTU%22%2C%22ML%22%2C%22PARIS%22)%20and%20cbudg%20%3D%20%221%22%20and%20fonction%20in%20(%22221%22%2C%2290221%22%2C%2291221%22%2C%2292221%22%2C%2293221%22%2C%2294221%22%2C%22222%22%2C%2290222%22%2C%2291222%22%2C%2292222%22%2C%2293222%22%2C%2294222%22%2C%22223%22%2C%2290223%22%2C%2291223%22%2C%2292223%22%2C%2293223%22%2C%2294223%22%2C%2222%22%2C%229022%22%2C%229122%22%2C%229222%22%2C%229322%22%2C%229422%22%2C%2224%22%2C%229024%22%2C%229124%22%2C%229224%22%2C%229324%22%2C%229424%22)"
       }
+    ],
+    "fermes": [
+      {
+        "sha256": "babe8d0b19c7f71d5661cb8cad990d24e5c06ee1f64ced893c6a867915cddfe0",
+        "tag": "archives-fermes-2026",
+        "fichier": "babe8d0b19c7f71d.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-fermes-2026/babe8d0b19c7f71d.parquet",
+        "modified": "2026-11-24T05:00:30.335000+00:00",
+        "collecteLe": "2026-11-24T16:02:29.758Z",
+        "lignes": 1182,
+        "requete": "https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-etablissements-fermes/exports/parquet?where=date_fermeture%20%3E%3D%20date'2012-01-01'%20and%20(nature_uai_libe%20like%20%22COLLEGE%25%22%20or%20nature_uai_libe%20like%20%22LYCEE%25%22%20or%20nature_uai_libe%20like%20%22ETAB%20REGIONAL%25%22)"
+      }
+    ],
+    "ips_colleges_2016": [
+      {
+        "sha256": "d419dc00a84a518873c98aff94072b8218464a3d84262f3aafd4265a3fc0168f",
+        "tag": "archives-ips_colleges_2016-2026",
+        "fichier": "d419dc00a84a5188.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-ips_colleges_2016-2026/d419dc00a84a5188.parquet",
+        "modified": "2026-07-24T15:01:11.134000+00:00",
+        "collecteLe": "2026-11-24T16:02:29.758Z",
+        "lignes": 41701
+      }
+    ],
+    "ips_colleges_2022": [
+      {
+        "sha256": "3ca63fec334f8ffa729b98e89eb70dcf98d51340f25c0db0305828953fca5421",
+        "tag": "archives-ips_colleges_2022-2026",
+        "fichier": "3ca63fec334f8ffa.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-ips_colleges_2022-2026/3ca63fec334f8ffa.parquet",
+        "modified": "2024-05-24T12:13:00+00:00",
+        "collecteLe": "2026-11-24T16:02:29.758Z",
+        "lignes": 6973
+      }
+    ],
+    "ips_lycees_2016": [
+      {
+        "sha256": "93d47045360d3b1d23f6fb3586a4cd2b0e4d29d667bebee57ba62453284e710c",
+        "tag": "archives-ips_lycees_2016-2026",
+        "fichier": "93d47045360d3b1d.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-ips_lycees_2016-2026/93d47045360d3b1d.parquet",
+        "modified": "2024-05-24T11:30:32+00:00",
+        "collecteLe": "2026-11-24T16:02:29.758Z",
+        "lignes": 21777
+      }
+    ],
+    "ips_lycees_2022": [
+      {
+        "sha256": "4fd9ade19964d44d55c8c6b96c5e817aa84f21484ffc2a2806f504a80a01f09e",
+        "tag": "archives-ips_lycees_2022-2026",
+        "fichier": "4fd9ade19964d44d.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-ips_lycees_2022-2026/4fd9ade19964d44d.parquet",
+        "modified": "2024-05-24T12:13:01+00:00",
+        "collecteLe": "2026-11-24T16:02:29.758Z",
+        "lignes": 3598
+      }
+    ],
+    "ips_erea_2016": [
+      {
+        "sha256": "0d07b029840e510b85a9fba918c5479741fdde6cfe560fc7c6f1114e3b34cba4",
+        "tag": "archives-ips_erea_2016-2026",
+        "fichier": "0d07b029840e510b.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-ips_erea_2016-2026/0d07b029840e510b.parquet",
+        "modified": "2024-05-24T12:30:47+00:00",
+        "collecteLe": "2026-11-24T16:02:29.758Z",
+        "lignes": 473
+      }
+    ],
+    "ips_erea": [
+      {
+        "sha256": "90d485847aa2aa3632038dbc9698c56b4ae601c501479972981230ac965bdcd4",
+        "tag": "archives-ips_erea-2026",
+        "fichier": "90d485847aa2aa36.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-ips_erea-2026/90d485847aa2aa36.parquet",
+        "modified": "2026-08-03T08:34:49.986000+00:00",
+        "collecteLe": "2026-11-24T16:02:29.758Z",
+        "lignes": 310
+      }
+    ],
+    "ivac": [
+      {
+        "sha256": "78ced4f9673824f87a0806382e5d999aecd92a615a507d1e2a4bf121db01ff03",
+        "tag": "archives-ivac-2026",
+        "fichier": "78ced4f9673824f8.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-ivac-2026/78ced4f9673824f8.parquet",
+        "modified": "2026-08-03T09:55:18.316000+00:00",
+        "collecteLe": "2026-11-24T16:02:29.758Z",
+        "lignes": 26869
+      }
+    ],
+    "ival_gt": [
+      {
+        "sha256": "eb9109af843b91a3122e41acfa2f45429c699657c7f4c6237612b41b80c286cd",
+        "tag": "archives-ival_gt-2026",
+        "fichier": "eb9109af843b91a3.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-ival_gt-2026/eb9109af843b91a3.parquet",
+        "modified": "2026-06-10T10:17:27.564000+00:00",
+        "collecteLe": "2026-11-24T16:02:29.758Z",
+        "lignes": 32485
+      }
+    ],
+    "ival_pro": [
+      {
+        "sha256": "e0d102907aa5c56dbab4b108800f62bf45e13eb2e9603cf0d6fea40b93a70957",
+        "tag": "archives-ival_pro-2026",
+        "fichier": "e0d102907aa5c56d.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-ival_pro-2026/e0d102907aa5c56d.parquet",
+        "modified": "2026-06-10T10:16:56.029000+00:00",
+        "collecteLe": "2026-11-24T16:02:29.758Z",
+        "lignes": 28258
+      }
+    ],
+    "segregation": [
+      {
+        "sha256": "38d0fa5781c331a81564e17b13e727684c006a29a2149c58739aa119a449ffd5",
+        "tag": "archives-segregation-2026",
+        "fichier": "38d0fa5781c331a8.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-segregation-2026/38d0fa5781c331a8.parquet",
+        "modified": "2026-07-02T08:21:24.489000+00:00",
+        "collecteLe": "2026-11-24T16:02:29.758Z",
+        "lignes": 1584
+      }
     ]
   },
   "vus": {
@@ -172,10 +303,21 @@
     "budget_2022": "2023-12-07T12:04:35+00:00",
     "budget_2023": "2024-12-06T13:57:17+00:00",
     "budget_2024": "2025-12-09T16:38:00+00:00",
-    "budget_2025": "2026-07-13T16:06:26+00:00"
+    "budget_2025": "2026-07-13T16:06:26+00:00",
+    "fermes": "2026-11-24T05:00:30.335000+00:00",
+    "ips_colleges_2016": "2026-07-24T15:01:11.134000+00:00",
+    "ips_colleges_2022": "2024-05-24T12:13:00+00:00",
+    "ips_lycees_2016": "2024-05-24T11:30:32+00:00",
+    "ips_lycees_2022": "2024-05-24T12:13:01+00:00",
+    "ips_erea_2016": "2024-05-24T12:30:47+00:00",
+    "ips_erea": "2026-08-03T08:34:49.986000+00:00",
+    "ivac": "2026-08-03T09:55:18.316000+00:00",
+    "ival_gt": "2026-06-10T10:17:27.564000+00:00",
+    "ival_pro": "2026-06-10T10:16:56.029000+00:00",
+    "segregation": "2026-07-02T08:21:24.489000+00:00"
   },
   "actuelles": {
-    "annuaire": "d249fc70d62f69f78ab63749ec03dd6b4b21a28115a3eea54ac3bcd6e838919a",
+    "annuaire": "c77ba989fbaff1e44105eaa3074fbff5d778b50427f5128cc15a5e0e76cbcfe5",
     "ips_colleges": "7a4a1316bd2277c8a73ab77500a6e9f98dc2a1821ea27939badab7dfd8ef6e7c",
     "ips_lycees": "06dc158e506fefbb94f0655a5bb14ecf99a52f099b17f4e87cddbd2800490db8",
     "effectifs_colleges": "9071e44969f0046df5274895e4d13d8f2121fe6208fe3cfeaebb411e7c55f412",
@@ -187,7 +329,18 @@
     "budget_2022": "15d27cda818bdf6ba6ca7dae2c7d1c55dac70241b8f20ed56e39998d31137579",
     "budget_2023": "2a8b70baa07a20caa069c62b3b3d9229df07c8c2d91da876f911a823d45e71bc",
     "budget_2024": "5fae262873ebc258c2b3fdef536511f04963259865f65ea1a309580b5526ff4a",
-    "budget_2025": "3de38f7411d758473f7b7012078d222f0c30ed148513e529f52c7a782fc114dd"
+    "budget_2025": "3de38f7411d758473f7b7012078d222f0c30ed148513e529f52c7a782fc114dd",
+    "fermes": "babe8d0b19c7f71d5661cb8cad990d24e5c06ee1f64ced893c6a867915cddfe0",
+    "ips_colleges_2016": "d419dc00a84a518873c98aff94072b8218464a3d84262f3aafd4265a3fc0168f",
+    "ips_colleges_2022": "3ca63fec334f8ffa729b98e89eb70dcf98d51340f25c0db0305828953fca5421",
+    "ips_lycees_2016": "93d47045360d3b1d23f6fb3586a4cd2b0e4d29d667bebee57ba62453284e710c",
+    "ips_lycees_2022": "4fd9ade19964d44d55c8c6b96c5e817aa84f21484ffc2a2806f504a80a01f09e",
+    "ips_erea_2016": "0d07b029840e510b85a9fba918c5479741fdde6cfe560fc7c6f1114e3b34cba4",
+    "ips_erea": "90d485847aa2aa3632038dbc9698c56b4ae601c501479972981230ac965bdcd4",
+    "ivac": "78ced4f9673824f87a0806382e5d999aecd92a615a507d1e2a4bf121db01ff03",
+    "ival_gt": "eb9109af843b91a3122e41acfa2f45429c699657c7f4c6237612b41b80c286cd",
+    "ival_pro": "e0d102907aa5c56dbab4b108800f62bf45e13eb2e9603cf0d6fea40b93a70957",
+    "segregation": "38d0fa5781c331a81564e17b13e727684c006a29a2149c58739aa119a449ffd5"
   },
   "jeux": {}
 }
