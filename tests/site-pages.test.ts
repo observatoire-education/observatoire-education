@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import type { EntreeIndex } from "@obs/shared/donnees";
+import { LIBELLES_BUDGET } from "@obs/shared/libelles";
 import { doc, page, siteTest, texte } from "./site.ts";
 
 beforeAll(async () => {
@@ -116,7 +117,7 @@ describe("sources, méthode, 404, sitemap", () => {
     }
     const d = doc("sources");
     expect(d.querySelectorAll("section[id^='budget_'] .requete").length).toBe(6);
-    expect(texte("sources")).toContain("Requête archivée");
+    expect(texte("sources")).toContain(LIBELLES_BUDGET.interface.requeteRejouee);
     expect(d.querySelector("section#budget_2025 .requete")!.textContent).toContain("where=budget_2025");
     expect(t).toContain("data.economie.gouv.fr");
   });
@@ -138,6 +139,12 @@ describe("sources, méthode, 404, sitemap", () => {
     expect(t).toContain("Meurthe-et-Moselle");
     expect(t).toContain("Lot-et-Garonne");
     expect(t).toContain("fonction 24");
+    expect(t).toContain("Les établissements fermés dont la page est conservée sont comptés");
+    expect(t).toContain("fermés avant la mise en ligne de l'observatoire (fin 2026)");
+    expect(t).toContain("0,35 %");
+    expect(t).toContain("EREA");
+    expect(t).toContain("BTS, CPGE");
+    expect(t).not.toContain("fermé depuis ne sont pas comptés");
     expect(t).toContain("aucune collectivité ne finance ces établissements dans les balances de la DGFiP");
     expect(t).toContain("collectivité non identifiée dans les balances de la DGFiP");
     expect(t).toContain("aucune contribution au privé identifiée");

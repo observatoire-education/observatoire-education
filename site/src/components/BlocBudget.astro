@@ -7,7 +7,7 @@ import type { BudgetCollectivite, MoyennesBudgetFrance } from "@obs/shared/donne
 import { nombre } from "@obs/shared/format";
 import { LIBELLES_BUDGET as L } from "@obs/shared/libelles";
 import { absenceBudget, brutBudget, comparaisonBudget, ecartSigne, millions, montantBudget } from "../lib/budget";
-import { svgEvolutionBudget } from "../lib/plot";
+import { posteEvolutionAvecPersonnel, svgEvolutionBudget } from "../lib/plot";
 import Absence from "./Absence.astro";
 import Cellule from "./Cellule.astro";
 
@@ -52,6 +52,8 @@ const regard = pu && pr && pu.statut === "ok" && pu.parEleve !== null && pr.stat
   : null;
 
 const svg = evolution && budget ? svgEvolutionBudget(budget.exercices) : "";
+const avecPrive = budget ? posteEvolutionAvecPersonnel(budget.exercices) : false;
+const postePublic = avecPrive ? L.postes.avecPersonnel : L.postes.horsPersonnel;
 const absenceCollectivite = absenceBudget(motif ?? "collectivite_non_identifiee", niveau);
 const partCites = budget?.partCitesScolaires;
 const secteurs = secteurEnPremier === "prive" ? (["prive", "public"] as const) : (["public", "prive"] as const);
@@ -114,11 +116,12 @@ const secteurs = secteurEnPremier === "prive" ? (["prive", "public"] as const) :
         <div class="card" style="margin-top:14px">
           <div class="lab"><span>{L.interface.evolution} · {L.unites.parEleve}</span><span class="yr">{budget.exercices[0]!.exercice} → {budget.exercices.at(-1)!.exercice}</span></div>
           <Fragment set:html={svg} />
-          <div class="legend"><span class="sect pub">{L.interface.public}</span><span class="sect pri">{L.interface.prive}</span></div>
+          <div class="legend"><span class="sect pub">{L.interface.public} : {postePublic}</span>{avecPrive && <span class="sect pri">{L.interface.prive} : {contribution}</span>}</div>
+          <div class="src">{L.interface.exercicesDe(budget.exercices[0]!.exercice, budget.exercices.at(-1)!.exercice)} · Source : {L.interface.sourceSansExercice} · <a href="/sources/">{L.interface.voirSources}</a></div>
         </div>
       )}
       {budget.mentions.includes("agricole") && <p class="mute mention-budget">{L.mentionAgricole}</p>}
-      {budget.mentions.includes("cites_scolaires") && partCites !== undefined && <p class="mute mention-budget">{L.mentionCitesScolaires(nombre(partCites, 1))}</p>}
+      {budget.mentions.includes("cites_scolaires") && partCites !== undefined && <p class="mute mention-budget">{L.mentionCitesScolaires(nombre(partCites, 1), e.exercice)}</p>}
       {e.citesScolaires !== null && e.citesScolaires > 0 && <p class="mute mention-budget">{L.citesScolairesHorsMontants(millions(e.citesScolaires))}</p>}
       <div class="src">{L.source(e.exercice)} · {L.moyenne.calculee}{brutBudget(e.source) && <> · <a href={brutBudget(e.source)}>{L.interface.donneeBrute}</a></>}</div>
     </>

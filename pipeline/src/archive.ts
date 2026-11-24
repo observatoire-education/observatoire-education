@@ -54,6 +54,12 @@ export class Manifest {
     return true;
   }
 
+  /** Met à jour la requête gardée avec une version (même contenu obtenu avec un autre filtre). */
+  majRequete(id: SourceId, sha256: string, requete: string): void {
+    const v = this.versions(id).find((x) => x.sha256 === sha256);
+    if (v) v.requete = requete;
+  }
+
   /** Une version déjà archivée redevient l'actuelle. */
   rendreActuelle(id: SourceId, sha256: string): void {
     if (!this.connait(id, sha256)) throw new Error(`version inconnue pour ${id} : ${sha256}`);

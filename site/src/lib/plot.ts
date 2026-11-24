@@ -115,6 +115,11 @@ export function svgDistribution(publique: number[], privee: number[], bornes: nu
   return svg(p, `Répartition des établissements selon leur IPS, par classes de 5 points : ${resume(publique)} publics, ${resume(privee)} privés sous contrat`);
 }
 
+/** Vrai si « Fonctionnement, personnel compris » a au moins un exercice ok : c'est alors le poste tracé, avec le privé. */
+export function posteEvolutionAvecPersonnel(exercices: ExerciceBudget[]): boolean {
+  return exercices.some((e) => e.public.avecPersonnel.statut === "ok" && e.public.avecPersonnel.parEleve !== null);
+}
+
 /**
  * Évolution des moyens de la collectivité, en € par élève : le public (fonctionnement personnel compris, ou
  * hors personnel si le personnel n'est jamais rattaché) et le privé (contribution). Un exercice sans valeur
@@ -122,12 +127,13 @@ export function svgDistribution(publique: number[], privee: number[], bornes: nu
  */
 export function svgEvolutionBudget(exercices: ExerciceBudget[]): string {
   const valeur = (m: { parEleve: number | null; statut: string }) => (m.statut === "ok" ? m.parEleve : null);
-  const avec = exercices.some((e) => valeur(e.public.avecPersonnel) !== null);
+  const avec = posteEvolutionAvecPersonnel(exercices);
   const poste = avec ? LIBELLES_BUDGET.postes.avecPersonnel : LIBELLES_BUDGET.postes.horsPersonnel;
   const serie = (k: string, v: (e: ExerciceBudget) => number | null) =>
     exercices.map((e) => ({ annee: e.exercice, v: v(e), k }));
   const pub = serie("pub", (e) => valeur(avec ? e.public.avecPersonnel : e.public.horsPersonnel));
-  const pri = serie("pri", (e) => valeur(e.prive.fonctionnement));
+  // Le privé n'est jamais tracé à côté du public « hors personnel » (postes non comparables).
+  const pri = avec ? serie("pri", (e) => valeur(e.prive.fonctionnement)) : [];
   const defini = [...pub, ...pri].filter((d) => d.v !== null);
   if (defini.length === 0) return "";
   const annees = exercices.map((e) => e.exercice);
@@ -141,12 +147,12 @@ export function svgEvolutionBudget(exercices: ExerciceBudget[]): string {
     y: { domain: [0, max * 1.1], label: null, ticks: 4, grid: true, tickFormat: (d: number) => nombre(d, 0) },
     marks: [
       Plot.line(pub, { x: "annee", y: "v", stroke: "var(--pub)", strokeWidth: 2 }),
-      Plot.line(pri, { x: "annee", y: "v", stroke: "var(--pri)", strokeWidth: 2, strokeDasharray: "4 3" }),
+      ...(avec ? [Plot.line(pri, { x: "annee", y: "v", stroke: "var(--pri)", strokeWidth: 2, strokeDasharray: "4 3" })] : []),
       Plot.dot(pub.filter((d) => d.v !== null), { x: "annee", y: "v", r: 3.5, fill: "var(--pub)" }),
-      Plot.dot(pri.filter((d) => d.v !== null), { x: "annee", y: "v", r: 3, fill: "var(--surface)", stroke: "var(--pri)", strokeWidth: 2 }),
+      ...(avec ? [Plot.dot(pri.filter((d) => d.v !== null), { x: "annee", y: "v", r: 3, fill: "var(--surface)", stroke: "var(--pri)", strokeWidth: 2 })] : []),
     ],
   });
   const decrit = (nom: string, s: typeof pub) =>
     `${nom} : ${s.map((d) => `${d.annee} ${d.v === null ? "non disponible" : nombre(d.v, 0)}`).join(", ")}`;
-  return svg(p, `Évolution en € par élève. ${decrit(`Public, ${poste.toLowerCase()}`, pub)}. ${decrit("Privé sous contrat, contribution", pri)}`);
+  return svg(p, `Évolution en € par élève. ${decrit(`Public, ${poste.toLowerCase()}`, pub)}${avec ? `. ${decrit("Privé sous contrat, contribution", pri)}` : ""}`);
 }

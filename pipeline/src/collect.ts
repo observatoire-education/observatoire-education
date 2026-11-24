@@ -8,7 +8,7 @@ import type { SourceId } from "@obs/shared/types";
 import { decrireParquet, empreinte, type Manifest, motifRejet } from "./archive.ts";
 import type { Depot } from "./depot.ts";
 import { connexion, executer, ident, litteral } from "./duck.ts";
-import { ErreurParquetInvalide, type OdsClient } from "./ods.ts";
+import { ErreurParquetInvalide, type OdsClient, urlExport } from "./ods.ts";
 import { API_ECO, type Source, sourceBudget, toutesSources } from "./sources.ts";
 
 export type ClientSources = Pick<OdsClient, "metadata" | "telechargerParquet" | "chercherJeu">;
@@ -82,7 +82,9 @@ export async function collecter(opts: OptionsCollecte): Promise<LigneJournal[]> 
 async function traiter(s: Source, opts: OptionsCollecte, duck: DuckDBConnection): Promise<Resultat> {
   const { manifest, maintenant } = opts;
   const meta = await opts.client.metadata(s);
-  if (!s.referentiel && manifest.modifiedVu(s.id) === meta.modified) {
+  // Le filtre a changé depuis la version archivée : le périmètre n'est plus le même, on retélécharge.
+  const filtreChange = !!s.filtre && manifest.derniere(s.id)?.requete !== urlExport(s);
+  if (!s.referentiel && !filtreChange && manifest.modifiedVu(s.id) === meta.modified) {
     return { action: "inchange", modified: meta.modified };
   }
 
@@ -100,13 +102,14 @@ async function traiter(s: Source, opts: OptionsCollecte, duck: DuckDBConnection)
       fichier = reduit;
       desc = await decrireParquet(duck, reduit);
     }
-    const motif = motifRejet(s, desc, manifest.derniere(s.id));
+    const motif = motifRejet(s, desc, filtreChange ? undefined : manifest.derniere(s.id));
     if (motif) return { action: "rejete", modified: meta.modified, lignes: desc.lignes, motif };
 
     const sha = await empreinte(fichier);
     manifest.marquerVu(s.id, meta.modified);
     if (manifest.connait(s.id, sha)) {
       manifest.rendreActuelle(s.id, sha);
+      if (s.filtre) manifest.majRequete(s.id, sha, requete);
       manifest.ecrire();
       return { action: "inchange", modified: meta.modified, sha256: sha, lignes: desc.lignes, motif: "contenu identique" };
     }

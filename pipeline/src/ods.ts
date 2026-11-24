@@ -20,6 +20,11 @@ export interface OptionsClient {
 const ATTENTES_MS = [2000, 4000]; // 3 essais au total
 const MAGIQUE_PARQUET = "PAR1";
 
+/** URL d'export Parquet d'une source (filtrée si la source a un filtre). */
+export function urlExport(s: Source): string {
+  return `${s.api}/${s.datasetId}/exports/parquet${s.filtre ? `?where=${encodeURIComponent(s.filtre)}` : ""}`;
+}
+
 export class ErreurHttp extends Error {
   constructor(
     readonly statut: number,
@@ -62,7 +67,7 @@ export class OdsClient {
    * Renvoie aussi l'URL utilisée, pour la garder avec la version archivée.
    */
   async telechargerParquet(s: Source, dest: string): Promise<{ chemin: string; url: string }> {
-    const url = `${s.api}/${s.datasetId}/exports/parquet${s.filtre ? `?where=${encodeURIComponent(s.filtre)}` : ""}`;
+    const url = urlExport(s);
     await Bun.write(dest, await this.requete(url));
     const f = Bun.file(dest);
     // La taille doit être lue avant de découper : slice(-4) sur un fichier non encore mesuré renvoie vide.

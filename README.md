@@ -81,6 +81,8 @@ Configuration dans `observatoire.config.json` :
 3. Lancer le workflow `nightly` à la main (*Actions → nightly → Run workflow*) : première collecte, archives, premier déploiement. Tant que `INDEXABLE` vaut `false`, le site est un aperçu non référencé.
 4. Une fois le domaine `observatoireeducation.fr` acheté : enregistrements DNS vers GitHub Pages (A/AAAA à l'apex, `www` en CNAME vers `<organisation>.github.io`) ; renseigner `DOMAINE` et `SITE_URL`, passer `INDEXABLE` à `true`, puis activer « Enforce HTTPS ».
 
+Après l'ajout d'une source (par exemple un nouvel exercice du budget), lancer `nightly` à la main (*Actions → nightly → Run workflow*) : tant qu'aucune version de cette source n'est archivée, le build sur push échoue et le site reste sur la version précédente.
+
 La collecte tourne ensuite chaque nuit à 2 h 17 UTC. Une nuit sans changement de source enregistre seulement le journal, sans reconstruire le site.
 
 ## Contact

@@ -5,7 +5,7 @@ import { beforeAll, describe, expect, test } from "bun:test";
 import { LIBELLES_BUDGET as L } from "../shared/src/libelles.ts";
 import { ecart, entier } from "../shared/src/format.ts";
 import { absenceBudget, comparaisonBudget, montantBudget, millions } from "../site/src/lib/budget.ts";
-import { svgEvolutionBudget } from "../site/src/lib/plot.ts";
+import { posteEvolutionAvecPersonnel, svgEvolutionBudget } from "../site/src/lib/plot.ts";
 import type { ExerciceBudget } from "../shared/src/donnees.ts";
 import { doc, page, siteTest, texte } from "./site.ts";
 
@@ -181,6 +181,11 @@ describe("pages de territoire", () => {
     const svg = doc("departement/44").querySelector("section#college .moyens svg");
     expect(svg).not.toBeNull();
     expect(svg!.getAttribute("role")).toBe("img");
+    const carte = doc("departement/44").querySelector("section#college .moyens svg")!.parentElement!;
+    const txt = (carte.textContent ?? "").replace(/\s+/g, " ");
+    expect(txt).toContain(`${L.interface.public} : ${L.postes.avecPersonnel}`);
+    expect(txt).toMatch(/Exercices 20\d\d à 20\d\d · Source : DGFiP, balances comptables/);
+    expect(carte.querySelector('a[href="/sources/"]')).not.toBeNull();
     const lycees = bloc("departement/44", "legt");
     expect(lycees).toContain("Région Pays de la Loire");
     expect(lycees).toContain(L.mentionAgricole);
@@ -305,6 +310,20 @@ describe("svgEvolutionBudget", () => {
     const sans = (e: number) => ({ ...exercice(e, 1000, null), public: { ...exercice(e, 1000, null).public, avecPersonnel: { total: null, parEleve: null, statut: "personnel_non_rattache" as const } } });
     const s = svgEvolutionBudget([sans(2023), sans(2024)]);
     expect(s).toContain(L.postes.horsPersonnel.toLowerCase());
+  });
+
+  test("sans personnel rattaché : aucune ligne privée, même si la contribution est connue", () => {
+    const sans = (e: number) => ({ ...exercice(e, 1000, 2000), public: { ...exercice(e, 1000, 2000).public, avecPersonnel: { total: null, parEleve: null, statut: "personnel_non_rattache" as const } } });
+    const s = svgEvolutionBudget([sans(2023), sans(2024)]);
+    expect(s).not.toContain("var(--pri)");
+    expect(s).not.toContain("Privé sous contrat");
+    expect(posteEvolutionAvecPersonnel([sans(2023)])).toBe(false);
+  });
+
+  test("avec personnel rattaché au moins un exercice : deux lignes", () => {
+    const s = svgEvolutionBudget([exercice(2023, 1000, 2000), exercice(2024, null, null)]);
+    expect(s).toContain("var(--pri)");
+    expect(posteEvolutionAvecPersonnel([exercice(2023, 1000, 2000)])).toBe(true);
   });
 });
 

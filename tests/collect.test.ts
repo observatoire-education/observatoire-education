@@ -226,6 +226,38 @@ describe("budget : exercices et découverte", () => {
     expect(manifest.derniere("annuaire")!.requete).toBeUndefined();
   });
 
+  test("filtre changé : requête archivée différente, même « modified » → retéléchargé ; identique → inchangé", async () => {
+    const f = fauxClient({});
+    await collecter(opts(f.client));
+    const avant = f.telechargements.filter((x) => x === "budget_2024").length;
+    // même requête, même modified : inchangé, aucun téléchargement
+    const j1 = await collecter(opts(f.client));
+    expect(ligne(j1, "budget_2024").action).toBe("inchange");
+    expect(f.telechargements.filter((x) => x === "budget_2024")).toHaveLength(avant);
+    // requête archivée avec un autre filtre : on retélécharge malgré le « modified » identique
+    manifest.derniere("budget_2024")!.requete = "https://exemple.test/ancien-filtre";
+    const j2 = await collecter(opts(f.client));
+    expect(f.telechargements.filter((x) => x === "budget_2024")).toHaveLength(avant + 1);
+    expect(ligne(j2, "budget_2024").action).toBe("inchange"); // contenu identique
+    expect(manifest.derniere("budget_2024")!.requete).toContain("where=");
+    // et la nuit suivante, plus de retéléchargement
+    await collecter(opts(f.client));
+    expect(f.telechargements.filter((x) => x === "budget_2024")).toHaveLength(avant + 1);
+  });
+
+  test("filtre changé : la baisse du nombre de lignes n'est pas un motif de rejet, les colonnes le restent", async () => {
+    const f = fauxClient({});
+    await collecter(opts(f.client));
+    manifest.derniere("budget_2024")!.requete = "https://exemple.test/ancien-filtre";
+    f.reglages.budget_2024 = { lignes: 3, modified: "M1" };
+    const j = await collecter(opts(f.client));
+    expect(ligne(j, "budget_2024").action).toBe("telecharge");
+    manifest.derniere("budget_2024")!.requete = "https://exemple.test/ancien-filtre";
+    f.reglages.budget_2024 = { lignes: 3, modified: "M1", sansColonne: "fonction" };
+    const j2 = await collecter(opts(f.client));
+    expect(ligne(j2, "budget_2024").action).toBe("rejete");
+  });
+
   test("un exercice nouveau trouvé est collecté et archivé avec sa requête", async () => {
     const f = fauxClient({}, { [titre2026]: ["jeu-2026"] });
     const j = await collecter(opts(f.client));

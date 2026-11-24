@@ -188,6 +188,9 @@ export const LIBELLES_BUDGET = {
     exercice: (n: number) => `exercice ${n}`,
     investissementPrive: "Investissement (privé)",
     sourceSansExercice: "DGFiP, balances comptables",
+    exercicesDe: (premier: number, dernier: number) => `Exercices ${premier} à ${dernier}`,
+    voirSources: "Sources et méthode",
+    requeteRejouee: "Requête utilisée (rejouée sur les données actuelles du portail)",
     donneeBrute: "donnée brute",
   },
   source: (exercice: number) =>
@@ -197,6 +200,6 @@ export const LIBELLES_BUDGET = {
   /** Montant formaté par l'appelant (par exemple « 97,3 M€ »). */
   citesScolairesHorsMontants: (montant: string) =>
     `${montant} dépensés par la collectivité pour des cités scolaires (collège et lycée réunis) ne sont pas comptés ici : les comptes ne les répartissent pas entre collèges et lycées.`,
-  mentionCitesScolaires: (pourcent: string) =>
-    `Les comptes de la collectivité incluent des reversements entre collectivités pour des cités scolaires (environ ${pourcent} % des dépenses retenues).`,
+  mentionCitesScolaires: (pourcent: string, exercice: number) =>
+    `Les comptes de la collectivité incluent des reversements entre collectivités pour des cités scolaires (environ ${pourcent} % des dépenses retenues, mesurée sur l'exercice ${exercice}).`,
 } as const;
