@@ -9,6 +9,7 @@ import type { Fiche } from "@obs/shared/types";
 import { lienPermanent } from "../lib/config";
 import { communesDisponibles, regionsDisponibles } from "../lib/donnees";
 import Ariane from "./Ariane.astro";
+import Fermeture from "./Fermeture.astro";
 
 interface Props { f: Fiche }
 const { f } = Astro.props;
@@ -44,7 +45,8 @@ const parents: RefTerritoire[] = [
   <span class="badge num">UAI {f.uai}</span>
   <span class="badge">{f.adresse}, {f.codePostal} {f.commune}</span>
 </div>
-{f.disparuLe && <p class="disparu">{LIBELLES.disparu(f.disparuLe)}</p>}
+{f.fermeLe === null && f.disparuLe && <p class="disparu">{LIBELLES.disparu(f.disparuLe)}</p>}
+<Fermeture f={f} />
 {f.autresSites.length > 0 && (
   <details class="sites">
     <summary>{LIBELLES.multiSites(f.autresSites.length + 1)}</summary>

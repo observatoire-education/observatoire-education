@@ -68,9 +68,9 @@ describe("fiche établissement", () => {
     expect(t).not.toContain("LV2 (5e à 3e)");
   });
 
-  test("page disparue : mention exacte, page générée", () => {
+  test("page fermée : mention « Fermé le », page générée", () => {
     const t = texte("etablissement/0440099Z");
-    expect(t).toContain("Cet établissement n'apparaît plus dans l'Annuaire de l'éducation depuis le 31/08/2020.");
+    expect(t).toContain("Fermé le 31/08/2020");
     expect(t).toContain("Collège Disparu");
   });
 

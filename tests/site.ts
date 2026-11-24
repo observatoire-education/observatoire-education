@@ -22,6 +22,7 @@ export const UMAMI_TEST = JSON.parse(readFileSync(CONFIG_TEST, "utf8")).UMAMI as
 /** Une page disparue figure dans le site d'essai. */
 export const REGISTRE_TEST: Registre = {
   "0440099Z": { premiere: "2026-01-01", identite: identiteTest("Collège Disparu"), disparuLe: "2026-10-01" },
+  "0440098Y": { premiere: "2026-01-01", identite: identiteTest("Collège Évanoui") },
 };
 
 /** Élèves aux rentrées 2022 et 2023 (les fixtures n'ont que 2024 et 2025) : dénominateurs des exercices 2023 et 2024. */

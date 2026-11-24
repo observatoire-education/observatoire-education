@@ -2,6 +2,11 @@
 // ton neutre, vocabulaire des producteurs de données, aucun mot de palmarès.
 import type { Famille, Secteur, Statut } from "./types.ts";
 
+const jjmmaaaa = (isoDate: string): string => {
+  const [a, m, j] = isoDate.slice(0, 10).split("-");
+  return `${j}/${m}/${a}`;
+};
+
 export const LIBELLES = {
   nonPubliePrive: "non publié pour le privé",
   nonDisponible: "non disponible",
@@ -15,6 +20,10 @@ export const LIBELLES = {
     const [a, m, j] = isoDate.slice(0, 10).split("-");
     return `Cet établissement n'apparaît plus dans l'Annuaire de l'éducation depuis le ${j}/${m}/${a}.`;
   },
+  ferme: (isoDate: string): string => `Fermé le ${jjmmaaaa(isoDate)}`,
+  successeur: "Successeur : ",
+  succedeA: (nom: string, uai: string, isoDate: string | null): string =>
+    `Succède à ${nom} (${uai})${isoDate ? `, fermé le ${jjmmaaaa(isoDate)}` : ""}`,
 } as const;
 
 export const LIBELLES_STATUT: Record<Exclude<Statut, "ok">, string> = {

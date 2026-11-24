@@ -2,6 +2,7 @@
 // Fiche imprimable A4 : même page, masquée à l'écran, seule affichée à l'impression (window.print()).
 // Tableaux seulement (aucun graphique), moyennes seules, chaque ligne renvoie à sa source numérotée.
 import QRCode from "qrcode";
+import Fermeture from "./Fermeture.astro";
 import { date, entier, nombre } from "@obs/shared/format";
 import { academie, type CodeIndicateur, CONTRATS, FAMILLES, FAMILLES_PLURIEL, INDICATEURS, LIBELLES, LIBELLES_BUDGET, SECTEURS } from "@obs/shared/libelles";
 import type { Fiche, Mesure, Niveau, Secteur, SourceId } from "@obs/shared/types";
@@ -86,7 +87,8 @@ const nd = (v: number | null) => (v === null ? "n. d." : entier(v));
         <b>{SECTEURS[f.secteur]}</b>{contrat && ` · ${contrat}`} · {FAMILLES[f.famille]}{f.ep && ` · ${f.ep}`}{f.segpa && " · SEGPA"}{f.ulis && " · ULIS"} · UAI <span class="num">{f.uai}</span>
       </div>
       <div class="m">{f.adresse}, {f.codePostal} {f.commune} · {f.depLibelle} ({f.dep}) · {academie(f.acaLibelle)}</div>
-      {f.disparuLe && <div class="m"><b>{LIBELLES.disparu(f.disparuLe)}</b></div>}
+      {f.fermeLe === null && f.disparuLe && <div class="m"><b>{LIBELLES.disparu(f.disparuLe)}</b></div>}
+      <Fermeture f={f} gras />
     </div>
     <div class="qrw">
       <div>Fiche éditée le {date(genereLe)}<br /><span class="num">{lien}</span></div>
