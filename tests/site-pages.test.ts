@@ -69,7 +69,7 @@ describe("accueil et recherche", () => {
     expect(d.querySelector("title")!.textContent).toBe("Observatoire citoyen de l'éducation en France");
     expect(d.querySelector("a[href='/departement/44/']")).not.toBeNull();
     const t = texte("index.html");
-    expect(t).toContain("Les chiffres publics de chaque collège et lycée de France.");
+    expect(t).toContain("Les chiffres publics de chaque école, collège et lycée de France.");
     expect(t).toContain("Nantes");
     expect(d.querySelector("a[href='/france/']")).not.toBeNull();
     expect(d.querySelector(".reg .aca-nom[href='/academie/17/']")!.textContent).toContain("Nantes");

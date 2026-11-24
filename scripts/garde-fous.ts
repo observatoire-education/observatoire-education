@@ -14,8 +14,8 @@ export interface Limites {
  */
 export const LIMITES: Limites = { fichiers: 95_000, octetsParFichier: 25 * 1024 * 1024 };
 
-/** Poids maximal de recherche.json (chargé par le navigateur au premier focus de la recherche). */
-export const OCTETS_RECHERCHE_MAX = 6_000_000;
+/** Poids maximal (brut) de recherche.json, chargé au premier focus de la recherche (Cloudflare le sert compressé). Au-delà : découper l'index par département. */
+export const OCTETS_RECHERCHE_MAX = 10_000_000;
 
 export interface Config {
   SITE_URL: string;

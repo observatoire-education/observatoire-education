@@ -20,13 +20,13 @@ describe("garde-fous de dist/ (Cloudflare Workers)", () => {
     expect(LIMITES).toEqual({ fichiers: 95_000, octetsParFichier: 25 * 1024 * 1024 });
   });
 
-  test("recherche.json : au plus 6 000 000 octets", () =>
+  test("recherche.json : au plus 10 000 000 octets", () =>
     dossierTemp(async (d) => {
-      expect(OCTETS_RECHERCHE_MAX).toBe(6_000_000);
-      await writeFile(join(d, "recherche.json"), "x".repeat(6_000_000));
+      expect(OCTETS_RECHERCHE_MAX).toBe(10_000_000);
+      await writeFile(join(d, "recherche.json"), "x".repeat(10_000_000));
       expect(verifierDist(d).fichiers).toBe(1);
-      await writeFile(join(d, "recherche.json"), "x".repeat(6_000_001));
-      expect(() => verifierDist(d)).toThrow(/recherche\.json.*6000001 octets.*6000000/);
+      await writeFile(join(d, "recherche.json"), "x".repeat(10_000_001));
+      expect(() => verifierDist(d)).toThrow(/recherche\.json.*10000001 octets.*10000000/);
     }));
 
   test("trop de fichiers", () =>

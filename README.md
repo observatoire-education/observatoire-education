@@ -1,6 +1,6 @@
 # Observatoire citoyen de l'éducation en France
 
-Les chiffres publics de chaque collège et lycée de France, public et privé sous contrat : sourcés, datés, sans palmarès.
+Les chiffres publics de chaque école, collège et lycée de France, public et privé sous contrat : sourcés, datés, sans palmarès.
 
 Une page par établissement (environ 11 200), des pages par département, par académie, par région et par commune, une page France, le budget des collectivités en euros par élève, les résultats des examens et la valeur ajoutée, l'historique de l'IPS depuis 2016, les établissements fermés et leurs successeurs, une recherche, une fiche imprimable A4. Chaque chiffre est situé par rapport aux moyennes du département, de l'académie et de la France, et porte sa source, son millésime et un lien vers la donnée brute archivée. Le site ne commente pas les chiffres.
 
@@ -64,6 +64,8 @@ Jeux publiés par le ministère de l'Éducation nationale (MEN) et sa direction 
 L'ordre de 5, Écoles et Transport scolaire reste à fixer. Le détail est dans `docs/superpowers/specs/`.
 
 ## Hébergement
+
+Le garde-fou de fin de build (`scripts/garde-fous.ts`) limite `recherche.json` à 10 000 000 d'octets bruts (Cloudflare le sert compressé) ; si ce plafond est dépassé, l'index se découpe par département.
 
 Configuration dans `observatoire.config.json` :
 
