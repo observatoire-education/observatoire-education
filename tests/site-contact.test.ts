@@ -47,6 +47,13 @@ describe("page /contact/", () => {
     expect(d.querySelector("noscript")!.textContent).toContain("JavaScript");
   });
 
+  test("sans JavaScript : bouton d'envoi masqué, aucune invitation à recharger", () => {
+    const d = doc("contact");
+    const styles = [...d.querySelectorAll("noscript")].map((n) => n.innerHTML).join(" ");
+    expect(styles).toMatch(/#form-signalement button\[type="?submit"?\]\s*\{\s*display:\s*none/);
+    expect(d.querySelector('[data-erreur="verification"]')!.textContent).not.toMatch(/[Rr]echarge/);
+  });
+
   test("un message masqué par code d'erreur du Worker", () => {
     const d = doc("contact");
     for (const code of ["champs", "verification", "configuration", "envoi"]) {

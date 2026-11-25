@@ -29,7 +29,7 @@ type CodeErreur = "champs" | "verification" | "configuration" | "envoi";
 const STATUTS: Record<CodeErreur, number> = { champs: 400, verification: 403, configuration: 500, envoi: 502 };
 const MESSAGES: Record<CodeErreur, string> = {
   champs: "",
-  verification: "La vérification anti-robot a échoué. Rechargez la page et réessayez.",
+  verification: "La vérification anti-robot n'a pas abouti. Patientez quelques secondes, puis cliquez à nouveau sur Envoyer.",
   configuration: "Le formulaire est momentanément indisponible.",
   envoi: "L'envoi a échoué. Réessayez dans quelques minutes.",
 };

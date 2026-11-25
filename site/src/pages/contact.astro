@@ -9,7 +9,7 @@ import { CONFIG } from "../lib/config";
 const actif = formulaireActif(CONFIG.CONTACT);
 const ERREURS: Record<string, string> = {
   champs: "Certains champs ne sont pas valides : vérifiez votre message et votre adresse e-mail.",
-  verification: "La vérification anti-robot n'a pas abouti. Elle nécessite JavaScript : activez-le, rechargez la page et réessayez.",
+  verification: "La vérification anti-robot n'a pas abouti. Elle nécessite JavaScript : vérifiez qu'il est activé, patientez quelques secondes, puis cliquez à nouveau sur Envoyer.",
   configuration: "Le formulaire est momentanément indisponible. Réessayez plus tard.",
   envoi: "L'envoi a échoué. Réessayez dans quelques minutes.",
 };
@@ -43,7 +43,10 @@ const ERREURS: Record<string, string> = {
           <label for="email">Votre e-mail <span class="mute">(facultatif, pour que nous puissions vous répondre)</span></label>
           <input id="email" name="email" type="email" maxlength="254" autocomplete="email" />
           <div class="cf-turnstile" data-sitekey={CONFIG.CONTACT!.TURNSTILE_SITEKEY} data-language="fr"></div>
-          <noscript><p class="alerte">L'envoi du formulaire nécessite JavaScript, pour la vérification anti-robot.</p></noscript>
+          <noscript>
+            <p class="alerte">L'envoi du formulaire nécessite JavaScript, pour la vérification anti-robot. Activez-le pour nous écrire, ou ouvrez une issue sur GitHub.</p>
+            <style>#form-signalement button[type="submit"] { display: none; }</style>
+          </noscript>
           <div class="actions">
             <button type="submit" class="btn primary">Envoyer</button>
             <a id="lien-github" class="mute" href={`https://github.com/${CONFIG.DEPOT}/issues/new`}>Vous utilisez GitHub ? Ouvrez plutôt une issue (publique)</a>
@@ -93,6 +96,11 @@ const ERREURS: Record<string, string> = {
 
       form.addEventListener("submit", async (ev) => {
         ev.preventDefault();
+        const jeton = form.querySelector<HTMLInputElement>('input[name="cf-turnstile-response"]')?.value;
+        if (!jeton) {
+          etat.textContent = "La vérification anti-robot est en cours : patientez quelques secondes, puis cliquez à nouveau sur Envoyer.";
+          return;
+        }
         const bouton = form.querySelector('button[type="submit"]') as HTMLButtonElement;
         bouton.disabled = true;
         etat.textContent = "Envoi en cours…";

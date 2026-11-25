@@ -72,6 +72,13 @@ describe("POST /api/signalement (JSON)", () => {
     expect(e.EMAIL.send).not.toHaveBeenCalled();
   });
 
+  test("Turnstile refusé : le message n'invite pas à recharger (le texte tapé serait perdu)", async () => {
+    turnstileOk = false;
+    const j = (await (await worker.fetch(requete(VALIDE), env())).json()) as { erreurs: string[] };
+    expect(j.erreurs.join(" ")).not.toMatch(/[Rr]echarge/);
+    expect(j.erreurs.join(" ")).toContain("Envoyer");
+  });
+
   test("jeton absent : 403 sans appel à siteverify", async () => {
     const e = env();
     const { "cf-turnstile-response": _, ...sansJeton } = VALIDE;
