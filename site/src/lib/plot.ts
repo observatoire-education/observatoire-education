@@ -6,6 +6,7 @@ import type { AnneeSegregation, ExerciceBudget, ExerciceTransport, MoyennesBudge
 import type { Classes, PointIps } from "@obs/shared/types";
 import { FINE, nombre } from "@obs/shared/format";
 import { LIBELLES_BUDGET, LIBELLES_NUAGES, LIBELLES_SEGREGATION, LIBELLES_TRANSPORT, SECTEURS } from "@obs/shared/libelles";
+import { uniteTransport } from "./transport";
 import { vaSignee } from "./resultats";
 
 const { document } = parseHTML("<!doctype html><html><body></body></html>");
@@ -266,9 +267,13 @@ export function svgEvolutionInvestissement(exercices: ExerciceBudget[], france: 
   return svg(p, `Investissement en € par élève. ${decrit("Public", pub)}${avecMoy ? `. ${decrit("Moyenne", moy)}` : ""}`);
 }
 
-/** Évolution du fonctionnement d'une collectivité, en M€ ; un exercice sans donnée laisse un trou (jamais 0). */
+/**
+ * Évolution du fonctionnement d'une collectivité, en M€, ou en k€ sous le million (un M€ à une décimale écraserait
+ * quelques milliers d'euros à 0) ; un exercice sans donnée laisse un trou (jamais 0).
+ */
 export function svgEvolutionTransport(serie: ExerciceTransport[]): string {
-  const points = serie.map((e) => ({ annee: e.exercice, v: e.fonctionnement === null ? null : e.fonctionnement / 1e6 }));
+  const { unite, diviseur } = uniteTransport(serie);
+  const points = serie.map((e) => ({ annee: e.exercice, v: e.fonctionnement === null ? null : e.fonctionnement / diviseur }));
   const definis = points.filter((d) => d.v !== null) as { annee: number; v: number }[];
   if (definis.length === 0) return "";
   const annees = points.map((d) => d.annee);
@@ -280,14 +285,17 @@ export function svgEvolutionTransport(serie: ExerciceTransport[]): string {
       domain: annees.length > 1 ? [Math.min(...annees), Math.max(...annees)] : [annees[0]! - 1, annees[0]! + 1],
       ticks: annees, tickFormat: (a: number) => String(a), label: null,
     },
-    y: { domain: [min, max > 0 ? max * 1.1 : 1], label: null, ticks: 4, grid: true, tickFormat: (d: number) => nombre(d, 0) },
+    y: {
+      domain: [min, max > 0 ? max * 1.1 : 1], label: null, ticks: 4, grid: true,
+      tickFormat: (d: number) => nombre(d, Number.isInteger(d) ? 0 : 1),
+    },
     marks: [
       Plot.line(points, { x: "annee", y: "v", stroke: "var(--pub)", strokeWidth: 2 }),
       Plot.dot(definis, { x: "annee", y: "v", r: 3.5, fill: "var(--pub)" }),
     ],
   });
-  const decrit = points.map((d) => `${d.annee} ${d.v === null ? "non disponible" : `${nombre(d.v, 1)} M€`}`).join(", ");
-  return svg(p, `${LIBELLES_TRANSPORT.evolution}. ${decrit}`);
+  const decrit = points.map((d) => `${d.annee} ${d.v === null ? "non disponible" : `${nombre(d.v, 1)} ${unite}`}`).join(", ");
+  return svg(p, `${LIBELLES_TRANSPORT.evolution(unite)}. ${decrit}`);
 }
 
 /** Infobulle d'un point : « nom (commune) · secteur · IPS x · réussite y % · valeur ajoutée ±z · n candidats ». */

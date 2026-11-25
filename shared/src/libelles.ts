@@ -337,9 +337,10 @@ export const LIBELLES_TRANSPORT = {
   produitsServices: "Produits des services (dont participations des familles)",
   groupements: "Intercommunalités et syndicats ayant leur siège dans le département",
   groupementsNombre: (n: number) => `${n} ${n > 1 ? "groupements" : "groupement"}`,
-  evolution: "Évolution des dépenses de fonctionnement, en M€",
-  note: "Ces montants ne sont pas rapportés au nombre d'élèves : l'organisation du transport scolaire peut être déléguée (départements, intercommunalités, syndicats), la participation des familles varie d'une région à l'autre, et aucun nombre d'élèves transportés n'est publié en données ouvertes. Ce sont les montants que chaque collectivité impute au transport scolaire dans ses comptes.",
+  evolution: (unite: string) => `Évolution des dépenses de fonctionnement, en ${unite}`,
+  note: "Depuis la loi NOTRe de 2015, le transport scolaire relève de la Région (depuis la rentrée 2017), sauf dans les agglomérations, où il relève de l'autorité organisatrice de la mobilité ; la Région peut en déléguer l'organisation à un département, une intercommunalité ou un syndicat. Les départements n'en gardent que le transport des élèves en situation de handicap : leurs montants sont souvent faibles, voire nuls. Ces montants ne sont pas rapportés au nombre d'élèves : l'organisation du transport scolaire peut être déléguée (départements, intercommunalités, syndicats), la participation des familles varie d'une région à l'autre, et aucun nombre d'élèves transportés n'est publié en données ouvertes. Ce sont les montants que chaque collectivité impute au transport scolaire dans ses comptes.",
   methode: "Méthode",
+  arret: (e: number) => `Aucune dépense de transport scolaire n'apparaît dans les comptes de cette collectivité depuis l'exercice ${e}.`,
   absenceGenerique: (e: number) => `Aucune dépense de transport scolaire n'apparaît dans les comptes de cette collectivité pour l'exercice ${e}.`,
   /** Contexte affiché sur la page de la région, qu'elle ait des lignes ou non. */
   contextesRegion: {
