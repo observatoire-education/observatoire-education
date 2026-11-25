@@ -46,7 +46,7 @@ const portails = `${fabrique.portails} portail${fabrique.portails > 1 ? "s" : ""
 <Base chemin="/" description={`Toutes les données publiques sur chaque école, collège et lycée de France : ${entier(fabrique.jeux)} jeux de données recoupés, sourcés et datés, sans palmarès.`}>
   <div class="hero" style="padding-bottom:0">
     <h1>Toutes les données publiques sur l'école, <em>rassemblées établissement par établissement.</em></h1>
-    <p class="accroche">Effectifs, composition sociale, enseignants, résultats, budget des collectivités : l'État publie ces chiffres dans des dizaines de fichiers, sur {portails}, avec des nomenclatures qui changent d'une année à l'autre. L'observatoire les rassemble, les met bout à bout et les situe par rapport aux moyennes du département, de l'académie et de la France. Chaque chiffre garde sa source et son millésime.</p>
+    <p class="accroche">Effectifs, composition sociale, enseignants, résultats, budget des collectivités, bâtiments des lycées : l'État et les régions publient ces chiffres dans des dizaines de fichiers, sur {portails}, avec des nomenclatures qui changent d'une année à l'autre. L'observatoire les rassemble, les met bout à bout et les situe par rapport aux moyennes du département, de l'académie et de la France. Chaque chiffre garde sa source et son millésime.</p>
   </div>
   <div class="kpis" style="margin-top:8px">
     {ecoles && <div><div class="k">Écoles</div><div class="v">{entier(ecoles.total)}</div><div class="c"><span class="p">{entier(ecoles.pub)} publiques</span> · <span class="q">{entier(ecoles.pri)} privées</span></div></div>}

@@ -91,6 +91,7 @@ describe("accueil et recherche", () => {
     expect(d.querySelector(".fabrique")!.textContent!.replace(/\s+/g, " ")).toContain(`${fabrique.jeux} jeux de données publiques`);
     expect(d.querySelector(".vitrine a[href='/etablissement/0440001A/']")).not.toBeNull();
     expect(d.querySelector("a[href='/sources/#fiche']")).not.toBeNull();
+    expect(texte("index.html")).toContain("l'État et les régions publient ces chiffres");
     const titres = [...d.querySelectorAll(".compare h3")].map((h) => h.textContent);
     expect(titres).toEqual(["Les portails officiels", "Les sites commerciaux", "L'observatoire"]);
     // Ordre : chiffres, puis recherche, puis bandeau de la fabrique.
@@ -152,6 +153,7 @@ describe("sources, méthode, 404, sitemap", () => {
     expect(d.querySelector("h1")!.textContent).toBe("D'où viennent les chiffres");
     expect(d.querySelector("title")!.textContent).toContain("Sources");
     expect(d.querySelector(".fabrique")).not.toBeNull();
+    expect(texte("sources")).toContain("les régions Île-de-France et Bretagne");
     const fiche = JSON.parse(readFileSync(join(DONNEES_TEST, "fiches", "0440001A.json"), "utf8")) as { sources: { pageUrl: string }[] };
     const items = [...d.querySelectorAll("#fiche ol li")];
     expect(items.length).toBe(new Set(fiche.sources.map((x) => x.pageUrl)).size);
