@@ -147,6 +147,21 @@ describe("accueil et recherche", () => {
 });
 
 describe("sources, méthode, 404, sitemap", () => {
+  test("sources : démonstration en tête", () => {
+    const d = doc("sources");
+    expect(d.querySelector("h1")!.textContent).toBe("D'où viennent les chiffres");
+    expect(d.querySelector("title")!.textContent).toContain("Sources");
+    expect(d.querySelector(".fabrique")).not.toBeNull();
+    const fiche = JSON.parse(readFileSync(join(DONNEES_TEST, "fiches", "0440001A.json"), "utf8")) as { sources: { pageUrl: string }[] };
+    const items = [...d.querySelectorAll("#fiche ol li")];
+    expect(items.length).toBe(new Set(fiche.sources.map((x) => x.pageUrl)).size);
+    for (const a of d.querySelectorAll("#fiche ol li a[href^='/sources/#']")) {
+      const id = a.getAttribute("href")!.slice("/sources/#".length);
+      expect(d.querySelector(`section[id='${id}']`) ? id : `${id} sans section`).toBe(id);
+    }
+    expect(doc("methode").querySelector("a[href='/sources/#fiche']")).not.toBeNull();
+  });
+
   test("sources : chaque source, ses versions et leurs liens de téléchargement", () => {
     const d = doc("sources");
     const t = texte("sources");
