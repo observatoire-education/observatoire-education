@@ -11,6 +11,7 @@ import { communeDeRattachement, LIBELLES_PLM, SEUIL_COMMUNE } from "@obs/shared/
 import type { Famille, Fiche, Identite, Indicateur, Mesure, Niveau, Secteur, SourceId } from "@obs/shared/types";
 import type { Manifest } from "./archive.ts";
 import type { Budgets } from "./budget-eleves.ts";
+import { lireTransport, transportDepartement, transportRegion, transportRegions } from "./transport-export.ts";
 import { centreCommune, chargerCommunes, type TableCommunes } from "./communes.ts";
 import { ecolesProchesDesPoints } from "./ecoles.ts";
 import { lignesEcoles, rentreesEcoles } from "./fiches.ts";
@@ -498,6 +499,7 @@ export async function exporterTerritoires(
 ): Promise<{ pagesCommune: Map<string, string>; table: TableCommunes }> {
   // Écoles des communes (pages commune) et des départements (CSV), avant de ne garder que le second degré.
   const table = await chargerCommunes(db);
+  const transport = await lireTransport(db);
   const ecolesCommunes = await ecolesDesCommunes(db, actives, table);
   const pagesCommune = new Map<string, string>();
   const ecolesParDep = Map.groupBy(actives.filter((f) => estEcole(f.famille)), (f) => f.dep);
@@ -713,6 +715,7 @@ export async function exporterTerritoires(
       listeEcoles: (ecolesParDep.get(dep) ?? []).map((f) => ({ ...lignesDep.get(f.uai)!, ep: f.ep })).sort((a, b) => parNom(a, b) || a.uai.localeCompare(b.uai)),
       premierDegre: premierDegre({ niveau: "departement", code: dep, contient: (l) => l.dep === dep }),
       communesEcoles: communesEcoles(dep),
+      transport: transportDepartement(transport, dep),
     };
     await ecrireJson(join(sortie, "departements", `${dep}.json`), donnees);
   }
@@ -755,6 +758,7 @@ export async function exporterTerritoires(
       communes: [], carte: valeursCarte(groupe),
       academies: [...Map.groupBy(groupe, (f) => f.aca)].map(([, g]) => refAcademie(g[0]!)).sort(parLibelle),
       premierDegre: premierDegre({ niveau: "region", code: region.code, contient: (l) => region.deps.includes(l.dep) }),
+      transport: transportRegion(transport, region.code),
     };
     await ecrireJson(join(sortie, "regions", `${region.code}.json`), donnees);
   }
@@ -796,6 +800,7 @@ export async function exporterTerritoires(
     academiesEtDepartements: academies, regions, carteBudget,
     premierDegre: premierDegre({ niveau: "france", code: "FR", contient: () => true }),
     departementsSansCarte: departementsSansCarte(toutes),
+    transportRegions: transportRegions(transport),
   };
   await ecrireJson(join(sortie, "france.json"), france);
   return { pagesCommune, table };

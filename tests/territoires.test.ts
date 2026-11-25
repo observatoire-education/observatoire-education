@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { cheminTerritoire, communeDeRattachement } from "@obs/shared/territoires";
-import type { DonneesTerritoire } from "@obs/shared/donnees";
+import type { DonneesFrance, DonneesTerritoire } from "@obs/shared/donnees";
 import type { Fiche, Identite, Indicateur } from "@obs/shared/types";
 import { assemblerFiches } from "../pipeline/src/fiches.ts";
 import {
@@ -255,6 +255,13 @@ describe("premier degré sur les territoires (spec, section 6.8)", () => {
       else process.env.OBS_CONTOURS = avant;
       await rm(dossier, { recursive: true, force: true });
     }
+  });
+
+  test("transport scolaire : région, département et France", () => {
+    expect(region.transport!.collectivites.map((c) => c.id)).toEqual(["reg-52"]);
+    expect(dep.transport!.groupements!.liste).toHaveLength(4);
+    expect((france as DonneesFrance).transportRegions!.map((c) => c.id)).toContain("reg-52");
+    expect(aca.transport).toBeUndefined();
   });
 
   test("Loire-Atlantique : écoles ouvertes et élèves par secteur", () => {

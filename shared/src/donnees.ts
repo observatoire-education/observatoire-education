@@ -226,6 +226,8 @@ export interface DonneesTerritoire {
   communes: RefTerritoire[];
   carte: CarteDonnees;
   budget: BudgetTerritoire;
+  /** Pages région et département : transport scolaire ; absent ailleurs. */
+  transport?: TransportTerritoire;
   /** Page région : académies de la région ; sinon absent. */
   academies?: RefTerritoire[];
   /** Départements et académies : nuages IPS × réussite d'au moins 5 points ; absent sinon. */
@@ -238,6 +240,8 @@ export interface DonneesTerritoire {
 
 /** Données de la France : celles d'un territoire, plus les académies et leurs départements, les régions et la carte du budget. */
 export interface DonneesFrance extends DonneesTerritoire {
+  /** Transport scolaire des régions et CTU, dans l'ordre du budget. */
+  transportRegions?: CollectiviteTransport[];
   academiesEtDepartements: { aca: string; libelle: string; departements: { dep: string; libelle: string }[] }[];
   regions: RefTerritoire[];
   /** Vue « budget » de la carte : fonctionnement hors personnel par élève du public des collèges, par collectivité. */
@@ -333,6 +337,30 @@ export interface MoyennesBudgetFrance {
     public: { horsPersonnel: MoyenneBudget; avecPersonnel: MoyenneBudget; investissement: MoyenneBudget };
     prive: { fonctionnement: MoyenneBudget; investissement: MoyenneBudget };
   }[];
+}
+
+/** Transport scolaire d'un exercice ; null : poste absent des comptes cet exercice-là. */
+export interface ExerciceTransport {
+  exercice: number;
+  fonctionnement: number | null;
+  investissement: number | null;
+  produitsServices: number | null;
+  /** Région dont les comptes de l'exercice sont tenus en M71, qui n'isole pas le transport scolaire. */
+  nomenclatureM71?: true;
+}
+
+export interface CollectiviteTransport { id: IdCollectivite; libelle: string; serie: ExerciceTransport[] }
+
+/** Dépenses de transport scolaire montrées sur une page région ou département (spec Transport, section 6). */
+export interface TransportTerritoire {
+  /** Région ou CTU (page région) ; Département, Métropole de Lyon, CEA ou Ville de Paris (page département). */
+  collectivites: CollectiviteTransport[];
+  /** Page département : intercommunalités et syndicats dont le siège est dans le département, triés par libellé. */
+  groupements?: { total: ExerciceTransport[]; liste: CollectiviteTransport[] };
+  /** Page région dont ni la Région ni la CTU n'a de ligne : phrase d'absence. */
+  absence?: "region_sans_ligne";
+  /** Exercices des sources transport, croissants : chaque série en a un élément par exercice. */
+  exercices: number[];
 }
 
 export interface BudgetTerritoire {

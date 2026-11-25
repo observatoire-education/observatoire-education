@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { Manifest } from "../pipeline/src/archive.ts";
 import { EXERCICES_BUDGET, sourceTransport, toutesSources } from "../pipeline/src/sources.ts";
 import { collectiviteTransport } from "../pipeline/src/transport.ts";
+import { lireTransport, transportDepartement, transportRegion, transportRegions } from "../pipeline/src/transport-export.ts";
 import { dbTest } from "./aide.ts";
 
 describe("sources transport", () => {
@@ -92,5 +93,57 @@ describe("etapeTransport", () => {
   test("groupement sans département : listé dans transport_inconnus", async () => {
     const inc = await (await dbTest()).sql<{ lbudg: string }>("select * from transport_inconnus");
     expect(inc.map((x) => x.lbudg)).toEqual(["CC SANS DEPARTEMENT"]);
+  });
+});
+
+describe("données des pages", () => {
+  const table = async () => lireTransport(await dbTest());
+
+  test("région : la Région, série complète des exercices, null pour un poste absent", async () => {
+    const t = transportRegion(await table(), "52");
+    expect(t.exercices).toEqual([2023, 2024]);
+    expect(t.collectivites.map((c) => c.id)).toEqual(["reg-52"]);
+    expect(t.collectivites[0]!.libelle).toBe("Région Pays de la Loire");
+    expect(t.collectivites[0]!.serie).toEqual([
+      { exercice: 2023, fonctionnement: 140_000_000, investissement: null, produitsServices: null },
+      { exercice: 2024, fonctionnement: 156_000_000, investissement: 1_000_000, produitsServices: 20_000_000 },
+    ]);
+    expect(t.absence).toBeUndefined();
+  });
+
+  test("région sans ligne : absence ; région en M71 : exercice signalé, pas d'absence", async () => {
+    const idf = transportRegion(await table(), "11");
+    expect(idf.collectivites).toEqual([]);
+    expect(idf.absence).toBe("region_sans_ligne");
+    const bzh = transportRegion(await table(), "53");
+    expect(bzh.absence).toBeUndefined();
+    expect(bzh.collectivites[0]!.serie[0]).toEqual(
+      { exercice: 2023, fonctionnement: null, investissement: null, produitsServices: null, nomenclatureM71: true });
+  });
+
+  test("CTU sur la page de sa région", async () => {
+    expect(transportRegion(await table(), "94").collectivites.map((c) => c.id)).toEqual(["ctu-corse"]);
+  });
+
+  test("département : le Département et ses groupements triés par libellé, total par exercice", async () => {
+    const t = transportDepartement(await table(), "44");
+    expect(t.collectivites.map((c) => c.id)).toEqual(["dep-44"]);
+    const g = t.groupements!;
+    expect(g.liste.map((c) => c.libelle)).toEqual([
+      "CA PORNIC AGGLO PAYS DE RETZ", "CC DE GRAND LIEU", "CC SUD ESTUAIRE", "SYNDICAT TRANSPORTS SCOLAIRES DU PAYS DE RETZ",
+    ]);
+    expect(g.liste.at(-1)!.serie[0]!.fonctionnement).toBeNull(); // syndicat absent en 2023
+    expect(g.total.map((e) => e.fonctionnement)).toEqual([2_600_000, 3_250_000]);
+  });
+
+  test("Métropole de Lyon, Alsace, Paris sur leur page département", async () => {
+    expect(transportDepartement(await table(), "69").collectivites.map((c) => c.id)).toEqual(["ml-lyon"]);
+    expect(transportDepartement(await table(), "67").collectivites.map((c) => c.id)).toEqual(["cea"]);
+    expect(transportDepartement(await table(), "68").collectivites.map((c) => c.id)).toEqual(["cea"]);
+    expect(transportDepartement(await table(), "75").collectivites.map((c) => c.id)).toEqual(["paris"]);
+  });
+
+  test("France : régions et CTU dans l'ordre du budget (nom sans article)", async () => {
+    expect(transportRegions(await table()).map((c) => c.id)).toEqual(["reg-53", "ctu-corse", "reg-52"]);
   });
 });
