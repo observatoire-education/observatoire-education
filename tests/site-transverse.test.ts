@@ -215,9 +215,9 @@ describe("logo", () => {
 });
 
 describe("à propos et mentions légales", () => {
-  test("le pied de page nomme l'éditeur et mène aux deux pages", () => {
+  test("le pied de page mène aux deux pages sans nommer l'éditeur", () => {
     const pied = doc("").querySelector("footer");
-    expect(pied?.textContent).toContain("Ludovic Bonnet");
+    expect(pied?.textContent).not.toContain("Ludovic Bonnet");
     expect(pied?.querySelector('a[href="/a-propos/"]')).not.toBeNull();
     expect(pied?.querySelector('a[href="/mentions-legales/"]')).not.toBeNull();
     const depot = pied?.querySelector('a.depot[href^="https://github.com/"]');
