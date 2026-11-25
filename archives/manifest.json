@@ -177,6 +177,16 @@
         "collecteLe": "2026-11-24T16:02:29.758Z",
         "lignes": 1182,
         "requete": "https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-etablissements-fermes/exports/parquet?where=date_fermeture%20%3E%3D%20date'2012-01-01'%20and%20(nature_uai_libe%20like%20%22COLLEGE%25%22%20or%20nature_uai_libe%20like%20%22LYCEE%25%22%20or%20nature_uai_libe%20like%20%22ETAB%20REGIONAL%25%22)"
+      },
+      {
+        "sha256": "5793a995e30315315468bb2cb2aba69ccf35a8809b530d036409848f0d646d34",
+        "tag": "archives-fermes-2026",
+        "fichier": "5793a995e3031531.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-fermes-2026/5793a995e3031531.parquet",
+        "modified": "2026-11-25T05:00:30.562000+00:00",
+        "collecteLe": "2026-11-25T07:26:24.782Z",
+        "lignes": 1185,
+        "requete": "https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-etablissements-fermes/exports/parquet?where=date_fermeture%20%3E%3D%20date'2012-01-01'%20and%20(nature_uai_libe%20like%20%22COLLEGE%25%22%20or%20nature_uai_libe%20like%20%22LYCEE%25%22%20or%20nature_uai_libe%20like%20%22ETAB%20REGIONAL%25%22)"
       }
     ],
     "ips_colleges_2016": [
@@ -291,7 +301,7 @@
     ]
   },
   "vus": {
-    "annuaire": "2026-11-24T06:01:26.405000+00:00",
+    "annuaire": "2026-11-25T06:01:23.712000+00:00",
     "ips_colleges": "2026-09-01T09:31:02.578000+00:00",
     "ips_lycees": "2026-06-10T08:20:49.021000+00:00",
     "effectifs_colleges": "2026-07-27T10:24:40.709000+00:00",
@@ -304,7 +314,7 @@
     "budget_2023": "2024-12-06T13:57:17+00:00",
     "budget_2024": "2025-12-09T16:38:00+00:00",
     "budget_2025": "2026-07-13T16:06:26+00:00",
-    "fermes": "2026-11-24T05:00:30.335000+00:00",
+    "fermes": "2026-11-25T05:00:30.562000+00:00",
     "ips_colleges_2016": "2026-07-24T15:01:11.134000+00:00",
     "ips_colleges_2022": "2024-05-24T12:13:00+00:00",
     "ips_lycees_2016": "2024-05-24T11:30:32+00:00",
@@ -330,7 +340,7 @@
     "budget_2023": "2a8b70baa07a20caa069c62b3b3d9229df07c8c2d91da876f911a823d45e71bc",
     "budget_2024": "5fae262873ebc258c2b3fdef536511f04963259865f65ea1a309580b5526ff4a",
     "budget_2025": "3de38f7411d758473f7b7012078d222f0c30ed148513e529f52c7a782fc114dd",
-    "fermes": "babe8d0b19c7f71d5661cb8cad990d24e5c06ee1f64ced893c6a867915cddfe0",
+    "fermes": "5793a995e30315315468bb2cb2aba69ccf35a8809b530d036409848f0d646d34",
     "ips_colleges_2016": "d419dc00a84a518873c98aff94072b8218464a3d84262f3aafd4265a3fc0168f",
     "ips_colleges_2022": "3ca63fec334f8ffa729b98e89eb70dcf98d51340f25c0db0305828953fca5421",
     "ips_lycees_2016": "93d47045360d3b1d23f6fb3586a4cd2b0e4d29d667bebee57ba62453284e710c",
