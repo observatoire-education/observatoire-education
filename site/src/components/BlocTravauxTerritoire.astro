@@ -39,7 +39,7 @@ const source = (region && L.sources[region]) ?? L.sourceGenerique;
 ---
 <section id="travaux">
   <h2>{avecTravaux ? L.titreTerritoire : L.titreTerritoireSansTravaux}</h2>
-  <p class="mute">{L.noteTerritoire(lignes.length)}</p>
+  <p class="mute">{L.noteTerritoire(lignes.length, detailles)}</p>
   <div class="kpis">
     <div><div class="k">{detailles ? L.colonnes.plusGrand : L.anneeConstruction} (médiane)</div><div class="v">{mediane ?? "—"}</div>
       <div class="c">{entier(annees.length)} lycées datés sur {entier(lignes.length)}</div></div>

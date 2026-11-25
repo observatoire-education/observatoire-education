@@ -406,8 +406,8 @@ export const LIBELLES_BATIMENT = {
   decisions: (n: number) => `${n} décision${n > 1 ? "s" : ""}`,
   methode: "Méthode",
   /** Page région ou département : ce que couvre la liste. */
-  noteTerritoire: (n: number) =>
-    `${n} lycée${n > 1 ? "s" : ""} public${n > 1 ? "s" : ""} dont la région publie l'année de construction ou des travaux. Cliquer un lycée pour le détail des opérations.`,
+  noteTerritoire: (n: number, detailles: boolean) =>
+    `${n} lycée${n > 1 ? "s" : ""} public${n > 1 ? "s" : ""} dont la région publie ${detailles ? "les bâtiments" : "l'année de construction ou des travaux"}. Cliquer un lycée pour le détail ${detailles ? "de ses bâtiments" : "des opérations"}.`,
   sources: { "11": "Source : Région Île-de-France, data.iledefrance.fr", "53": "Source : Région Bretagne, couche « bâtiments des lycées »" } as Record<string, string>,
   sourceGenerique: "Source : région (données ouvertes)",
 } as const;
