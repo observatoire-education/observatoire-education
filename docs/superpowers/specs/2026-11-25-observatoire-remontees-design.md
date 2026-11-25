@@ -1,6 +1,6 @@
 # Remontées des visiteurs : contact et signalements — design
 
-Date : 2026-11-25 · Statut : à valider
+Date : 2026-11-25 · Statut : en ligne
 
 ## Intention
 

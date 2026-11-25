@@ -8,7 +8,7 @@
     "ID": "2f6dec40-066b-421d-b424-6925b0948fc5"
   },
   "CONTACT": {
-    "ACTIF": false,
+    "ACTIF": true,
     "TURNSTILE_SITEKEY": "0x4AAAAAAGSqI_70-OwNH_Ug"
   }
 }
