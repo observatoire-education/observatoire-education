@@ -21,10 +21,10 @@ function moyens(uai: string): string {
 }
 
 describe("fiche : bloc Moyens de la collectivité", () => {
-  test("entrée « Moyens » au sommaire, section après « Résultats »", () => {
+  test("onglet « Moyens » dans la barre, section après « Résultats »", () => {
     const d = doc("etablissement/0440001A");
-    const liens = [...d.querySelectorAll("nav.toc a")].map((a) => a.textContent);
-    expect(liens).toEqual(["Élèves", "Composition sociale", "Enseignants", "Vie scolaire", "Résultats", "Moyens", "Voisins", "Écoles de son secteur", "PIAL", "Sources"]);
+    const liens = [...d.querySelectorAll("nav.onglets a")].map((a) => a.textContent);
+    expect(liens).toEqual(["Synthèse", "Élèves", "Composition sociale", "Enseignants", "Résultats", "Moyens", "Alentours", "Sources"]);
     const ids = [...d.querySelectorAll("main section[id]")].map((s) => s.id);
     expect(ids.indexOf("moyens")).toBe(ids.indexOf("resultats") + 1);
   });

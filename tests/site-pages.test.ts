@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import type { EntreeIndex } from "@obs/shared/donnees";
-import { estEcole, LIBELLES_ABSENCES, LIBELLES_BUDGET, LIBELLES_ONGLETS } from "@obs/shared/libelles";
+import { estEcole, LIBELLES_ABSENCES, LIBELLES_BUDGET, LIBELLES_ONGLETS, LIBELLES_RESULTATS } from "@obs/shared/libelles";
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import { DIST_TEST, doc, page, siteTest, texte } from "./site.ts";
@@ -304,5 +304,85 @@ describe("corrections de millésime", () => {
     expect(li.textContent).toContain("version corrigée");
     expect(li.querySelectorAll("a[href*='/releases/download/']")).toHaveLength(2);
     expect(texte("departement/75")).not.toContain("corrigé par le producteur");
+  });
+});
+
+describe("fiche en onglets", () => {
+  const propre = (t: string | null | undefined) => (t ?? "").replace(/[ \t\r\n\u00a0\u202f]+/g, " ").trim();
+  const FICHES = ["0440001A", "0440003C"];
+
+  test("barre d'onglets : huit onglets dans l'ordre, panneau Synthèse affiché d'emblée", () => {
+    for (const uai of FICHES) {
+      const d = doc(`etablissement/${uai}`);
+      expect([...d.querySelectorAll("nav.onglets a")].map((a) => a.getAttribute("href"))).toEqual(
+        ["#o-synthese", "#o-eleves", "#o-social", "#o-enseignants", "#o-resultats", "#o-moyens", "#o-alentours", "#o-sources"],
+      );
+      expect(d.querySelector("nav.toc")).toBeNull();
+      expect(d.querySelector("#o-synthese")!.hasAttribute("data-defaut")).toBe(true);
+      expect(d.querySelectorAll("[data-defaut]")).toHaveLength(1);
+    }
+  });
+
+  test("Synthèse : case Résultats, même session, même taux et même valeur ajoutée que l'onglet Résultats", () => {
+    for (const uai of FICHES) {
+      const d = doc(`etablissement/${uai}`);
+      const cases = [...d.querySelectorAll("#o-synthese .kpis > div")];
+      const caseRes = cases.find((c) => propre(c.querySelector(".k")?.textContent).startsWith("Résultats"))!;
+      expect(caseRes).toBeDefined();
+      const lignes = [...caseRes.querySelectorAll(".c")].map((l) => propre(l.textContent));
+      const cartes = [...d.querySelectorAll("#resultats .card.wide")];
+      if (cartes.length === 0) {
+        // sans résultat publié, l'absence est dite dans la case comme dans l'onglet
+        expect(propre(caseRes.textContent)).toContain(LIBELLES_RESULTATS.aucun);
+        expect(propre(d.querySelector("#resultats")!.textContent)).toContain(LIBELLES_RESULTATS.aucun);
+        continue;
+      }
+      expect(lignes).toHaveLength(cartes.length);
+      cartes.forEach((carte, i) => {
+        const session = propre(carte.querySelector(".lab .yr")?.textContent);
+        const voie = propre(carte.querySelector(".lab span")?.textContent);
+        const ligne = [...carte.querySelectorAll("tbody tr")].find((tr) => propre(tr.querySelector("td")?.textContent) === LIBELLES_RESULTATS.lignes.taux_reussite)!;
+        const cellules = [...ligne.querySelectorAll("td")];
+        const taux = propre(cellules[1]!.textContent);
+        const va = propre(cellules[2]!.textContent);
+        expect(lignes[i]).toContain(voie);
+        expect(lignes[i]).toContain(session);
+        expect(lignes[i]).toContain(taux);
+        if (va !== "" && !va.includes(LIBELLES_RESULTATS.nonPublie)) expect(lignes[i]).toContain(va);
+      });
+      // aucun jugement : ni classe de couleur, ni rang
+      expect(caseRes.querySelector(".bon, .mauvais, .rang")).toBeNull();
+      expect(propre(caseRes.textContent)).not.toMatch(/rang|classement|meilleur/i);
+    }
+  });
+
+  test("Synthèse : deux courbes, case Moyens égale à la ligne hors personnel de l'onglet Moyens", () => {
+    for (const uai of FICHES) {
+      const d = doc(`etablissement/${uai}`);
+      expect(d.querySelectorAll("#o-synthese svg[role=img]")).toHaveLength(2);
+      const caseMoyens = [...d.querySelectorAll("#o-synthese .kpis > div")].find((c) => propre(c.querySelector(".k")?.textContent).startsWith("Fonctionnement par élève"))!;
+      expect(caseMoyens).toBeDefined();
+      const ligne = [...d.querySelectorAll("#moyens tbody tr")].find((tr) => propre(tr.querySelector("td")?.textContent) === LIBELLES_BUDGET.postes.horsPersonnel)!;
+      const montant = propre(ligne.querySelectorAll("td")[1]!.textContent);
+      expect(propre(caseMoyens.querySelector(".v, .na")?.textContent)).toBe(montant);
+    }
+  });
+
+  test("ancres historiques conservées dans leur onglet", () => {
+    const d = doc("etablissement/0440001A");
+    expect(d.querySelector("#o-alentours #pial")).not.toBeNull();
+    expect(d.querySelector("#o-alentours #voisins")).not.toBeNull();
+    expect(d.querySelector("#o-alentours #ecoles-secteur")).not.toBeNull();
+    expect(d.querySelector("#o-enseignants #vs")).not.toBeNull();
+    expect(d.querySelector("#o-enseignants #ens")).not.toBeNull();
+    expect(d.querySelector("#o-eleves #eleves")).not.toBeNull();
+    expect(d.querySelector("#o-social #social")).not.toBeNull();
+    expect(d.querySelector("#o-resultats #resultats")).not.toBeNull();
+    expect(d.querySelector("#o-moyens #moyens")).not.toBeNull();
+    expect(d.querySelector("#o-sources #sources")).not.toBeNull();
+    expect(d.querySelector("#o-synthese .kpis")).not.toBeNull();
+    // la fiche A4 reste hors des panneaux
+    expect(d.querySelector("[data-onglet] .a4, [data-onglet] #fiche-a4")).toBeNull();
+    expect(d.querySelector("script[src='/js/onglets.js']")).not.toBeNull();
   });
 });

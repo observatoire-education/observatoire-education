@@ -285,8 +285,9 @@ describe("collège : écoles de son secteur et PIAL", () => {
     expect(t).toContain("PIAL du collège Jules-Verne");
     expect(t).toContain(DEFINITION_PIAL);
     expect(liens(p)).toEqual(["/etablissement/0440104D/", "/etablissement/0440202B/", "/etablissement/0440201A/", "/methode/#pial"]);
-    expect(liens(d.querySelector("nav.toc"))).toContain("#ecoles-secteur");
-    expect(liens(d.querySelector("nav.toc"))).toContain("#pial");
+    expect(liens(d.querySelector("nav.onglets"))).toContain("#o-alentours");
+    expect(d.querySelector("#o-alentours #ecoles-secteur")).not.toBeNull();
+    expect(d.querySelector("#o-alentours #pial")).not.toBeNull();
   });
 
   test("sources des écoles listées : dans les sources de la page, pas sur la fiche A4 (qui ne reprend pas la liste)", () => {

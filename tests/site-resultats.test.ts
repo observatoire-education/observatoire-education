@@ -49,8 +49,8 @@ describe("section Résultats de la fiche", () => {
     const d = doc("etablissement/0440001A");
     const s = d.querySelector("section#resultats")!;
     expect(s).not.toBeNull();
-    expect(s.nextElementSibling?.id).toBe("moyens");
-    expect(d.querySelector("nav.toc a[href='#resultats']")).not.toBeNull();
+    expect(d.querySelector("#o-moyens")!.previousElementSibling?.id).toBe("o-resultats");
+    expect(d.querySelector("nav.onglets a[href='#o-resultats']")).not.toBeNull();
     const x = section("etablissement/0440001A");
     expect(x).toContain("Diplôme national du brevet, série générale");
     expect(x).toContain("Diplôme national du brevet, série professionnelle");

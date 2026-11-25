@@ -1,0 +1,66 @@
+---
+// Synthèse d'une fiche de collège, de lycée ou d'EREA : les six chiffres clés situés (Bandeau), puis deux cases
+// (résultats, moyens de la collectivité) et deux courbes (effectifs, IPS) reprises des onglets Élèves et Composition sociale.
+// Chaque chiffre vient de la même donnée et de la même mise en forme que son onglet ; la réussite n'est qu'un chiffre
+// parmi d'autres : même taille, ni classement ni couleur de jugement, valeur ajoutée publiée à côté du taux.
+import { LIBELLES, LIBELLES_BUDGET, LIBELLES_RESULTATS as LRES, LIBELLES_SYNTHESE as LS } from "@obs/shared/libelles";
+import type { Fiche } from "@obs/shared/types";
+import { anneeScolaire, indicateur } from "../lib/affichage";
+import { niveauDe } from "../lib/budget";
+import { aPointCalcule, seriesReferencesIps, svgBarres, svgCourbe } from "../lib/plot";
+import { moyensSynthese, resultatsSynthese } from "../lib/synthese";
+import Absence from "./Absence.astro";
+import Bandeau from "./Bandeau.astro";
+import LegendeCourbeIps from "./LegendeCourbeIps.astro";
+
+interface Props { f: Fiche }
+const { f } = Astro.props;
+const prive = f.secteur === "prive_sous_contrat";
+
+const resultats = resultatsSynthese(f);
+
+const niveauBudget = niveauDe(f.famille);
+const budget = (niveauBudget === "colleges" ? f.budget.colleges : f.budget.lycees) ?? null;
+const moyens = moyensSynthese(budget, f.budget.france.find((m) => m.niveau === niveauBudget), prive ? "prive" : "public", niveauBudget);
+
+const iEleves = indicateur(f, "eleves");
+const iIps = indicateur(f, "ips");
+const refsIps = iIps.referencesHistoriques ?? [];
+const serieIps = seriesReferencesIps(refsIps);
+---
+<Bandeau f={f} />
+<div class="kpis">
+  <div>
+    <div class="k">{LS.resultats}</div>
+    {resultats.length === 0 ? <Absence texte={LRES.aucun} /> : resultats.map((r) => (
+      <div class="c">
+        <span>{r.voie}, {LRES.session(r.session)}</span>
+        <span>
+          {r.taux === null ? <span class="abs">{LRES.nonPublie}</span> : <b class="num">{r.taux}</b>}
+          {" · "}{LS.va}{" : "}{r.va === null ? <span class="abs">{LRES.nonPublie}</span> : <b class="num">{r.va}</b>}
+        </span>
+      </div>
+    ))}
+  </div>
+  <div>
+    <div class="k">{prive ? LS.moyensPrive : LS.moyens}{moyens && ` · ${LIBELLES_BUDGET.interface.exercice(moyens.exercice)}`}</div>
+    {moyens === null ? <Absence texte={LIBELLES.nonDisponible} /> : moyens.absent ? <Absence texte={moyens.texte} /> : <div class="v">{moyens.texte}</div>}
+    {moyens?.france && <div class="c"><span>France {moyens.france}</span></div>}
+  </div>
+</div>
+
+<div class="cols2" style="margin-top:14px">
+  <div class="card">
+    <div class="lab"><span>Effectif total</span><span class="yr">{iEleves.historique.length > 1 ? `${iEleves.historique[0]![0]} → ${iEleves.historique.at(-1)![0]}` : anneeScolaire(iEleves.mesure.rentree)}</span></div>
+    {iEleves.historique.length > 0 ? <Fragment set:html={svgBarres(iEleves.historique)} /> : <Absence texte={LIBELLES.nonDisponible} />}
+  </div>
+  <div class="card">
+    <div class="lab"><span>Évolution de l'IPS</span><span class="yr">{iIps.historique.length ? `${iIps.historique[0]![0]} → ${iIps.historique.at(-1)![0]}` : ""}</span></div>
+    {iIps.historique.length > 1 ? (
+      <>
+        <Fragment set:html={svgCourbe(iIps.historique, serieIps.publique, serieIps.privee, serieIps.calculees)} />
+        <LegendeCourbeIps etablissement rentrees={iIps.historique.map((p) => p[0])} departementale={refsIps.length > 0} calcule={aPointCalcule(refsIps)} />
+      </>
+    ) : <Absence texte={LIBELLES.nonDisponible} />}
+  </div>
+</div>

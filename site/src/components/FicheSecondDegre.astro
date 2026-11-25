@@ -1,9 +1,9 @@
 ---
-// Corps de la fiche d'un collège, d'un lycée ou d'un EREA, sous l'en-tête commun : chiffres clés situés, élèves,
-// composition sociale, enseignants, vie scolaire, résultats, moyens, voisins nommés, écoles du secteur et PIAL
-// (s'il y a lieu), sources. Graphiques rendus en SVG au build.
+// Corps de la fiche d'un collège, d'un lycée ou d'un EREA, sous l'en-tête commun, en onglets : synthèse (chiffres clés
+// situés, résultats, moyens, deux courbes), élèves, composition sociale, enseignants et vie scolaire, résultats, moyens,
+// alentours (voisins nommés, écoles du secteur, PIAL s'il y a lieu), sources. Graphiques rendus en SVG au build.
 import { entier, nombre, part } from "@obs/shared/format";
-import { LIBELLES, LIBELLES_BUDGET, LIBELLES_RATTACHEMENTS as LR, NIVEAUX_TERRITORIAUX } from "@obs/shared/libelles";
+import { LIBELLES, LIBELLES_BUDGET, LIBELLES_ONGLETS as LO, LIBELLES_RATTACHEMENTS as LR, NIVEAUX_TERRITORIAUX } from "@obs/shared/libelles";
 import type { CodeIndicateur } from "@obs/shared/libelles";
 import type { Fiche, Niveau, Secteur } from "@obs/shared/types";
 import Absence from "./Absence.astro";
@@ -11,18 +11,21 @@ import BlocBudget from "./BlocBudget.astro";
 import BlocEcolesSecteur from "./BlocEcolesSecteur.astro";
 import BlocPial from "./BlocPial.astro";
 import BlocResultats from "./BlocResultats.astro";
-import Bandeau from "./Bandeau.astro";
 import Cellule from "./Cellule.astro";
 import Empile from "./Empile.astro";
 import FicheA4 from "./FicheA4.astro";
 import LegendeCourbeIps from "./LegendeCourbeIps.astro";
 import LigneSource from "./LigneSource.astro";
+import Onglets from "./Onglets.astro";
+import Panneau from "./Panneau.astro";
 import Sources from "./Sources.astro";
+import SyntheseSecondDegre from "./SyntheseSecondDegre.astro";
 import Voisins from "./Voisins.astro";
 import {
   absente, anneeScolaire, comparaison, indicateur, reference, refAbsente, repartition, source, valeur,
 } from "../lib/affichage";
 import { niveauDe } from "../lib/budget";
+import { avecOnglets as plusieursOnglets, onglets } from "../lib/onglets";
 import { aPointCalcule, domaine, seriesReferencesIps, svgBarres, svgCourbe, svgPoints } from "../lib/plot";
 
 interface Props { f: Fiche }
@@ -100,13 +103,24 @@ const etpVs = indicateur(f, "etp_vs");
 const niveauBudget = niveauDe(f.famille);
 const budget = (niveauBudget === "colleges" ? f.budget.colleges : f.budget.lycees) ?? null;
 const franceBudget = f.budget.france.find((m) => m.niveau === niveauBudget);
----
-<Bandeau f={f} />
-<nav class="toc" aria-label="Sommaire">
-  <a href="#eleves">Élèves</a><a href="#social">Composition sociale</a><a href="#ens">Enseignants</a>
-  <a href="#vs">Vie scolaire</a><a href="#resultats">Résultats</a><a href="#moyens">Moyens</a><a href="#voisins">Voisins</a>{f.ecolesDuSecteur && <a href="#ecoles-secteur">{LR.ecolesDuSecteur}</a>}{f.pial && <a href="#pial">{LR.pial}</a>}<a href="#sources">Sources</a>
-</nav>
 
+// Onglets : chaque bloc garde les `id` de ses sections.
+const barre = onglets([
+  { id: "o-synthese", libelle: LO.synthese },
+  { id: "o-eleves", libelle: LO.eleves },
+  { id: "o-social", libelle: LO.social },
+  { id: "o-enseignants", libelle: LO.enseignants },
+  { id: "o-resultats", libelle: LO.resultats },
+  { id: "o-moyens", libelle: LO.moyens },
+  { id: "o-alentours", libelle: LO.alentours },
+  { id: "o-sources", libelle: LO.sources },
+]);
+const avec = plusieursOnglets(barre);
+---
+<Onglets onglets={barre} />
+<Panneau id="o-synthese" libelle={LO.synthese} actif avecOnglets={avec}><SyntheseSecondDegre f={f} /></Panneau>
+
+<Panneau id="o-eleves" libelle={LO.eleves} avecOnglets={avec}>
 <section id="eleves">
   <h2>Élèves</h2>
   <div class="cols2">
@@ -155,7 +169,9 @@ const franceBudget = f.budget.france.find((m) => m.niveau === niveauBudget);
     </div>
   </div>
 </section>
+</Panneau>
 
+<Panneau id="o-social" libelle={LO.social} avecOnglets={avec}>
 <section id="social">
   <h2>Composition sociale</h2>
   <div class="cols2">
@@ -198,7 +214,9 @@ const franceBudget = f.budget.france.find((m) => m.niveau === niveauBudget);
     </div>
   </div>
 </section>
+</Panneau>
 
+<Panneau id="o-enseignants" libelle={LO.enseignants} avecOnglets={avec}>
 <section id="ens">
   <h2>Enseignants</h2>
   <div class="cols2">
@@ -266,15 +284,19 @@ const franceBudget = f.budget.france.find((m) => m.niveau === niveauBudget);
     </div>
   </div>
 </section>
+</Panneau>
 
-<BlocResultats f={f} />
+<Panneau id="o-resultats" libelle={LO.resultats} avecOnglets={avec}><BlocResultats f={f} /></Panneau>
 
+<Panneau id="o-moyens" libelle={LO.moyens} avecOnglets={avec}>
 <section id="moyens">
   <h2>{LIBELLES_BUDGET.titre}</h2>
   <BlocBudget budget={budget} france={franceBudget} secteurEnPremier={prive ? "prive" : "public"} evolution={false}
     niveau={niveauBudget} motif={f.budget.motif} />
 </section>
+</Panneau>
 
+<Panneau id="o-alentours" libelle={LO.alentours} avecOnglets={avec}>
 <Voisins f={f} />
 {f.ecolesDuSecteur && <BlocEcolesSecteur f={f} ecoles={f.ecolesDuSecteur} />}
 {f.pial && (
@@ -283,5 +305,7 @@ const franceBudget = f.budget.france.find((m) => m.niveau === niveauBudget);
     <div class="card"><BlocPial pial={f.pial} uai={f.uai} /></div>
   </section>
 )}
-<Sources f={f} />
+</Panneau>
+
+<Panneau id="o-sources" libelle={LO.sources} avecOnglets={avec}><Sources f={f} /></Panneau>
 <FicheA4 f={f} />
