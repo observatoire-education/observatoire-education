@@ -155,3 +155,17 @@ describe("signalement.js", () => {
     expect(page(false).searchParams.get("onglet")).toBeNull();
   });
 });
+
+describe("mentions légales", () => {
+  test("section sur le formulaire de contact", () => {
+    const d = doc("mentions-legales");
+    const h = [...d.querySelectorAll("h2")].find((x) => /formulaire/i.test(x.textContent ?? ""));
+    expect(h).toBeDefined();
+    const t = texte("mentions-legales");
+    expect(t).toContain("Turnstile");
+    expect(t).toMatch(/facultative?/);
+    expect(t).toMatch(/ne (les )?conserve/);
+    expect(t).not.toContain("ne collecte aucune donnée personnelle");
+    expect(d.querySelector('a[href="/contact/"]')).not.toBeNull();
+  });
+});
