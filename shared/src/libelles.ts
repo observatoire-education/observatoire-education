@@ -511,3 +511,16 @@ export const LIBELLES_ONGLETS = {
   ficheA4: "⎙ Fiche A4",
   toutImprimer: "⎙ Tout imprimer",
 } as const;
+
+/** Libellés des chiffres de la Synthèse (fiches et territoires). */
+export const LIBELLES_SYNTHESE = {
+  resultats: "Résultats",
+  va: "valeur ajoutée",
+  moyens: "Fonctionnement par élève",
+  moyensPrive: "Contribution par élève",
+  elevesSecondDegre: "Élèves en collège et lycée",
+  sommeFamilles: "somme des familles d'établissements",
+  horsFamilles: (f: string[]): string => `hors ${f.join(", ")} (effectif non publié)`,
+  partPrive: "Part du privé sous contrat",
+  ipsColleges: "IPS moyen des collèges",
+} as const;
