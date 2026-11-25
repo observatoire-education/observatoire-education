@@ -21,8 +21,13 @@ export const LIMITES: Limites = { fichiers: 95_000, octetsParFichier: 25 * 1024 
 export const OCTETS_RECHERCHE_MAX = 10_000_000;
 const FICHIERS_RECHERCHE = ["recherche.json", "recherche-communes.json"];
 
-/** Poids maximal (brut) d'une fiche (`etablissement/*\/index.html`) ou d'une page commune (`commune/*\/index.html`). */
+/** Poids maximal (brut) d'une fiche (`etablissement/*\/index.html`). */
 export const OCTETS_PAGE_MAX = 150_000;
+/**
+ * Poids maximal (brut) d'une page commune (`commune/*\/index.html`) : les grandes villes listent toutes leurs écoles
+ * (Paris : environ 540 Ko au premier build réel, le 2026-11-25), servies compressées.
+ */
+export const OCTETS_COMMUNE_MAX = 750_000;
 
 export interface PoidsPages {
   pages: number;
@@ -55,17 +60,17 @@ export function poidsPages(dossier: string): Partial<Record<"etablissement" | "c
 }
 
 /** Lève une erreur qui nomme chaque fiche ou page commune au-delà de `plafond` octets. */
-function verifierPoidsPages(dossier: string, plafond = OCTETS_PAGE_MAX): void {
+function verifierPoidsPages(dossier: string): void {
   const lourdes: string[] = [];
-  for (const niveau of ["etablissement", "commune"]) {
+  for (const [niveau, plafond] of [["etablissement", OCTETS_PAGE_MAX], ["commune", OCTETS_COMMUNE_MAX]] as const) {
     const racine = join(dossier, niveau);
     if (!existsSync(racine)) continue;
     for (const nom of readdirSync(racine)) {
       const p = join(racine, nom, "index.html");
-      if (existsSync(p) && statSync(p).size > plafond) lourdes.push(`${p} pèse ${statSync(p).size} octets`);
+      if (existsSync(p) && statSync(p).size > plafond) lourdes.push(`${p} pèse ${statSync(p).size} octets, au-delà de ${plafond}`);
     }
   }
-  if (lourdes.length > 0) throw new Error(`${lourdes.join(", ")}, au-delà de ${plafond} octets par fiche ou page commune`);
+  if (lourdes.length > 0) throw new Error(`pages trop lourdes : ${lourdes.join(" ; ")}`);
 }
 
 export interface Config {
@@ -151,7 +156,7 @@ if (import.meta.main) {
     const { octets, fichiers } = verifierDist(dossier);
     console.log(`${dossier}/ : ${(octets / 1e6).toFixed(1)} Mo, ${fichiers} fichiers (limites : ${LIMITES.fichiers} fichiers, ${LIMITES.octetsParFichier / 1024 / 1024} Mio par fichier)`);
     for (const [niveau, p] of Object.entries(poidsPages(dossier))) {
-      console.log(`pages ${niveau} : ${p.pages}, médiane ${p.mediane} octets, 95e centile ${p.centile95}, max ${p.max} (${p.fichier}) ; plafond ${OCTETS_PAGE_MAX}`);
+      console.log(`pages ${niveau} : ${p.pages}, médiane ${p.mediane} octets, 95e centile ${p.centile95}, max ${p.max} (${p.fichier}) ; plafond ${niveau === "commune" ? OCTETS_COMMUNE_MAX : OCTETS_PAGE_MAX}`);
     }
     console.log(config.INDEXABLE ? "référencement autorisé" : "aperçu non référencé (noindex, robots.txt Disallow)");
   } catch (e) {

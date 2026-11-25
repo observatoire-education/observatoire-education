@@ -225,7 +225,7 @@ Même exigence que les phases précédentes : chaque règle de calcul a ses test
 16. **Poids** : la fiche école d'essai la plus lourde pèse environ 30 Ko (le budget de 20 à 25 Ko visés est dépassé avec les blocs des lots 2 à 4) ; une fiche collège avec les écoles du secteur, environ 63 Ko.
 17. **Hébergement Cloudflare** : `workers_dev: false` et `preview_urls: false` au commit de bascule ; `INDEXABLE` est déjà vrai.
 18. **Version imprimable de la fiche école** : sans le budget de la commune, pour tenir le poids de la fiche (le budget reste sur la page web).
-19. **Garde-fou du poids des pages** : à chaque build, médiane, 95e centile et maximum (avec le fichier) des fiches et des pages commune ; le build échoue au-delà de 150 000 octets pour une fiche ou une page commune.
+19. **Garde-fou du poids des pages** : à chaque build, médiane, 95e centile et maximum (avec le fichier) des fiches et des pages commune ; le build échoue au-delà de 150 000 octets pour une fiche et de 750 000 pour une page commune (les grandes villes listent toutes leurs écoles : Paris pèse environ 540 Ko au premier build réel).
 20. **RPI** : l'en-tête de la fiche d'une école ouverte indique « Regroupement pédagogique intercommunal dispersé » ou « … concentré » d'après l'Annuaire (`rpi_disperse`, `rpi_concentre`) ; les autres écoles du regroupement ne sont pas nommées (l'Annuaire ne les relie pas).
 
 ## 9. Laissé au builder

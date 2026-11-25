@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { comparer, echantillonUrls, normaliserCorps } from "../scripts/comparer-hebergements.ts";
 import {
-  ecrireFichiersHebergement, LIMITES, OCTETS_PAGE_MAX, OCTETS_RECHERCHE_MAX, poidsPages, verifierDist,
+  ecrireFichiersHebergement, LIMITES, OCTETS_COMMUNE_MAX, OCTETS_PAGE_MAX, OCTETS_RECHERCHE_MAX, poidsPages, verifierDist,
 } from "../scripts/garde-fous.ts";
 
 async function dossierTemp<T>(f: (d: string) => Promise<T> | T): Promise<T> {
@@ -79,19 +79,20 @@ describe("garde-fous de dist/ (Cloudflare Workers)", () => {
       expect(() => verifierDist(d)).not.toThrow();
     }));
 
-  test("poids des pages : au plus 150 000 octets par fiche ou page commune, l'erreur nomme le fichier", () =>
+  test("poids des pages : 150 000 octets par fiche, 750 000 par page commune, l'erreur nomme le fichier", () =>
     dossierTemp(async (d) => {
       expect(OCTETS_PAGE_MAX).toBe(150_000);
-      for (const p of ["etablissement/0440001A", "commune/44109"]) {
-        await mkdir(join(d, p), { recursive: true });
-        await writeFile(join(d, p, "index.html"), "x".repeat(150_000));
-      }
+      expect(OCTETS_COMMUNE_MAX).toBe(750_000);
+      await mkdir(join(d, "etablissement/0440001A"), { recursive: true });
+      await mkdir(join(d, "commune/44109"), { recursive: true });
+      await writeFile(join(d, "etablissement/0440001A", "index.html"), "x".repeat(150_000));
+      await writeFile(join(d, "commune/44109", "index.html"), "x".repeat(750_000));
       expect(() => verifierDist(d)).not.toThrow();
+      await writeFile(join(d, "commune", "44109", "index.html"), "x".repeat(750_001));
+      expect(() => verifierDist(d)).toThrow(/commune\/44109\/index\.html pèse 750001 octets, au-delà de 750000/);
       await writeFile(join(d, "commune", "44109", "index.html"), "x".repeat(150_001));
-      expect(() => verifierDist(d)).toThrow(/commune\/44109\/index\.html pèse 150001 octets, au-delà de 150000/);
-      await writeFile(join(d, "commune", "44109", "index.html"), "x");
       await writeFile(join(d, "etablissement", "0440001A", "index.html"), "x".repeat(150_001));
-      expect(() => verifierDist(d)).toThrow(/etablissement\/0440001A\/index\.html pèse 150001 octets/);
+      expect(() => verifierDist(d)).toThrow(/etablissement\/0440001A\/index\.html pèse 150001 octets, au-delà de 150000/);
     }));
 
   test("ecrireFichiersHebergement n'écrit plus CNAME et supprime l'existant", () =>
