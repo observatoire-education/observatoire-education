@@ -1,0 +1,67 @@
+---
+// Bâtiment et travaux d'un lycée public : année de construction, opérations votées depuis 2021, opérations des plans
+// pluriannuels d'investissement. Données de la région (Île-de-France seulement à ce jour).
+import { euros, nombre } from "@obs/shared/format";
+import { LIBELLES_BATIMENT as L } from "@obs/shared/libelles";
+import type { Fiche } from "@obs/shared/types";
+import Absence from "./Absence.astro";
+import LigneSource from "./LigneSource.astro";
+import { source } from "../lib/affichage";
+
+interface Props { f: Fiche }
+const { f } = Astro.props;
+const b = f.batiment!;
+---
+<section id="batiment">
+  <h2>{L.titre}</h2>
+  <div class="cols2">
+    <div class="card">
+      <div class="lab"><span>{L.anneeConstruction}</span></div>
+      {b.anneeConstruction !== null
+        ? <div class="val">{b.anneeConstruction}</div>
+        : <div style="margin:8px 0"><Absence texte={L.anneeNonPubliee} /></div>}
+      <p class="mute mention-budget">{L.anneeNote}</p>
+      <LigneSource s={source(f, "idf_lycees")} />
+    </div>
+    <div class="card wide" style="grid-column:1/-1">
+      <div class="lab"><span>{L.operations}</span>{b.operations.length > 0 && <span class="yr">{euros(b.operations.reduce((a, o) => a + (o.montantVote ?? 0), 0))}</span>}</div>
+      {b.operations.length === 0 ? <Absence texte={L.aucuneOperation} /> : (
+        <div class="table-wrap"><table class="mini-t travaux">
+          <thead><tr><th>{L.colonnes.operation}</th><th class="n">{L.colonnes.annees}</th><th class="n">{L.colonnes.montant}</th></tr></thead>
+          <tbody>
+            {b.operations.map((o) => (
+              <tr>
+                <td class="intitule">{o.intitule}{o.decisions > 1 && <small class="mute"> · {L.decisions(o.decisions)}</small>}</td>
+                <td class="n">{L.annees(o.premiereAnnee, o.derniereAnnee)}</td>
+                <td class="n">{euros(o.montantVote)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table></div>
+      )}
+      <p class="mute mention-budget">{L.operationsNote}</p>
+      <LigneSource s={source(f, "idf_operations")} />
+    </div>
+    {b.ppi.length > 0 && (
+      <div class="card wide" style="grid-column:1/-1">
+        <div class="lab"><span>{L.ppi}</span></div>
+        <div class="table-wrap"><table class="mini-t travaux">
+          <thead><tr><th>{L.colonnes.operation}</th><th>{L.colonnes.plan}</th><th>{L.colonnes.etat}</th><th class="n">{L.colonnes.livraison}</th><th class="n">{L.colonnes.enveloppe}</th></tr></thead>
+          <tbody>
+            {b.ppi.map((o) => (
+              <tr>
+                <td class="intitule">{o.intitule}</td>
+                <td>{o.ppi ?? "—"}</td>
+                <td>{o.etat ?? "—"}</td>
+                <td class="n">{o.anneeLivraison ?? "—"}</td>
+                <td class="n">{o.enveloppeMeur === null ? "—" : `${nombre(o.enveloppeMeur, 1)} M€`}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table></div>
+        <p class="mute mention-budget">{L.ppiNote} <a href="/methode/#batiments">{L.methode}</a></p>
+        <LigneSource s={source(f, "idf_ppi")} />
+      </div>
+    )}
+  </div>
+</section>

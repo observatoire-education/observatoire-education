@@ -41,6 +41,12 @@ export function millions(euros: number): string {
   return `${nombre(euros / 1e6, 1)}${FINE}M€`;
 }
 
+/** Montant en euros : « 720 000 € » sous le million, « 29,7 M€ » au-delà ; « — » si absent. */
+export function euros(x: number | null): string {
+  if (x === null || !Number.isFinite(x)) return ABSENT;
+  return Math.abs(x) >= 1e6 ? millions(x) : `${entier(x)}${FINE}€`;
+}
+
 /** Écart à une moyenne, puis la moyenne : « −14,0 (106,4) ». */
 export function ecart(valeur: number, moyenne: number, decimales = 1): string {
   const d = valeur - moyenne;

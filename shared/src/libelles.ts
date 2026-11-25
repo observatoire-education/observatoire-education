@@ -355,6 +355,45 @@ export const LIBELLES_TRANSPORT = {
   colonnes: { collectivite: "Collectivité", fonctionnement: "Fonctionnement", investissement: "Investissement", produitsServices: "Produits des services" },
 } as const;
 
+/** Bâtiment et travaux des lycées (jeux de la Région Île-de-France). */
+export const LIBELLES_BATIMENT = {
+  titre: "Bâtiment et travaux",
+  titreTerritoire: "Bâtiments et travaux des lycées publics",
+  anneeConstruction: "Année de construction",
+  anneeNonPubliee: "année non publiée par la région",
+  anneeNote: "Année publiée par la région, propriétaire du bâtiment. Les extensions et reconstructions partielles ne sont pas datées séparément.",
+  operations: "Opérations votées depuis 2021",
+  operationsNote:
+    "Montants votés par la région (affectations et revalorisations, moins les désaffectations) : ce sont des autorisations de dépense, pas des sommes dépensées. Intitulés tels que publiés, souvent abrégés.",
+  aucuneOperation: "aucune opération votée rattachée à cet établissement depuis 2021",
+  ppi: "Plans pluriannuels d'investissement",
+  ppiNote:
+    "Grosses opérations de construction et de rénovation programmées par la région. État d'avancement tel que publié par la région : ce jeu n'est plus mis à jour régulièrement (voir la méthode).",
+  colonnes: {
+    operation: "Opération",
+    annees: "Années",
+    montant: "Montant voté",
+    plan: "Plan",
+    etat: "État",
+    livraison: "Livraison",
+    enveloppe: "Enveloppe prévue",
+    lycee: "Lycée",
+    commune: "Commune",
+    construction: "Construction",
+    nbPpi: "Opérations PPI",
+    nbVotees: "Opérations votées",
+    derniere: "Dernière opération",
+  },
+  annees: (premiere: number | null, derniere: number | null) =>
+    premiere === null && derniere === null ? "—" : premiere === derniere || premiere === null ? `${derniere}` : derniere === null ? `${premiere}` : `${premiere}–${derniere}`,
+  decisions: (n: number) => `${n} décision${n > 1 ? "s" : ""}`,
+  methode: "Méthode",
+  /** Page région ou département : ce que couvre la liste. */
+  noteTerritoire: (n: number) =>
+    `${n} lycée${n > 1 ? "s" : ""} public${n > 1 ? "s" : ""} dont la région publie l'année de construction ou des travaux. Cliquer un lycée pour le détail des opérations.`,
+  source: "Source : Région Île-de-France, data.iledefrance.fr",
+} as const;
+
 export const LIBELLES_BUDGET = {
   titre: "Moyens de la collectivité",
   /** Écoles : fiche d'une école publique et page commune. */
@@ -508,6 +547,8 @@ export const LIBELLES_ONGLETS = {
   lycees: "Lycées",
   ecoles: "Écoles",
   transport: "Transport",
+  batiment: "Bâtiment et travaux",
+  travaux: "Travaux des lycées",
   territoires: "Territoires",
   sources: "Sources",
   barre: "Sections de la page",

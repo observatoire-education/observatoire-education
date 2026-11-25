@@ -7,6 +7,7 @@ import { LIBELLES, LIBELLES_BUDGET, LIBELLES_ONGLETS as LO, LIBELLES_RATTACHEMEN
 import type { CodeIndicateur } from "@obs/shared/libelles";
 import type { Fiche, Niveau, Secteur } from "@obs/shared/types";
 import Absence from "./Absence.astro";
+import BlocBatiment from "./BlocBatiment.astro";
 import BlocBudget from "./BlocBudget.astro";
 import BlocEcolesSecteur from "./BlocEcolesSecteur.astro";
 import BlocPial from "./BlocPial.astro";
@@ -112,6 +113,7 @@ const barre = onglets([
   { id: "o-enseignants", libelle: LO.enseignants },
   { id: "o-resultats", libelle: LO.resultats },
   { id: "o-moyens", libelle: LO.moyens },
+  ...(f.batiment ? [{ id: "o-batiment", libelle: LO.batiment }] : []),
   { id: "o-alentours", libelle: LO.alentours },
   { id: "o-sources", libelle: LO.sources },
 ]);
@@ -295,6 +297,8 @@ const avec = plusieursOnglets(barre);
     niveau={niveauBudget} motif={f.budget.motif} />
 </section>
 </Panneau>
+
+{f.batiment && <Panneau id="o-batiment" libelle={LO.batiment} avecOnglets={avec}><BlocBatiment f={f} /></Panneau>}
 
 <Panneau id="o-alentours" libelle={LO.alentours} avecOnglets={avec}>
 <Voisins f={f} />

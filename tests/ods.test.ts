@@ -34,8 +34,8 @@ afterAll(async () => {
 });
 
 describe("registre des sources", () => {
-  test("vingt-sept sources ; l'annuaire, la carte scolaire et le Code officiel géographique sont les référentiels", () => {
-    expect(Object.keys(SOURCES)).toHaveLength(27);
+  test("trente sources ; l'annuaire, la carte scolaire et le Code officiel géographique sont les référentiels", () => {
+    expect(Object.keys(SOURCES)).toHaveLength(30);
     expect(SOURCES.annuaire.referentiel).toBe(true);
     expect(SOURCES.carte_scolaire.referentiel).toBe(true);
     expect(SOURCES.cog_communes.referentiel).toBe(true);

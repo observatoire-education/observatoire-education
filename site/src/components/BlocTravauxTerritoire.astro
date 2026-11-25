@@ -1,0 +1,67 @@
+---
+// Pages région et département : bâtiment et travaux des lycées publics dont la région publie des données
+// (Île-de-France seulement à ce jour). Chiffres clés, lycées par décennie de construction, puis liste par lycée.
+import type { LigneTravaux } from "@obs/shared/donnees";
+import { entier, euros, nombre } from "@obs/shared/format";
+import { LIBELLES_BATIMENT as L } from "@obs/shared/libelles";
+
+interface Props { lignes: LigneTravaux[] }
+const { lignes } = Astro.props;
+
+const annees = lignes.map((l) => l.anneeConstruction).filter((a) => a !== null).sort((a, b) => a - b);
+const mediane = annees.length ? annees[Math.floor((annees.length - 1) / 2)]! : null;
+const decennies = [...Map.groupBy(annees, (a) => Math.floor(a / 10) * 10)].sort(([a], [b]) => a - b);
+const max = Math.max(1, ...decennies.map(([, l]) => l.length));
+const montant = lignes.reduce((a, l) => a + (l.montantVote ?? 0), 0);
+const avecOperations = lignes.filter((l) => l.operations > 0).length;
+---
+<section id="travaux">
+  <h2>{L.titreTerritoire}</h2>
+  <p class="mute">{L.noteTerritoire(lignes.length)}</p>
+  <div class="kpis">
+    <div><div class="k">{L.anneeConstruction} (médiane)</div><div class="v">{mediane ?? "—"}</div>
+      <div class="c">{entier(annees.length)} lycées datés sur {entier(lignes.length)}</div></div>
+    <div><div class="k">{L.operations}</div><div class="v">{euros(montant)}</div>
+      <div class="c">votés pour {entier(avecOperations)} lycée{avecOperations > 1 ? "s" : ""}</div></div>
+  </div>
+  {decennies.length > 0 && (
+    <div class="card" style="margin-top:14px">
+      <div class="lab"><span>Lycées par décennie de construction</span></div>
+      <div class="table-wrap"><table class="mini-t decennies">
+        <tbody>
+          {decennies.map(([d, l]) => (
+            <tr>
+              <td>{d < 1900 ? `avant 1900` : `${d}–${d + 9}`}</td>
+              <td class="n">{l.length}</td>
+              <td class="barre"><span style={`width:${nombre((100 * l.length) / max, 1).replace(",", ".")}%`}></span></td>
+            </tr>
+          ))}
+        </tbody>
+      </table></div>
+      <p class="mute mention-budget">{L.anneeNote}</p>
+    </div>
+  )}
+  <div class="card" style="margin-top:14px;padding:4px 6px"><div class="table-wrap">
+    <table class="mini-t travaux-liste">
+      <thead><tr>
+        <th>{L.colonnes.lycee}</th><th>{L.colonnes.commune}</th><th class="n">{L.colonnes.construction}</th>
+        <th class="n">{L.colonnes.nbVotees}</th><th class="n">{L.colonnes.montant}</th><th class="n">{L.colonnes.nbPpi}</th><th class="n">{L.colonnes.derniere}</th>
+      </tr></thead>
+      <tbody>
+        {lignes.map((l) => (
+          <tr>
+            <td><a href={`/etablissement/${l.uai}/#o-batiment`}>{l.nom}</a></td>
+            <td>{l.commune}</td>
+            <td class="n">{l.anneeConstruction ?? "—"}</td>
+            <td class="n">{l.operations || "—"}</td>
+            <td class="n">{l.operations ? euros(l.montantVote) : "—"}</td>
+            <td class="n">{l.ppi || "—"}</td>
+            <td class="n">{l.derniereAnnee ?? "—"}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div></div>
+  <p class="mute mention-budget">{L.operationsNote}</p>
+  <div class="src">{L.source} · <a href="/methode/#batiments">{L.methode}</a> · <a href="/sources/">Sources</a></div>
+</section>

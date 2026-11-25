@@ -26,6 +26,7 @@ import BlocEcolesCommune from "./BlocEcolesCommune.astro";
 import BlocPremierDegre from "./BlocPremierDegre.astro";
 import BlocSegregation from "./BlocSegregation.astro";
 import BlocTransport from "./BlocTransport.astro";
+import BlocTravauxTerritoire from "./BlocTravauxTerritoire.astro";
 import CaseIps from "./CaseIps.astro";
 import Cellule from "./Cellule.astro";
 import CourbeIpsTerritoire from "./CourbeIpsTerritoire.astro";
@@ -125,6 +126,7 @@ const avecSynthese = !seulementEcoles || !!d.ecoles || avecBudgetCommune;
 const avecEcoles = avecPremierDegre || !!d.ecoles;
 const transportRegions = niveau === "france" && (france.transportRegions ?? []).length > 0;
 const avecTransport = !!d.transport || transportRegions;
+const avecTravaux = (d.travauxLycees ?? []).length > 0;
 const avecResultats = (d.nuages ?? []).length > 0;
 const avecTerritoires = niveau !== "commune";
 const barre = onglets([
@@ -132,6 +134,7 @@ const barre = onglets([
   ...groupesFamilles.map((g) => g.liste.length > 0 && { id: g.id, libelle: g.libelle }),
   avecEcoles && { id: "o-ecoles", libelle: LO.ecoles },
   avecTransport && { id: "o-transport", libelle: LO.transport },
+  avecTravaux && { id: "o-travaux", libelle: LO.travaux },
   avecResultats && { id: "o-resultats", libelle: LO.resultats },
   avecTerritoires && { id: "o-territoires", libelle: LO.territoires },
   avecBudgetCommune && { id: "o-moyens-commune", libelle: LO.moyensCommune },
@@ -293,6 +296,12 @@ const badges = [
     <Panneau id="o-transport" libelle={LO.transport} actif={premier === "o-transport"} avecOnglets={avec}>
       {d.transport && <BlocTransport t={d.transport} region={niveau === "region" ? d.ref.code : undefined} />}
       {transportRegions && <BlocTransport regions={france.transportRegions} />}
+    </Panneau>
+  )}
+
+  {avecTravaux && (
+    <Panneau id="o-travaux" libelle={LO.travaux} actif={premier === "o-travaux"} avecOnglets={avec}>
+      <BlocTravauxTerritoire lignes={d.travauxLycees!} />
     </Panneau>
   )}
 
