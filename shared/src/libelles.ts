@@ -508,4 +508,6 @@ export const LIBELLES_ONGLETS = {
   territoires: "Territoires",
   sources: "Sources",
   barre: "Sections de la page",
+  ficheA4: "⎙ Fiche A4",
+  toutImprimer: "⎙ Tout imprimer",
 } as const;

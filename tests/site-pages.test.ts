@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import type { EntreeIndex } from "@obs/shared/donnees";
-import { estEcole, LIBELLES_ABSENCES, LIBELLES_BUDGET } from "@obs/shared/libelles";
+import { estEcole, LIBELLES_ABSENCES, LIBELLES_BUDGET, LIBELLES_ONGLETS } from "@obs/shared/libelles";
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import { DIST_TEST, doc, page, siteTest, texte } from "./site.ts";
@@ -266,6 +266,14 @@ describe("sources, méthode, 404, sitemap", () => {
     expect(s).toContain("/commune/44109/");
     expect(s).not.toContain("/commune/2A004/");
     expect(s).toContain("<lastmod>2026-11-22</lastmod>");
+  });
+});
+
+describe("boutons d'impression de la fiche", () => {
+  test("Fiche A4 et Tout imprimer", () => {
+    const d = doc("etablissement/0440001A");
+    expect(d.getElementById("imprimer")!.textContent).toBe(LIBELLES_ONGLETS.ficheA4);
+    expect(d.getElementById("imprimer-tout")).not.toBeNull();
   });
 });
 

@@ -2,7 +2,7 @@
 // En-tête de fiche : fil d'Ariane (France › région › académie › département › commune ; seuls les maillons dont la page existe sont des liens),
 // nom, pastilles, mention de disparition, sites multiples, actions.
 import type { RefTerritoire } from "@obs/shared/donnees";
-import { CONTRATS, FAMILLES, LIBELLES, LIBELLES_RPI, SECTEURS } from "@obs/shared/libelles";
+import { CONTRATS, FAMILLES, LIBELLES, LIBELLES_ONGLETS, LIBELLES_RPI, SECTEURS } from "@obs/shared/libelles";
 import { regionDe, REGIONS } from "@obs/shared/collectivites";
 import { communeDeRattachement, LIBELLES_PLM } from "@obs/shared/territoires";
 import type { Fiche } from "@obs/shared/types";
@@ -61,7 +61,8 @@ const parents: RefTerritoire[] = [
   </details>
 )}
 <div class="actions">
-  <button class="btn primary" type="button" id="imprimer">⎙ Imprimer / PDF</button>
+  <button class="btn primary" type="button" id="imprimer">{LIBELLES_ONGLETS.ficheA4}</button>
+  <button class="btn" type="button" id="imprimer-tout">{LIBELLES_ONGLETS.toutImprimer}</button>
   {f.lat !== null && f.lon !== null && (
     <button class="btn" type="button" id="afficher-carte" data-lat={f.lat} data-lon={f.lon} aria-controls="carte">◎ Afficher la carte</button>
   )}

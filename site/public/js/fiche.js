@@ -11,6 +11,16 @@
   var imprimer = document.getElementById("imprimer");
   if (imprimer) imprimer.addEventListener("click", function () { window.print(); });
 
+  // Impression de toute la page : la classe écarte la fiche A4 et affiche tous les panneaux (voir obs.css).
+  var toutImprimer = document.getElementById("imprimer-tout");
+  if (toutImprimer) toutImprimer.addEventListener("click", function () {
+    var html = document.documentElement;
+    html.classList.add("impression-complete");
+    var retirer = function () { html.classList.remove("impression-complete"); window.removeEventListener("afterprint", retirer); };
+    window.addEventListener("afterprint", retirer);
+    window.print();
+  });
+
   var copier = document.getElementById("copier");
   if (copier) copier.addEventListener("click", function () {
     var url = copier.dataset.url || location.href;

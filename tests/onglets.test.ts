@@ -138,3 +138,36 @@ describe("onglets.js", () => {
     expect(defiler).not.toHaveBeenCalled();
   });
 });
+
+describe("CSS d'impression", () => {
+  const css = readFileSync("site/src/styles/obs.css", "utf8");
+  const print = [...css.matchAll(/@media print \{([\s\S]*?)\n\}/g)].map((m) => m[1]).join("\n");
+
+  test("panneaux masqués imprimés, barre masquée, titres affichés, cartes insécables", () => {
+    expect(print).toMatch(/\[data-onglet\]\[hidden\][^{]*\{[^}]*display:\s*block !important[^}]*content-visibility:\s*visible/);
+    expect(print).toMatch(/\.onglets[^{]*\{[^}]*display:\s*none/);
+    expect(print).toMatch(/\.titre-impression[^{]*\{[^}]*display:\s*block/);
+    expect(print).toMatch(/\.card[^{]*\{[^}]*break-inside:\s*avoid/);
+  });
+
+  test("masquage de tout sauf la fiche A4 : sauf impression complète", () => {
+    expect(print).toMatch(/html:not\(\.impression-complete\)[^{]*:not\(\.a4\)[^{]*\{[^}]*display:\s*none/);
+    expect(print).toMatch(/html\.impression-complete \.a4\s*\{\s*display:\s*none !important/);
+  });
+});
+
+describe("tout imprimer (fiche.js)", () => {
+  const FICHE = readFileSync("site/public/js/fiche.js", "utf8");
+  test("la classe est posée pendant l'impression puis retirée à afterprint", () => {
+    const { window: w, document } = parseHTML(`<!doctype html><html><body><button id="imprimer-tout">x</button></body></html>`);
+    const win = w as any;
+    let pendant: boolean | undefined;
+    win.print = mock(() => { pendant = document.documentElement.classList.contains("impression-complete"); });
+    new Function("window", "document", FICHE)(win, document);
+    document.getElementById("imprimer-tout")!.dispatchEvent(new win.Event("click", { bubbles: true }));
+    expect(win.print).toHaveBeenCalledTimes(1);
+    expect(pendant).toBe(true);
+    win.dispatchEvent(new win.Event("afterprint"));
+    expect(document.documentElement.classList.contains("impression-complete")).toBe(false);
+  });
+});
