@@ -44,7 +44,8 @@ export function identiteDe(f: Fiche): Identite {
 
 /**
  * Nouveau registre après une génération : les fiches actives mettent à jour leur identité
- * (et perdent une éventuelle mention de disparition), les fiches disparues gardent la leur.
+ * (et perdent une éventuelle mention de disparition), les fiches disparues gardent la leur, complétée au besoin
+ * d'un nom et d'une commune qui manquaient.
  */
 export function mettreAJourRegistre(avant: Registre, fiches: Fiche[], date: string): Registre {
   const apres: Registre = { ...avant };
@@ -53,7 +54,9 @@ export function mettreAJourRegistre(avant: Registre, fiches: Fiche[], date: stri
     if (f.disparuLe === null) {
       apres[f.uai] = { premiere: precedent?.premiere ?? date, identite: identiteDe(f) };
     } else if (precedent) {
-      apres[f.uai] = { ...precedent, disparuLe: f.disparuLe };
+      // identité figée, sauf le nom et la commune qu'une génération a pu compléter (voir completerIdentite)
+      const { nom, commune, codeCommune } = f;
+      apres[f.uai] = { ...precedent, identite: { ...precedent.identite, nom, commune, codeCommune }, disparuLe: f.disparuLe };
     } else {
       // fiche historique (établissement fermé cité par une source) : son URL devient permanente
       apres[f.uai] = { premiere: date, identite: identiteDe(f), disparuLe: f.disparuLe };

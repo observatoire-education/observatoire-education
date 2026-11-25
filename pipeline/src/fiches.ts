@@ -13,6 +13,7 @@ import { budgetDeFiche, calculerBudgets } from "./budget-eleves.ts";
 import { collectivitesCorrigees, correctionEnVigueur, type EntreeCorrection, resoudreCorrection } from "./corrections.ts";
 import { calculerClasses, calculerEcolesProches, rentreeEffectifsEcoles } from "./ecoles.ts";
 import { calculerEleves } from "./eleves.ts";
+import { NOM_NON_PUBLIE } from "./noms-cites.ts";
 import { calculerPial, type RapportPial } from "./pial.ts";
 import { calculerResultats, dernieresSessions, resume } from "./resultats.ts";
 import { calculerSecteurs, ecolesDesSecteurs, type RapportSecteurs } from "./secteurs.ts";
@@ -155,6 +156,24 @@ async function identitesActives(db: Db): Promise<Map<string, Identite>> {
       },
     ]),
   );
+}
+
+interface IdentiteFerme { uai: string; nom: string | null; commune: string | null; code_commune: string | null }
+
+/**
+ * Identité d'une page conservée, figée au registre, complétée par le jeu des fermés (et les noms qu'y apportent les
+ * sources citantes) : un nom absent ou générique (`NOM_NON_PUBLIE`), une commune ou un code commune absents.
+ * Ce qui est déjà connu n'est jamais remplacé.
+ */
+export function completerIdentite(identite: Identite, ferme: IdentiteFerme | undefined): Identite {
+  if (!ferme) return identite;
+  const nom = (identite.nom == null || identite.nom === NOM_NON_PUBLIE) && ferme.nom ? ferme.nom : identite.nom;
+  const commune = identite.commune ?? ferme.commune;
+  // le code n'est repris que s'il va avec la commune retenue
+  const codeCommune = identite.codeCommune ?? (commune === ferme.commune ? ferme.code_commune : null);
+  return nom === identite.nom && commune === identite.commune && codeCommune === identite.codeCommune
+    ? identite
+    : { ...identite, nom, commune, codeCommune };
 }
 
 /** Fiches historiques : établissements fermés cités par une source ; l'identité vient de la liste des fermés. */
@@ -409,6 +428,10 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
   const fermetures = new Map(
     (await db.sql<{ uai: string; ferme: string }>("select uai, date_fermeture::varchar as ferme from fermes")).map((r) => [r.uai, r.ferme]),
   );
+  // Noms et communes des fermés : ils complètent l'identité figée au registre quand elle en manque.
+  const identitesFermes = new Map(
+    (await db.sql<IdentiteFerme>("select uai, nom, commune, code_commune from fermes")).map((r) => [r.uai, r]),
+  );
   const aujourdhui = maintenant.toISOString().slice(0, 10);
 
   const fiche = (uai: string, identite: Identite, disparuLe: string | null): Fiche => {
@@ -456,7 +479,7 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
     }
     const entree = registre[uai];
     if (!entree) continue;
-    fiches.push(fiche(uai, entree.identite, fermetures.get(uai) ?? entree.disparuLe ?? aujourdhui));
+    fiches.push(fiche(uai, completerIdentite(entree.identite, identitesFermes.get(uai)), fermetures.get(uai) ?? entree.disparuLe ?? aujourdhui));
   }
   // Successeurs : déduits, corrigés par le fichier manuel, sans cycle ; seuls les liens entre fiches sont gardés.
   const { liens: deduits, ambigus } = await deduireSuccesseurs(db);
@@ -495,6 +518,11 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
 export async function exporter(
   fiches: Fiche[], db: Db, manifest: Manifest, sortie = "site/data", corrections: EntreeCorrection[] = [],
 ): Promise<void> {
+  // Titre, fil d'Ariane et recherche affichent nom et commune : une fiche sans l'un des deux est refusée.
+  const incompletes = fiches.filter((f) => !f.nom || !f.commune).map((f) => f.uai);
+  if (incompletes.length > 0) {
+    throw new Error(`${incompletes.length} fiche(s) sans nom ou sans commune : ${incompletes.slice(0, 10).join(", ")}`);
+  }
   await rm(sortie, { recursive: true, force: true });
   await mkdir(join(sortie, "fiches"), { recursive: true });
 

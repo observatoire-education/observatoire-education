@@ -54,8 +54,8 @@ select
 from (
   select
     upper(trim(f.numero_uai)) as uai,
-    -- Quelques fermés n'ont pas d'appellation : un nom explicite plutôt qu'un vide.
-    coalesce(nullif(trim(f.appellation_officielle), ''), 'Établissement sans nom publié') as nom,
+    -- Sans appellation : le nom cité par une source chiffrée (table noms_cites), sinon un nom explicite plutôt qu'un vide.
+    coalesce(nullif(trim(f.appellation_officielle), ''), n.nom, 'Établissement sans nom publié') as nom,
     upper(trim(f.nature_uai_libe)) as nature,
     -- une école fermée n'est plus dans l'annuaire : sa famille vient de la nature (jamais primaire)
     coalesce(
@@ -70,8 +70,9 @@ from (
     try_cast(left(trim(f.date_fermeture::varchar), 10) as date) as date_fermeture,
     trim(f.adresse_uai) as adresse,
     trim(f.code_postal_uai::varchar) as code_postal,
-    trim(f.code_commune::varchar) as code_commune,
-    trim(f.libelle_commune) as commune,
+    -- sans commune dans la liste des fermés : celle de la source qui cite l'UAI (code et libellé du COG si connus)
+    coalesce(nullif(trim(f.code_commune::varchar), ''), n.code_commune) as code_commune,
+    coalesce(nullif(trim(f.libelle_commune), ''), n.commune) as commune,
     case when dep_canonique(f.code_departement) in ('977', '978') then '971' else dep_canonique(f.code_departement) end as dep,
     case when dep_canonique(f.code_departement) in ('977', '978') then 'Guadeloupe' else libelle_territoire(f.libelle_departement) end as dep_libelle,
     trim(f.code_academie::varchar) as aca,
@@ -81,6 +82,7 @@ from (
   from src_fermes f
   left join type_lycee_ferme t on t.uai = upper(trim(f.numero_uai))
   left join secteur_cites s on s.uai = upper(trim(f.numero_uai))
+  left join noms_cites n on n.uai = upper(trim(f.numero_uai))
   where f.numero_uai is not null
 )
 where regexp_matches(uai, '^[0-9]{7}[A-Z]$')

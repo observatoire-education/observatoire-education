@@ -21,7 +21,7 @@
     // Communes qui ont une page (second degré ou écoles), hors de l'accueil pour ne pas l'alourdir.
     chargement = chargement || Promise.all([json("/recherche.json"), json("/recherche-communes.json")]).then(function (x) {
       communes = x[1];
-      // Des établissements fermés n'ont ni nom ni commune publiés (null) : l'UAI tient lieu de nom.
+      // Garde-fou : le pipeline garantit nom et commune (refus à l'export) ; un index ancien pourrait en manquer.
       index = x[0].map(function (e) { e.n = e.n || e.u; e.c = e.c || ""; taille[norm(e.c) + "|" + e.d] = (taille[norm(e.c) + "|" + e.d] || 0) + 1; e.k = norm(e.n + " " + e.c + " " + e.u + " " + e.d + " " + (nomDep[e.d] || "")); return e; });
       lancer();
     });
