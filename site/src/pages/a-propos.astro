@@ -1,7 +1,7 @@
 ---
 // À propos : pourquoi ce site existe, ce qu'il fait et ne fait pas, qui le publie.
 import Base from "../layouts/Base.astro";
-import { CONFIG, EDITEUR } from "../lib/config";
+import { CONFIG, EDITEUR, EDITEUR_LINKEDIN } from "../lib/config";
 
 const depot = `https://github.com/${CONFIG.DEPOT}`;
 ---
@@ -22,7 +22,7 @@ const depot = `https://github.com/${CONFIG.DEPOT}`;
     </ul>
 
     <h2 id="qui">Qui publie ce site</h2>
-    <p>Je m'appelle {EDITEUR}. Je conçois, développe et publie cet observatoire à titre personnel, sans lien avec le ministère de l'Éducation nationale ni avec aucun établissement, syndicat ou parti.</p>
+    <p>Je m'appelle <a href={EDITEUR_LINKEDIN} rel="me">{EDITEUR}</a>. Je conçois, développe et publie cet observatoire à titre personnel, sans lien avec le ministère de l'Éducation nationale ni avec aucun établissement, syndicat ou parti.</p>
     <p>Une erreur, une donnée manquante, une idée ? Vous pouvez ouvrir un ticket sur le <a href={`${depot}/issues`}>dépôt du projet</a>.</p>
   </div>
 </Base>

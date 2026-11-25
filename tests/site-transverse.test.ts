@@ -239,5 +239,6 @@ describe("à propos et mentions légales", () => {
     expect(d.getElementById("pourquoi")).not.toBeNull();
     expect(d.querySelector('a[href="/sources/"]')).not.toBeNull();
     expect(d.querySelector('a[href="/methode/"]')).not.toBeNull();
+    expect(d.querySelector('a[href="https://www.linkedin.com/in/ludovicbonnet/"]')?.textContent).toBe("Ludovic Bonnet");
   });
 });
