@@ -9,6 +9,8 @@ export interface Config {
   INDEXABLE: boolean;
   /** Mesure d'audience Umami auto-hébergée (facultative). */
   UMAMI?: { SCRIPT: string; ID: string };
+  /** Formulaire de contact et liens de signalement (Worker /api/signalement, Turnstile). */
+  CONTACT?: { ACTIF: boolean; TURNSTILE_SITEKEY: string };
 }
 
 export const CONFIG: Config = JSON.parse(

@@ -6,5 +6,9 @@
   "UMAMI": {
     "SCRIPT": "https://stats.example.test/script.js",
     "ID": "00000000-0000-0000-0000-000000000000"
+  },
+  "CONTACT": {
+    "ACTIF": true,
+    "TURNSTILE_SITEKEY": "1x00000000000000000000AA"
   }
 }

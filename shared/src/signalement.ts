@@ -106,3 +106,7 @@ export function lienContact(contexte: Contexte): string {
   const q = p.toString();
   return q ? `/contact/?${q}` : "/contact/";
 }
+
+/** Vrai si le formulaire de contact est en service (config CONTACT) : liens publiés et formulaire affiché. */
+export const formulaireActif = (contact: { ACTIF: boolean; TURNSTILE_SITEKEY: string } | undefined): boolean =>
+  Boolean(contact?.ACTIF && contact.TURNSTILE_SITEKEY);

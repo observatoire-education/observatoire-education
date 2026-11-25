@@ -10,8 +10,10 @@ interface Props {
   description?: string;
   /** Chemin de la page (« /etablissement/0440001A/ ») pour la balise canonical. */
   chemin: string;
+  /** Faux pour une page à tenir hors des moteurs (formulaire de contact pas encore en service). */
+  indexable?: boolean;
 }
-const { titre, description, chemin } = Astro.props;
+const { titre, description, chemin, indexable = true } = Astro.props;
 const canonical = CONFIG.SITE_URL ? `${CONFIG.SITE_URL}${chemin}` : null;
 ---
 <!doctype html>
@@ -24,7 +26,7 @@ const canonical = CONFIG.SITE_URL ? `${CONFIG.SITE_URL}${chemin}` : null;
     <title>{titre ? `${titre} — ${NOM_SITE}` : NOM_SITE}</title>
     {description && <meta name="description" content={description} />}
     {canonical && <link rel="canonical" href={canonical} />}
-    {!CONFIG.INDEXABLE && <meta name="robots" content="noindex" />}
+    {(!CONFIG.INDEXABLE || !indexable) && <meta name="robots" content="noindex" />}
     <script is:inline src="/js/theme.js"></script>
     {CONFIG.UMAMI && <script is:inline defer src={CONFIG.UMAMI.SCRIPT} data-website-id={CONFIG.UMAMI.ID}></script>}
   </head>
