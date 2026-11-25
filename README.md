@@ -26,7 +26,7 @@ Un site statique régénéré chaque nuit par GitHub Actions et publié sur Clou
 | `tests/` | tests `bun test` (pipeline, SQL et HTML généré) et jeux d'essai |
 | `archives/` | manifest des versions archivées, journal de collecte, registre des pages (créés par la collecte) |
 | `docs/superpowers/` | spécification, socle technique, maquettes et plan de la phase 1 |
-| `.github/workflows/` | `tests.yml` (chaque push) et `nightly.yml` (collecte, build, déploiement) |
+| `.github/workflows/` | `tests.yml` (chaque push), `collecte.yml` (chaque nuit) et `publication.yml` (build et déploiement : chaque push, et chaque lundi si les données ont changé) |
 
 ## Commandes
 
@@ -76,7 +76,7 @@ Configuration dans `observatoire.config.json` :
 | `SITE_URL` | adresse complète (`https://…`) pour les liens permanents, le sitemap et les QR codes |
 | `INDEXABLE` | `false` : aperçu non référencé (`noindex`, `robots.txt` Disallow) ; `true` : site public, robots d'entraînement d'IA exclus dans `robots.txt` (liste `ROBOTS_ENTRAINEMENT` de `scripts/garde-fous.ts`) |
 
-Le site est servi par Cloudflare Workers (assets statiques, `wrangler.jsonc`), déployé par le job `deployer` du workflow `nightly` ; les adresses restent celles de `observatoireeducation.fr`.
+Le site est servi par Cloudflare Workers (assets statiques, `wrangler.jsonc`), déployé par le job `deployer` du workflow `publication` ; les adresses restent celles de `observatoireeducation.fr`.
 
 Préalables, à faire par le porteur du projet, dans l'ordre :
 
@@ -93,15 +93,21 @@ Avant de changer les serveurs DNS chez OVH, vérifier dans la zone importée :
 
 Les enregistrements de GitHub Pages (les quatre A `185.199.108.153` à `185.199.111.153` et le CNAME `www` vers `observatoire-education.github.io`) restent en place jusqu'à la bascule : ils servent le site pendant la propagation des serveurs DNS. Le changement des serveurs DNS chez OVH n'a lieu qu'après la recette décrite plus loin (procédure de bascule).
 
-Ensuite, lancer le workflow `nightly` à la main (*Actions → nightly → Run workflow*) : première collecte, archives, premier déploiement.
+Ensuite, lancer le workflow `collecte` à la main (*Actions → collecte → Run workflow*) : première collecte et archives ; puis `publication` à la main : premier déploiement.
 
-Après l'ajout d'une source (par exemple un nouvel exercice du budget), lancer `nightly` à la main (*Actions → nightly → Run workflow*) : tant qu'aucune version de cette source n'est archivée, le build sur push échoue et le site reste sur la version précédente.
+Après l'ajout d'une source dans le code (par exemple un nouvel exercice du budget), un push suffit : la publication collecte d'abord les sources déclarées qui n'ont encore aucune version (`bun pipeline/src/cli.ts collect --manquantes`). Si l'une reste sans version (serveur injoignable, source à collecte locale), la publication échoue, une issue « Publication en échec » s'ouvre et le site reste sur la version précédente.
+
+### Collecte, publication et alertes
+
+- **Collecte** (`collecte.yml`, chaque nuit à 2 h 17 UTC) : vérifie chaque source, archive les nouvelles versions, commite le manifeste et le journal. Elle ne reconstruit pas le site. Une version invalide (colonne manquante, baisse de lignes…) est rejetée : le site reste sur la dernière version valide.
+- **Publication** (`publication.yml`) : à chaque push sur `main`, et chaque lundi à 3 h 17 UTC si les versions archivées ont changé depuis la dernière publication réussie (la simple date vue d'une source ne compte pas).
+- **Alertes** : une source rejetée ou en erreur ouvre une issue (label `alerte-source`), une seule par source, commentée seulement si le motif change et fermée quand la source revient à la normale ou disparaît du code. Une source à collecte locale (`bzh_batiments`, serveur injoignable depuis GitHub) n'ouvre une issue que si sa dernière collecte manuelle (`bun run collect` depuis un poste) a plus de 90 jours. Un échec de publication ouvre une issue `alerte-publication`, fermée à la publication réussie suivante. La collecte reste verte même quand une source est rejetée : l'issue fait foi.
 
 ### Recette et bascule d'hébergement
 
 Procédure à suivre, dans l'ordre, une fois les préalables faits :
 
-1. Déployer le site sur `observatoire-education.<compte>.workers.dev` (workflow `nightly`, lancé à la main).
+1. Déployer le site sur `observatoire-education.<compte>.workers.dev` (workflow `publication`, lancé à la main).
 2. Comparer ce déploiement au site en ligne sur un échantillon de 300 pages (premier, dernier et pas régulier du sitemap) :
    `bun scripts/comparer-hebergements.ts https://observatoireeducation.fr https://observatoire-education.<compte>.workers.dev 300`.
    Le script compare le statut HTTP et le corps (hors script Umami et date de génération des fiches), une page à la fois ; il doit conclure à zéro écart (code de sortie 0).
@@ -123,13 +129,13 @@ La bascule est validée quand une nuit de collecte et de déploiement a réussi 
 La phase 4 ajoute 11 sources (établissements fermés, IPS 2016-2021 et 2022, IVAC, IVAL, ségrégation). Ordre à suivre :
 
 1. Merger la branche dans `main`.
-2. Lancer le workflow `nightly` à la main (*Actions → nightly → Run workflow*, `workflow_dispatch`) : première collecte des 11 nouvelles sources, publiées sur les GitHub Releases.
+2. Lancer le workflow `collecte` à la main (*Actions → collecte → Run workflow*, `workflow_dispatch`) : première collecte des 11 nouvelles sources, publiées sur les GitHub Releases.
 3. Lancer `bun scripts/rattraper-corrections.ts` sur le dépôt réel (manifeste à jour, accès aux Releases), puis commiter `archives/corrections.json`. Une paire de versions en échec est signalée dans la sortie sans arrêter les autres.
 4. Le déploiement sur Cloudflare Workers suit : le push de `archives/corrections.json` reconstruit le site et le redéploie avec les mentions de correction.
 
 Avant l'étape 2, un build sur `main` échoue proprement (« aucune version archivée pour fermes ») sans rien publier de faux : le site reste sur la version précédente.
 
-La collecte tourne ensuite chaque nuit à 2 h 17 UTC. Une nuit sans changement de source enregistre seulement le journal, sans reconstruire le site.
+La collecte tourne ensuite chaque nuit à 2 h 17 UTC ; le site est republié chaque lundi si les données ont changé (voir « Collecte, publication et alertes »).
 
 ### Mise en ligne de la phase Écoles
 
@@ -137,12 +143,12 @@ La phase Écoles ajoute 9 sources (6 sources d'écoles : `effectifs_ecoles`, `ip
 
 1. Lot 0 seul (fait le 25 novembre 2026 : le site est servi par Cloudflare Workers). Créer une branche au commit `c028e7a` de `phase-ecoles` (il ne contient que le lot 0 et les documents), y reprendre le correctif du déploiement (`git cherry-pick 4d0473f` : déploiement par `bunx wrangler` et cache des scripts, sans lequel le job `deployer` échoue), la fusionner dans `main`, puis suivre la procédure de recette et de bascule ci-dessus. Attendre une nuit de collecte et de déploiement réussie après la bascule. Le nombre de fichiers du site avec les écoles dépasse ce que GitHub Pages peut servir : le site doit déjà être sur Cloudflare Workers.
 2. Fusionner le reste de la branche `phase-ecoles` dans `main`.
-3. Lancer le workflow `nightly` à la main (`workflow_dispatch`) : première collecte des 9 nouvelles sources, et nouvelle version archivée de chaque exercice du budget.
+3. Lancer le workflow `collecte` à la main (`workflow_dispatch`) : première collecte des 9 nouvelles sources, et nouvelle version archivée de chaque exercice du budget.
 4. Vérifier le journal de la collecte et du build : taux de rapprochement des adresses avec la carte scolaire, têtes de PIAL sans fiche, alerte « COG périmé » (à partir du 15 février, changer alors le millésime dans `pipeline/src/sources.ts`), nombre de fichiers affiché par le garde-fou (sous 95 000), poids des fiches et des pages commune (médiane, 95e centile, maximum ; plafond de 150 000 octets par fiche, 750 000 par page commune).
 
 Avant l'étape 3, un build sur `main` échoue proprement (aucune version archivée pour les nouvelles sources) sans rien publier de faux.
 
-Si le téléchargement d'un fichier du COG (`cog_communes`, `cog_mouvements`) échoue lors de cette première collecte, aucune version n'en est archivée et chaque build reste bloqué sur cette absence, sans rien publier : le site reste sur la version précédente jusqu'à une collecte réussie. Relancer alors le workflow `nightly` à la main (`workflow_dispatch`) ; la collecte suivante retente le téléchargement.
+Si le téléchargement d'un fichier du COG (`cog_communes`, `cog_mouvements`) échoue lors de cette première collecte, aucune version n'en est archivée et chaque build reste bloqué sur cette absence, sans rien publier : le site reste sur la version précédente jusqu'à une collecte réussie. Relancer alors le workflow `collecte` à la main (`workflow_dispatch`) ; la collecte suivante retente le téléchargement.
 
 ### Mise en ligne du lot 4 de la phase Écoles (budget des communes)
 

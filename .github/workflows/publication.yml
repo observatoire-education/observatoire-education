@@ -1,0 +1,135 @@
+# Génération du site et déploiement sur Cloudflare Workers (assets statiques).
+# - Sur un push : publication immédiate (le code a changé).
+# - Chaque lundi, après la collecte de la nuit : publication seulement si les données ont changé depuis la
+#   dernière publication réussie (versions archivées, pas la simple date vue des sources).
+# - Avant le build, les sources déclarées sans aucune version (source ajoutée au code) sont collectées ; si
+#   l'une reste sans version, la publication échoue.
+# - Un échec ouvre une issue (label alerte-publication), fermée à la publication réussie suivante.
+name: publication
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: deploiement
+  cancel-in-progress: false
+
+jobs:
+  construire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    outputs:
+      changees: ${{ steps.change.outputs.changees }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # git show <sha de la dernière publication>:archives/manifest.json
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.4.5"
+      - run: bun install --frozen-lockfile
+
+      - name: Identité du bot pour les commits de données
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+
+      - name: Les données ont-elles changé ?
+        id: change
+        env:
+          EVENEMENT: ${{ github.event_name }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # gh : dernière publication réussie
+        run: |
+          if [ "$EVENEMENT" = "schedule" ]; then
+            bun scripts/donnees-changees.ts
+          else
+            echo "changees=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Collecte des sources sans version
+        if: steps.change.outputs.changees == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # gh : publier les archives en Releases
+        run: bun pipeline/src/cli.ts collect --manquantes
+
+      - name: Cache des archives
+        if: steps.change.outputs.changees == 'true'
+        uses: actions/cache@v6
+        with:
+          path: .cache/archives
+          key: archives-${{ hashFiles('archives/manifest.json') }}
+          restore-keys: archives-
+
+      - name: Données, site et garde-fous
+        if: steps.change.outputs.changees == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # gh : récupérer les archives absentes du cache
+        run: bun run build
+
+      # Aussi quand le build échoue : les versions collectées et archivées en Releases restent acquises.
+      - name: Commit des archives (manifest, journal, registre des pages)
+        if: ${{ !cancelled() && steps.change.outputs.changees == 'true' }}
+        run: |
+          git add archives/
+          if ! git diff --cached --quiet; then
+            git commit -m "data: publication du $(date -u +%F)"
+            git pull --rebase --autostash && git push
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: steps.change.outputs.changees == 'true'
+        with:
+          name: dist
+          path: dist
+          include-hidden-files: true
+          retention-days: 1
+
+  deployer:
+    needs: construire
+    if: needs.construire.outputs.changees == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60 # envoi de dizaines de milliers de fichiers statiques
+    steps:
+      - uses: actions/checkout@v7 # wrangler.jsonc
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.4.5"
+      # bunx et non wrangler-action : l'action installe wrangler avec npm dans le dépôt, qui échoue sur les
+      # dépendances workspace:* (et bun n'y est pas). Aucune installation des dépendances du dépôt : wrangler lit
+      # wrangler.jsonc et sert ./dist (assets seuls, rien à compiler). Version exacte, publiée depuis plus de deux semaines.
+      - name: Déploiement sur Cloudflare Workers
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: bunx wrangler@4.159.0 deploy
+
+  # Issue « Publication en échec » ouverte ou fermée. Sautée quand rien n'était à publier (lundi sans changement).
+  alerte:
+    needs: [construire, deployer]
+    if: ${{ always() && !cancelled() && needs.construire.outputs.changees != 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.4.5"
+      - run: bun install --frozen-lockfile
+      - name: Alerte de publication (issue)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          URL_RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RESULTAT: ${{ needs.construire.result == 'success' && needs.deployer.result == 'success' && 'ok' || 'echec' }}
+        run: bun scripts/alertes.ts publication "$RESULTAT" "$URL_RUN"
