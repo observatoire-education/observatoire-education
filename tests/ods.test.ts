@@ -34,13 +34,13 @@ afterAll(async () => {
 });
 
 describe("registre des sources", () => {
-  test("trente sources ; l'annuaire, la carte scolaire et le Code officiel géographique sont les référentiels", () => {
-    expect(Object.keys(SOURCES)).toHaveLength(30);
+  test("trente et une sources ; l'annuaire, la carte scolaire et le Code officiel géographique sont les référentiels", () => {
+    expect(Object.keys(SOURCES)).toHaveLength(31);
     expect(SOURCES.annuaire.referentiel).toBe(true);
     expect(SOURCES.carte_scolaire.referentiel).toBe(true);
     expect(SOURCES.cog_communes.referentiel).toBe(true);
     expect(SOURCES.cog_mouvements.referentiel).toBe(true);
-    expect(Object.values(SOURCES).filter((s) => s.referentiel)).toHaveLength(4);
+    expect(Object.values(SOURCES).filter((s) => s.referentiel)).toHaveLength(5);
   });
 
   test("Code officiel géographique : fichiers CSV de l'Insee, millésime 2026", () => {

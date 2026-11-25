@@ -42,6 +42,7 @@ export type SourceId =
   | "idf_lycees"
   | "idf_ppi"
   | "idf_operations"
+  | "bzh_batiments"
   | `budget_${number}`
   | `transport_${number}`;
 
@@ -357,9 +358,28 @@ export interface OperationVotee {
   decisions: number;
 }
 
-/** Bâtiment et travaux d'un lycée, publiés par sa région (Île-de-France seulement à ce jour). */
+/** Un bâtiment d'un lycée (Bretagne) : la région publie chacun avec sa fonction, son année et sa surface. */
+export interface BatimentDetail {
+  /** Libellé de la région (« A-EXTERNAT SCIENCES »). */
+  libelle: string;
+  /** Nom d'usage, s'il en a un. */
+  nom: string | null;
+  fonction: string | null;
+  annee: number | null;
+  /** Surface bâtie, en m². */
+  surface: number | null;
+  niveaux: number | null;
+}
+
+/** Bâtiment et travaux d'un lycée, publiés par sa région (Île-de-France et Bretagne à ce jour). */
 export interface Batiment {
+  /**
+   * Île-de-France : l'année publiée par la région. Bretagne : celle du plus grand bâtiment en surface bâtie
+   * (null si sa date n'est pas publiée).
+   */
   anneeConstruction: number | null;
+  /** Bâtiments un par un (Bretagne), du plus ancien au plus récent ; [] quand la région ne les détaille pas. */
+  batiments: BatimentDetail[];
   /** Triées de la plus récente à la plus ancienne (livraison, sinon individualisation). */
   ppi: OperationPpi[];
   /** Triées de la plus récente à la plus ancienne, puis par montant décroissant. */

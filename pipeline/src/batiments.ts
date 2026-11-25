@@ -1,6 +1,6 @@
 // Bâtiment et travaux des lycées, par UAI, à partir des tables de 09_batiments_lycees.sql (Région Île-de-France).
 import type { LigneTravaux } from "@obs/shared/donnees";
-import type { Batiment, Fiche, OperationPpi, OperationVotee } from "@obs/shared/types";
+import type { Batiment, BatimentDetail, Fiche, OperationPpi, OperationVotee } from "@obs/shared/types";
 import type { Db } from "./db.ts";
 
 const somme = (v: (number | null)[]): number | null => {
@@ -38,9 +38,24 @@ export async function calculerBatiments(db: Db): Promise<Map<string, Batiment>> 
   const res = new Map<string, Batiment>();
   const entree = (uai: string): Batiment => {
     let b = res.get(uai);
-    if (!b) res.set(uai, (b = { anneeConstruction: null, ppi: [], operations: [] }));
+    if (!b) res.set(uai, (b = { anneeConstruction: null, batiments: [], ppi: [], operations: [] }));
     return b;
   };
+  // Bretagne : bâtiments un par un ; l'année du lycée est celle du plus grand en surface bâtie.
+  const details = await db.sql<{
+    uai: string; libelle: string; nom: string | null; fonction: string | null; annee: number | null; surface: number | null; niveaux: number | null;
+  }>("select uai, libelle, nom, fonction, annee, surface, niveaux from batiments_detail order by uai, annee nulls last, libelle, code");
+  for (const l of details) {
+    const d: BatimentDetail = {
+      libelle: l.libelle, nom: l.nom, fonction: l.fonction, annee: entier(l.annee), surface: l.surface, niveaux: entier(l.niveaux),
+    };
+    entree(l.uai).batiments.push(d);
+  }
+  for (const b of res.values()) {
+    if (!b.batiments.length) continue;
+    const plusGrand = b.batiments.reduce((a, x) => ((x.surface ?? -1) > (a.surface ?? -1) ? x : a));
+    b.anneeConstruction = plusGrand.annee;
+  }
   for (const l of await db.sql<{ uai: string; annee_construction: number }>("select uai, annee_construction from batiments_lycees")) {
     entree(l.uai).anneeConstruction = entier(l.annee_construction);
   }

@@ -22,13 +22,14 @@ describe("lignesTravaux", () => {
     const l = lignesTravaux([
       f("B", "Lycée B", {
         anneeConstruction: 1965,
+        batiments: [],
         ppi: [
           { ppi: "2001/2006", intitule: "x", enveloppeMeur: 10, etat: "Opération livrée", anneeIndividualisation: 2005, anneeLivraison: 2009 },
           { ppi: "2012/2022", intitule: "y", enveloppeMeur: null, etat: null, anneeIndividualisation: 2016, anneeLivraison: null },
         ],
         operations: [{ intitule: "z", premiereAnnee: 2021, derniereAnnee: 2023, montantVote: 500000, decisions: 2 }],
       }),
-      f("A", "Lycée A", { anneeConstruction: 1990, ppi: [], operations: [] }),
+      f("A", "Lycée A", { anneeConstruction: 1990, batiments: [], ppi: [], operations: [] }),
       f("C", "Lycée C"),
     ])!;
     expect(l.map((x) => x.uai)).toEqual(["A", "B"]);
@@ -65,7 +66,24 @@ describe("calculerBatiments", () => {
 
   test("seule l'année de construction suffit ; un établissement absent des jeux n'a pas d'entrée", async () => {
     const b = await calculerBatiments(await dbTest());
-    expect(b.get("0350014P")).toEqual({ anneeConstruction: 1950, ppi: [], operations: [] });
-    expect(b.has("0350011L")).toBe(false);
+    expect(b.get("0350014P")).toEqual({ anneeConstruction: 1950, batiments: [], ppi: [], operations: [] });
+    expect(b.has("0350013N")).toBe(false);
+  });
+
+  test("Bretagne : bâtiments un par un, hors site exclus ; année du lycée = celle du plus grand bâtiment", async () => {
+    const g = (await calculerBatiments(await dbTest())).get("0350011L")!;
+    expect(g.batiments.map((x) => [x.libelle, x.annee, x.surface])).toEqual([
+      ["A-EXTERNAT", 1962, 3600], ["B-INTERNAT", 1998, 3200], ["M-ABRIS 2R", 2006, 60],
+    ]);
+    expect(g.batiments[1]).toMatchObject({ nom: "Bâtiment Vauban", fonction: "Internat", niveaux: 4 });
+    expect(g.anneeConstruction).toBe(1962);
+    expect(g.ppi).toEqual([]);
+    expect(g.operations).toEqual([]);
+  });
+
+  test("Bretagne : bâtiment sans année ni surface, gardé, année du lycée inconnue", async () => {
+    const g = (await calculerBatiments(await dbTest())).get("0350012M")!;
+    expect(g.batiments).toEqual([{ libelle: "A-EXTERNAT", nom: null, fonction: "Externat", annee: null, surface: null, niveaux: 2 }]);
+    expect(g.anneeConstruction).toBeNull();
   });
 });

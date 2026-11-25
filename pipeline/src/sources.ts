@@ -425,6 +425,22 @@ export const SOURCES: Record<SourceId, Source> = {
     "Données budgétaires des lycées – opérations directes votées",
     noms("annee_de_la_decision,date_deliberation,code_uai_ex_rne,dossier,type_de_decision,montant_vote"),
   ),
+  // --- Région Bretagne : bâtiments des lycées (couche WFS rb:batiment_lycee, Licence ouverte, vérifiée le 2026-11-25) ---
+  // Un bâtiment par ligne ; code_batiment = UAI (8 caractères) + numéro. Le serveur n'annonce pas de date : référentiel
+  // retéléchargé chaque nuit, une version n'est archivée que si son contenu change. Date : fiche de métadonnées.
+  bzh_batiments: {
+    id: "bzh_batiments",
+    datasetId: "rb:batiment_lycee",
+    titre: "Bâtiments des lycées gérés par la Région Bretagne",
+    producteur: "Région Bretagne",
+    pageUrl: "https://geobretagne.fr/geonetwork/srv/fre/catalog.search#/metadata/b4955d8e-3473-45e7-a3c7-a9d2cd53637b",
+    api: API_FICHIER,
+    url: "https://ows.region-bretagne.fr/geoserver/rb/ows?service=WFS&version=2.0.0&request=GetFeature&typeNames=rb:batiment_lycee&outputFormat=csv"
+      + "&propertyName=code_batiment,lycee,ville,lib_batiment,nom_batiment,fonction_principale,surface_emprise,nb_niv,surface_bati,annee_construction,hors_site",
+    millesimeLe: "2025-05-26",
+    colonnesRequises: noms("code_batiment,lib_batiment,fonction_principale,nb_niv,surface_bati,annee_construction,hors_site"),
+    referentiel: true,
+  },
 };
 
 // --- Budget des collectivités (DGFiP, data.economie.gouv.fr) : un jeu par exercice, extrait filtré ---

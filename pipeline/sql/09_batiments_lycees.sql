@@ -1,4 +1,5 @@
--- Bâtiments et travaux des lycées : jeux de la Région Île-de-France (seule région à les publier à ce jour).
+-- Bâtiments et travaux des lycées : jeux de la Région Île-de-France (année par lycée, travaux) et de la Région
+-- Bretagne (bâtiments un par un), seules régions à les publier à ce jour.
 -- Les colonnes sont lues en texte puis converties : les types annoncés par le portail varient d'un export à l'autre.
 
 -- Année de construction, par UAI ; une année hors de 1100-2100 est tenue pour absente.
@@ -44,3 +45,19 @@ from (
   where nullif(trim(code_uai_ex_rne::varchar), '') is not null and nullif(trim(dossier::varchar), '') is not null
 )
 group by uai, intitule;
+
+-- Bâtiments des lycées bretons : un par ligne, UAI = 8 premiers caractères du code ; hors site exclus.
+create or replace table batiments_detail as
+select
+  upper(substr(trim(code_batiment::varchar), 1, 8)) as uai,
+  trim(code_batiment::varchar) as code,
+  coalesce(nullif(trim(lib_batiment::varchar), ''), trim(code_batiment::varchar)) as libelle,
+  nullif(trim(nom_batiment::varchar), '') as nom,
+  nullif(trim(fonction_principale::varchar), '') as fonction,
+  case when try_cast(trim(annee_construction::varchar) as integer) between 1100 and 2100
+    then try_cast(trim(annee_construction::varchar) as integer) end as annee,
+  try_cast(trim(surface_bati::varchar) as double) as surface,
+  try_cast(trim(nb_niv::varchar) as integer) as niveaux
+from src_bzh_batiments
+where nullif(trim(code_batiment::varchar), '') is not null
+  and coalesce(trim(hors_site::varchar), '') not in ('1', 'true', 't', 'oui');

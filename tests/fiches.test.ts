@@ -234,7 +234,9 @@ describe("fiches", () => {
     expect(fiche("0440006F").sources.map((x) => x.id)).toContain("idf_ppi");
     expect(fiche("0440006F").sources.map((x) => x.id)).not.toContain("idf_lycees");
     // un lycée absent des jeux de la région n'a pas de bâtiment, un lycée privé non plus
-    expect(fiche("0350011L").batiment).toBeUndefined();
+    expect(fiche("0350013N").batiment).toBeUndefined();
+    expect(fiche("0350011L").batiment!.batiments).toHaveLength(3);
+    expect(fiche("0350011L").sources.map((x) => x.id)).toContain("bzh_batiments");
     expect(fiche("0350014P").batiment).toBeUndefined();
   });
 
@@ -447,7 +449,9 @@ describe("export des données du site", () => {
     expect(dep.travauxLycees!.map((l) => l.uai)).toEqual(expect.arrayContaining(["0440003C", "0440006F"]));
     expect(dep.travauxLycees!.find((l) => l.uai === "0440003C")).toMatchObject({ anneeConstruction: 1965, ppi: 2, operations: 2 });
     const r35: DonneesTerritoire = await Bun.file(join(sortie, "departements", "35.json")).json();
-    expect(r35.travauxLycees).toBeUndefined(); // 0350014P est privé : la région publie son année, mais pas de bloc
+    // Ille-et-Vilaine : les lycées publics de la couche bretonne ; 0350014P est privé (année publiée, pas de bloc)
+    expect(r35.travauxLycees!.map((l) => l.uai)).toEqual(["0350011L", "0350012M"]); // par nom
+    expect(r35.travauxLycees!.find((l) => l.uai === "0350011L")).toMatchObject({ anneeConstruction: 1962, ppi: 0, operations: 0 });
     expect(dep.communes).toContainEqual({ niveau: "commune", code: "44109", libelle: "Nantes" });
     expect(dep.enfants).toEqual([]);
     expect(dep.carte.genre).toBe("points");
@@ -513,7 +517,7 @@ describe("export des données du site", () => {
     expect(france.carte.genre).toBe("departements");
 
     const sources: Record<string, DonneesSource> = await Bun.file(join(sortie, "sources.json")).json();
-    expect(Object.keys(sources).filter((k) => !k.startsWith("budget_") && !k.startsWith("transport_"))).toHaveLength(30);
+    expect(Object.keys(sources).filter((k) => !k.startsWith("budget_") && !k.startsWith("transport_"))).toHaveLength(31);
     expect(Object.keys(sources).filter((k) => k.startsWith("transport_")).sort()).toEqual([2020, 2021, 2022, 2023, 2024, 2025].map((e) => `transport_${e}`));
     expect(Object.keys(sources)).toContain("budget_2024");
     expect(sources.ips_colleges!.actuelle!.collecteLe).toBe("2026-11-22T02:17:00Z");

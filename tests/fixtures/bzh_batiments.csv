@@ -1,0 +1,6 @@
+FID,code_batiment,lycee,ville,lib_batiment,nom_batiment,fonction_principale,surface_emprise,nb_niv,surface_bati,annee_construction,hors_site
+batiment_lycee.0350011LB01,0350011LB01,LYCÉE LES DUNES,RENNES,A-EXTERNAT,,Externat,1200,3,3600,1962,
+batiment_lycee.0350011LB02,0350011LB02,LYCÉE LES DUNES,RENNES,B-INTERNAT,Bâtiment Vauban,Internat,800,4,3200,1998,
+batiment_lycee.0350011LB03,0350011LB03,LYCÉE LES DUNES,RENNES,M-ABRIS 2R,,Abris 2R,60,1,60,2006,
+batiment_lycee.0350011LB04,0350011LB04,LYCÉE LES DUNES,RENNES,X-GYMNASE ANNEXE,,Gymnase,900,1,900,1975,1
+batiment_lycee.0350012MB01,0350012MB01,LYCÉE LES FALAISES,RENNES,A-EXTERNAT,,Externat,500,2,,,

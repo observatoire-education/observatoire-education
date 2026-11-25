@@ -236,7 +236,8 @@ function sourcesUtilisees(
   // Chiffres des écoles listées sur la fiche (écoles du secteur d'un collège)
   for (const l of listes) noter(l.source, l.rentree);
   // Bâtiment et travaux (jeux de la région, sans millésime)
-  if (batiment?.anneeConstruction != null) noter("idf_lycees", null);
+  if (batiment?.batiments.length) noter("bzh_batiments", null);
+  else if (batiment?.anneeConstruction != null) noter("idf_lycees", null);
   if (batiment?.ppi.length) noter("idf_ppi", null);
   if (batiment?.operations.length) noter("idf_operations", null);
 
