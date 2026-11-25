@@ -30,7 +30,7 @@
 
 ---
 
-### Tâche 1 : collecte des sources manquantes
+### Task 1: collecte des sources manquantes
 
 **Fichiers :**
 - Modifier : `pipeline/src/collect.ts` (ajouter le champ `manquantes` à `OptionsCollecte` et le filtrer dans la boucle de `collecter`)
@@ -50,7 +50,7 @@
 - [ ] **Étape 4 : lancer `bun test tests/collect.test.ts && bun run typecheck`.** Attendu : PASS.
 - [ ] **Étape 5 : commit** `feat(collecte): option --manquantes pour ne collecter que les sources sans version`
 
-### Tâche 2 : logique des alertes (fonctions pures)
+### Task 2: logique des alertes (fonctions pures)
 
 **Fichiers :**
 - Créer : `pipeline/src/alertes.ts`
@@ -109,7 +109,7 @@ Règles que les tests figent :
 - [ ] **Étape 4 : lancer `bun test tests/alertes.test.ts && bun run typecheck`.** Attendu : PASS.
 - [ ] **Étape 5 : commit** `feat(alertes): plan d'actions sur les issues à partir du journal de collecte`
 
-### Tâche 3 : exécution des alertes avec `gh`
+### Task 3: exécution des alertes avec `gh`
 
 **Fichiers :**
 - Créer : `scripts/alertes.ts`
@@ -138,7 +138,7 @@ Règles que les tests figent :
 - [ ] **Étape 4 : lancer `bun test tests/alertes-gh.test.ts && bun run typecheck`.** Attendu : PASS.
 - [ ] **Étape 5 : commit** `feat(alertes): ouverture, mise à jour et fermeture des issues avec gh`
 
-### Tâche 4 : le manifeste a-t-il changé depuis la dernière publication ?
+### Task 4: le manifeste a-t-il changé depuis la dernière publication ?
 
 **Fichiers :**
 - Modifier : `pipeline/src/archive.ts`
@@ -161,7 +161,7 @@ Règles que les tests figent :
 - [ ] **Étape 4 : lancer `bun test tests/donnees-changees.test.ts && bun run typecheck`.** Attendu : PASS.
 - [ ] **Étape 5 : commit** `feat(publication): détection d'un changement utile du manifeste`
 
-### Tâche 5 : workflows et documentation
+### Task 5: workflows et documentation
 
 **Fichiers :**
 - Créer : `.github/workflows/collecte.yml`
