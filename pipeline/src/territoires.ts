@@ -479,6 +479,18 @@ function regionDuGroupe(groupe: Fiche[]): string | null {
   return [...n].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] ?? null;
 }
 
+/** Plus ancienne année présente dans les séries des fiches : indicateurs, classes des écoles, résultats aux examens. */
+export function premiereRentreeDesSeries(fiches: Fiche[]): number | null {
+  let min: number | null = null;
+  const voir = (a: number | undefined) => { if (a !== undefined && (min === null || a < min)) min = a; };
+  for (const f of fiches) {
+    for (const i of f.indicateurs) voir(i.historique[0]?.[0]);
+    voir(f.classes?.historique[0]?.[0]);
+    for (const r of f.resultats) voir(r.historique[0]?.[0]);
+  }
+  return min;
+}
+
 const BUDGETS_VIDES: Budgets = { collectivites: new Map(), france: [] };
 
 /** Départements d'au moins une école ouverte dont le secteur est « carte non publiée », triés par code. */
@@ -810,6 +822,7 @@ export async function exporterTerritoires(
     premierDegre: premierDegre({ niveau: "france", code: "FR", contient: () => true }),
     departementsSansCarte: departementsSansCarte(toutes),
     transportRegions: transportRegions(transport),
+    seriesDepuis: premiereRentreeDesSeries(toutes), // toutes : `actives` ne garde plus que le second degré ici
   };
   await ecrireJson(join(sortie, "france.json"), france);
   return { pagesCommune, table };

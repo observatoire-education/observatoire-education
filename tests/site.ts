@@ -13,7 +13,7 @@ import { dbAvecRegistre, identiteTest, manifestTest, requeteTest } from "./aide.
 
 const RACINE = resolve(import.meta.dir, "..");
 export const DIST_TEST = join(RACINE, ".cache", "dist-test");
-const DONNEES_TEST = join(RACINE, ".cache", "data-test");
+export const DONNEES_TEST = join(RACINE, ".cache", "data-test");
 /** Configuration du site d'essai, indépendante de celle de production (noindex, Umami fictif). */
 const CONFIG_TEST = join(RACINE, "tests", "fixtures", "observatoire.config.json");
 /** Contours de test (carrés), à la place des contours IGN. */

@@ -1,0 +1,17 @@
+---
+// Bandeau « fabrique » : ce que l'observatoire rassemble, calculé au build (jeux, producteurs, portails, séries, collecte).
+import { entier } from "@obs/shared/format";
+import { type Fabrique, libelleCollecte } from "../lib/fabrique";
+
+interface Props { fabrique: Fabrique; depuis: number | null; lien: boolean }
+const { fabrique: f, depuis, lien } = Astro.props;
+const s = (n: number) => (n > 1 ? "s" : "");
+---
+<div class="fabrique">
+  <span><b>{entier(f.jeux)}</b> jeu{f.jeux > 1 ? "x" : ""} de données publiques</span>
+  <span><b>{f.producteurs.length}</b> producteur{s(f.producteurs.length)} : {f.producteurs.join(", ")}</span>
+  <span><b>{f.portails}</b> portail{s(f.portails)}</span>
+  {depuis !== null && <span>séries depuis <b>{depuis}</b></span>}
+  {f.derniereCollecte && <span>dernière collecte <b>{libelleCollecte(f.derniereCollecte)}</b></span>}
+  {lien && <a href="/sources/">Toutes les sources →</a>}
+</div>

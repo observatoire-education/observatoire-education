@@ -1,14 +1,23 @@
 ---
-// Sources : chaque jeu, son producteur, sa page d'origine et toutes ses versions archivées (liens permanents).
+// Sources : « D'où viennent les chiffres » (bandeau de la fabrique, fiche vitrine démontée), puis chaque jeu, son producteur,
+// sa page d'origine et toutes ses versions archivées (liens permanents).
 import { date, entier } from "@obs/shared/format";
 import { LIBELLES_ABSENCES as LA, LIBELLES_BUDGET } from "@obs/shared/libelles";
+import BandeauFabrique from "../components/BandeauFabrique.astro";
+import FicheVitrine from "../components/FicheVitrine.astro";
 import Base from "../layouts/Base.astro";
+import { CONFIG } from "../lib/config";
 import { lireFrance, lireSources } from "../lib/donnees";
+import { compterFabrique } from "../lib/fabrique";
 import { executionsRecentes } from "../lib/journal";
+import { chargerVitrine } from "../lib/vitrine";
 
 const sources = Object.values(lireSources());
 const executions = executionsRecentes();
-const sansCarte = lireFrance().departementsSansCarte ?? [];
+const france = lireFrance();
+const sansCarte = france.departementsSansCarte ?? [];
+const fabrique = compterFabrique(lireSources());
+const vitrine = chargerVitrine(CONFIG.VITRINE?.UAI);
 /** Requête de la version actuelle (ou la dernière) d'un exercice du budget. */
 const requeteArchivee = (s: (typeof sources)[number]): string | undefined =>
   s.id.startsWith("budget_") || s.id.startsWith("transport_") ? (s.actuelle ?? s.versions[s.versions.length - 1])?.requete : undefined;
@@ -16,10 +25,12 @@ const ACTIONS: Record<string, string> = { inchange: "inchangé", telecharge: "no
 ---
 <Base titre="Sources" chemin="/sources/" description="Sources des données de l'observatoire : producteurs, jeux, versions archivées et dates de collecte.">
   <div class="texte">
-    <h1>Sources</h1>
-    <p class="mute">Toutes les données viennent de jeux publics diffusés sous Licence Ouverte (Etalab) : par le ministère de l'Éducation nationale et sa direction statistique (DEPP) sur data.education.gouv.fr, et, pour le budget des collectivités, par la direction générale des Finances publiques (DGFiP) sur data.economie.gouv.fr. Elles sont collectées automatiquement chaque nuit ; un jeu n'est téléchargé que s'il a changé. Chaque version téléchargée est archivée telle quelle, avec son empreinte, et reste téléchargeable à une adresse permanente : un chiffre cité peut toujours être retrouvé.</p>
+    <h1>D'où viennent les chiffres</h1>
+    <p class="mute">Les chiffres de l'observatoire viennent tous de données publiques ouvertes. Le ministère de l'Éducation nationale et sa direction statistique (DEPP) les publient sur data.education.gouv.fr ; la direction générale des Finances publiques (DGFiP), pour le budget des collectivités, sur data.economie.gouv.fr ; les régions Île-de-France et Bretagne, pour les bâtiments et les travaux de leurs lycées, sur data.iledefrance.fr et geobretagne.fr ; l'Insee et l'IGN, pour les communes et leurs contours, sur leurs propres portails. La licence de chaque jeu est indiquée par son producteur. Chaque jeu est publié à part, par thème et souvent par année. L'observatoire les collecte automatiquement chaque nuit (un jeu n'est téléchargé que s'il a changé), archive chaque version telle quelle avec son empreinte, à une adresse permanente, puis les recoupe établissement par établissement : un chiffre cité peut toujours être retrouvé.</p>
     <p class="mute">Les données retraitées par l'observatoire sont diffusées sous Licence Ouverte 2.0.</p>
   </div>
+  <BandeauFabrique fabrique={fabrique} depuis={france.seriesDepuis ?? null} lien={false} />
+  {vitrine && <FicheVitrine vitrine={vitrine} variante="complete" />}
   {sources.map((s) => (
     <section id={s.id}>
       <h2>{s.titre}</h2>

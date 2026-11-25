@@ -1,17 +1,22 @@
 ---
-// Accueil : titre neutre, grande recherche, bandeau national, territoires, mises à jour des sources, principes.
+// Accueil : accroche sur l'agrégation des données, chiffres nationaux, recherche, bandeau de la fabrique, fiche vitrine
+// courte, comparatif « Pourquoi pas directement à la source ? », territoires, mises à jour des sources, principes.
+// Ton neutre : le site décrit ce qu'il fait, jamais ce qu'il faut penser des chiffres.
 import { date, entier, part } from "@obs/shared/format";
 import { academie, LIBELLES } from "@obs/shared/libelles";
+import BandeauFabrique from "../components/BandeauFabrique.astro";
 import BlocFrance from "../components/BlocFrance.astro";
+import FicheVitrine from "../components/FicheVitrine.astro";
 import Base from "../layouts/Base.astro";
-import { lireFrance, lireIndex, lireSources } from "../lib/donnees";
+import { CONFIG } from "../lib/config";
+import { lireFrance, lireSources } from "../lib/donnees";
+import { compterFabrique } from "../lib/fabrique";
+import { chargerVitrine } from "../lib/vitrine";
 
 const france = lireFrance();
 const sources = Object.values(lireSources())
   .filter((s) => s.actuelle)
   .sort((a, b) => b.actuelle!.collecteLe.localeCompare(a.actuelle!.collecteLe));
-// Établissements ouverts : collèges, lycées, EREA et écoles.
-const actifs = lireIndex().filter((e) => !e.x).length;
 const f = france.familles;
 const compte = (cles: (keyof typeof f)[]) => {
   const pub = cles.reduce((a, k) => a + (f[k]?.compte.public ?? 0), 0);
@@ -33,17 +38,15 @@ const elevesPd = pd && (pd.eleves.public !== null || pd.eleves.prive !== null)
   ? { total: (pd.eleves.public ?? 0) + (pd.eleves.prive ?? 0), prive: pd.eleves.prive }
   : null;
 const derniereCollecte = sources[0]?.actuelle?.collecteLe;
+const fabrique = compterFabrique(lireSources());
+const depuis = france.seriesDepuis ?? null;
+const vitrine = chargerVitrine(CONFIG.VITRINE?.UAI);
+const portails = `${fabrique.portails} portail${fabrique.portails > 1 ? "s" : ""}`;
 ---
-<Base chemin="/" description="Les chiffres publics de chaque école, collège et lycée de France, public et privé sous contrat : sourcés, datés, sans palmarès.">
-  <div class="hero">
-    <h1>Les chiffres publics de chaque école, collège et lycée de France.</h1>
-    <p>Élèves, personnels et composition sociale des {entier(actifs)} établissements publics et privés sous contrat, situés par rapport aux moyennes de leur département, de leur académie et de la France. Chaque chiffre indique sa source et son millésime.</p>
-    <div class="bigsearch" role="search">
-      <label class="visuel-masque" for="q">Rechercher un établissement, une commune, un département ou une UAI</label>
-      <input class="search" id="q" placeholder="Nom d'établissement, commune, département ou UAI" autocomplete="off" />
-      <div class="res" id="res" aria-live="polite"></div>
-    </div>
-    <div class="hint">Par exemple : <button type="button">Jules Verne Nantes</button> · <button type="button">Saint-Nazaire</button> · <button type="button">Loire-Atlantique</button></div>
+<Base chemin="/" description={`Toutes les données publiques sur chaque école, collège et lycée de France : ${entier(fabrique.jeux)} jeux de données recoupés, sourcés et datés, sans palmarès.`}>
+  <div class="hero" style="padding-bottom:0">
+    <h1>Toutes les données publiques sur l'école, <em>rassemblées établissement par établissement.</em></h1>
+    <p class="accroche">Effectifs, composition sociale, enseignants, résultats, budget des collectivités, bâtiments des lycées : l'État et les régions publient ces chiffres dans des dizaines de fichiers, sur {portails}, avec des nomenclatures qui changent d'une année à l'autre. L'observatoire les rassemble, les met bout à bout et les situe par rapport aux moyennes du département, de l'académie et de la France. Chaque chiffre garde sa source et son millésime.</p>
   </div>
   <div class="kpis" style="margin-top:8px">
     {ecoles && <div><div class="k">Écoles</div><div class="v">{entier(ecoles.total)}</div><div class="c"><span class="p">{entier(ecoles.pub)} publiques</span> · <span class="q">{entier(ecoles.pri)} privées</span></div></div>}
@@ -59,6 +62,54 @@ const derniereCollecte = sources[0]?.actuelle?.collecteLe;
     Sources : MEN, Annuaire de l'éducation{derniereCollecte && ` (collecté le ${date(derniereCollecte)})`} ; MEN-DEPP, effectifs {france.rentree}-{(france.rentree ?? 0) + 1}{pd?.rentrees.eleves && ` ; MEN-DEPP, effectifs des écoles ${pd.rentrees.eleves}-${pd.rentrees.eleves + 1}`}.
     Privé hors contrat ({entier(france.horsContrat)} collèges et lycées{pd && ` et ${entier(pd.horsContrat)} écoles`}) : {LIBELLES.nonCouvert}.
   </div>
+
+  <div style="margin-top:22px">
+    <div class="bigsearch" role="search">
+      <label class="visuel-masque" for="q">Rechercher un établissement, une commune, un département ou une UAI</label>
+      <input class="search" id="q" placeholder="Votre école, votre collège, votre commune, votre département…" autocomplete="off" />
+      <div class="res" id="res" aria-live="polite"></div>
+    </div>
+    <div class="hint">Par exemple : <button type="button">Jules Verne Nantes</button> · <button type="button">Saint-Nazaire</button> · <button type="button">Loire-Atlantique</button></div>
+  </div>
+  <BandeauFabrique fabrique={fabrique} depuis={depuis} lien={true} />
+
+  {vitrine && <FicheVitrine vitrine={vitrine} variante="courte" />}
+
+  <section>
+    <h2>Pourquoi pas directement à la source ?</h2>
+    <div class="compare">
+      <div>
+        <h3>Les portails officiels</h3>
+        <ul>
+          <li class="o">Les données de référence, complètes</li>
+          <li class="x">Un fichier par thème et par année</li>
+          <li class="x">Des milliers de lignes, des codes à décoder</li>
+          <li class="x">Nomenclatures qui changent, séries coupées</li>
+          <li class="x">Aucune moyenne pour situer un établissement</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Les sites commerciaux</h3>
+        <ul>
+          <li class="o">Lisibles et rapides</li>
+          <li class="x">Quelques indicateurs, souvent les résultats seuls</li>
+          <li class="x">Des notes et des tableaux d'honneur</li>
+          <li class="x">Source et date rarement indiquées</li>
+          <li class="x">Publicité, comptes, cookies</li>
+        </ul>
+      </div>
+      <div class="obs">
+        <h3>L'observatoire</h3>
+        <ul>
+          <li class="o">{entier(fabrique.jeux)} jeux recoupés sur une seule fiche</li>
+          {depuis !== null && <li class="o">Séries remises bout à bout depuis {depuis}</li>}
+          <li class="o">Chaque chiffre situé : département, académie, France</li>
+          <li class="o">Source, millésime et donnée brute archivée</li>
+          <li class="o">Aucune note, aucune publicité, mis à jour chaque nuit</li>
+        </ul>
+      </div>
+    </div>
+  </section>
 
   <section>
     <h2>Parcourir par territoire</h2>

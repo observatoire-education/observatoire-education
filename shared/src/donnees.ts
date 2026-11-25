@@ -271,6 +271,8 @@ export interface DonneesTerritoire {
 
 /** Données de la France : celles d'un territoire, plus les académies et leurs départements, les régions et la carte du budget. */
 export interface DonneesFrance extends DonneesTerritoire {
+  /** Plus ancienne année des séries publiées sur les fiches actives (indicateurs, classes, résultats) ; null sans série. */
+  seriesDepuis?: number | null;
   /** Transport scolaire des régions et CTU, dans l'ordre du budget. */
   transportRegions?: CollectiviteTransport[];
   academiesEtDepartements: { aca: string; libelle: string; departements: { dep: string; libelle: string }[] }[];
