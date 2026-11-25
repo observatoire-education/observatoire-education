@@ -213,3 +213,31 @@ describe("logo", () => {
     expect(a.getAttribute("aria-label")).toBeTruthy();
   });
 });
+
+describe("à propos et mentions légales", () => {
+  test("le pied de page nomme l'éditeur et mène aux deux pages", () => {
+    const pied = doc("").querySelector("footer");
+    expect(pied?.textContent).toContain("Ludovic Bonnet");
+    expect(pied?.querySelector('a[href="/a-propos/"]')).not.toBeNull();
+    expect(pied?.querySelector('a[href="/mentions-legales/"]')).not.toBeNull();
+    const depot = pied?.querySelector('a.depot[href^="https://github.com/"]');
+    expect(depot?.querySelector("svg")).not.toBeNull();
+    expect(depot?.textContent).toContain("Code source");
+  });
+
+  test("/mentions-legales/ donne l'éditeur, l'hébergeur et la mesure d'audience", () => {
+    const d = doc("mentions-legales");
+    for (const a of ["editeur", "hebergement", "donnees-personnelles", "propriete"]) expect(d.getElementById(a)).not.toBeNull();
+    const t = texte("mentions-legales");
+    expect(t).toContain("directeur de la publication");
+    expect(t).toContain("Cloudflare, Inc.");
+    expect(t).toContain("Umami");
+  });
+
+  test("/a-propos/ explique le pourquoi et renvoie aux sources et à la méthode", () => {
+    const d = doc("a-propos");
+    expect(d.getElementById("pourquoi")).not.toBeNull();
+    expect(d.querySelector('a[href="/sources/"]')).not.toBeNull();
+    expect(d.querySelector('a[href="/methode/"]')).not.toBeNull();
+  });
+});

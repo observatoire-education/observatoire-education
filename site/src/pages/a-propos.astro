@@ -1,0 +1,28 @@
+---
+// À propos : pourquoi ce site existe, ce qu'il fait et ne fait pas, qui le publie.
+import Base from "../layouts/Base.astro";
+import { CONFIG, EDITEUR } from "../lib/config";
+
+const depot = `https://github.com/${CONFIG.DEPOT}`;
+---
+<Base titre="À propos" chemin="/a-propos/" description="Pourquoi l'observatoire existe, ce qu'il publie, ce qu'il ne fait pas, et qui le publie.">
+  <div class="texte">
+    <h1>À propos</h1>
+
+    <h2 id="pourquoi">Pourquoi cet observatoire</h2>
+    <p>L'État publie une grande quantité de données sur les écoles, collèges et lycées : effectifs, indice de position sociale, résultats aux examens, valeur ajoutée, budget des collectivités… Ces chiffres sont publics, mais dispersés entre plusieurs portails, dans des fichiers de milliers de lignes, avec des nomenclatures qui changent d'une année à l'autre. En pratique, presque personne ne peut s'en servir pour regarder l'établissement d'à côté.</p>
+    <p>J'ai créé cet observatoire pour rendre ces données lisibles par tout le monde : parents, enseignants, élus, journalistes, citoyens curieux. Chaque établissement a sa page, chaque territoire aussi, et chaque chiffre est situé par rapport aux moyennes du département, de l'académie et de la France.</p>
+
+    <h2 id="principes">Principes</h2>
+    <ul>
+      <li><b>Sourcé et daté.</b> Chaque chiffre indique sa source, son millésime et un lien vers la donnée brute archivée. Un chiffre cité peut toujours être retrouvé (voir <a href="/sources/">Sources</a>).</li>
+      <li><b>Sans palmarès ni commentaire.</b> Le site ne classe pas les établissements et ne dit pas ce qu'il faut penser des chiffres. Il les met en contexte, c'est tout.</li>
+      <li><b>Transparent sur la méthode.</b> Les calculs, les choix et les limites sont décrits sur la page <a href="/methode/">Méthode</a>, et le code est <a href={depot}>public</a>.</li>
+      <li><b>Indépendant et gratuit.</b> Pas de publicité, pas de compte, pas de cookie. Le site est mis à jour automatiquement chaque nuit à partir des sources officielles.</li>
+    </ul>
+
+    <h2 id="qui">Qui publie ce site</h2>
+    <p>Je m'appelle {EDITEUR}. Je conçois, développe et publie cet observatoire à titre personnel, sans lien avec le ministère de l'Éducation nationale ni avec aucun établissement, syndicat ou parti.</p>
+    <p>Une erreur, une donnée manquante, une idée ? Vous pouvez ouvrir un ticket sur le <a href={`${depot}/issues`}>dépôt du projet</a>.</p>
+  </div>
+</Base>

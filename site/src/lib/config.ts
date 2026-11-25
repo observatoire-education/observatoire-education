@@ -17,5 +17,8 @@ export const CONFIG: Config = JSON.parse(
 
 export const NOM_SITE = "Observatoire citoyen de l'éducation en France";
 
+/** Éditeur et directeur de la publication (mentions légales, pied de page, à propos). */
+export const EDITEUR = "Ludovic Bonnet";
+
 /** Lien permanent d'une page (absolu si SITE_URL est défini). */
 export const lienPermanent = (chemin: string): string => `${CONFIG.SITE_URL}${chemin}`;

@@ -6,7 +6,7 @@ import { academiesDisponibles, communesDisponibles, departementsDisponibles, lir
 export const GET: APIRoute = () => {
   const dates = Object.values(lireSources()).flatMap((s) => (s.actuelle ? [s.actuelle.collecteLe] : [])).sort();
   const lastmod = (dates.at(-1) ?? new Date().toISOString()).slice(0, 10);
-  const chemins = ["/", "/france/", "/sources/", "/methode/", ...regionsDisponibles().map((r) => `/region/${r}/`),
+  const chemins = ["/", "/france/", "/sources/", "/methode/", "/a-propos/", "/mentions-legales/", ...regionsDisponibles().map((r) => `/region/${r}/`),
     ...academiesDisponibles().map((a) => `/academie/${a}/`),
     ...departementsDisponibles().map((d) => `/departement/${d}/`),
     ...[...communesDisponibles()].sort().map((c) => `/commune/${c}/`),
