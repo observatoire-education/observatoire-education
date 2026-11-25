@@ -1,9 +1,11 @@
 ---
 // Mentions légales (LCEN, art. 6 III) : éditeur, hébergeurs, données personnelles, propriété intellectuelle.
 import Base from "../layouts/Base.astro";
+import { formulaireActif } from "@obs/shared/signalement";
 import { CONFIG, EDITEUR, NOM_SITE } from "../lib/config";
 
 const depot = `https://github.com/${CONFIG.DEPOT}`;
+const contact = formulaireActif(CONFIG.CONTACT);
 ---
 <Base titre="Mentions légales" chemin="/mentions-legales/" description="Mentions légales de l'observatoire : éditeur, hébergement, données personnelles et licences.">
   <div class="texte">
@@ -11,16 +13,26 @@ const depot = `https://github.com/${CONFIG.DEPOT}`;
 
     <h2 id="editeur">Éditeur</h2>
     <p>{NOM_SITE} ({CONFIG.DOMAINE}) est un site personnel, non commercial et sans publicité, édité à titre non professionnel par {EDITEUR}, qui en est aussi le directeur de la publication.</p>
-    <p>Pour signaler une erreur ou poser une question, vous pouvez ouvrir un ticket sur le <a href={`${depot}/issues`}>dépôt public du projet</a>.</p>
+    {contact
+      ? <p>Pour signaler une erreur, transmettre une information ou poser une question, utilisez le <a href="/contact/">formulaire de contact</a> ou ouvrez un ticket public sur le <a href={`${depot}/issues`}>dépôt du projet</a>.</p>
+      : <p>Pour signaler une erreur ou poser une question, vous pouvez ouvrir un ticket sur le <a href={`${depot}/issues`}>dépôt public du projet</a>.</p>}
 
     <h2 id="hebergement">Hébergement</h2>
     <p>Le site est hébergé par Cloudflare, Inc., 101 Townsend Street, San Francisco, CA 94107, États-Unis (<a href="https://www.cloudflare.com">cloudflare.com</a>).</p>
     <p>Les versions archivées des données sources et le code du site sont hébergés par GitHub, Inc., 88 Colin P. Kelly Jr. Street, San Francisco, CA 94107, États-Unis (<a href="https://github.com">github.com</a>).</p>
 
     <h2 id="donnees-personnelles">Données personnelles et cookies</h2>
-    <p>Le site ne dépose aucun cookie, ne demande aucune inscription et ne collecte aucune donnée personnelle.</p>
+    {contact
+      ? <p>Le site ne dépose aucun cookie et ne demande aucune inscription. Il ne recueille de données personnelles que si vous les écrivez vous-même dans le formulaire de contact (voir ci-dessous).</p>
+      : <p>Le site ne dépose aucun cookie, ne demande aucune inscription et ne collecte aucune donnée personnelle.</p>}
     {CONFIG.UMAMI && <p>La fréquentation est mesurée avec Umami, un outil auto-hébergé par l'éditeur. Il ne dépose pas de cookie et ne conserve pas d'adresse IP : il compte des pages vues anonymes, qui ne sont ni croisées avec d'autres données ni transmises à des tiers. Cette mesure n'exige donc pas de consentement.</p>}
     <p>L'hébergeur peut tenir des journaux techniques (adresse IP, date, page demandée) pour assurer la sécurité et le bon fonctionnement du service.</p>
+
+    {contact && <>
+      <h2 id="formulaire">Formulaire de contact</h2>
+      <p>Les messages envoyés par le <a href="/contact/">formulaire de contact</a> ou par le lien « Signaler une erreur ou compléter » des fiches sont transmis par e-mail à l'éditeur, avec la page d'où ils partent. Votre adresse e-mail est facultative : si vous la donnez, elle sert uniquement à vous répondre. Le site ne conserve ni les messages ni les adresses ; ils restent dans la boîte de réception de l'éditeur le temps de traiter la demande. Ils ne sont ni publiés ni transmis à des tiers.</p>
+      <p>Le formulaire est protégé des robots par Cloudflare Turnstile, qui analyse des signaux techniques du navigateur au moment de l'envoi, sans déposer de cookie. Vous pouvez demander l'accès à vos messages ou leur suppression en écrivant par le même formulaire.</p>
+    </>}
 
     <h2 id="propriete">Données, code et réutilisation</h2>
     <p>Les chiffres publiés proviennent de jeux de données publics diffusés sous Licence Ouverte ; leur origine est détaillée sur la page <a href="/sources/">Sources</a>. Les données retraitées par l'observatoire sont diffusées sous Licence Ouverte 2.0 : vous pouvez les réutiliser librement, en citant la source. Le code du site est publié sous licence AGPL-3.0 sur <a href={depot}>GitHub</a>.</p>

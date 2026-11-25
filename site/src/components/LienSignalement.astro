@@ -1,0 +1,15 @@
+---
+// Lien vers le formulaire de contact avec le contexte de la page ; rien tant que le formulaire n'est pas en service.
+// /js/signalement.js y ajoute l'onglet affiché au moment du clic.
+import { formulaireActif, lienContact, type Contexte } from "@obs/shared/signalement";
+import { CONFIG } from "../lib/config";
+
+interface Props { contexte: Contexte }
+const { contexte } = Astro.props;
+---
+{formulaireActif(CONFIG.CONTACT) && (
+  <>
+    <a class="btn" data-signalement href={lienContact(contexte)}>✉ Signaler une erreur ou compléter</a>
+    <script is:inline src="/js/signalement.js" defer></script>
+  </>
+)}

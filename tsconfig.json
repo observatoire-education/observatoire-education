@@ -18,6 +18,7 @@
     "pipeline/src",
     "tests",
     "scripts",
-    "site/src/lib"
+    "site/src/lib",
+    "worker"
   ]
 }

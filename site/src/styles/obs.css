@@ -335,3 +335,15 @@ a.vers:hover { text-decoration:underline; }
 
 /* Case Résultats de la Synthèse : le texte passe à la ligne au lieu d'être coupé. */
 .kpis .resultats-synthese .c .abs { white-space:normal; }
+
+/* Formulaire de contact */
+.formulaire { display:flex; flex-direction:column; gap:8px; margin-top:16px; }
+.formulaire fieldset { border:1px solid var(--line); border-radius:10px; padding:10px 14px; margin:0 0 8px; }
+.formulaire legend { font-size:13px; color:var(--muted); padding:0 4px; }
+.formulaire .choix { display:flex; gap:8px; align-items:center; padding:3px 0; }
+.formulaire label { font-weight:500; }
+.formulaire textarea, .formulaire input[type="email"] { width:100%; box-sizing:border-box; border:1px solid var(--line); border-radius:10px; background:var(--surface); color:var(--ink); font:inherit; padding:8px 12px; }
+.formulaire .actions { align-items:center; }
+.encart { display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap; background:var(--surface-2); border-radius:10px; padding:8px 12px; font-size:14px; }
+.alerte { border-left:3px solid var(--ink); background:var(--surface-2); padding:8px 12px; border-radius:6px; }
+.alerte[hidden], .encart[hidden] { display:none; }

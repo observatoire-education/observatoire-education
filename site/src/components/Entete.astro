@@ -10,6 +10,7 @@ import { lienPermanent } from "../lib/config";
 import { communesDisponibles, regionsDisponibles } from "../lib/donnees";
 import Ariane from "./Ariane.astro";
 import Fermeture from "./Fermeture.astro";
+import LienSignalement from "./LienSignalement.astro";
 
 interface Props { f: Fiche }
 const { f } = Astro.props;
@@ -67,5 +68,6 @@ const parents: RefTerritoire[] = [
     <button class="btn" type="button" id="afficher-carte" data-lat={f.lat} data-lon={f.lon} aria-controls="carte">◎ Afficher la carte</button>
   )}
   <button class="btn" type="button" id="copier" data-url={url}>⧉ Copier le lien</button>
+  <LienSignalement contexte={{ page: `/etablissement/${f.uai}/`, nom: f.nom, code: f.uai }} />
 </div>
 <div id="carte" class="carte" hidden></div>

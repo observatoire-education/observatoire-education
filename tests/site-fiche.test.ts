@@ -80,7 +80,7 @@ describe("fiche établissement", () => {
     expect(h).toContain('role="img"');
     expect(h).not.toContain("observablehq");
     expect([...doc("etablissement/0440001A").querySelectorAll("script")].map((s) => s.getAttribute("src"))).toEqual([
-      "/js/theme.js", UMAMI_TEST.SCRIPT, "/js/onglets.js", "/js/fiche.js",
+      "/js/theme.js", UMAMI_TEST.SCRIPT, "/js/signalement.js", "/js/onglets.js", "/js/fiche.js",
     ]);
   });
 
@@ -94,9 +94,10 @@ describe("fiche établissement", () => {
   });
 
   // 60 000 octets jusqu'à la phase Écoles ; relevé à 63 000 par les blocs « Écoles de son secteur » et « PIAL » ;
-  // relevé à 71 000 par la barre d'onglets et la Synthèse (deux courbes reprises, mesuré : 70 433 octets). Garde-fou de production : 150 000.
+  // relevé à 71 000 par la barre d'onglets et la Synthèse (deux courbes reprises, mesuré : 70 433 octets) ;
+  // relevé à 71 900 par le logo GitHub du pied de page et le lien de signalement (71 790). Garde-fou de production : 150 000.
   test("poids d'une fiche complète", () => {
-    expect(octets("etablissement/0440001A")).toBeLessThanOrEqual(71_000);
+    expect(octets("etablissement/0440001A")).toBeLessThanOrEqual(71_900);
   });
 
   test("part de filles partielle : couverture dite", () => {

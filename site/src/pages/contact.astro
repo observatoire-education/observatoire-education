@@ -1,0 +1,125 @@
+---
+// Contact et signalements : formulaire unique, envoyé au Worker (/api/signalement) qui le transmet par mail.
+// Arrivé depuis une fiche, le contexte (page, nom, code, onglet) est lu dans l'URL par le script de la page.
+// Tant que CONTACT.ACTIF est faux : page générée (Astro ne peut omettre une page fixe), non indexée, sans formulaire.
+import { formulaireActif, MOTIFS } from "@obs/shared/signalement";
+import Base from "../layouts/Base.astro";
+import { CONFIG } from "../lib/config";
+
+const actif = formulaireActif(CONFIG.CONTACT);
+const ERREURS: Record<string, string> = {
+  champs: "Certains champs ne sont pas valides : vérifiez votre message et votre adresse e-mail.",
+  verification: "La vérification anti-robot n'a pas abouti. Elle nécessite JavaScript : vérifiez qu'il est activé, patientez quelques secondes, puis cliquez à nouveau sur Envoyer.",
+  configuration: "Le formulaire est momentanément indisponible. Réessayez plus tard.",
+  envoi: "L'envoi a échoué. Réessayez dans quelques minutes.",
+};
+---
+<Base titre="Contact" chemin="/contact/" indexable={actif}
+  description="Signaler une erreur, transmettre une information complémentaire ou poser une question à l'observatoire.">
+  <div class="texte">
+    <h1>Contact</h1>
+    {!actif && <p>Le formulaire de contact sera bientôt disponible.</p>}
+    {actif && (
+      <>
+        <p>Une erreur dans les chiffres, une information que nous n'avons pas, une question sur la méthode : écrivez-nous. Chaque message est lu par l'éditeur du site.</p>
+        {Object.entries(ERREURS).map(([code, texte]) => <p class="alerte" data-erreur={code} hidden>{texte}</p>)}
+        <form id="form-signalement" class="formulaire" method="post" action="/api/signalement">
+          <fieldset>
+            <legend>Votre message concerne</legend>
+            {MOTIFS.map((m, i) => (
+              <label class="choix"><input type="radio" name="motif" value={m.code} required checked={i === 0} /> {m.libelle}</label>
+            ))}
+          </fieldset>
+          <div id="contexte" class="encart" hidden>
+            <span>Page concernée : <b id="contexte-texte"></b></span>
+            <button type="button" class="btn" id="contexte-retirer">Retirer</button>
+          </div>
+          <input type="hidden" name="page" />
+          <input type="hidden" name="nom" />
+          <input type="hidden" name="code" />
+          <input type="hidden" name="onglet" />
+          <label for="message">Message</label>
+          <textarea id="message" name="message" required maxlength="5000" rows="8"></textarea>
+          <label for="email">Votre e-mail <span class="mute">(facultatif, pour que nous puissions vous répondre)</span></label>
+          <input id="email" name="email" type="email" maxlength="254" autocomplete="email" />
+          <div class="cf-turnstile" data-sitekey={CONFIG.CONTACT!.TURNSTILE_SITEKEY} data-language="fr"></div>
+          <noscript>
+            <p class="alerte">L'envoi du formulaire nécessite JavaScript, pour la vérification anti-robot. Activez-le pour nous écrire, ou ouvrez une issue sur GitHub.</p>
+            <style>#form-signalement button[type="submit"] { display: none; }</style>
+          </noscript>
+          <div class="actions">
+            <button type="submit" class="btn primary">Envoyer</button>
+            <a id="lien-github" class="mute" href={`https://github.com/${CONFIG.DEPOT}/issues/new`}>Vous utilisez GitHub ? Ouvrez plutôt une issue (publique)</a>
+          </div>
+          <p id="etat" role="status"></p>
+        </form>
+        <p class="mute">Votre message et, si vous la donnez, votre adresse e-mail sont transmis par mail à l'éditeur pour traiter votre demande ; le site ne les conserve pas. Une vérification Cloudflare Turnstile protège le formulaire des robots. Voir les <a href="/mentions-legales/">mentions légales</a>.</p>
+      </>
+    )}
+  </div>
+  {actif && <script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>}
+  {actif && <script>
+    import { lienIssueGitHub, type Contexte, type Motif } from "@obs/shared/signalement";
+
+    const form = document.getElementById("form-signalement") as HTMLFormElement | null;
+    if (form) {
+      const params = new URLSearchParams(location.search);
+      const cles = ["page", "nom", "code", "onglet"] as const;
+      const champ = (n: string) => form.elements.namedItem(n) as HTMLInputElement;
+      const encart = document.getElementById("contexte")!;
+      const etat = document.getElementById("etat")!;
+      const lienGithub = document.getElementById("lien-github") as HTMLAnchorElement;
+      const depot = lienGithub.href.replace("https://github.com/", "").replace("/issues/new", "");
+
+      const contexte = (): Contexte => Object.fromEntries(cles.map((c) => [c, champ(c).value]).filter(([, v]) => v));
+      const majGithub = () => {
+        const motif = (form.querySelector('input[name="motif"]:checked') as HTMLInputElement | null)?.value as Motif ?? "erreur";
+        lienGithub.href = lienIssueGitHub(depot, motif, contexte(), location.origin);
+      };
+
+      for (const c of cles) champ(c).value = params.get(c) ?? "";
+      const ctx = contexte();
+      if (ctx.nom || ctx.page) {
+        document.getElementById("contexte-texte")!.textContent =
+          [ctx.nom, ctx.code ? `(${ctx.code})` : "", ctx.onglet ? `– ${ctx.onglet}` : ""].filter(Boolean).join(" ") || ctx.page!;
+        encart.hidden = false;
+      }
+      document.getElementById("contexte-retirer")!.addEventListener("click", () => {
+        for (const c of cles) champ(c).value = "";
+        encart.hidden = true;
+        majGithub();
+      });
+      const erreur = params.get("erreur");
+      if (erreur) document.querySelector<HTMLElement>(`[data-erreur="${CSS.escape(erreur)}"]`)?.removeAttribute("hidden");
+      form.addEventListener("change", majGithub);
+      majGithub();
+
+      form.addEventListener("submit", async (ev) => {
+        ev.preventDefault();
+        const jeton = form.querySelector<HTMLInputElement>('input[name="cf-turnstile-response"]')?.value;
+        if (!jeton) {
+          etat.textContent = "La vérification anti-robot est en cours : patientez quelques secondes, puis cliquez à nouveau sur Envoyer.";
+          return;
+        }
+        const bouton = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+        bouton.disabled = true;
+        etat.textContent = "Envoi en cours…";
+        try {
+          const r = await fetch(form.action, { method: "POST", body: new FormData(form), headers: { accept: "application/json" } });
+          const j = (await r.json()) as { ok: boolean; erreurs?: string[] };
+          if (j.ok) {
+            etat.textContent = "Merci, votre message a bien été envoyé.";
+            (form.elements.namedItem("message") as HTMLTextAreaElement).value = "";
+          } else {
+            etat.textContent = (j.erreurs ?? ["L'envoi a échoué."]).join(" ");
+          }
+        } catch {
+          etat.textContent = "L'envoi a échoué. Vérifiez votre connexion et réessayez.";
+        } finally {
+          bouton.disabled = false;
+          (window as unknown as { turnstile?: { reset(): void } }).turnstile?.reset();
+        }
+      });
+    }
+  </script>}
+</Base>

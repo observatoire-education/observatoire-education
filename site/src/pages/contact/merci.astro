@@ -1,0 +1,11 @@
+---
+// Confirmation d'envoi du formulaire de contact (envoi classique, sans JavaScript côté page).
+import Base from "../../layouts/Base.astro";
+---
+<Base titre="Message envoyé" chemin="/contact/merci/" indexable={false}>
+  <div class="texte">
+    <h1>Merci</h1>
+    <p>Votre message a bien été envoyé. S'il appelle une réponse et que vous avez laissé votre adresse e-mail, nous vous répondrons.</p>
+    <p><a href="/">Retour à l'accueil</a></p>
+  </div>
+</Base>
