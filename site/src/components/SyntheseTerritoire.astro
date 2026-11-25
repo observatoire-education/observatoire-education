@@ -1,7 +1,8 @@
 ---
 // Synthèse d'une page de territoire (spec, 5.3 et 5.4) : la carte, les cases du territoire (établissements par famille,
 // privé hors contrat), les élèves en collège et lycée (somme des cases « Élèves » des familles), l'IPS moyen des
-// collèges (la case de l'onglet Collèges), une case Moyens et la courbe de l'IPS des collèges. Commune : ses écoles
+// collèges (la case de l'onglet Collèges), une case Moyens, la courbe de l'IPS des collèges, puis la carte en dernier
+// (les chiffres forts passent avant, au-dessus de la ligne de flottaison). Commune : ses écoles
 // et la dépense de la commune par élève ; commune sans second degré : ces deux cases seulement. Pas de case Résultats.
 import type { DonneesTerritoire, NiveauTerritoire, SyntheseFamille } from "@obs/shared/donnees";
 import { entier, part } from "@obs/shared/format";
@@ -38,13 +39,6 @@ const avecMoyens = niveau === "commune" ? avecBudgetCommune : moyens !== null;
 const e = d.ecoles;
 const publiques = e ? e.ecoles.filter((x) => x.secteur === "public").length : 0;
 ---
-{!seulementEcoles && (
-  <section>
-    <h2>Carte</h2>
-    <CarteTerritoire carte={d.carte} ref={d.ref} rentree={d.rentree} budget={niveau === "france" ? lireFrance().carteBudget : null} />
-  </section>
-)}
-
 {!seulementEcoles && <div class="kpis">
   {familles.map(([f, s]) => (
     <div><div class="k">{FAMILLES_PLURIEL[f]}</div><div class="v">{entier(s.compte.public + s.compte.prive)}</div>
@@ -90,3 +84,10 @@ const publiques = e ? e.ecoles.filter((x) => x.secteur === "public").length : 0;
 </div>
 
 {college && <CourbeIpsTerritoire historique={college.ipsHistorique} titre={`Évolution de l'${LS.ipsColleges}`} />}
+
+{!seulementEcoles && (
+  <section>
+    <h2>Carte</h2>
+    <CarteTerritoire carte={d.carte} ref={d.ref} rentree={d.rentree} budget={niveau === "france" ? lireFrance().carteBudget : null} />
+  </section>
+)}

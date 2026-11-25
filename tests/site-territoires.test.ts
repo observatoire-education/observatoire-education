@@ -246,6 +246,9 @@ describe("territoires en onglets", () => {
     // ni l'ancienne barre ni de carte hors de la Synthèse
     expect(d.querySelector(".tabs")).toBeNull();
     expect(d.querySelector("#o-synthese #carte-territoire")).not.toBeNull();
+    // les chiffres forts passent avant la carte
+    const kpis = d.querySelector("#o-synthese .kpis")!, carte = d.querySelector("#o-synthese #carte-territoire")!;
+    expect(kpis.compareDocumentPosition(carte) & 4).toBe(4);
     expect(d.querySelector("script[src='/js/onglets.js']")).not.toBeNull();
   });
 

@@ -342,12 +342,10 @@ describe("fiche en onglets", () => {
       expect(lignes).toHaveLength(cartes.length);
       cartes.forEach((carte, i) => {
         const session = propre(carte.querySelector(".lab .yr")?.textContent);
-        const voie = propre(carte.querySelector(".lab span")?.textContent);
         const ligne = [...carte.querySelectorAll("tbody tr")].find((tr) => propre(tr.querySelector("td")?.textContent) === LIBELLES_RESULTATS.lignes.taux_reussite)!;
         const cellules = [...ligne.querySelectorAll("td")];
         const taux = propre(cellules[1]!.textContent);
         const va = propre(cellules[2]!.textContent);
-        expect(lignes[i]).toContain(voie);
         expect(lignes[i]).toContain(session);
         expect(lignes[i]).toContain(taux);
         if (va !== "" && !va.includes(LIBELLES_RESULTATS.nonPublie)) expect(lignes[i]).toContain(va);

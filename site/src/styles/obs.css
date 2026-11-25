@@ -255,6 +255,8 @@ td .abs, .kpis .c .abs { font:500 12px/1.3 var(--sans); color:var(--na); white-s
 .onglets a { padding:10px 14px; text-decoration:none; color:var(--muted); border-bottom:2px solid transparent; white-space:nowrap; font-size:14px; }
 .onglets a:hover { color:var(--ink); border-bottom-color:var(--line); }
 .onglets a[aria-selected=true] { color:var(--ink); border-bottom-color:var(--ink); font-weight:600; }
+/* Ancres internes aux panneaux : sous l'en-tête collant (56px) et la barre d'onglets (≈44px), avec une marge. */
+[data-onglet], [data-onglet] [id] { scroll-margin-top:116px; }
 html.js:not(.onglets-prets) [data-onglet]:not([data-defaut]) { display:none; }
 .titre-impression { display:none; }
 @media print {
@@ -318,3 +320,6 @@ a.chip { display:inline-flex; align-items:center; text-decoration:none; cursor:p
 .initiales { display:grid; grid-template-columns:auto 1fr; gap:4px 12px; margin:0; }
 .initiales dt { font-weight:600; }
 .initiales dd { margin:0; display:flex; flex-wrap:wrap; gap:2px 12px; }
+
+/* Case Résultats de la Synthèse : le texte passe à la ligne au lieu d'être coupé. */
+.kpis .resultats-synthese .c .abs { white-space:normal; }

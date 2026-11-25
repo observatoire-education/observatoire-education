@@ -1,7 +1,7 @@
 // Chiffres de Synthèse : fonctions pures sur des objets construits à la main.
 import { describe, expect, test } from "bun:test";
 import { entier } from "../shared/src/format.ts";
-import { LIBELLES_RESULTATS, LIBELLES_SYNTHESE } from "../shared/src/libelles.ts";
+import { LIBELLES_SYNTHESE } from "../shared/src/libelles.ts";
 import { absenceBudget } from "../site/src/lib/budget.ts";
 import { tauxEntier, vaSignee } from "../site/src/lib/resultats.ts";
 import { moyensSynthese, moyensTerritoire, resultatsSynthese, totalSecondDegre } from "../site/src/lib/synthese.ts";
@@ -13,7 +13,7 @@ const fiche = (...r: object[]) => ({ resultats: r }) as any;
 describe("resultatsSynthese", () => {
   test("taux et valeur ajoutée", () => {
     expect(resultatsSynthese(fiche(voie("brevet_general", [val({})])))).toEqual([
-      { voie: LIBELLES_RESULTATS.voies.brevet_general, session: 2025, taux: tauxEntier(91.2), va: vaSignee(2) },
+      { voie: LIBELLES_SYNTHESE.voies.brevet_general, session: 2025, taux: tauxEntier(91.2), va: vaSignee(2) },
     ]);
   });
   test("VA sans objet : null", () => {
@@ -24,7 +24,7 @@ describe("resultatsSynthese", () => {
   });
   test("deux voies dans l'ordre, aucune voie", () => {
     const r = resultatsSynthese(fiche(voie("bac_gt", [val({})]), voie("bac_pro", [val({})])));
-    expect(r.map((x) => x.voie)).toEqual([LIBELLES_RESULTATS.voies.bac_gt, LIBELLES_RESULTATS.voies.bac_pro]);
+    expect(r.map((x) => x.voie)).toEqual([LIBELLES_SYNTHESE.voies.bac_gt, LIBELLES_SYNTHESE.voies.bac_pro]);
     expect(resultatsSynthese(fiche())).toEqual([]);
   });
 });

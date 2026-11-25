@@ -524,4 +524,6 @@ export const LIBELLES_SYNTHESE = {
   partPrive: "Part du privé sous contrat",
   ipsColleges: "IPS moyen des collèges",
   ipsEcole: "IPS (repère département)",
+  /** Voies abrégées pour la case Résultats de la Synthèse (le libellé complet reste dans l'onglet Résultats). */
+  voies: { brevet_general: "Brevet", brevet_pro: "Brevet pro", bac_gt: "Bac général et techno", bac_pro: "Bac pro" },
 } as const;

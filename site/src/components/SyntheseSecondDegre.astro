@@ -30,7 +30,7 @@ const serieIps = seriesReferencesIps(refsIps);
 ---
 <Bandeau f={f} />
 <div class="kpis">
-  <div>
+  <div class="resultats-synthese">
     <div class="k">{LS.resultats}</div>
     {resultats.length === 0 ? <Absence texte={LRES.aucun} /> : resultats.map((r) => (
       <div class="c">

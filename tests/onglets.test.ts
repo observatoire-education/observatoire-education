@@ -150,6 +150,13 @@ describe("CSS d'impression", () => {
     expect(print).toMatch(/\.card[^{]*\{[^}]*break-inside:\s*avoid/);
   });
 
+  test("ancres internes sous la barre collante : scroll-margin-top hors impression", () => {
+    const hors = css.replace(/@media print \{[\s\S]*?\n\}/g, "");
+    const m = hors.match(/\[data-onglet\] \[id\][^{]*\{[^}]*scroll-margin-top:\s*(\d+)px/);
+    expect(m).not.toBeNull();
+    expect(Number(m![1])).toBeGreaterThanOrEqual(56 + 44);
+  });
+
   test("masquage de tout sauf la fiche A4 : sauf impression complète", () => {
     expect(print).toMatch(/html:not\(\.impression-complete\)[^{]*:not\(\.a4\)[^{]*\{[^}]*display:\s*none/);
     expect(print).toMatch(/html\.impression-complete \.a4\s*\{\s*display:\s*none !important/);

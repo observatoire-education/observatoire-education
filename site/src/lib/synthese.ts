@@ -12,7 +12,7 @@ export function resultatsSynthese(f: Fiche): { voie: string; session: number; ta
   return f.resultats.map((r) => {
     const v = r.valeurs.find((x) => x.code === "taux_reussite");
     return {
-      voie: LIBELLES_RESULTATS.voies[r.voie],
+      voie: LIBELLES_SYNTHESE.voies[r.voie],
       session: r.session,
       taux: v && v.statut === "ok" && v.valeur !== null ? tauxEntier(v.valeur) : null,
       va: v && v.statutVa === "ok" && v.va !== null ? vaSignee(v.va) : null,
