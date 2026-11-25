@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { SourceId } from "@obs/shared/types";
 import { empreinte, Manifest } from "../pipeline/src/archive.ts";
-import { aiguiller, assurerCache, collecter, type ClientSources } from "../pipeline/src/collect.ts";
+import { aiguiller, assurerCache, collecter, type ClientSources, MOTIF_COLLECTE_LOCALE } from "../pipeline/src/collect.ts";
 import { DepotGithub, DepotLocal, type Lanceur } from "../pipeline/src/depot.ts";
 import { connexion, executer, lignes, litteral } from "../pipeline/src/duck.ts";
 import { ErreurParquetInvalide } from "../pipeline/src/ods.ts";
@@ -98,7 +98,7 @@ afterAll(async () => {
   for (const d of dossiers) await rm(d, { recursive: true, force: true });
 });
 
-const opts = (client: ClientSources, extra: { journal?: string } = {}) => ({
+const opts = (client: ClientSources, extra: { journal?: string; distante?: boolean } = {}) => ({
   manifest,
   client,
   depot,
@@ -109,6 +109,17 @@ const opts = (client: ClientSources, extra: { journal?: string } = {}) => ({
 const ligne = (journal: Awaited<ReturnType<typeof collecter>>, id: SourceId) => journal.find((l) => l.source === id)!;
 
 describe("collecte", () => {
+  test("collecte locale : sautée sur serveur (ligne « local », aucun téléchargement), collectée depuis un poste", async () => {
+    const f = fauxClient({});
+    const j = await collecter(opts(f.client, { distante: true }));
+    expect(ligne(j, "bzh_batiments")).toMatchObject({ action: "local", motif: MOTIF_COLLECTE_LOCALE });
+    expect(f.telechargements).not.toContain("bzh_batiments");
+    expect(ligne(j, "annuaire").action).toBe("telecharge"); // les autres sources sont collectées
+    const l = await collecter(opts(f.client));
+    expect(ligne(l, "bzh_batiments").action).toBe("telecharge");
+    expect(f.telechargements).toContain("bzh_batiments");
+  });
+
   test("inchangé : aucun téléchargement", async () => {
     const f = fauxClient({});
     await collecter(opts(f.client));

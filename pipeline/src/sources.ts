@@ -23,6 +23,11 @@ export interface Source {
   colonnesRequises: string[];
   /** true : référentiel téléchargé chaque nuit (annuaire), sans millésime. */
   referentiel: boolean;
+  /**
+   * true : serveur injoignable depuis GitHub Actions ; la collecte nocturne saute la source (ligne « local » au
+   * journal) et elle se collecte avec `bun run collect` lancé depuis un poste. Le site garde la dernière version archivée.
+   */
+  collecteLocale?: boolean;
   /** Source millésimée : colonne du millésime et colonnes de la clé d'une ligne (détection des corrections). */
   millesime?: { colonne: string; cles: string[] };
 }
@@ -440,6 +445,8 @@ export const SOURCES: Record<SourceId, Source> = {
     millesimeLe: "2025-05-26",
     colonnesRequises: noms("code_batiment,lib_batiment,fonction_principale,nb_niv,surface_bati,annee_construction,hors_site"),
     referentiel: true,
+    // Le serveur expire depuis GitHub Actions (vérifié le 2026-11-26) mais répond depuis un poste en France.
+    collecteLocale: true,
   },
 };
 

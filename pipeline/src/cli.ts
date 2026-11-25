@@ -53,6 +53,8 @@ async function collect(): Promise<void> {
     tmp: CHEMINS.tmp,
     journal: CHEMINS.journal,
     corrections: CHEMINS.corrections,
+    // Sur GitHub Actions, les sources à collecte locale (serveur injoignable de là) sont sautées.
+    distante: process.env.GITHUB_ACTIONS === "true",
   });
   for (const l of journal) {
     const detail = [l.lignes !== undefined ? `${l.lignes} lignes` : "", l.motif ?? ""].filter(Boolean).join(" · ");

@@ -33,7 +33,8 @@ export function aiguiller(ods: ClientSources, fichier: ClientSource): ClientSour
 export type LigneJournal = {
   date: string;
   source: SourceId;
-  action: "inchange" | "telecharge" | "rejete" | "erreur";
+  /** local : source à collecte locale (Source.collecteLocale) sautée par une collecte sur serveur. */
+  action: "inchange" | "telecharge" | "rejete" | "erreur" | "local";
   modified?: string;
   sha256?: string;
   lignes?: number;
@@ -51,7 +52,12 @@ export interface OptionsCollecte {
   journal?: string;
   /** Fichier corrections.json : s'il est absent, les versions ne sont pas comparées. */
   corrections?: string;
+  /** true : collecte sur un serveur (GitHub Actions), qui saute les sources à collecte locale. */
+  distante?: boolean;
 }
+
+/** Motif de la ligne de journal d'une source à collecte locale sautée sur serveur. */
+export const MOTIF_COLLECTE_LOCALE = "collecte locale : serveur injoignable depuis GitHub, lancer bun run collect depuis un poste";
 
 const TYPES_RETENUS = ["Collège", "Lycée", "EREA", "Ecole"];
 
@@ -77,6 +83,10 @@ export async function collecter(opts: OptionsCollecte): Promise<LigneJournal[]> 
   };
   const connues = toutesSources(opts.manifest);
   for (const s of connues) {
+    if (s.collecteLocale && opts.distante) {
+      journal.push({ date, source: s.id, action: "local", motif: MOTIF_COLLECTE_LOCALE });
+      continue;
+    }
     await essayer(s.id, () => traiter(s, opts, duck));
     // Le téléchargement continue (il reste valable) ; l'erreur rappelle de passer au millésime suivant.
     const perime = millesimePerime(s, opts.maintenant);

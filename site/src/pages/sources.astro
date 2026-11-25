@@ -21,7 +21,7 @@ const vitrine = chargerVitrine(CONFIG.VITRINE?.UAI);
 /** Requête de la version actuelle (ou la dernière) d'un exercice du budget. */
 const requeteArchivee = (s: (typeof sources)[number]): string | undefined =>
   s.id.startsWith("budget_") || s.id.startsWith("transport_") ? (s.actuelle ?? s.versions[s.versions.length - 1])?.requete : undefined;
-const ACTIONS: Record<string, string> = { inchange: "inchangé", telecharge: "nouvelle version", rejete: "version rejetée", erreur: "erreur" };
+const ACTIONS: Record<string, string> = { inchange: "inchangé", telecharge: "nouvelle version", rejete: "version rejetée", erreur: "erreur", local: "à collecter en local" };
 ---
 <Base titre="Sources" chemin="/sources/" description="Sources des données de l'observatoire : producteurs, jeux, versions archivées et dates de collecte.">
   <div class="texte">
