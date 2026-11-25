@@ -2,7 +2,7 @@
 // Couleurs en variables CSS : le thème sombre s'applique sans recalcul.
 import * as Plot from "@observablehq/plot";
 import { parseHTML } from "linkedom";
-import type { AnneeSegregation, ExerciceBudget, ExerciceTransport, Nuage, PointNuage } from "@obs/shared/donnees";
+import type { AnneeSegregation, ExerciceBudget, ExerciceTransport, MoyennesBudgetFrance, Nuage, PointNuage } from "@obs/shared/donnees";
 import type { Classes, PointIps } from "@obs/shared/types";
 import { FINE, nombre } from "@obs/shared/format";
 import { LIBELLES_BUDGET, LIBELLES_NUAGES, LIBELLES_SEGREGATION, LIBELLES_TRANSPORT, SECTEURS } from "@obs/shared/libelles";
@@ -228,6 +228,42 @@ export function svgEvolutionBudget(exercices: ExerciceBudget[], prive = true): s
   const decrit = (nom: string, s: typeof pub) =>
     `${nom} : ${s.map((d) => `${d.annee} ${d.v === null ? "non disponible" : nombre(d.v, 0)}`).join(", ")}`;
   return svg(p, `Évolution en € par élève. ${decrit(`Public, ${poste.toLowerCase()}`, pub)}${avec ? `. ${decrit("Privé sous contrat, contribution", pri)}` : ""}`);
+}
+
+/**
+ * Évolution de l'investissement public en € par élève, avec la moyenne de France du même niveau (trait gris
+ * pointillé) quand elle existe. L'investissement varie beaucoup d'un exercice à l'autre : la moyenne sert de repère.
+ * Un exercice sans donnée laisse un trou (jamais 0).
+ */
+export function svgEvolutionInvestissement(exercices: ExerciceBudget[], france: MoyennesBudgetFrance | undefined): string {
+  const pub = exercices.map((e) => ({
+    annee: e.exercice,
+    v: e.public.investissement.statut === "ok" ? e.public.investissement.parEleve : null,
+  }));
+  if (!pub.some((d) => d.v !== null)) return "";
+  const annees = exercices.map((e) => e.exercice);
+  const moy = france
+    ? annees.map((a) => ({ annee: a, v: france.exercices.find((x) => x.exercice === a)?.public.investissement.valeur ?? null }))
+    : [];
+  const avecMoy = moy.some((d) => d.v !== null);
+  const defini = [...pub, ...moy].filter((d) => d.v !== null);
+  const max = Math.max(...defini.map((d) => d.v!));
+  const p = Plot.plot({
+    document, width: 440, height: 150, marginLeft: 44, marginRight: 14, marginTop: 10, style: STYLE,
+    x: {
+      domain: annees.length > 1 ? [Math.min(...annees), Math.max(...annees)] : [annees[0]! - 1, annees[0]! + 1],
+      ticks: annees, tickFormat: (a: number) => String(a), label: null,
+    },
+    y: { domain: [0, max * 1.1], label: null, ticks: 4, grid: true, tickFormat: (d: number) => nombre(d, 0) },
+    marks: [
+      ...(avecMoy ? [Plot.line(moy, { x: "annee", y: "v", stroke: "var(--muted)", strokeWidth: 1.5, strokeDasharray: "4 3" })] : []),
+      Plot.line(pub, { x: "annee", y: "v", stroke: "var(--pub)", strokeWidth: 2 }),
+      Plot.dot(pub.filter((d) => d.v !== null), { x: "annee", y: "v", r: 3.5, fill: "var(--pub)" }),
+    ],
+  });
+  const decrit = (nom: string, s: typeof pub) =>
+    `${nom} : ${s.map((d) => `${d.annee} ${d.v === null ? "non disponible" : nombre(d.v, 0)}`).join(", ")}`;
+  return svg(p, `Investissement en € par élève. ${decrit("Public", pub)}${avecMoy ? `. ${decrit("Moyenne", moy)}` : ""}`);
 }
 
 /** Évolution du fonctionnement d'une collectivité, en M€ ; un exercice sans donnée laisse un trou (jamais 0). */

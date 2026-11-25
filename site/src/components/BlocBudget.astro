@@ -8,7 +8,7 @@ import type { BudgetCollectivite, MotifSansBudget, MoyennesBudgetFrance } from "
 import { nombre } from "@obs/shared/format";
 import { LIBELLES_BUDGET as L } from "@obs/shared/libelles";
 import { absenceBudget, brutBudget, comparaisonBudget, ecartSigne, millions, montantBudget } from "../lib/budget";
-import { posteEvolutionAvecPersonnel, svgEvolutionBudget } from "../lib/plot";
+import { posteEvolutionAvecPersonnel, svgEvolutionBudget, svgEvolutionInvestissement } from "../lib/plot";
 import Absence from "./Absence.astro";
 import Cellule from "./Cellule.astro";
 
@@ -54,6 +54,8 @@ const regard = pu && pr && pu.statut === "ok" && pu.parEleve !== null && pr.stat
 
 const ecoles = niveau === "ecoles";
 const svg = evolution && budget ? svgEvolutionBudget(budget.exercices, !ecoles) : "";
+const svgInv = evolution && budget ? svgEvolutionInvestissement(budget.exercices, france) : "";
+const avecMoyenneInv = !!france && france.exercices.some((x) => x.public.investissement.valeur !== null);
 const avecPersonnel = budget ? posteEvolutionAvecPersonnel(budget.exercices) : false;
 const avecPrive = avecPersonnel && !ecoles;
 const postePublic = avecPersonnel ? L.postes.avecPersonnel : L.postes.horsPersonnel;
@@ -122,6 +124,15 @@ const libellePublic = ecoles ? L.interface.ecolesPubliques : L.interface.public;
           <Fragment set:html={svg} />
           <div class="legend"><span class="sect pub">{libellePublic} : {postePublic}</span>{avecPrive && <span class="sect pri">{L.interface.prive} : {contribution}</span>}</div>
           <div class="src">{L.interface.exercicesDe(budget.exercices[0]!.exercice, budget.exercices.at(-1)!.exercice)} · Source : {L.interface.sourceSansExercice} · <a href="/sources/">{L.interface.voirSources}</a></div>
+        </div>
+      )}
+      {svgInv && (
+        <div class="card evolution-investissement" style="margin-top:14px">
+          <div class="lab"><span>{L.interface.evolutionInvestissement} · {L.unites.parEleve}</span><span class="yr">{budget.exercices[0]!.exercice} → {budget.exercices.at(-1)!.exercice}</span></div>
+          <Fragment set:html={svgInv} />
+          <div class="legend"><span class="sect pub">{libellePublic} : {L.postes.investissement.toLowerCase()}</span>{avecMoyenneInv && <span class="sect moy">{L.interface.moyenneFrance}</span>}</div>
+          <p class="mute mention-budget">{L.interface.noteInvestissement}</p>
+          <div class="src">{L.interface.exercicesDe(budget.exercices[0]!.exercice, budget.exercices.at(-1)!.exercice)} · Source : {L.interface.sourceSansExercice} · {L.moyenne.calculee} · <a href="/sources/">{L.interface.voirSources}</a></div>
         </div>
       )}
       {ecoles && <p class="mute mention-budget">{L.mentionEcoles} <a href="/methode/#budget-communal">{L.interface.voirSources}</a></p>}
