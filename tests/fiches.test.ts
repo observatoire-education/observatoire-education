@@ -233,8 +233,9 @@ describe("fiches", () => {
     expect(fiche("0440006F").batiment!.ppi).toHaveLength(1);
     expect(fiche("0440006F").sources.map((x) => x.id)).toContain("idf_ppi");
     expect(fiche("0440006F").sources.map((x) => x.id)).not.toContain("idf_lycees");
-    // un lycée absent des jeux de la région n'a pas de bâtiment
+    // un lycée absent des jeux de la région n'a pas de bâtiment, un lycée privé non plus
     expect(fiche("0350011L").batiment).toBeUndefined();
+    expect(fiche("0350014P").batiment).toBeUndefined();
   });
 
   test("résultats : sources ivac et ival avec la dernière session, millésimes affichés", () => {
@@ -442,6 +443,11 @@ describe("export des données du site", () => {
     expect(dep.parents.map((p) => p.niveau)).toEqual(["france", "region", "academie"]);
     expect(dep.parents[1]).toEqual({ niveau: "region", code: "52", libelle: "Pays de la Loire" });
     expect(dep.parents[2]).toEqual({ niveau: "academie", code: "17", libelle: "Nantes" });
+    // bâtiment et travaux : les lycées de la Loire-Atlantique présents dans les jeux régionaux de test
+    expect(dep.travauxLycees!.map((l) => l.uai)).toEqual(expect.arrayContaining(["0440003C", "0440006F"]));
+    expect(dep.travauxLycees!.find((l) => l.uai === "0440003C")).toMatchObject({ anneeConstruction: 1965, ppi: 2, operations: 2 });
+    const r35: DonneesTerritoire = await Bun.file(join(sortie, "departements", "35.json")).json();
+    expect(r35.travauxLycees).toBeUndefined(); // 0350014P est privé : la région publie son année, mais pas de bloc
     expect(dep.communes).toContainEqual({ niveau: "commune", code: "44109", libelle: "Nantes" });
     expect(dep.enfants).toEqual([]);
     expect(dep.carte.genre).toBe("points");

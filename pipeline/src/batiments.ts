@@ -1,6 +1,36 @@
 // Bâtiment et travaux des lycées, par UAI, à partir des tables de 09_batiments_lycees.sql (Région Île-de-France).
-import type { Batiment, OperationPpi, OperationVotee } from "@obs/shared/types";
+import type { LigneTravaux } from "@obs/shared/donnees";
+import type { Batiment, Fiche, OperationPpi, OperationVotee } from "@obs/shared/types";
 import type { Db } from "./db.ts";
+
+const somme = (v: (number | null)[]): number | null => {
+  const d = v.filter((x) => x !== null);
+  return d.length ? d.reduce((a, b) => a + b, 0) : null;
+};
+
+/**
+ * Lignes « bâtiment et travaux » d'un territoire : une par établissement qui a des données de la région,
+ * triées par nom puis UAI ; undefined si aucune (le champ est alors absent du JSON).
+ */
+export function lignesTravaux(fiches: Fiche[]): LigneTravaux[] | undefined {
+  const lignes = fiches
+    .filter((f): f is Fiche & { batiment: Batiment } => f.batiment !== undefined)
+    .map((f): LigneTravaux => {
+      const b = f.batiment;
+      const annees = [
+        ...b.ppi.map((o) => o.anneeLivraison ?? o.anneeIndividualisation),
+        ...b.operations.map((o) => o.derniereAnnee),
+      ].filter((a) => a !== null);
+      return {
+        uai: f.uai, nom: f.nom, commune: f.commune, famille: f.famille, anneeConstruction: b.anneeConstruction,
+        ppi: b.ppi.length, enveloppePpiMeur: somme(b.ppi.map((o) => o.enveloppeMeur)),
+        operations: b.operations.length, montantVote: somme(b.operations.map((o) => o.montantVote)),
+        derniereAnnee: annees.length ? Math.max(...annees) : null,
+      };
+    })
+    .sort((a, b) => a.nom.localeCompare(b.nom, "fr") || a.uai.localeCompare(b.uai));
+  return lignes.length ? lignes : undefined;
+}
 
 const entier = (v: unknown): number | null => (v === null || v === undefined ? null : Number(v));
 

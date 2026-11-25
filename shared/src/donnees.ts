@@ -5,6 +5,23 @@ import type {
   Comparaison, Correction, EcolesProches, Famille, LienEtab, LigneEcole, PointIps, ResumeResultat, Secteur, SourceId, Statut,
 } from "./types.ts";
 
+/** Bâtiment et travaux d'un lycée, résumés pour la liste d'une page région ou département. */
+export interface LigneTravaux {
+  uai: string;
+  nom: string;
+  commune: string;
+  famille: Famille;
+  anneeConstruction: number | null;
+  /** Opérations du plan pluriannuel d'investissement et somme de leurs enveloppes prévisionnelles (M€). */
+  ppi: number;
+  enveloppePpiMeur: number | null;
+  /** Opérations votées depuis 2021 et somme des montants votés (€). */
+  operations: number;
+  montantVote: number | null;
+  /** Année la plus récente parmi les opérations (livraison ou individualisation PPI, décision votée). */
+  derniereAnnee: number | null;
+}
+
 /** Une entrée de `index.json` (et de la recherche) : clés courtes. */
 export interface EntreeIndex {
   /** UAI */ u: string;
@@ -228,6 +245,8 @@ export interface DonneesTerritoire {
   budget: BudgetTerritoire;
   /** Pages région et département : transport scolaire ; absent ailleurs. */
   transport?: TransportTerritoire;
+  /** Pages région et département : bâtiment et travaux de chaque lycée publié par la région ; absent si aucun. */
+  travauxLycees?: LigneTravaux[];
   /** Page région : académies de la région ; sinon absent. */
   academies?: RefTerritoire[];
   /** Départements et académies : nuages IPS × réussite d'au moins 5 points ; absent sinon. */

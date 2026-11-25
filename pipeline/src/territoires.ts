@@ -12,6 +12,7 @@ import type { Famille, Fiche, Identite, Indicateur, Mesure, Niveau, Secteur, Sou
 import type { Manifest } from "./archive.ts";
 import type { Budgets } from "./budget-eleves.ts";
 import { lireTransport, transportDepartement, transportRegion, transportRegions } from "./transport-export.ts";
+import { lignesTravaux } from "./batiments.ts";
 import { centreCommune, chargerCommunes, type TableCommunes } from "./communes.ts";
 import { ecolesProchesDesPoints } from "./ecoles.ts";
 import { lignesEcoles, rentreesEcoles } from "./fiches.ts";
@@ -657,6 +658,11 @@ export async function exporterTerritoires(
     return r ? [refRegion(r)] : [];
   };
   const depsDe = (groupe: Fiche[]) => new Set(groupe.map((f) => f.dep));
+  /** Bâtiment et travaux des lycées publiés par la région (pages région et département). */
+  const travaux = (groupe: Fiche[]): Pick<DonneesTerritoire, "travauxLycees"> => {
+    const l = lignesTravaux(groupe);
+    return l ? { travauxLycees: l } : {};
+  };
 
   // Communes
   const communes = communesRetenues(actives);
@@ -716,6 +722,7 @@ export async function exporterTerritoires(
       premierDegre: premierDegre({ niveau: "departement", code: dep, contient: (l) => l.dep === dep }),
       communesEcoles: communesEcoles(dep),
       transport: transportDepartement(transport, dep),
+      ...travaux(groupe),
     };
     await ecrireJson(join(sortie, "departements", `${dep}.json`), donnees);
   }
@@ -759,6 +766,7 @@ export async function exporterTerritoires(
       academies: [...Map.groupBy(groupe, (f) => f.aca)].map(([, g]) => refAcademie(g[0]!)).sort(parLibelle),
       premierDegre: premierDegre({ niveau: "region", code: region.code, contient: (l) => region.deps.includes(l.dep) }),
       transport: transportRegion(transport, region.code),
+      ...travaux(groupe),
     };
     await ecrireJson(join(sortie, "regions", `${region.code}.json`), donnees);
   }

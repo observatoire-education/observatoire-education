@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { calculerBatiments } from "../pipeline/src/batiments.ts";
+import type { Batiment, Fiche } from "@obs/shared/types";
+import { calculerBatiments, lignesTravaux } from "../pipeline/src/batiments.ts";
 import { SOURCES } from "../pipeline/src/sources.ts";
 import { dbTest } from "./aide.ts";
 
@@ -10,6 +11,33 @@ describe("sources de la Région Île-de-France", () => {
       expect(SOURCES[id].producteur).toBe("Région Île-de-France");
       expect(SOURCES[id].referentiel).toBe(false);
     }
+  });
+});
+
+describe("lignesTravaux", () => {
+  const f = (uai: string, nom: string, batiment?: Batiment) =>
+    ({ uai, nom, commune: "Nantes", famille: "legt", ...(batiment ? { batiment } : {}) }) as unknown as Fiche;
+
+  test("une ligne par établissement de la région, sommes et année la plus récente", () => {
+    const l = lignesTravaux([
+      f("B", "Lycée B", {
+        anneeConstruction: 1965,
+        ppi: [
+          { ppi: "2001/2006", intitule: "x", enveloppeMeur: 10, etat: "Opération livrée", anneeIndividualisation: 2005, anneeLivraison: 2009 },
+          { ppi: "2012/2022", intitule: "y", enveloppeMeur: null, etat: null, anneeIndividualisation: 2016, anneeLivraison: null },
+        ],
+        operations: [{ intitule: "z", premiereAnnee: 2021, derniereAnnee: 2023, montantVote: 500000, decisions: 2 }],
+      }),
+      f("A", "Lycée A", { anneeConstruction: 1990, ppi: [], operations: [] }),
+      f("C", "Lycée C"),
+    ])!;
+    expect(l.map((x) => x.uai)).toEqual(["A", "B"]);
+    expect(l[0]).toMatchObject({ anneeConstruction: 1990, ppi: 0, enveloppePpiMeur: null, operations: 0, montantVote: null, derniereAnnee: null });
+    expect(l[1]).toMatchObject({ ppi: 2, enveloppePpiMeur: 10, operations: 1, montantVote: 500000, derniereAnnee: 2023 });
+  });
+
+  test("aucun établissement avec des données : undefined", () => {
+    expect(lignesTravaux([f("C", "Lycée C")])).toBeUndefined();
   });
 });
 

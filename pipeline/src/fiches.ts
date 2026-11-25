@@ -469,8 +469,8 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
       // écoles les plus proches : écoles ouvertes seulement (null sans coordonnées)
       ...(estEcole(identite.famille) && ouverte ? { ecolesProches: ecolesProches.get(uai) ?? null } : {}),
       ...secondDegre,
-      // bâtiment et travaux : second degré, quand la région publie quelque chose pour l'établissement
-      ...(!estEcole(identite.famille) && batiments.has(uai) ? { batiment: batiments.get(uai)! } : {}),
+      // bâtiment et travaux : second degré public (patrimoine de la région), quand elle publie quelque chose pour l'établissement
+      ...(!estEcole(identite.famille) && identite.secteur === "public" && batiments.has(uai) ? { batiment: batiments.get(uai)! } : {}),
       budget: { france: [] }, // remplacé plus bas, quand toutes les fiches (disparues comprises) sont connues
       voisins: disparuLe === null ? (voisins.get(uai) ?? null) : null,
       resultats: res,
