@@ -1,0 +1,44 @@
+---
+// Fiche démontée : les chiffres clés d'un établissement réel, chacun relié par une pastille à la source d'où il vient.
+// Courte (accueil) : résumé et lien vers /sources/#fiche. Complète (/sources/) : liste numérotée des sources.
+import type { Vitrine } from "../lib/vitrine";
+
+interface Props { vitrine: Vitrine; variante: "courte" | "complete" }
+const { vitrine: v, variante } = Astro.props;
+const n = v.sources.length;
+const s = (k: number) => (k > 1 ? "s" : "");
+const jeux = `${n} jeu${n > 1 ? "x" : ""} de données`;
+---
+<section id={variante === "complete" ? "fiche" : undefined}>
+  <h2>{variante === "complete" ? "Exemple : une" : "Une"} fiche, {n} source{s(n)}</h2>
+  <div class="vitrine">
+    <div class="mini">
+      <a class="t" href={v.lien}>{v.nom}</a>
+      <div class="s">{v.sousTitre}</div>
+      <div class="tiles">
+        {v.tuiles.map((t) => (
+          <div class:list={["tile", { large: t.large }]}>
+            <span class="tags" aria-label={`source${s(t.numeros.length)} ${t.numeros.join(", ")}`}>{t.numeros.map((k) => <span class="tag">{k}</span>)}</span>
+            <div class="l">{t.libelle}</div>
+            <div class="n">{t.valeur}</div>
+            {t.detail && <div class="m">{t.detail}</div>}
+          </div>
+        ))}
+      </div>
+    </div>
+    {variante === "courte" ? (
+      <div class="resume">
+        <p class="phrase">Cette page rassemble <b>{jeux}</b> de <b>{v.producteurs.length} producteur{s(v.producteurs.length)}</b>, publiés sur <b>{v.portails} portail{s(v.portails)}</b>.</p>
+        <div class="prod">{v.producteurs.map((p) => <span>{p}</span>)}</div>
+        <p class="ailleurs">Ailleurs : {n} fichier{s(n)} de milliers de lignes, des séries coupées, aucune moyenne. Ici : une page, imprimable en A4, chaque chiffre relié à sa donnée brute.</p>
+        <a class="btn" href="/sources/#fiche">Voir d'où vient chaque chiffre →</a>
+      </div>
+    ) : (
+      <ol class="sources-vitrine">
+        {v.sources.map((x) => (
+          <li><span><a href={`/sources/#${x.id}`}>{x.titre}</a><span class="p">{x.producteur} · {x.portail}</span></span></li>
+        ))}
+      </ol>
+    )}
+  </div>
+</section>
