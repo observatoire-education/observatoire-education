@@ -13,11 +13,12 @@ const fiche = (...r: object[]) => ({ resultats: r }) as any;
 describe("resultatsSynthese", () => {
   test("taux et valeur ajoutée", () => {
     expect(resultatsSynthese(fiche(voie("brevet_general", [val({})])))).toEqual([
-      { voie: LIBELLES_SYNTHESE.voies.brevet_general, session: 2025, taux: tauxEntier(91.2), va: vaSignee(2) },
+      { voie: LIBELLES_SYNTHESE.voies.brevet_general, session: 2025, taux: tauxEntier(91.2), va: vaSignee(2), vaNonPubliee: false },
     ]);
   });
-  test("VA sans objet : null", () => {
-    expect(resultatsSynthese(fiche(voie("brevet_general", [val({ statutVa: "sans_objet", va: null })])))[0]!.va).toBeNull();
+  test("VA sans objet : rien à dire ; VA non publiée : signalée", () => {
+    expect(resultatsSynthese(fiche(voie("brevet_pro", [val({ statutVa: "sans_objet", va: null })])))[0]).toMatchObject({ va: null, vaNonPubliee: false });
+    expect(resultatsSynthese(fiche(voie("brevet_general", [val({ statutVa: "non_publie", va: null })])))[0]).toMatchObject({ va: null, vaNonPubliee: true });
   });
   test("taux non publié : null", () => {
     expect(resultatsSynthese(fiche(voie("brevet_general", [val({ statut: "non_publie", valeur: null })])))[0]!.taux).toBeNull();
@@ -87,13 +88,25 @@ const terr = (niveau: string) => ({
 
 describe("moyensTerritoire", () => {
   test("département : collèges", () => {
-    expect(moyensTerritoire(terr("departement"))).toEqual({ exercice: 2024, texte: entier(1280), absent: false, france: entier(1100), libelle: LIBELLES_SYNTHESE.moyens });
+    expect(moyensTerritoire(terr("departement"))).toEqual({ exercice: 2024, texte: entier(1280), absent: false, france: entier(1100), libelle: LIBELLES_SYNTHESE.moyensDepartement });
   });
   test("région : lycées", () => {
-    expect(moyensTerritoire(terr("region"))!.texte).toBe(entier(1900));
+    const r = moyensTerritoire(terr("region"))!;
+    expect(r.texte).toBe(entier(1900));
+    expect(r.libelle).toBe("Fonctionnement par lycéen");
   });
   test("France : moyenne collèges", () => {
-    expect(moyensTerritoire(terr("france"))).toEqual({ exercice: 2024, texte: entier(1100), absent: false, france: null, libelle: LIBELLES_SYNTHESE.moyens });
+    expect(moyensTerritoire(terr("france"))).toEqual({ exercice: 2024, texte: entier(1100), absent: false, france: null, libelle: "Moyenne France, fonctionnement par collégien" });
+  });
+  test("France : valeur nulle, absence en toutes lettres", () => {
+    const t = terr("france");
+    t.budget.france[0].exercices[0].public.horsPersonnel = moy(null);
+    expect(moyensTerritoire(t)).toMatchObject({ absent: true, texte: absenceBudget("non_disponible", "colleges"), libelle: LIBELLES_SYNTHESE.moyensFrance });
+  });
+  test("France : exercice absent", () => {
+    const t = terr("france");
+    t.budget.france[0].exercices = [];
+    expect(moyensTerritoire(t)).toBeNull();
   });
   test("académie et commune : null", () => {
     expect(moyensTerritoire(terr("academie"))).toBeNull();

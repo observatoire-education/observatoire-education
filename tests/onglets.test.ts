@@ -69,6 +69,17 @@ describe("onglets.js", () => {
     expect($("tab-o-c").getAttribute("tabindex")).toBe("0");
   });
 
+  test("clic avec modificateur : rien n'est intercepté", () => {
+    for (const mod of [{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }, { altKey: true }, { button: 1 }]) {
+      const { $, visibles, win } = page();
+      const e = evt(win, "click", mod);
+      $("tab-o-c").dispatchEvent(e);
+      expect(e.defaultPrevented).toBe(false);
+      expect(visibles()).toEqual(["o-a"]);
+      expect(win.history.replaceState).not.toHaveBeenCalled();
+    }
+  });
+
   test("clavier : flèche droite, fin, début", () => {
     const { $, visibles, win } = page();
     const touche = (cible: string, key: string) => $(cible).dispatchEvent(evt(win, "keydown", { key }));
@@ -163,7 +174,33 @@ describe("CSS d'impression", () => {
   });
 });
 
+describe("repli sans onglets.js (theme.js)", () => {
+  test("onglets-prets est posé à l'événement load", () => {
+    const { window: w, document } = parseHTML(`<!doctype html><html><body></body></html>`);
+    const win = w as any;
+    win.matchMedia = () => ({ matches: false });
+    new Function("window", "document", "localStorage", "matchMedia", readFileSync("site/public/js/theme.js", "utf8"))(win, document, undefined, win.matchMedia);
+    const html = document.documentElement;
+    expect(html.classList.contains("js")).toBe(true);
+    expect(html.classList.contains("onglets-prets")).toBe(false);
+    win.dispatchEvent(new win.Event("load"));
+    expect(html.classList.contains("onglets-prets")).toBe(true);
+  });
+});
+
 describe("tout imprimer (fiche.js)", () => {
+  const FICHE_A4 = readFileSync("site/public/js/fiche.js", "utf8");
+  test("Fiche A4 : retire une classe impression-complete restée avant d'imprimer", () => {
+    const { window: w, document } = parseHTML(`<!doctype html><html class="impression-complete"><body><button id="imprimer">x</button></body></html>`);
+    const win = w as any;
+    let pendant: boolean | undefined;
+    win.print = mock(() => { pendant = document.documentElement.classList.contains("impression-complete"); });
+    new Function("window", "document", FICHE_A4)(win, document);
+    document.getElementById("imprimer")!.dispatchEvent(new win.Event("click", { bubbles: true }));
+    expect(win.print).toHaveBeenCalledTimes(1);
+    expect(pendant).toBe(false);
+  });
+
   const FICHE = readFileSync("site/public/js/fiche.js", "utf8");
   test("la classe est posée pendant l'impression puis retirée à afterprint", () => {
     const { window: w, document } = parseHTML(`<!doctype html><html><body><button id="imprimer-tout">x</button></body></html>`);

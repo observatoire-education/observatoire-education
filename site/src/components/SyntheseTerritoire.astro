@@ -61,6 +61,7 @@ const publiques = e ? e.ecoles.filter((x) => x.secteur === "public").length : 0;
       <div class="k">{LS.partPrive}</div>
       <div class="v">{total.partPrive === null ? "—" : part(100 * total.partPrive)}</div>
       {total.prive !== null && <div class="c"><span class="q">{entier(total.prive)} élèves</span></div>}
+      {total.nonPubliees.length > 0 && <div class="c" style="font-family:var(--sans)">{LS.horsFamilles(total.nonPubliees.map((f) => nomFamille(f, 2)))}</div>}
     </div>
   )}
   {college && <CaseIps f="college" s={college} d={d} libelle={LS.ipsColleges} />}

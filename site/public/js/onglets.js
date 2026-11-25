@@ -38,9 +38,11 @@
       });
     }
 
+    // Remonte en haut de la barre (sous l'en-tête collant) quand le panneau s'ouvre plus bas que la barre.
     function remonter() {
       if (!barre || !barre.getBoundingClientRect || !actif.getBoundingClientRect) return;
-      var haut = actif.getBoundingClientRect().top - barre.offsetHeight - 56;
+      var entete = d.querySelector(".top");
+      var haut = actif.getBoundingClientRect().top - barre.offsetHeight - (entete && entete.offsetHeight ? entete.offsetHeight : 56);
       if (haut < 0) w.scrollTo(0, (w.pageYOffset || 0) + haut);
     }
 
@@ -59,6 +61,7 @@
     d.addEventListener("click", function (e) {
       var a = e.target && e.target.closest ? e.target.closest('a[href^="#"]') : null;
       var id = a ? idDeLien(a) : null;
+      if (e.defaultPrevented || e.button || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
       var cible = panneauDe(id);
       if (!cible) return;
       e.preventDefault();
@@ -72,7 +75,8 @@
       var id = decoder(w.location.hash.slice(1));
       // Ancre extérieure aux panneaux : l'onglet courant reste ouvert.
       if (id && !panneauDe(id)) return;
-      ouvrir(id);
+      var cible = ouvrir(id);
+      if (!cible || !cible.interne) remonter();
     });
 
     panneaux.forEach(function (p) {
@@ -92,6 +96,7 @@
         e.preventDefault();
         activer(d.getElementById(onglets[i].getAttribute("aria-controls")));
         onglets[i].focus();
+        remonter();
         w.history.replaceState(null, "", "#" + onglets[i].getAttribute("aria-controls"));
       });
     }

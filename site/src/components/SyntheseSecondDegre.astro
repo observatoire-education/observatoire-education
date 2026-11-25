@@ -37,7 +37,7 @@ const serieIps = seriesReferencesIps(refsIps);
         <span>{r.voie}, {LRES.session(r.session)}</span>
         <span>
           {r.taux === null ? <span class="abs">{LRES.nonPublie}</span> : <b class="num">{r.taux}</b>}
-          {" · "}{LS.va}{" : "}{r.va === null ? <span class="abs">{LRES.nonPublie}</span> : <b class="num">{r.va}</b>}
+          {(r.va !== null || r.vaNonPubliee) && <>{" · "}{LS.va}{" : "}{r.va === null ? <span class="abs">{LRES.nonPublie}</span> : <b class="num">{r.va}</b>}</>}
         </span>
       </div>
     ))}

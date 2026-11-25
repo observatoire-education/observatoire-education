@@ -9,7 +9,11 @@
   }
 
   var imprimer = document.getElementById("imprimer");
-  if (imprimer) imprimer.addEventListener("click", function () { window.print(); });
+  // Retire une classe d'impression complète restée (Safari iOS n'émet pas toujours afterprint).
+  if (imprimer) imprimer.addEventListener("click", function () {
+    document.documentElement.classList.remove("impression-complete");
+    window.print();
+  });
 
   // Impression de toute la page : la classe écarte la fiche A4 et affiche tous les panneaux (voir obs.css).
   var toutImprimer = document.getElementById("imprimer-tout");

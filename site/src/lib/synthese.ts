@@ -7,8 +7,8 @@ import type { Famille, Fiche } from "@obs/shared/types";
 import { montantBudget } from "./budget";
 import { tauxEntier, vaSignee } from "./resultats";
 
-/** Une ligne par voie de la fiche : taux de réussite et valeur ajoutée publiée (null si absents). */
-export function resultatsSynthese(f: Fiche): { voie: string; session: number; taux: string | null; va: string | null }[] {
+/** Une ligne par voie de la fiche : taux de réussite et valeur ajoutée publiée (null si absents). `vaNonPubliee` : valeur ajoutée attendue mais non publiée (« sans objet » : rien à dire). */
+export function resultatsSynthese(f: Fiche): { voie: string; session: number; taux: string | null; va: string | null; vaNonPubliee: boolean }[] {
   return f.resultats.map((r) => {
     const v = r.valeurs.find((x) => x.code === "taux_reussite");
     return {
@@ -16,6 +16,7 @@ export function resultatsSynthese(f: Fiche): { voie: string; session: number; ta
       session: r.session,
       taux: v && v.statut === "ok" && v.valeur !== null ? tauxEntier(v.valeur) : null,
       va: v && v.statutVa === "ok" && v.va !== null ? vaSignee(v.va) : null,
+      vaNonPubliee: !!v && v.statutVa === "non_publie",
     };
   });
 }
@@ -60,12 +61,12 @@ export function totalSecondDegre(familles: [Famille, SyntheseFamille][]): {
 /** Moyens de la Synthèse d'un territoire : collèges (département et France), lycées (région) ; null ailleurs. */
 export function moyensTerritoire(d: DonneesTerritoire): (MoyensSynthese & { libelle: string }) | null {
   const niveau = d.ref.niveau;
-  const libelle = LIBELLES_SYNTHESE.moyens;
   if (niveau === "france") {
     const e = d.budget.france.find((x) => x.niveau === "colleges")?.exercices.at(-1);
     if (!e) return null;
     const m = e.public.horsPersonnel;
-    return { exercice: e.exercice, texte: m.valeur === null ? LIBELLES.nonDisponible : entier(m.valeur), absent: m.valeur === null, france: null, libelle };
+    const r = montantBudget({ total: null, parEleve: m.valeur, statut: "ok" }, "colleges");
+    return { exercice: e.exercice, ...r, france: null, libelle: LIBELLES_SYNTHESE.moyensFrance };
   }
   const nb: NiveauBudget | null = niveau === "departement" ? "colleges" : niveau === "region" ? "lycees" : null;
   if (!nb) return null;
@@ -75,5 +76,5 @@ export function moyensTerritoire(d: DonneesTerritoire): (MoyensSynthese & { libe
     "public",
     nb,
   );
-  return r && { ...r, libelle };
+  return r && { ...r, libelle: nb === "colleges" ? LIBELLES_SYNTHESE.moyensDepartement : LIBELLES_SYNTHESE.moyensRegion };
 }

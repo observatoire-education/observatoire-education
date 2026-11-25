@@ -518,6 +518,10 @@ export const LIBELLES_SYNTHESE = {
   va: "valeur ajoutée",
   moyens: "Fonctionnement par élève",
   moyensPrive: "Contribution par élève",
+  /** Case Moyens d'un territoire : le niveau dit de quelle dépense il s'agit. */
+  moyensDepartement: "Fonctionnement par collégien",
+  moyensRegion: "Fonctionnement par lycéen",
+  moyensFrance: "Moyenne France, fonctionnement par collégien",
   elevesSecondDegre: "Élèves en collège et lycée",
   sommeFamilles: "somme des familles d'établissements",
   horsFamilles: (f: string[]): string => `hors ${f.join(", ")} (effectif non publié)`,

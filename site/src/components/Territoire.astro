@@ -137,6 +137,8 @@ const barre = onglets([
   { id: "o-sources", libelle: LO.sources },
 ]);
 const avec = plusieursOnglets(barre);
+/** Panneau affiché d'emblée : le premier onglet de la barre (la Synthèse quand elle existe). */
+const premier = barre[0]?.id;
 const badges = [
   ...(niveau === "departement" || niveau === "commune") && aca ? [academie(aca.libelle)] : [],
   ...(niveau === "commune" && dep ? [dep.libelle] : []),
@@ -158,13 +160,13 @@ const badges = [
   </div>
   <Onglets onglets={barre} />
   {avecSynthese && (
-    <Panneau id="o-synthese" libelle={LO.synthese} actif avecOnglets={avec}>
+    <Panneau id="o-synthese" libelle={LO.synthese} actif={premier === "o-synthese"} avecOnglets={avec}>
       <SyntheseTerritoire d={d} familles={familles} niveau={niveau} />
     </Panneau>
   )}
 
   {groupesFamilles.map(({ id, libelle, liste }) => liste.length > 0 && (
-  <Panneau id={id} libelle={libelle} avecOnglets={avec}>
+  <Panneau id={id} libelle={libelle} actif={premier === id} avecOnglets={avec}>
   {liste.map(([f, s]) => {
     const ips = s.moyennes.find((m) => m.code === "ips");
     const vs = s.moyennes.find((m) => m.code === "eleves_par_etp_vs");
@@ -279,21 +281,21 @@ const badges = [
   ))}
 
   {avecEcoles && (
-    <Panneau id="o-ecoles" libelle={LO.ecoles} avecOnglets={avec}>
+    <Panneau id="o-ecoles" libelle={LO.ecoles} actif={premier === "o-ecoles"} avecOnglets={avec}>
       {avecPremierDegre && <BlocPremierDegre p={pd!} territoire={d.ref} communes={d.communesEcoles} />}
       {d.ecoles && <BlocEcolesCommune e={d.ecoles} commune={d.ref} />}
     </Panneau>
   )}
 
   {avecTransport && (
-    <Panneau id="o-transport" libelle={LO.transport} avecOnglets={avec}>
+    <Panneau id="o-transport" libelle={LO.transport} actif={premier === "o-transport"} avecOnglets={avec}>
       {d.transport && <BlocTransport t={d.transport} region={niveau === "region" ? d.ref.code : undefined} />}
       {transportRegions && <BlocTransport regions={france.transportRegions} />}
     </Panneau>
   )}
 
   {avecResultats && (
-    <Panneau id="o-resultats" libelle={LO.resultats} avecOnglets={avec}>
+    <Panneau id="o-resultats" libelle={LO.resultats} actif={premier === "o-resultats"} avecOnglets={avec}>
       <section id="nuages">
         <h2>Résultats</h2>
         {d.nuages!.map((n) => <Nuage n={n} />)}
@@ -301,7 +303,7 @@ const badges = [
     </Panneau>
   )}
 
-  {avecTerritoires && <Panneau id="o-territoires" libelle={LO.territoires} avecOnglets={avec}>
+  {avecTerritoires && <Panneau id="o-territoires" libelle={LO.territoires} actif={premier === "o-territoires"} avecOnglets={avec}>
   {niveau === "france" && (
     <section id="regions">
       <h2>Régions</h2>
@@ -337,7 +339,7 @@ const badges = [
   </Panneau>}
 
   {avecBudgetCommune && (
-    <Panneau id="o-moyens-commune" libelle={LO.moyensCommune} avecOnglets={avec}>
+    <Panneau id="o-moyens-commune" libelle={LO.moyensCommune} actif={premier === "o-moyens-commune"} avecOnglets={avec}>
     <section id="moyens-commune">
       <h2>{LIBELLES_BUDGET.titreCommune}</h2>
       <BlocBudget budget={budgetCommune} france={d.budget.france.find((m) => m.niveau === "ecoles")} secteurEnPremier="public"
@@ -346,7 +348,7 @@ const badges = [
     </Panneau>
   )}
 
-  <Panneau id="o-sources" libelle={LO.sources} avecOnglets={avec}>
+  <Panneau id="o-sources" libelle={LO.sources} actif={premier === "o-sources"} avecOnglets={avec}>
   <section id="sources">
     <h2>Sources</h2>
     <div class="card" style="font-size:13px"><ul style="margin:0;padding-left:18px;line-height:1.9">
