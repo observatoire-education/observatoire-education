@@ -1,5 +1,5 @@
 // Recherche de l'accueil : index et communes chargés au premier focus (/recherche.json, /recherche-communes.json),
-// insensibles aux accents et à la casse, sur le nom, la commune, l'UAI et le département. Établissements (au plus 20), communes (au plus 20) et départements.
+// insensibles aux accents et à la casse, sur le nom, la commune, l'UAI et le département. Régions, départements, communes (au plus 20), puis établissements (au plus 20).
 (function () {
   var q = document.getElementById("q"), res = document.getElementById("res");
   if (!q || !res) return;
@@ -9,6 +9,8 @@
   var nomDep = {}; deps.forEach(function (d) { nomDep[d.d] = d.l; });
   var familles = { college: "Collège", legt: "Lycée GT", lpo: "Lycée polyvalent", lp: "Lycée pro", erea: "EREA", maternelle: "École maternelle", elementaire: "École élémentaire", primaire: "École primaire" };
   var index = null, chargement = null;
+  // Établissements par commune (nom et département) : départage les communes homonymes, la plus grande d'abord.
+  var taille = {};
   var norm = function (s) { return String(s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase(); };
   // Toute donnée insérée dans le HTML est échappée ; les chemins sont encodés.
   var echap = function (s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
@@ -19,7 +21,8 @@
     // Communes qui ont une page (second degré ou écoles), hors de l'accueil pour ne pas l'alourdir.
     chargement = chargement || Promise.all([json("/recherche.json"), json("/recherche-communes.json")]).then(function (x) {
       communes = x[1];
-      index = x[0].map(function (e) { e.k = norm(e.n + " " + e.c + " " + e.u + " " + e.d + " " + (nomDep[e.d] || "")); return e; });
+      // Des établissements fermés n'ont ni nom ni commune publiés (null) : l'UAI tient lieu de nom.
+      index = x[0].map(function (e) { e.n = e.n || e.u; e.c = e.c || ""; taille[norm(e.c) + "|" + e.d] = (taille[norm(e.c) + "|" + e.d] || 0) + 1; e.k = norm(e.n + " " + e.c + " " + e.u + " " + e.d + " " + (nomDep[e.d] || "")); return e; });
       lancer();
     });
     return chargement;
@@ -50,24 +53,29 @@
     var score = function (k) { return debuts.filter(function (r) { return r.test(k); }).length; };
     var etabs = index.filter(function (e) { return ok(e.k); })
       .map(function (e) { return { e: e, p: score(e.k) }; })
-      .sort(function (a, b) { return b.p - a.p || a.e.n.localeCompare(b.e.n, "fr"); })
+      // Pages conservées d'établissements fermés après les établissements ouverts.
+      .sort(function (a, b) { return (a.e.x ? 1 : 0) - (b.e.x ? 1 : 0) || b.p - a.p || a.e.n.localeCompare(b.e.n, "fr"); })
       .map(function (x) { return x.e; });
     var villes = communes.filter(function (c) { return ok(norm(c.l + " " + c.i + " " + (nomDep[c.d] || ""))); })
-      .sort(function (a, b) { return a.l.localeCompare(b.l, "fr"); });
+      // Les communes dont le nom est exactement la saisie d'abord (Saint-Nazaire avant Ablain-Saint-Nazaire), la plus
+      // grande en tête entre homonymes ; puis l'ordre alphabétique.
+      .sort(function (a, b) {
+        var saisie = termes.join(" "), ea = norm(a.l) === saisie, eb = norm(b.l) === saisie;
+        var t = function (c) { return taille[norm(c.l) + "|" + c.d] || 0; };
+        return (eb - ea) || (ea && eb ? t(b) - t(a) : 0) || a.l.localeCompare(b.l, "fr");
+      });
     var trouves = deps.filter(function (d) { return ok(norm(d.l + " " + d.d + " " + d.a)); });
     var regionsTrouvees = regions.filter(function (r) { return ok(norm(r.l + " " + r.r)); });
     var h = "";
-    if (etabs.length) {
-      h += '<div class="grp">Établissements' + (etabs.length > 20 ? " (20 premiers sur " + etabs.length + ", précisez la recherche)" : "") + "</div>";
-      h += etabs.slice(0, 20).map(function (e) {
-        return '<a href="/etablissement/' + chemin(e.u) + '/"><span>' + surligner(e.n, termes) + '</span><span class="u">' + echap(e.u) +
-          '</span><span class="s"><span class="sect ' + (e.s === "public" ? "pub" : "pri") + '">' + (e.s === "public" ? "Public" : "Privé s. c.") +
-          "</span> · " + echap(familles[e.f] || "") + " · " + surligner(e.c, termes) + (e.x ? " · page conservée" : "") + "</span></a>";
-      }).join("");
-    }
+    // Territoires d'abord, du plus large au plus proche, puis les établissements.
     if (regionsTrouvees.length) {
       h += '<div class="grp">Régions</div>' + regionsTrouvees.map(function (r) {
         return '<a href="/region/' + chemin(r.r) + '/"><span>' + surligner(r.l, termes) + '</span><span></span><span class="s">Région</span></a>';
+      }).join("");
+    }
+    if (trouves.length) {
+      h += '<div class="grp">Départements</div>' + trouves.map(function (d) {
+        return '<a href="/departement/' + chemin(d.d) + '/"><span>' + surligner(d.l, termes) + '</span><span></span><span class="s">' + echap(d.d) + " · " + echap(d.a) + "</span></a>";
       }).join("");
     }
     if (villes.length) {
@@ -76,9 +84,12 @@
         return '<a href="/commune/' + chemin(c.i) + '/"><span>' + surligner(c.l, termes) + '</span><span></span><span class="s">' + echap(c.d) + (nomDep[c.d] ? " · " + echap(nomDep[c.d]) : "") + "</span></a>";
       }).join("");
     }
-    if (trouves.length) {
-      h += '<div class="grp">Départements</div>' + trouves.map(function (d) {
-        return '<a href="/departement/' + chemin(d.d) + '/"><span>' + surligner(d.l, termes) + '</span><span></span><span class="s">' + echap(d.d) + " · " + echap(d.a) + "</span></a>";
+    if (etabs.length) {
+      h += '<div class="grp">Établissements' + (etabs.length > 20 ? " (20 premiers sur " + etabs.length + ", précisez la recherche)" : "") + "</div>";
+      h += etabs.slice(0, 20).map(function (e) {
+        return '<a href="/etablissement/' + chemin(e.u) + '/"><span>' + surligner(e.n, termes) + '</span><span class="u">' + echap(e.u) +
+          '</span><span class="s"><span class="sect ' + (e.s === "public" ? "pub" : "pri") + '">' + (e.s === "public" ? "Public" : "Privé s. c.") +
+          "</span> · " + echap(familles[e.f] || "") + (e.c ? " · " + surligner(e.c, termes) : "") + (e.x ? " · page conservée" : "") + "</span></a>";
       }).join("");
     }
     res.innerHTML = h || '<div class="grp">Aucun résultat</div><div class="vide">Vérifiez l’orthographe, ou cherchez par commune ou par UAI. Les établissements privés hors contrat ne figurent pas : ils ne sont pas couverts par les statistiques publiques.</div>';

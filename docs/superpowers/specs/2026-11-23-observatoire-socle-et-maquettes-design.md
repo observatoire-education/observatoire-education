@@ -175,7 +175,7 @@ Les pages **académie**, **France** et **commune** suivent ce gabarit (pas de ma
 ### 4.5 Accueil et recherche (`accueil.html`)
 
 - Titre neutre (« Les chiffres publics de chaque collège et lycée de France. ») et un paragraphe descriptif sans commentaire.
-- **Grande recherche** : insensible aux accents et à la casse, sur nom, commune, UAI et département ; résultats groupés (établissements avec pastille de secteur, type, commune, UAI ; communes ; départements) ; message explicite sans résultat, rappelant que le hors contrat n'est pas couvert. Index chargé au premier focus (`/recherche.json`, clés courtes).
+- **Grande recherche** : insensible aux accents et à la casse, sur nom, commune, UAI et département ; résultats groupés, territoires d'abord (régions ; départements ; communes, la commune au nom exact en tête ; puis établissements avec pastille de secteur, type, commune, UAI, les pages conservées des fermés après les ouverts) ; message explicite sans résultat, rappelant que le hors contrat n'est pas couvert. Index chargé au premier focus (`/recherche.json`, clés courtes).
 - Bandeau national : collèges, lycées, EREA (public / privé), élèves, avec sources.
 - Parcourir par territoire : académies par ordre alphabétique et leurs départements, lien France entière.
 - Dernières mises à jour des sources, avec dates.

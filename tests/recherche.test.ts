@@ -52,19 +52,55 @@ describe("recherche de l'accueil", () => {
     expect(res.querySelector("mark")!.textContent).toBe("Métiers");
   });
 
-  test("communes : groupe entre établissements et départements, accents et casse ignorés", async () => {
+  test("communes : groupe entre départements et établissements, accents et casse ignorés", async () => {
     const res = await rechercher(
       [entree("Collège Jules-Verne")], "NANTES",
       [{ d: "44", l: "Loire-Atlantique", a: "Académie de Nantes" }],
       [{ i: "44109", l: "Nantes", d: "44" }],
     );
     const titres = [...res.querySelectorAll(".grp")].map((g) => g.textContent);
-    expect(titres).toEqual(["Établissements", "Communes", "Départements"]);
+    expect(titres).toEqual(["Départements", "Communes", "Établissements"]);
     const lien = res.querySelector("a[href='/commune/44109/']");
     expect(lien).not.toBeNull();
     expect(lien!.textContent).toContain("Nantes");
     const sans = await rechercher([], "nante", [], [{ i: "44109", l: "Nantès", d: "44" }]);
     expect(sans.querySelector("a[href='/commune/44109/']")).not.toBeNull();
+  });
+
+  test("établissement fermé sans nom ni commune publiés : pas de plantage, communes et départements trouvés", async () => {
+    const res = await rechercher(
+      [
+        { u: "0440099Z", n: null, c: "Saint-Nazaire", d: "44", f: "lp", s: "public", x: 1 },
+        { u: "0440098Y", n: null, c: null, d: "44", f: "lp", s: "public", x: 1 },
+        entree("Lycée Aristide-Briand", "0440069A", "Saint-Nazaire"),
+      ],
+      "Saint-Nazaire",
+      [{ d: "44", l: "Loire-Atlantique", a: "Académie de Nantes" }],
+      [{ i: "44184", l: "Saint-Nazaire", d: "44" }],
+    );
+    expect([...res.querySelectorAll(".grp")].map((g) => g.textContent)).toEqual(["Communes", "Établissements"]);
+    expect(res.querySelector("a[href='/etablissement/0440099Z/']")!.textContent).toContain("0440099Z");
+    expect(res.querySelector("a[href='/commune/44184/']")).not.toBeNull();
+    expect(res.textContent).not.toContain("null");
+    const exacte = await rechercher([], "saint-nazaire", [], [
+      { i: "62001", l: "Ablain-Saint-Nazaire", d: "62" }, { i: "44184", l: "Saint-Nazaire", d: "44" },
+    ]);
+    expect(exacte.querySelector("a[href^='/commune/']")!.getAttribute("href")).toBe("/commune/44184/");
+    const homonymes = await rechercher(
+      [entree("Lycée A", "0440001A", "Saint-Nazaire"), entree("Lycée B", "0440002B", "Saint-Nazaire")],
+      "saint-nazaire", [], [{ i: "30288", l: "Saint-Nazaire", d: "30" }, { i: "44184", l: "Saint-Nazaire", d: "44" }],
+    );
+    expect(homonymes.querySelector("a[href^='/commune/']")!.getAttribute("href")).toBe("/commune/44184/");
+    const ordre = await rechercher([
+      { u: "0440098Y", n: null, c: "Nantes", d: "44", f: "lp", s: "public", x: 1 }, entree("Collège Jules-Verne"),
+    ], "nantes");
+    expect([...ordre.querySelectorAll("a")].map((a) => a.getAttribute("href"))).toEqual(["/etablissement/0440001A/", "/etablissement/0440098Y/"]);
+    const dep = await rechercher(
+      [{ u: "0440098Y", n: null, c: null, d: "44", f: "lp", s: "public", x: 1 }, entree("Collège Jules-Verne")],
+      "Loire-Atlantique",
+      [{ d: "44", l: "Loire-Atlantique", a: "Académie de Nantes" }],
+    );
+    expect(dep.querySelector("a[href='/departement/44/']")).not.toBeNull();
   });
 
   test("écoles : libellé de la famille", async () => {
