@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { Manifest } from "../pipeline/src/archive.ts";
 import { EXERCICES_BUDGET, sourceTransport, toutesSources } from "../pipeline/src/sources.ts";
 import { collectiviteTransport } from "../pipeline/src/transport.ts";
-import { lireTransport, transportDepartement, transportRegion, transportRegions } from "../pipeline/src/transport-export.ts";
+import { lireTransport, type TableTransport, transportDepartement, transportRegion, transportRegions } from "../pipeline/src/transport-export.ts";
 import { dbTest } from "./aide.ts";
 
 describe("sources transport", () => {
@@ -145,5 +145,31 @@ describe("données des pages", () => {
 
   test("France : régions et CTU dans l'ordre du budget (nom sans article)", async () => {
     expect(transportRegions(await table()).map((c) => c.id)).toEqual(["reg-53", "ctu-corse", "reg-52"]);
+  });
+});
+
+describe("collectivités uniques et départements sans ligne (relecture finale)", () => {
+  const serie = [{ exercice: 2024, fonctionnement: 5_000_000, investissement: null, produitsServices: null }];
+  const t: TableTransport = {
+    exercices: [2024],
+    collectivites: new Map([
+      ["ctu-corse", { id: "ctu-corse", libelle: "Collectivité de Corse", serie }],
+      ["ctu-martinique", { id: "ctu-martinique", libelle: "Collectivité territoriale de Martinique", serie }],
+      ["dep-976", { id: "dep-976", libelle: "Département de Mayotte", serie }],
+    ]),
+  };
+  test("la CTU sur les pages de ses départements", () => {
+    expect(transportDepartement(t, "2A").collectivites.map((c) => c.id)).toEqual(["ctu-corse"]);
+    expect(transportDepartement(t, "2B").collectivites.map((c) => c.id)).toEqual(["ctu-corse"]);
+    expect(transportDepartement(t, "972").collectivites.map((c) => c.id)).toEqual(["ctu-martinique"]);
+  });
+  test("Mayotte : le Département sur la page région, pas d'absence", () => {
+    const r = transportRegion(t, "06");
+    expect(r.collectivites.map((c) => c.id)).toEqual(["dep-976"]);
+    expect(r.absence).toBeUndefined();
+  });
+  test("département sans collectivité ni groupement : absence dite", () => {
+    expect(transportDepartement(t, "973").absence).toBe("departement_sans_ligne");
+    expect(transportDepartement(t, "2A").absence).toBeUndefined();
   });
 });

@@ -115,13 +115,17 @@ const COLONNES_CSV_BUDGET = [
 
 const arrondi = (v: number | null): number | null => (v === null ? null : Math.round(v * 100) / 100);
 
-const COLONNES_CSV_TRANSPORT = ["collectivite", "libelle", "exercice", "fonctionnement", "investissement", "produits_services"] as const;
+const COLONNES_CSV_TRANSPORT = ["collectivite", "libelle", "exercice", "fonctionnement", "investissement", "produits_services", "nomenclature_m71"] as const;
 const euros = (v: number | null) => (v === null ? null : Math.round(v));
 
-/** Transport scolaire des régions et CTU, une ligne par collectivité et par exercice, en euros ; absence : cellule vide. */
+/**
+ * Transport scolaire des régions et CTU, une ligne par collectivité et par exercice, en euros ; absence : cellule vide ;
+ * `nomenclature_m71` : « oui » quand les comptes de l'exercice, tenus en M71, n'isolent pas le transport scolaire.
+ */
 export function csvTransport(regions: CollectiviteTransport[]): string {
   const lignes = regions.flatMap((c) => c.serie.map((e) => [
     c.id, c.libelle, e.exercice, euros(e.fonctionnement), euros(e.investissement), euros(e.produitsServices),
+    e.nomenclatureM71 ? "oui" : null,
   ]));
   return csv(COLONNES_CSV_TRANSPORT, lignes);
 }

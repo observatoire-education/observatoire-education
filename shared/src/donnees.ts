@@ -357,8 +357,8 @@ export interface TransportTerritoire {
   collectivites: CollectiviteTransport[];
   /** Page département : intercommunalités et syndicats dont le siège est dans le département, triés par libellé. */
   groupements?: { total: ExerciceTransport[]; liste: CollectiviteTransport[] };
-  /** Page région dont ni la Région ni la CTU n'a de ligne : phrase d'absence. */
-  absence?: "region_sans_ligne";
+  /** Page région dont ni la Région ni la CTU n'a de ligne ; page département sans collectivité ni groupement. */
+  absence?: "region_sans_ligne" | "departement_sans_ligne";
   /** Exercices des sources transport, croissants : chaque série en a un élément par exercice. */
   exercices: number[];
 }

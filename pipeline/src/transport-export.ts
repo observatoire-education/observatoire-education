@@ -46,8 +46,8 @@ export async function lireTransport(db: Db): Promise<TableTransport> {
 const presentes = (t: TableTransport, ids: IdCollectivite[]) =>
   ids.flatMap((id) => (t.collectivites.has(id) ? [t.collectivites.get(id)!] : []));
 
-/** CTU qui exerce les compétences de la Région. */
-const CTU_DE_REGION: Record<string, IdCollectivite> = { "94": "ctu-corse", "02": "ctu-martinique", "03": "ctu-guyane" };
+/** Collectivité unique qui exerce les compétences de la Région (CTU ; à Mayotte, le Département). */
+const CTU_DE_REGION: Record<string, IdCollectivite> = { "94": "ctu-corse", "02": "ctu-martinique", "03": "ctu-guyane", "06": "dep-976" };
 
 export function transportRegion(t: TableTransport, region: string): TransportTerritoire {
   const ids = [`reg-${region}`, ...(CTU_DE_REGION[region] ? [CTU_DE_REGION[region]] : [])];
@@ -56,7 +56,11 @@ export function transportRegion(t: TableTransport, region: string): TransportTer
 }
 
 /** Collectivités à compétence départementale propres à certains départements. */
-const PARTICULIERES: Record<string, IdCollectivite[]> = { "69": ["ml-lyon"], "67": ["cea"], "68": ["cea"], "75": ["paris"] };
+const PARTICULIERES: Record<string, IdCollectivite[]> = {
+  "69": ["ml-lyon"], "67": ["cea"], "68": ["cea"], "75": ["paris"],
+  // Collectivités territoriales uniques : elles exercent aussi les compétences départementales.
+  "2A": ["ctu-corse"], "2B": ["ctu-corse"], "972": ["ctu-martinique"], "973": ["ctu-guyane"],
+};
 
 /** Somme d'un poste sur les groupements ; null si aucun n'a ce poste cet exercice-là. */
 function total(liste: CollectiviteTransport[], exercices: number[]): ExerciceTransport[] {
@@ -79,6 +83,7 @@ export function transportDepartement(t: TableTransport, dep: string): TransportT
     collectivites,
     exercices: t.exercices,
     ...(liste.length ? { groupements: { total: total(liste, t.exercices), liste } } : {}),
+    ...(collectivites.length || liste.length ? {} : { absence: "departement_sans_ligne" as const }),
   };
 }
 

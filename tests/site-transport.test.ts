@@ -28,8 +28,9 @@ describe("transport scolaire sur les pages", () => {
     expect(doc("region/52").querySelector("#transport a[href='/methode/#transport-financement']")).not.toBeNull();
   });
 
-  test("Île-de-France : phrase d'absence propre, aucun graphique", () => {
-    expect(bloc("region/11")).toContain("en Île-de-France, il est organisé par Île-de-France Mobilités");
+  test("Île-de-France : absence et contexte d'Île-de-France Mobilités, aucun graphique", () => {
+    expect(bloc("region/11")).toContain("Le transport scolaire n'apparaît pas dans les comptes de la Région.");
+    expect(bloc("region/11")).toContain("En Île-de-France, le transport scolaire est organisé par Île-de-France Mobilités");
     expect(doc("region/11").querySelector("#transport svg")).toBeNull();
   });
 
@@ -48,6 +49,10 @@ describe("transport scolaire sur les pages", () => {
     expect(items[0]!.textContent).toContain("CA PORNIC AGGLO PAYS DE RETZ");
   });
 
+  test("Corse-du-Sud : la Collectivité de Corse sur la page du département", () => {
+    expect(bloc("departement/2A")).toContain("Collectivité de Corse");
+  });
+
   test("Paris : la Ville de Paris sur la page du département", () => {
     expect(bloc("departement/75")).toContain("Ville de Paris");
   });
@@ -58,9 +63,10 @@ describe("transport scolaire sur les pages", () => {
     expect(t).toContain("Collectivité de Corse");
     expect(doc("france").querySelector("#transport a[href='/france/transport-scolaire.csv']")).not.toBeNull();
     const lignes = page("france/transport-scolaire.csv").trim().split("\n");
-    expect(lignes[0]).toBe("collectivite;libelle;exercice;fonctionnement;investissement;produits_services");
-    expect(lignes).toContain("reg-52;Région Pays de la Loire;2023;140000000;;");
-    expect(lignes).toContain("reg-52;Région Pays de la Loire;2024;156000000;1000000;20000000");
+    expect(lignes[0]).toBe("collectivite;libelle;exercice;fonctionnement;investissement;produits_services;nomenclature_m71");
+    expect(lignes).toContain("reg-52;Région Pays de la Loire;2023;140000000;;;");
+    expect(lignes).toContain("reg-52;Région Pays de la Loire;2024;156000000;1000000;20000000;");
+    expect(lignes).toContain("reg-53;Région Bretagne;2023;;;;oui");
   });
 
   test("méthode et sources", () => {

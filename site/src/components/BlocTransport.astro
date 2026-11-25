@@ -27,15 +27,15 @@ const dernier = (serie: ExerciceTransport[]) => serie.findLast(aDesDonnees);
 const postesDe = (serie: ExerciceTransport[]) => POSTES.filter(([cle]) => serie.some((e) => e[cle] !== null && e[cle] !== 0));
 const montant = (v: number | null) => (v === null ? { texte: L.nonDisponible, absent: true } : { texte: millions(v), absent: false });
 
-const absenceRegion = region !== undefined ? (L.absencesRegion[region] ?? L.absenceRegion) : null;
+const contexte = region !== undefined ? L.contextesRegion[region] : undefined;
+const absence = t?.absence === "region_sans_ligne" ? L.absenceRegion : t?.absence === "departement_sans_ligne" ? L.absenceDepartement : null;
 const derniereFrance = regions?.[0]?.serie.at(-1)?.exercice;
 ---
 <section id="transport">
   <h2>{L.titre}</h2>
 
-  {t && t.absence === "region_sans_ligne" && absenceRegion && (
-    <div class="card"><Absence texte={absenceRegion} /></div>
-  )}
+  {absence && <div class="card"><Absence texte={absence} /></div>}
+  {contexte && <p class="mute mention-budget">{contexte}</p>}
 
   {t && t.collectivites.map((c) => {
     const e = dernier(c.serie);

@@ -341,10 +341,12 @@ export const LIBELLES_TRANSPORT = {
   note: "Ces montants ne sont pas rapportés au nombre d'élèves : l'organisation du transport scolaire peut être déléguée (départements, intercommunalités, syndicats), la participation des familles varie d'une région à l'autre, et aucun nombre d'élèves transportés n'est publié en données ouvertes. Ce sont les montants que chaque collectivité impute au transport scolaire dans ses comptes.",
   methode: "Méthode",
   absenceGenerique: (e: number) => `Aucune dépense de transport scolaire n'apparaît dans les comptes de cette collectivité pour l'exercice ${e}.`,
-  absencesRegion: {
-    "11": "Le transport scolaire n'apparaît pas dans les comptes de la Région : en Île-de-France, il est organisé par Île-de-France Mobilités.",
+  /** Contexte affiché sur la page de la région, qu'elle ait des lignes ou non. */
+  contextesRegion: {
+    "11": "En Île-de-France, le transport scolaire est organisé par Île-de-France Mobilités, dont les comptes ne figurent pas ici.",
   } as Record<string, string>,
   absenceRegion: "Le transport scolaire n'apparaît pas dans les comptes de la Région.",
+  absenceDepartement: "Aucune dépense de transport scolaire n'apparaît dans les comptes du Département ni dans ceux des intercommunalités et syndicats qui y ont leur siège.",
   nomenclatureM71: (e: number) => `${e} : comptes tenus selon la nomenclature M71, qui n'isole pas le transport scolaire.`,
   nonDisponible: "non disponible",
   exercice: (e: number) => `Exercice ${e}`,
