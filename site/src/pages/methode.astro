@@ -134,7 +134,18 @@ const JEUX = "https://data.education.gouv.fr/explore/dataset";
       <li><b>Moyenne France</b> : Σ dépenses / Σ élèves des communes qui publient, calculée par l'observatoire. Les écoles privées sous contrat n'ont pas de bloc budget : la part de la commune pour le privé n'est pas isolable dans ses comptes.</li>
     </ul>
 
-    <h2 id="sessions">Sessions et rentrées</h2>
+    <h2 id="transport-financement">Transport scolaire : financement</h2>
+    <p>Les pages région et département montrent ce que chaque collectivité impute au transport scolaire dans ses comptes (balances comptables de la DGFiP, présentation croisée nature-fonction), de l'exercice 2020 au dernier publié. Les montants sont en euros : ils ne sont jamais rapportés au nombre d'élèves, car l'organisation du transport scolaire peut être déléguée (départements, intercommunalités, syndicats), la participation des familles varie d'une région à l'autre (gratuité ou tarif), et aucun nombre d'élèves transportés n'est publié en données ouvertes.</p>
+    <ul>
+      <li><b>Fonctions retenues</b> : le sens d'un code dépend de la nomenclature comptable de la collectivité. En M57 et en M52 : la fonction 81 « transports scolaires » (codes 81, 9081, 9381) et la fonction 252 « transports scolaires » du bloc enseignement (252, 90252, 93252). En M14 (communes, intercommunalités et syndicats jusqu'en 2023) : 252 seulement, car la fonction 81 y désigne les services urbains (eau, ordures ménagères, propreté). Les transports publics de voyageurs (fonction 82, dont le TER) ne sont pas comptés.</li>
+      <li><b>Régions en nomenclature M71</b> (exercices 2020 à 2022 pour la plupart) : cette nomenclature n'isole pas le transport scolaire de la même façon d'une région à l'autre ; aucun montant n'en est tiré, et la page le dit pour chaque exercice concerné.</li>
+      <li><b>Postes</b> : dépenses de fonctionnement (comptes de classe 6, hors dotations aux amortissements et provisions, 68, et hors 675 et 676) ; dépenses d'investissement (comptes 20, 21 et 23) ; produits des services (comptes 70, où figurent les participations des familles), en recette nette. Dépense et recette réelles : opérations budgétaires nettes, hors opérations d'ordre. Un montant net négatif (annulations) est affiché tel quel.</li>
+      <li><b>Collectivités</b> : la Région ou la collectivité territoriale unique (Corse, Martinique, Guyane) sur la page région ; le Département, la Métropole de Lyon, la Collectivité européenne d'Alsace ou la Ville de Paris sur la page département. Les intercommunalités et les syndicats sont rattachés au département de leur siège, listés et totalisés à part. Les communes ne sont pas comptées.</li>
+      <li><b>Absences</b> : un exercice sans ligne est dit « non disponible », jamais 0 €. Une région sans aucune ligne a une phrase propre (en Île-de-France, le transport scolaire est organisé par Île-de-France Mobilités).</li>
+      <li><b>Lecture</b> : deux collectivités peuvent imputer différemment une même dépense (une part du transport scolaire peut figurer avec le transport interurbain) ; les montants ne se comparent donc pas d'une région à l'autre sans lire leur organisation.</li>
+    </ul>
+
+<h2 id="sessions">Sessions et rentrées</h2>
     <p>Une <b>session</b> est l'année de l'examen : la « session 2025 » est celle de juin 2025, qui clôt l'année scolaire 2024-2025. Elle se rapproche donc de la <b>rentrée 2024</b> (rentrée = session − 1) quand on la met en regard de l'IPS.</p>
 
     <h2 id="resultats-colleges">Résultats des collèges</h2>

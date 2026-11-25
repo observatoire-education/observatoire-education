@@ -11,7 +11,7 @@ const executions = executionsRecentes();
 const sansCarte = lireFrance().departementsSansCarte ?? [];
 /** Requête de la version actuelle (ou la dernière) d'un exercice du budget. */
 const requeteArchivee = (s: (typeof sources)[number]): string | undefined =>
-  s.id.startsWith("budget_") ? (s.actuelle ?? s.versions[s.versions.length - 1])?.requete : undefined;
+  s.id.startsWith("budget_") || s.id.startsWith("transport_") ? (s.actuelle ?? s.versions[s.versions.length - 1])?.requete : undefined;
 const ACTIONS: Record<string, string> = { inchange: "inchangé", telecharge: "nouvelle version", rejete: "version rejetée", erreur: "erreur" };
 ---
 <Base titre="Sources" chemin="/sources/" description="Sources des données de l'observatoire : producteurs, jeux, versions archivées et dates de collecte.">
@@ -24,7 +24,7 @@ const ACTIONS: Record<string, string> = { inchange: "inchangé", telecharge: "no
     <section id={s.id}>
       <h2>{s.titre}</h2>
       <p style="margin:0 0 10px;font-size:14px">{s.producteur} · <a href={s.pageUrl}>page du jeu sur {new URL(s.pageUrl).hostname}</a></p>
-      {requeteArchivee(s) && <p class="requete mute" style="margin:0 0 10px;font-size:13px;word-break:break-all">{LIBELLES_BUDGET.interface.requeteRejouee} : <a href={requeteArchivee(s)}><code>{requeteArchivee(s)}</code></a> (extrait filtré sur les collectivités et les fonctions retenues, exercice {s.id.replace("budget_", "")}).</p>}
+      {requeteArchivee(s) && <p class="requete mute" style="margin:0 0 10px;font-size:13px;word-break:break-all">{LIBELLES_BUDGET.interface.requeteRejouee} : <a href={requeteArchivee(s)}><code>{requeteArchivee(s)}</code></a> (extrait filtré sur les collectivités et les fonctions retenues, exercice {s.id.replace(/^(budget|transport)_/, "")}).</p>}
       {s.versions.length === 0 ? <p class="mute">Aucune version archivée.</p> : (
         <div class="card" style="padding:4px 6px"><div class="table-wrap"><table>
           <thead><tr><th>Collectée le</th><th>{s.dateSituation ? "Situation au" : "Modifiée par le producteur"}</th><th class="n">Lignes</th><th>Empreinte</th><th>Archive</th></tr></thead>

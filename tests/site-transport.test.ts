@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import { parseHTML } from "linkedom";
-import { doc, page, siteTest } from "./site.ts";
+import { doc, page, siteTest, texte } from "./site.ts";
 
 beforeAll(async () => {
   await siteTest();
@@ -61,6 +61,19 @@ describe("transport scolaire sur les pages", () => {
     expect(lignes[0]).toBe("collectivite;libelle;exercice;fonctionnement;investissement;produits_services");
     expect(lignes).toContain("reg-52;Région Pays de la Loire;2023;140000000;;");
     expect(lignes).toContain("reg-52;Région Pays de la Loire;2024;156000000;1000000;20000000");
+  });
+
+  test("méthode et sources", () => {
+    const m = doc("methode").querySelector("#transport-financement");
+    expect(m).not.toBeNull();
+    const t = texte("methode");
+    expect(t).toContain("9381");
+    expect(t).toContain("nomenclature M71");
+    expect(t).toContain("ordures ménagères");
+    const sources = texte("sources");
+    expect(sources).toContain("Balances comptables des collectivités, transport scolaire 2024");
+    expect(page("sources")).toMatch(/requete|where/);
+    expect(doc("sources").querySelectorAll("p.requete").length).toBeGreaterThanOrEqual(4);
   });
 
   test("académie et commune : pas de section transport", () => {
