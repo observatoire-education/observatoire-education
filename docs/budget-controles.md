@@ -253,7 +253,7 @@ En 2024, 3 249 communes ont un budget principal dans le jeu ; 3 185 ont des lign
 - **Établissements fermés.** Les élèves comptés sont ceux des établissements du périmètre actuel. Les élèves d'un établissement fermé depuis ne sont pas comptés dans les exercices anciens.
 - **Personnel extérieur.** Le personnel retenu se limite aux comptes 64. Le personnel extérieur (621) n'est pas compté.
 
-## Transport scolaire (phase Transport, lot 1)
+## 10. Transport scolaire (phase Transport, lot 1)
 
 Inventaire fait le 2026-11-25 sur les balances 2020 à 2025 (API data.economie.gouv.fr, `cbudg = "1"`, catégories REG, CTU, DEPT, ML, PARIS, GFP, SYND). Montants : dépense nette (`obnetdeb − oobdeb − obnetcre + oobcre`), tous comptes confondus, en M€.
 

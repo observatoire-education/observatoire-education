@@ -4,6 +4,7 @@ import type { DuckDBConnection, DuckDBValue } from "@duckdb/node-api";
 import type { SourceId } from "@obs/shared/types";
 import { connexion, litteral } from "./duck.ts";
 import { etapeBudget } from "./budget.ts";
+import { etapeTransport } from "./transport.ts";
 import { sqlEleves } from "./eleves.ts";
 import { sqlIndicateurs } from "./indicateurs.ts";
 import { macrosSql } from "./normalise.ts";
@@ -25,7 +26,7 @@ export const DOSSIER_SQL = join(import.meta.dir, "..", "sql");
  * (quand les colonnes viennent de définitions TypeScript). Ordre du plan : 01, 03, 02, 04.
  */
 export type Etape = string | ((db: Db) => string | Promise<string>);
-export const ETAPES: Etape[] = ["01_normaliser.sql", "05_fermes.sql", "08_ecoles.sql", "03_ips_personnels.sql", sqlEleves, sqlIndicateurs, "06_resultats.sql", etapeBudget, "07_segregation.sql"];
+export const ETAPES: Etape[] = ["01_normaliser.sql", "05_fermes.sql", "08_ecoles.sql", "03_ips_personnels.sql", sqlEleves, sqlIndicateurs, "06_resultats.sql", etapeBudget, etapeTransport, "07_segregation.sql"];
 
 async function executerScript(c: DuckDBConnection, sql: string): Promise<void> {
   const instructions = await c.extractStatements(sql);

@@ -21,7 +21,7 @@ const OUTRE_MER: Record<string, [string, string]> = {
 };
 
 /** Département : `044` → `44`, `02A` → `2A` ; outre-mer `101` → `971`, `102` → `973`. null si le code n'est pas reconnu. */
-function codeDepartement(ndept: string | null): string | null {
+export function codeDepartement(ndept: string | null): string | null {
   const n = ndept?.trim();
   if (!n) return null;
   if (OUTRE_MER[n]) return OUTRE_MER[n][0];
@@ -156,8 +156,8 @@ export async function etapeBudget(db: Db): Promise<string> {
 const JOINTURE = `join budget_collectivites m on b.categ is not distinct from m.categ and b.ndept is not distinct from m.ndept
   and b.cregi is not distinct from m.cregi and b.lbudg is not distinct from m.lbudg and b.insee is not distinct from m.insee`;
 
-const classe6 = "(compte like '6%' and compte not like '68%' and compte not like '675%' and compte not like '676%')";
-const investissement = "(compte like '20%' or compte like '21%' or compte like '23%')";
+export const classe6 = "(compte like '6%' and compte not like '68%' and compte not like '675%' and compte not like '676%')";
+export const investissement = "(compte like '20%' or compte like '21%' or compte like '23%')";
 /**
  * Contribution aux collèges privés : correspondance exacte (`655112` commence par `65511`).
  * M57 `655122` (dotations de fonctionnement des lycées privés) : en fonction 221, c'est le forfait des collèges privés
