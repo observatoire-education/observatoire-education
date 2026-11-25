@@ -26,6 +26,12 @@ const erea = compte(["erea"]);
 const regions = [...france.regions].sort((a, b) => a.libelle.localeCompare(b.libelle, "fr")).map((r) => ({ r: r.code, l: r.libelle }));
 const departements = france.academiesEtDepartements.flatMap((a) => a.departements.map((d) => ({ d: d.dep, l: d.libelle, a: academie(a.libelle) })));
 const millions = (n: number) => (n >= 1e6 ? `${(n / 1e6).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} M` : entier(n));
+// Premier degré : écoles ouvertes publiques et privées sous contrat, élèves de la dernière rentrée des effectifs des écoles.
+const pd = france.premierDegre;
+const ecoles = pd ? { pub: pd.compte.public, pri: pd.compte.prive, total: pd.compte.public + pd.compte.prive } : null;
+const elevesPd = pd && (pd.eleves.public !== null || pd.eleves.prive !== null)
+  ? { total: (pd.eleves.public ?? 0) + (pd.eleves.prive ?? 0), prive: pd.eleves.prive }
+  : null;
 const derniereCollecte = sources[0]?.actuelle?.collecteLe;
 ---
 <Base chemin="/" description="Les chiffres publics de chaque école, collège et lycée de France, public et privé sous contrat : sourcés, datés, sans palmarès.">
@@ -37,18 +43,21 @@ const derniereCollecte = sources[0]?.actuelle?.collecteLe;
       <input class="search" id="q" placeholder="Nom d'établissement, commune, département ou UAI" autocomplete="off" />
       <div class="res" id="res" aria-live="polite"></div>
     </div>
-    <div class="hint">Par exemple : <button type="button">Jules-Verne Nantes</button> · <button type="button">Saint-Nazaire</button> · <button type="button">Loire-Atlantique</button></div>
+    <div class="hint">Par exemple : <button type="button">Jules Verne Nantes</button> · <button type="button">Saint-Nazaire</button> · <button type="button">Loire-Atlantique</button></div>
   </div>
   <div class="kpis" style="margin-top:8px">
+    {ecoles && <div><div class="k">Écoles</div><div class="v">{entier(ecoles.total)}</div><div class="c"><span class="p">{entier(ecoles.pub)} publiques</span> · <span class="q">{entier(ecoles.pri)} privées</span></div></div>}
     <div><div class="k">Collèges</div><div class="v">{entier(colleges.total)}</div><div class="c"><span class="p">{entier(colleges.pub)} publics</span> · <span class="q">{entier(colleges.pri)} privés</span></div></div>
     <div><div class="k">Lycées</div><div class="v">{entier(lycees.total)}</div><div class="c"><span class="p">{entier(lycees.pub)} publics</span> · <span class="q">{entier(lycees.pri)} privés</span></div></div>
-    <div><div class="k">EREA</div><div class="v">{entier(erea.total)}</div><div class="c"><span class="p">{entier(erea.pub)} publics</span> · <span class="q">{entier(erea.pri)} privés</span></div></div>
+    <div><div class="k"><abbr title="Établissements régionaux d'enseignement adapté">EREA</abbr></div><div class="v">{entier(erea.total)}</div><div class="c"><span class="p">{entier(erea.pub)} publics</span> · <span class="q">{entier(erea.pri)} privés</span></div></div>
+    {elevesPd && <div><div class="k">Élèves du premier degré · {pd!.rentrees.eleves}</div><div class="v">{millions(elevesPd.total)}</div>
+      <div class="c">{elevesPd.prive !== null && elevesPd.total ? `dont ${part((100 * elevesPd.prive) / elevesPd.total)} dans le privé s. c.` : LIBELLES.nonPubliePrive}</div></div>}
     <div><div class="k">Élèves du second degré · {france.rentree}</div><div class="v">{millions(elevesTotal)}</div>
       <div class="c">dont {elevesTotal ? part((100 * eleves("prive")) / elevesTotal) : "—"} dans le privé s. c.</div></div>
   </div>
   <div class="src" style="border:0;margin-top:6px">
-    Sources : MEN, Annuaire de l'éducation{derniereCollecte && ` (collecté le ${date(derniereCollecte)})`} ; MEN-DEPP, effectifs {france.rentree}-{(france.rentree ?? 0) + 1}.
-    Privé hors contrat ({entier(france.horsContrat)} établissements) : {LIBELLES.nonCouvert}.
+    Sources : MEN, Annuaire de l'éducation{derniereCollecte && ` (collecté le ${date(derniereCollecte)})`} ; MEN-DEPP, effectifs {france.rentree}-{(france.rentree ?? 0) + 1}{pd?.rentrees.eleves && ` ; MEN-DEPP, effectifs des écoles ${pd.rentrees.eleves}-${pd.rentrees.eleves + 1}`}.
+    Privé hors contrat ({entier(france.horsContrat)} collèges et lycées{pd && ` et ${entier(pd.horsContrat)} écoles`}) : {LIBELLES.nonCouvert}.
   </div>
 
   <section>
