@@ -54,6 +54,13 @@ export interface OptionsCollecte {
   corrections?: string;
   /** true : collecte sur un serveur (GitHub Actions), qui saute les sources à collecte locale. */
   distante?: boolean;
+  /** true : ne traiter que les sources sans aucune version archivée (publication après l'ajout d'une source). */
+  manquantes?: boolean;
+}
+
+/** Sources déclarées sans aucune version archivée : le build ne peut pas les lire. */
+export function sourcesSansVersion(manifest: Manifest): SourceId[] {
+  return toutesSources(manifest).filter((s) => !manifest.derniere(s.id)).map((s) => s.id);
 }
 
 /** Motif de la ligne de journal d'une source à collecte locale sautée sur serveur. */
@@ -83,6 +90,7 @@ export async function collecter(opts: OptionsCollecte): Promise<LigneJournal[]> 
   };
   const connues = toutesSources(opts.manifest);
   for (const s of connues) {
+    if (opts.manquantes && opts.manifest.derniere(s.id)) continue;
     if (s.collecteLocale && opts.distante) {
       journal.push({ date, source: s.id, action: "local", motif: MOTIF_COLLECTE_LOCALE });
       continue;
@@ -97,7 +105,8 @@ export async function collecter(opts: OptionsCollecte): Promise<LigneJournal[]> 
   const suivant = Math.max(...connues.filter((s) => s.id.startsWith("budget_")).map((s) => Number(s.id.slice(7)))) + 1;
   const idSuivant: SourceId = `budget_${suivant}`;
   let nouvelle: Source | undefined;
-  await essayer(idSuivant, async () => {
+  // --manquantes : pas de découverte, seules les sources déjà déclarées sont rattrapées.
+  if (!opts.manquantes) await essayer(idSuivant, async () => {
     const jeux = await opts.client.chercherJeu(API_ECO, `nature-fonction ${suivant}`);
     if (jeux.length === 0) return null;
     if (jeux.length > 1) return { action: "erreur", motif: `plusieurs jeux pour l'exercice ${suivant} : ${jeux.join(", ")}` };
