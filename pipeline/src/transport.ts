@@ -55,7 +55,7 @@ export async function etapeTransport(db: Db): Promise<string> {
     const combinaisons = await db.sql<Record<(typeof COLONNES)[number], string | null>>(
       `select distinct ${COLONNES.join(", ")} from (${src}) order by all`,
     );
-    const lignes = combinaisons.map((l) => ({ ...l, collectivite: collectiviteTransport({ ...l, lbudg: l.lbudg ?? "" }) }));
+    const lignes = combinaisons.map((l) => ({ ...l, collectivite: collectiviteTransport({ ...l, categ: l.categ ?? "", lbudg: l.lbudg ?? "" }) }));
     await db.sql(
       `insert into transport_collectivites
        select unnest(from_json($1::json,
