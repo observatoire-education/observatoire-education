@@ -93,7 +93,10 @@ const DEPARTEMENTS: Record<string, string> = {
   "54": "de Meurthe-et-Moselle", "55": "de la Meuse", "56": "du Morbihan", "57": "de la Moselle",
   "58": "de la Nièvre", "59": "du Nord", "60": "de l'Oise", "61": "de l'Orne",
   "62": "du Pas-de-Calais", "63": "du Puy-de-Dôme", "64": "des Pyrénées-Atlantiques",
-  "65": "des Hautes-Pyrénées", "66": "des Pyrénées-Orientales", "69": "du Rhône",
+  "65": "des Hautes-Pyrénées", "66": "des Pyrénées-Orientales",
+  // Départements de 2020 seulement : la Collectivité européenne d'Alsace les remplace en 2021 (aucune fusion des séries).
+  "67": "du Bas-Rhin", "68": "du Haut-Rhin",
+  "69": "du Rhône",
   "70": "de la Haute-Saône", "71": "de Saône-et-Loire", "72": "de la Sarthe", "73": "de la Savoie",
   "74": "de la Haute-Savoie", "76": "de la Seine-Maritime", "77": "de Seine-et-Marne",
   "78": "des Yvelines", "79": "des Deux-Sèvres", "80": "de la Somme", "81": "du Tarn",

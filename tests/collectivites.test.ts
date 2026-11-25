@@ -49,6 +49,10 @@ describe("collectivités", () => {
     expect(libelleCollectivite("ctu-guyane")).toBe("Collectivité territoriale de Guyane");
     expect(libelleCollectivite("dep-976")).toBe("Département de Mayotte");
   });
+  test("Bas-Rhin et Haut-Rhin : leurs Départements existent jusqu'en 2020, avant la Collectivité européenne d'Alsace", () => {
+    expect(libelleCollectivite("dep-67")).toBe("Département du Bas-Rhin");
+    expect(libelleCollectivite("dep-68")).toBe("Département du Haut-Rhin");
+  });
   test("collectivité inconnue : erreur, pas l'identifiant brut", () => {
     expect(() => libelleCollectivite("dep-987")).toThrow("collectivité inconnue");
     expect(() => libelleCollectivite("xx")).toThrow();
