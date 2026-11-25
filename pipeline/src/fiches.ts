@@ -3,12 +3,13 @@ import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { DonneesSource, EntreeIndex } from "@obs/shared/donnees";
 import type {
-  Classes, CodeIndicateur, Famille, FamilleEcole, FamilleSecondDegre, Fiche, Identite, Indicateur, LigneEcole, Mesure, Rattachements,
+  Batiment, Classes, CodeIndicateur, Famille, FamilleEcole, FamilleSecondDegre, Fiche, Identite, Indicateur, LigneEcole, Mesure, Rattachements,
   Repartition, ResultatsVoie, Rpi, Secteur, Site, SourceId, SourceRef, Voisin,
 } from "@obs/shared/types";
 import { estEcole, FAMILLES_SECOND_DEGRE } from "@obs/shared/libelles";
 import type { Manifest } from "./archive.ts";
 import type { Db } from "./db.ts";
+import { calculerBatiments } from "./batiments.ts";
 import { budgetDeFiche, calculerBudgets } from "./budget-eleves.ts";
 import { collectivitesCorrigees, correctionEnVigueur, type EntreeCorrection, resoudreCorrection } from "./corrections.ts";
 import { calculerClasses, calculerEcolesProches, rentreeEffectifsEcoles } from "./ecoles.ts";
@@ -215,7 +216,7 @@ function millesimesClasses(c: Classes | null | undefined): [SourceId, number][] 
 function sourcesUtilisees(
   manifest: Manifest, indicateurs: Indicateur[], repartitions: Repartition[], eleves: Fiche["eleves"], resultats: ResultatsVoie[],
   classes: Classes | null | undefined,
-  { historique = false, fermes = false, listes = [] }: { historique?: boolean; fermes?: boolean; listes?: RentreeListe[] } = {},
+  { historique = false, fermes = false, listes = [], batiment }: { historique?: boolean; fermes?: boolean; listes?: RentreeListe[]; batiment?: Batiment } = {},
 ): SourceRef[] {
   const rentrees = new Map<SourceId, number | null>([[historique ? "fermes" : "annuaire", null]]);
   if (fermes) rentrees.set("fermes", null);
@@ -234,6 +235,11 @@ function sourcesUtilisees(
   for (const [s, rentree] of millesimesClasses(classes)) noter(s, rentree);
   // Chiffres des écoles listées sur la fiche (écoles du secteur d'un collège)
   for (const l of listes) noter(l.source, l.rentree);
+  // Bâtiment et travaux (jeux de la région, sans millésime)
+  if (batiment?.batiments.length) noter("bzh_batiments", null);
+  else if (batiment?.anneeConstruction != null) noter("idf_lycees", null);
+  if (batiment?.ppi.length) noter("idf_ppi", null);
+  if (batiment?.operations.length) noter("idf_operations", null);
 
   return Object.values(SOURCES)
     .filter((s) => rentrees.has(s.id))
@@ -422,6 +428,7 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
     (await db.sql<{ uai: string; rpi: Rpi }>("select uai, rpi from etablissements where rpi is not null")).map((l) => [l.uai, l.rpi]),
   );
   const rentreesListes = rentreesEcoles(actives, indicateurs);
+  const batiments = await calculerBatiments(db);
   const ecolesSecteur = await ecolesDesSecteurs(db, secteurs, lignesEcoles(actives, indicateurs, rentreesListes));
   const disparus = await db.sql<{ uai: string }>("select uai from disparus order by uai");
   const historiques = await identitesHistoriques(db);
@@ -463,6 +470,8 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
       // écoles les plus proches : écoles ouvertes seulement (null sans coordonnées)
       ...(estEcole(identite.famille) && ouverte ? { ecolesProches: ecolesProches.get(uai) ?? null } : {}),
       ...secondDegre,
+      // bâtiment et travaux : second degré public (patrimoine de la région), quand elle publie quelque chose pour l'établissement
+      ...(!estEcole(identite.famille) && identite.secteur === "public" && batiments.has(uai) ? { batiment: batiments.get(uai)! } : {}),
       budget: { france: [] }, // remplacé plus bas, quand toutes les fiches (disparues comprises) sont connues
       voisins: disparuLe === null ? (voisins.get(uai) ?? null) : null,
       resultats: res,
@@ -499,6 +508,7 @@ export async function assemblerFiches(db: Db, manifest: Manifest, registre: Regi
         // élèves et classes des écoles proches : dernière rentrée des effectifs des écoles
         ...(f.ecolesProches?.liste.length && rentreeProches !== null ? [{ rentree: rentreeProches, source: "effectifs_ecoles" as const }] : []),
       ].filter((l) => l !== null),
+      ...(f.batiment ? { batiment: f.batiment } : {}),
     });
   }
   if (opts.rapport) {

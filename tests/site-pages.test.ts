@@ -347,11 +347,13 @@ describe("fiche en onglets", () => {
   const propre = (t: string | null | undefined) => (t ?? "").replace(/[ \t\r\n\u00a0\u202f]+/g, " ").trim();
   const FICHES = ["0440001A", "0440003C"];
 
-  test("barre d'onglets : huit onglets dans l'ordre, panneau Synthèse affiché d'emblée", () => {
+  test("barre d'onglets : huit onglets dans l'ordre, panneau Synthèse affiché d'emblée ; Bâtiment quand la région publie", () => {
     for (const uai of FICHES) {
       const d = doc(`etablissement/${uai}`);
+      // 0440003C figure dans les jeux régionaux de test : onglet Bâtiment et travaux après Moyens
+      const batiment = uai === "0440003C" ? ["#o-batiment"] : [];
       expect([...d.querySelectorAll("nav.onglets a")].map((a) => a.getAttribute("href"))).toEqual(
-        ["#o-synthese", "#o-eleves", "#o-social", "#o-enseignants", "#o-resultats", "#o-moyens", "#o-alentours", "#o-sources"],
+        ["#o-synthese", "#o-eleves", "#o-social", "#o-enseignants", "#o-resultats", "#o-moyens", ...batiment, "#o-alentours", "#o-sources"],
       );
       expect(d.querySelector("nav.toc")).toBeNull();
       expect(d.querySelector("#o-synthese")!.hasAttribute("data-defaut")).toBe(true);

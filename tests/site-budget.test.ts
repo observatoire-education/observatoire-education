@@ -5,7 +5,7 @@ import { beforeAll, describe, expect, test } from "bun:test";
 import { LIBELLES_BUDGET as L } from "../shared/src/libelles.ts";
 import { ecart, entier } from "../shared/src/format.ts";
 import { absenceBudget, comparaisonBudget, montantBudget, millions, motifAbsenceTerritoire } from "../site/src/lib/budget.ts";
-import { posteEvolutionAvecPersonnel, svgEvolutionBudget } from "../site/src/lib/plot.ts";
+import { posteEvolutionAvecPersonnel, svgEvolutionBudget, svgEvolutionInvestissement } from "../site/src/lib/plot.ts";
 import type { ExerciceBudget } from "../shared/src/donnees.ts";
 import { doc, page, siteTest, texte } from "./site.ts";
 
@@ -333,6 +333,43 @@ describe("svgEvolutionBudget", () => {
     const s = svgEvolutionBudget([exercice(2023, 1000, 2000), exercice(2024, null, null)]);
     expect(s).toContain("var(--pri)");
     expect(posteEvolutionAvecPersonnel([exercice(2023, 1000, 2000)])).toBe(true);
+  });
+});
+
+describe("svgEvolutionInvestissement", () => {
+  const m = (v: number | null) => ({ total: v, parEleve: v, statut: v === null ? ("non_disponible" as const) : ("ok" as const) });
+  const exercice = (e: number, inv: number | null): ExerciceBudget => ({
+    exercice: e, rentree: e - 1, source: `budget_${e}`, eleves: { public: 1, prive: 1 },
+    public: { horsPersonnel: m(1000), avecPersonnel: m(2000), investissement: m(inv) },
+    prive: { fonctionnement: m(null), investissement: m(null) }, citesScolaires: null,
+  });
+  const moy = (e: number, v: number | null) => ({
+    exercice: e,
+    public: { horsPersonnel: { valeur: null, n: 0 }, avecPersonnel: { valeur: null, n: 0 }, investissement: { valeur: v, n: 13 } },
+    prive: { fonctionnement: { valeur: null, n: 0 }, investissement: { valeur: null, n: 0 } },
+  });
+
+  test("courbe publique et moyenne de France ; un exercice absent fait un trou", () => {
+    const s = svgEvolutionInvestissement(
+      [exercice(2022, 600), exercice(2023, null), exercice(2024, 900)],
+      { niveau: "lycees", exercices: [moy(2022, 500), moy(2023, 550), moy(2024, 700)] },
+    );
+    expect(s).toContain("<svg");
+    expect(s).not.toMatch(/NaN|Infinity|undefined/);
+    expect(s).toContain('stroke="var(--pub)"');
+    expect(s).toContain('stroke="var(--muted)"');
+    expect(s).toContain("2023 non disponible");
+    expect(s).toContain("Moyenne : 2022 500");
+  });
+
+  test("sans moyenne : une seule courbe", () => {
+    const s = svgEvolutionInvestissement([exercice(2023, 600), exercice(2024, 900)], undefined);
+    expect(s).toContain('stroke="var(--pub)"');
+    expect(s).not.toContain('stroke="var(--muted)"');
+  });
+
+  test("sans aucune valeur : chaîne vide", () => {
+    expect(svgEvolutionInvestissement([exercice(2024, null)], undefined)).toBe("");
   });
 });
 

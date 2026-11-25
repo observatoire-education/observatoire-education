@@ -114,11 +114,12 @@ export async function collecter(opts: OptionsCollecte): Promise<LigneJournal[]> 
 const GRACE_MILLESIME = { mois: 1, jour: 15 };
 
 /**
- * Source API_FICHIER dont le millésime est dépassé (URL figée sur une année, aucune découverte automatique) : motif
- * d'erreur à partir du 15 février de l'année suivante, sinon null.
+ * Fichier du COG dont le millésime est dépassé (URL figée sur une année, aucune découverte automatique) : motif
+ * d'erreur à partir du 15 février de l'année suivante, sinon null. Les autres sources fichier (bâtiments des lycées
+ * bretons) ne sont pas millésimées : leur URL ne change pas d'une année à l'autre.
  */
 export function millesimePerime(s: Source, maintenant: Date): string | null {
-  if (s.api !== API_FICHIER || !s.millesimeLe) return null;
+  if (s.api !== API_FICHIER || !s.millesimeLe || !s.id.startsWith("cog_")) return null;
   const annee = Number(s.millesimeLe.slice(0, 4));
   if (maintenant < new Date(Date.UTC(annee + 1, GRACE_MILLESIME.mois, GRACE_MILLESIME.jour))) return null;
   return `COG ${annee} périmé : passer au COG ${annee + 1} dans pipeline/src/sources.ts`;

@@ -218,13 +218,26 @@ describe("fiches", () => {
 
   test("sources d'une fiche : seulement celles utilisées, avec millésime et lien brut", () => {
     const s = fiche("0440003C").sources;
-    expect(s.map((x) => x.id)).toEqual(["annuaire", "ips_lycees", "effectifs_lycees_gt", "personnels", "ips_lycees_2016", "ips_lycees_2022"]);
+    expect(s.map((x) => x.id)).toEqual(["annuaire", "ips_lycees", "effectifs_lycees_gt", "personnels", "ips_lycees_2016", "ips_lycees_2022", "idf_lycees", "idf_ppi", "idf_operations"]);
     expect(s.find((x) => x.id === "ips_lycees")).toMatchObject({
       producteur: "MEN-DEPP", rentree: 2025, collecteLe: "2026-11-22T02:17:00Z",
       brutUrl: "https://github.com/org/depot/releases/download/archives-ips_lycees-2026/ips_lycees.parquet",
     });
     expect(s.find((x) => x.id === "annuaire")!.rentree).toBeNull();
     expect(fiche("0440006F").sources.map((x) => x.id)).toContain("effectifs_lycees_pro");
+  });
+
+  test("bâtiment et travaux : second degré seulement, sources selon ce qui est publié", () => {
+    expect(fiche("0440003C").batiment!.anneeConstruction).toBe(1965);
+    // 0440006F : pas d'année, une opération PPI → seule la source PPI
+    expect(fiche("0440006F").batiment!.ppi).toHaveLength(1);
+    expect(fiche("0440006F").sources.map((x) => x.id)).toContain("idf_ppi");
+    expect(fiche("0440006F").sources.map((x) => x.id)).not.toContain("idf_lycees");
+    // un lycée absent des jeux de la région n'a pas de bâtiment, un lycée privé non plus
+    expect(fiche("0350013N").batiment).toBeUndefined();
+    expect(fiche("0350011L").batiment!.batiments).toHaveLength(3);
+    expect(fiche("0350011L").sources.map((x) => x.id)).toContain("bzh_batiments");
+    expect(fiche("0350014P").batiment).toBeUndefined();
   });
 
   test("résultats : sources ivac et ival avec la dernière session, millésimes affichés", () => {
@@ -432,6 +445,13 @@ describe("export des données du site", () => {
     expect(dep.parents.map((p) => p.niveau)).toEqual(["france", "region", "academie"]);
     expect(dep.parents[1]).toEqual({ niveau: "region", code: "52", libelle: "Pays de la Loire" });
     expect(dep.parents[2]).toEqual({ niveau: "academie", code: "17", libelle: "Nantes" });
+    // bâtiment et travaux : les lycées de la Loire-Atlantique présents dans les jeux régionaux de test
+    expect(dep.travauxLycees!.map((l) => l.uai)).toEqual(expect.arrayContaining(["0440003C", "0440006F"]));
+    expect(dep.travauxLycees!.find((l) => l.uai === "0440003C")).toMatchObject({ anneeConstruction: 1965, ppi: 2, operations: 2 });
+    const r35: DonneesTerritoire = await Bun.file(join(sortie, "departements", "35.json")).json();
+    // Ille-et-Vilaine : les lycées publics de la couche bretonne ; 0350014P est privé (année publiée, pas de bloc)
+    expect(r35.travauxLycees!.map((l) => l.uai)).toEqual(["0350011L", "0350012M"]); // par nom
+    expect(r35.travauxLycees!.find((l) => l.uai === "0350011L")).toMatchObject({ anneeConstruction: 1962, ppi: 0, operations: 0 });
     expect(dep.communes).toContainEqual({ niveau: "commune", code: "44109", libelle: "Nantes" });
     expect(dep.enfants).toEqual([]);
     expect(dep.carte.genre).toBe("points");
@@ -497,7 +517,7 @@ describe("export des données du site", () => {
     expect(france.carte.genre).toBe("departements");
 
     const sources: Record<string, DonneesSource> = await Bun.file(join(sortie, "sources.json")).json();
-    expect(Object.keys(sources).filter((k) => !k.startsWith("budget_") && !k.startsWith("transport_"))).toHaveLength(27);
+    expect(Object.keys(sources).filter((k) => !k.startsWith("budget_") && !k.startsWith("transport_"))).toHaveLength(31);
     expect(Object.keys(sources).filter((k) => k.startsWith("transport_")).sort()).toEqual([2020, 2021, 2022, 2023, 2024, 2025].map((e) => `transport_${e}`));
     expect(Object.keys(sources)).toContain("budget_2024");
     expect(sources.ips_colleges!.actuelle!.collecteLe).toBe("2026-11-22T02:17:00Z");
