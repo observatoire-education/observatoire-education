@@ -207,6 +207,7 @@ export async function ecolesDesCommunes(db: Db, actives: Fiche[], table?: TableC
       uai in (select uai from disparus) as fiche
     from fermes
     where famille in (${enSql(FAMILLES_ECOLES)}) and date_fermeture >= date '2012-01-01' and nullif(code_commune, '') is not null
+      and dep not like '98%' -- hors du périmètre géographique (comme les établissements ouverts) : aucune page de territoire
       and uai not in (select uai from etablissements)`);
   // Élèves et classes par commune d'alors et par rentrée ; une école sans nombre rend le total inconnu (0 classe est
   // une absence de donnée, comme sur la fiche). Écoles : ouvertes, fermées, et pages du registre sorties de l'Annuaire

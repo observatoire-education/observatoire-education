@@ -332,3 +332,8 @@ describe("pages commune : robustesse des données des fermés", () => {
     expect(ecoles.get("44888")?.ecoles.fermees.some((e) => e.uai === "0440113R" && e.nom === "Établissement sans nom publié")).toBe(true);
   });
 });
+
+test("une école fermée hors du périmètre géographique (98x) ne crée aucune page commune", async () => {
+  const ecoles = await ecolesDesCommunes(await dbTest(), []);
+  expect(ecoles.has("98612")).toBe(false);
+});
