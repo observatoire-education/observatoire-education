@@ -10,5 +10,8 @@
   "CONTACT": {
     "ACTIF": true,
     "TURNSTILE_SITEKEY": "1x00000000000000000000AA"
+  },
+  "VITRINE": {
+    "UAI": "0440001A"
   }
 }
