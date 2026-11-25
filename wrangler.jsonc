@@ -5,5 +5,14 @@
     "directory": "./dist",
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "404-page"
-  }
+  },
+  // Domaine du site, servi par le Worker (la zone est gérée par Cloudflare). Le www sert les mêmes pages ;
+  // la balise canonical de chaque page pointe vers l'apex.
+  "routes": [
+    { "pattern": "observatoireeducation.fr", "custom_domain": true },
+    { "pattern": "www.observatoireeducation.fr", "custom_domain": true }
+  ],
+  // L'aperçu de recette (*.workers.dev) et les URL d'aperçu par version ne servent plus après la bascule.
+  "workers_dev": false,
+  "preview_urls": false
 }

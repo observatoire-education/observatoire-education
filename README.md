@@ -89,10 +89,9 @@ Avant de changer les serveurs DNS chez OVH, vérifier dans la zone importée :
 
 - les MX : `mx1.mail.ovh.net` (priorité 1), `mx2.mail.ovh.net` (5), `mx3.mail.ovh.net` (100) ;
 - le TXT SPF ;
-- les enregistrements DKIM d'OVH ;
-- supprimer les quatre A `185.199.108.153` à `185.199.111.153` de GitHub Pages.
+- les enregistrements DKIM d'OVH.
 
-Le changement des serveurs DNS chez OVH n'a lieu qu'après la recette décrite plus loin (procédure de bascule).
+Les enregistrements de GitHub Pages (les quatre A `185.199.108.153` à `185.199.111.153` et le CNAME `www` vers `observatoire-education.github.io`) restent en place jusqu'à la bascule : ils servent le site pendant la propagation des serveurs DNS. Le changement des serveurs DNS chez OVH n'a lieu qu'après la recette décrite plus loin (procédure de bascule).
 
 Ensuite, lancer le workflow `nightly` à la main (*Actions → nightly → Run workflow*) : première collecte, archives, premier déploiement.
 
@@ -111,9 +110,11 @@ Procédure à suivre, dans l'ordre, une fois les préalables faits :
    - `/etablissement/0440001a/` redirige ;
    - une URL inconnue rend la page 404 ;
    - `robots.txt` est identique sur les deux hôtes.
-4. Dans un seul commit de bascule : ajouter à `wrangler.jsonc` `routes: [{ "pattern": "observatoireeducation.fr", "custom_domain": true }]` (pas avant, la zone devant exister dans Cloudflare), supprimer le fichier `CNAME` à la racine (il ne servait qu'à GitHub Pages) et ajouter `"workers_dev": false` et `"preview_urls": false` pour que l'hôte `workers.dev` cesse de servir une fois le domaine personnalisé actif.
-5. Changer les serveurs DNS chez OVH (par le porteur du projet), après la vérification des enregistrements décrite plus haut.
-6. Tester l'envoi d'un message vers `contact@observatoireeducation.fr`.
+4. Changer les serveurs DNS chez OVH (par le porteur du projet) pour ceux attribués par Cloudflare, après la vérification des enregistrements décrite plus haut, en gardant les enregistrements de GitHub Pages : le site reste servi par GitHub Pages pendant la propagation.
+5. Attendre que la zone soit « Active » dans Cloudflare.
+6. Supprimer dans la zone Cloudflare les quatre A de GitHub Pages et le CNAME `www` (Cloudflare refuse un domaine personnalisé tant qu'un enregistrement existe pour ce nom), puis pousser aussitôt le commit de bascule (branche `bascule-cloudflare`) : `wrangler.jsonc` déclare les domaines personnalisés `observatoireeducation.fr` et `www.observatoireeducation.fr`, désactive `workers_dev` et `preview_urls` (l'aperçu de recette cesse de servir), et le fichier `CNAME`, propre à GitHub Pages, est supprimé. Le site est coupé entre la suppression des enregistrements et la fin du déploiement (quelques minutes).
+7. Vérifier `https://observatoireeducation.fr/` et `https://www.observatoireeducation.fr/`, puis tester l'envoi d'un message vers `contact@observatoireeducation.fr`.
+8. Désactiver GitHub Pages dans *Settings → Pages* du dépôt.
 
 La bascule est validée quand une nuit de collecte et de déploiement a réussi après elle.
 
@@ -134,7 +135,7 @@ La collecte tourne ensuite chaque nuit à 2 h 17 UTC. Une nuit sans changement d
 
 La phase Écoles ajoute 9 sources (6 sources d'écoles : `effectifs_ecoles`, `ips_ecoles_2016`, `ips_ecoles`, `personnels_ecoles`, `classes_ecoles`, `ecoles_ep` ; la carte scolaire des collèges ; deux fichiers COG de l'Insee) et élargit les extraits du budget (voir plus bas). Elle se met en ligne en deux temps : d'abord le changement d'hébergement seul (lot 0), puis le reste de la branche. La recette compare le site en ligne (GitHub Pages) au déploiement sur Workers et doit conclure à zéro écart : elle n'a de sens que si les deux hébergements servent le même site, donc avant l'arrivée des écoles. Ordre à suivre :
 
-1. Lot 0 seul. Créer une branche au commit `c028e7a` de `phase-ecoles` (il ne contient que le lot 0 et les documents), y reprendre le correctif du déploiement (`git cherry-pick 4d0473f` : déploiement par `bunx wrangler` et cache des scripts, sans lequel le job `deployer` échoue), la fusionner dans `main`, puis suivre la procédure de recette et de bascule ci-dessus. Attendre une nuit de collecte et de déploiement réussie après la bascule. Le nombre de fichiers du site avec les écoles dépasse ce que GitHub Pages peut servir : le site doit déjà être sur Cloudflare Workers.
+1. Lot 0 seul (fait le 25 novembre 2026 : le site est servi par Cloudflare Workers). Créer une branche au commit `c028e7a` de `phase-ecoles` (il ne contient que le lot 0 et les documents), y reprendre le correctif du déploiement (`git cherry-pick 4d0473f` : déploiement par `bunx wrangler` et cache des scripts, sans lequel le job `deployer` échoue), la fusionner dans `main`, puis suivre la procédure de recette et de bascule ci-dessus. Attendre une nuit de collecte et de déploiement réussie après la bascule. Le nombre de fichiers du site avec les écoles dépasse ce que GitHub Pages peut servir : le site doit déjà être sur Cloudflare Workers.
 2. Fusionner le reste de la branche `phase-ecoles` dans `main`.
 3. Lancer le workflow `nightly` à la main (`workflow_dispatch`) : première collecte des 9 nouvelles sources, et nouvelle version archivée de chaque exercice du budget.
 4. Vérifier le journal de la collecte et du build : taux de rapprochement des adresses avec la carte scolaire, têtes de PIAL sans fiche, alerte « COG périmé » (à partir du 15 février, changer alors le millésime dans `pipeline/src/sources.ts`), nombre de fichiers affiché par le garde-fou (sous 95 000), poids des fiches et des pages commune (médiane, 95e centile, maximum ; plafond de 150 000 octets par page).
