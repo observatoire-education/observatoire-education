@@ -12,8 +12,8 @@ import { absenceBudget, montantBudget, niveauDe } from "../lib/budget";
 import { CONFIG, lienPermanent } from "../lib/config";
 import { tauxEntier, vaSignee } from "../lib/resultats";
 
-interface Props { f: Fiche; genereLe: string }
-const { f, genereLe } = Astro.props;
+interface Props { f: Fiche }
+const { f } = Astro.props;
 const lien = lienPermanent(`/etablissement/${f.uai}/`);
 const qr = await QRCode.toString(lien, { type: "svg", margin: 0, errorCorrectionLevel: "M" });
 const prive = f.secteur === "prive_sous_contrat";
@@ -130,7 +130,7 @@ const nd = (v: number | null) => (v === null ? "n. d." : entier(v));
       <Fermeture f={f} gras />
     </div>
     <div class="qrw">
-      <div>Fiche éditée le {date(genereLe)}<br /><span class="num">{lien}</span></div>
+      <div><span data-date-edition hidden>Fiche éditée le <span></span><br /></span><span class="num">{lien}</span></div>
       <div class="qr" set:html={qr} />
     </div>
   </div>

@@ -45,7 +45,9 @@ describe("fiche imprimable A4", () => {
     expect(t).toContain("Collège Jules-Verne");
     expect(t).toContain("UAI 0440001A");
     expect(t).toContain("Académie de Nantes");
-    expect(t).toMatch(/Fiche éditée le \d\d\/\d\d\/\d{4}/);
+    // la date d'édition est ajoutée par /js/fiche.js à l'ouverture, jamais au build (pages stables d'un build à l'autre)
+    expect(t).toContain("Fiche éditée le");
+    expect(t).not.toMatch(/Fiche éditée le \d/);
     expect(t).toContain("/etablissement/0440001A/");
   });
 

@@ -1,5 +1,13 @@
 // Actions de la fiche : imprimer, copier le lien, afficher la carte (MapLibre et tuiles OpenFreeMap, chargés au clic).
 (function () {
+  // Date d'édition de la fiche imprimable : celle du jour de consultation, ajoutée ici et non au build pour que
+  // les pages ne changent pas d'une reconstruction à l'autre (déploiements incrémentaux).
+  var edition = document.querySelector("[data-date-edition]");
+  if (edition) {
+    edition.querySelector("span").textContent = new Date().toLocaleDateString("fr-FR");
+    edition.hidden = false;
+  }
+
   var imprimer = document.getElementById("imprimer");
   if (imprimer) imprimer.addEventListener("click", function () { window.print(); });
 

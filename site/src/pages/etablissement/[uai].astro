@@ -13,7 +13,6 @@ export function getStaticPaths() {
 }
 
 const f = lireFiche(Astro.params.uai!);
-const genereLe = new Date().toISOString();
 const prive = f.secteur === "prive_sous_contrat";
 const ecole = estEcole(f.famille);
 // Une école est publique ou privée sous contrat (accord au féminin).
@@ -22,6 +21,6 @@ const secteur = ecole ? (prive ? "privée sous contrat" : "publique") : prive ? 
 <Base titre={`${f.nom} · ${f.commune}`} chemin={`/etablissement/${f.uai}/`}
   description={`${FAMILLES[f.famille]} ${secteur} à ${f.commune} (UAI ${f.uai}) : chiffres publics sourcés et datés.`}>
   <Entete f={f} />
-  {ecole ? <FicheEcole f={f} genereLe={genereLe} /> : <FicheSecondDegre f={f} genereLe={genereLe} />}
+  {ecole ? <FicheEcole f={f} /> : <FicheSecondDegre f={f} />}
   <script is:inline src="/js/fiche.js" defer></script>
 </Base>

@@ -6,8 +6,8 @@ import type { Fiche } from "@obs/shared/types";
 import { anneeScolaire } from "../lib/affichage";
 import { lienPermanent } from "../lib/config";
 
-interface Props { f: Fiche; genereLe: string }
-const { f, genereLe } = Astro.props;
+interface Props { f: Fiche }
+const { f } = Astro.props;
 const lien = lienPermanent(`/etablissement/${f.uai}/`);
 ---
 <section id="sources">
@@ -25,6 +25,6 @@ const lien = lienPermanent(`/etablissement/${f.uai}/`);
         </li>
       ))}
     </ul>
-    <div class="src">Licence Ouverte 2.0 (Etalab). Page générée le {date(genereLe)}. Lien permanent : <span class="num">{lien}</span></div>
+    <div class="src">Licence Ouverte 2.0 (Etalab). Lien permanent : <span class="num">{lien}</span></div>
   </div>
 </section>

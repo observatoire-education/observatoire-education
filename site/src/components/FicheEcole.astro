@@ -18,8 +18,8 @@ import Sources from "./Sources.astro";
 import { absente, anneeScolaire, comparaison, indicateur, reference, refAbsente, repartition, source, valeur } from "../lib/affichage";
 import { svgElevesClasses } from "../lib/plot";
 
-interface Props { f: Fiche; genereLe: string }
-const { f, genereLe } = Astro.props;
+interface Props { f: Fiche }
+const { f } = Astro.props;
 const nd = LIBELLES.nonDisponible;
 const NIVEAUX: Niveau[] = ["departement", "academie", "france"];
 const libelleNiveau = (n: Niveau) => (n === "departement" ? f.depLibelle : NIVEAUX_TERRITORIAUX[n]);
@@ -222,5 +222,5 @@ const REPARTITIONS = [["ages", "Âge"], ["anciennete", "Ancienneté dans l'écol
   </section>
 )}
 
-<Sources f={f} genereLe={genereLe} />
-<FicheA4 f={f} genereLe={genereLe} />
+<Sources f={f} />
+<FicheA4 f={f} />

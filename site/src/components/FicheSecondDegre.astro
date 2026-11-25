@@ -25,8 +25,8 @@ import {
 import { niveauDe } from "../lib/budget";
 import { aPointCalcule, domaine, seriesReferencesIps, svgBarres, svgCourbe, svgPoints } from "../lib/plot";
 
-interface Props { f: Fiche; genereLe: string }
-const { f, genereLe } = Astro.props;
+interface Props { f: Fiche }
+const { f } = Astro.props;
 const prive = f.secteur === "prive_sous_contrat";
 const college = f.famille === "college" || f.famille === "erea";
 
@@ -283,5 +283,5 @@ const franceBudget = f.budget.france.find((m) => m.niveau === niveauBudget);
     <div class="card"><BlocPial pial={f.pial} uai={f.uai} /></div>
   </section>
 )}
-<Sources f={f} genereLe={genereLe} />
-<FicheA4 f={f} genereLe={genereLe} />
+<Sources f={f} />
+<FicheA4 f={f} />
