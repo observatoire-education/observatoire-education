@@ -39,7 +39,8 @@ export type SourceId =
   | "carte_scolaire"
   | "cog_mouvements"
   | "cog_communes"
-  | `budget_${number}`;
+  | `budget_${number}`
+  | `transport_${number}`;
 
 /** Une valeur, son statut et son origine (source et rentrée de septembre). */
 export interface Mesure {

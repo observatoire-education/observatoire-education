@@ -9,7 +9,7 @@ import { type Db, ouvrir } from "../pipeline/src/db.ts";
 import { connexion, executer, ident, lignes, litteral } from "../pipeline/src/duck.ts";
 import { calculerIndicateurs, calculerRepartitions } from "../pipeline/src/indicateurs.ts";
 import type { Registre } from "../pipeline/src/registre.ts";
-import { EXERCICES_BUDGET, SOURCES, type Source, sourceBudget } from "../pipeline/src/sources.ts";
+import { EXERCICES_BUDGET, SOURCES, type Source, sourceBudget, sourceTransport } from "../pipeline/src/sources.ts";
 
 export const FIXTURES = join(import.meta.dir, "fixtures");
 
@@ -21,7 +21,7 @@ export const FIXTURES = join(import.meta.dir, "fixtures");
 export async function cheminsFixtures(dossier: string): Promise<Record<SourceId, string>> {
   const duck = await connexion();
   const chemins = {} as Record<SourceId, string>;
-  const budgets = [2023, 2024].map((e) => sourceBudget(e, EXERCICES_BUDGET[e]!));
+  const budgets = [2023, 2024].flatMap((e) => [sourceBudget(e, EXERCICES_BUDGET[e]!), sourceTransport(e, EXERCICES_BUDGET[e]!)]);
   for (const s of [...Object.values(SOURCES), ...budgets] as Source[]) {
     const csv = `read_csv(${litteral(join(FIXTURES, `${s.id}.csv`))}, header = true, all_varchar = true)`;
     const presentes = (await lignes<{ column_name: string }>(duck, `describe select * from ${csv}`)).map((c) => c.column_name);
@@ -75,12 +75,12 @@ export const requeteTest = (id: string, datasetId: string): string =>
 /** Manifest avec une version fictive par source, collectée le 22/11/2026. */
 export function manifestTest(dossier: string): Manifest {
   const m = Manifest.lire(join(dossier, "manifest.json"));
-  for (const s of [...Object.values(SOURCES), ...[2023, 2024].map((e) => sourceBudget(e, EXERCICES_BUDGET[e]!))]) {
+  for (const s of [...Object.values(SOURCES), ...[2023, 2024].flatMap((e) => [sourceBudget(e, EXERCICES_BUDGET[e]!), sourceTransport(e, EXERCICES_BUDGET[e]!)])]) {
     m.ajouter(s.id, {
       sha256: `${s.id}`.padEnd(64, "0"), tag: `archives-${s.id}-2026`, fichier: `${s.id}.parquet`,
       url: `https://github.com/org/depot/releases/download/archives-${s.id}-2026/${s.id}.parquet`,
       modified: "2026-11-01T00:00:00Z", collecteLe: "2026-11-22T02:17:00Z", lignes: 10,
-      ...(s.id.startsWith("budget_") ? { requete: requeteTest(s.id, s.datasetId) } : {}),
+      ...(s.id.startsWith("budget_") || s.id.startsWith("transport_") ? { requete: requeteTest(s.id, s.datasetId) } : {}),
     });
   }
   return m;

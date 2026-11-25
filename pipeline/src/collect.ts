@@ -10,7 +10,7 @@ import { ajouterCorrections, comparerVersions } from "./corrections.ts";
 import type { Depot } from "./depot.ts";
 import { connexion, executer, ident, litteral } from "./duck.ts";
 import { ErreurParquetInvalide, type OdsClient, urlExport } from "./ods.ts";
-import { API_ECO, API_FICHIER, type Source, sourceBudget, toutesSources } from "./sources.ts";
+import { API_ECO, API_FICHIER, type Source, sourceBudget, sourceTransport, toutesSources } from "./sources.ts";
 
 /** Ce que la collecte attend d'un client par source : satisfait par OdsClient et par FichierClient. */
 export interface ClientSource {
@@ -98,6 +98,9 @@ export async function collecter(opts: OptionsCollecte): Promise<LigneJournal[]> 
   if (nouvelle) {
     const s = nouvelle;
     await essayer(s.id, () => traiter(s, opts, duck));
+    // Même jeu que le budget : le transport scolaire de l'exercice est collecté avec lui.
+    const t = sourceTransport(suivant, s.datasetId);
+    await essayer(t.id, () => traiter(t, opts, duck));
   }
   duck.closeSync();
   if (opts.journal) {

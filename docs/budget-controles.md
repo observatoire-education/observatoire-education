@@ -252,3 +252,55 @@ En 2024, 3 249 communes ont un budget principal dans le jeu ; 3 185 ont des lign
 
 - **Établissements fermés.** Les élèves comptés sont ceux des établissements du périmètre actuel. Les élèves d'un établissement fermé depuis ne sont pas comptés dans les exercices anciens.
 - **Personnel extérieur.** Le personnel retenu se limite aux comptes 64. Le personnel extérieur (621) n'est pas compté.
+
+## Transport scolaire (phase Transport, lot 1)
+
+Inventaire fait le 2026-11-25 sur les balances 2020 à 2025 (API data.economie.gouv.fr, `cbudg = "1"`, catégories REG, CTU, DEPT, ML, PARIS, GFP, SYND). Montants : dépense nette (`obnetdeb − oobdeb − obnetcre + oobcre`), tous comptes confondus, en M€.
+
+### Codes retenus selon la nomenclature
+
+Le sens d'un code de fonction dépend de la nomenclature comptable de la collectivité (colonne `nomen`) :
+
+| Nomenclature | Codes retenus | Motif |
+|---|---|---|
+| M57 (toutes catégories) et M52 (départements jusqu'en 2023) | `81`, `9081`, `9381` (fonction 81 « transports scolaires », seule ou après les chapitres 908 et 938) ; `252`, `90252`, `93252` (fonction 252 « transports scolaires » du bloc enseignement) | Nomenclature fonctionnelle : 8 Transports, 81 Transports scolaires, 82 Transports publics de voyageurs. |
+| M14 (communes, intercommunalités, syndicats jusqu'en 2023) | `252`, `90252`, `93252` | En M14, la fonction 8 regroupe les services urbains : `811` eau et assainissement, `812` ordures ménagères (3,3 Md€ pour les GFP en 2020), `813` propreté. Retenir `81x` en M14 compterait les déchets comme du transport scolaire. |
+| M71 (régions jusqu'en 2022) | aucun | Voir ci-dessous. |
+
+Codes exclus : `82x` et `9382x` (transports publics de voyageurs : `93821` = 1,56 Md€ pour les régions en 2024, surtout le TER) ; `90281` (chapitre 902 + fonction 281, restauration et hébergement) ; `9025` et `9325` (fonction 25 des départements en M52) ; `93881` (fonction 881).
+
+### Régions en M71 : exercices non comparables
+
+En 2020, la plupart des régions tiennent leurs comptes en M71. La documentation de cette nomenclature n'a pas pu être consultée (les fichiers du site collectivites-locales.gouv.fr renvoient une erreur 404). Le code `93815`, candidat le plus proche, ne correspond pas aux montants des mêmes régions une fois passées en M57 (code `9381`) :
+
+| Région | 2020, M71, `93815` | 2024, M57, `9381` |
+|---|---|---|
+| Auvergne-Rhône-Alpes | 268 | 220 |
+| Grand Est | 42 | 202 |
+| Nouvelle-Aquitaine | 11 | 218 |
+| Occitanie | 55 | 209 |
+| Bourgogne-Franche-Comté | 16 | 147 |
+| Hauts-de-France | 234 | 43 |
+
+L'imputation du transport scolaire varie donc d'une région à l'autre en M71 (une part est sans doute dans `93813`, transport routier). **Règle retenue** : aucun montant n'est tiré des comptes en M71 ; la source télécharge seulement des lignes marqueurs (`93811`, `93813`, `93815`) pour savoir quels exercices d'une région sont tenus en M71, et le site l'indique au lieu d'afficher une absence de dépense.
+
+Le passage de Hauts-de-France de 234 M€ (M71) à 43 M€ (M57) montre aussi qu'en M57 une région peut imputer une part du transport scolaire ailleurs (transport interurbain). La note du site le dit : les montants sont ceux que la collectivité impute à cette fonction.
+
+### Contrôle de vraisemblance (2024, régions, `9381` + `93252`, dépense nette)
+
+| Région | Inventaire | Phase 3 (fonctionnement, fonction 81) | Écart |
+|---|---|---|---|
+| Auvergne-Rhône-Alpes | 226 | 219 | 3 % |
+| Pays de la Loire | 182 | 175 | 4 % |
+
+Écart inférieur à 10 % : il vient de l'investissement et de comptes hors classe 6, compris dans la dépense nette ci-dessus.
+
+### Postes
+
+- **Fonctionnement** : comptes de classe 6, hors `68`, `675` et `676` (même règle que le budget des établissements).
+- **Investissement** : comptes `20`, `21` et `23`.
+- **Produits des services** : recette nette (`obnetcre − oobcre − obnetdeb + oobdeb`) des comptes `70`, où figurent les participations des familles.
+
+### Rattachement
+
+Régions, CTU, départements, Métropole de Lyon, Collectivité européenne d'Alsace et Ville de Paris : comme pour le budget. Intercommunalités (GFP) et syndicats (SYND) : département de leur siège (`ndept`), un par SIREN ; ceux dont le département n'est pas reconnu sont listés dans la table `transport_inconnus`. Les communes ne sont pas comptées.

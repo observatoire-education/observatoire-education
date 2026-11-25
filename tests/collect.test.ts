@@ -233,7 +233,7 @@ describe("collecte", () => {
     await collecter(opts(fauxClient({}).client, { journal }));
     await collecter(opts(fauxClient({}).client, { journal }));
     const l = (await Bun.file(journal).text()).trim().split("\n").map((x) => JSON.parse(x));
-    expect(l).toHaveLength(66); // vingt-sept sources et six exercices du budget, deux fois
+    expect(l).toHaveLength(78); // vingt-sept sources et six exercices du budget et du transport, deux fois
     expect(l[0]).toMatchObject({ date: "2026-11-23T02:17:00.000Z", source: "annuaire" });
   });
 
@@ -312,6 +312,8 @@ describe("budget : exercices et découverte", () => {
     expect(manifest.jeuDecouvert("budget_2026")).toBe("jeu-2026");
     expect(manifest.derniere("budget_2026")!.requete).toContain("where=");
     expect(Manifest.lire(manifest.chemin).jeuDecouvert("budget_2026")).toBe("jeu-2026");
+    expect(ligne(j, "transport_2026")).toMatchObject({ action: "telecharge" });
+    expect(manifest.derniere("transport_2026")!.requete).toContain("where=");
     // la nuit suivante : le jeu découvert est une source connue, on cherche 2027
     const j2 = await collecter(opts(f.client));
     expect(ligne(j2, "budget_2026").action).toBe("inchange");
@@ -337,7 +339,7 @@ describe("budget : exercices et découverte", () => {
   test("aucun jeu : aucune ligne de journal pour l'exercice", async () => {
     const j = await collecter(opts(fauxClient({}).client));
     expect(j.filter((l) => l.source === "budget_2026")).toEqual([]);
-    expect(j).toHaveLength(33);
+    expect(j).toHaveLength(39);
   });
 
   test("un extrait budget sans la colonne fonction est rejeté", async () => {
@@ -402,7 +404,7 @@ describe("cache local", () => {
     await collecter(opts(fauxClient({}).client));
     const cache = join(racine, "cache");
     const chemins = await assurerCache(manifest, depot, cache);
-    expect(Object.keys(chemins)).toHaveLength(33);
+    expect(Object.keys(chemins)).toHaveLength(39);
     await Bun.write(chemins.ips_lycees, "corrompu");
     const encore = await assurerCache(manifest, depot, cache);
     expect(await empreinte(encore.ips_lycees)).toBe(manifest.derniere("ips_lycees")!.sha256);

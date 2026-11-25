@@ -3,6 +3,7 @@
 import type { SourceId } from "@obs/shared/types";
 import type { Manifest } from "./archive.ts";
 import { colonnesDe, JEUX_EFFECTIFS } from "./colonnes-eleves.ts";
+import { FILTRE_TRANSPORT } from "./transport-constantes.ts";
 
 export interface Source {
   id: SourceId;
@@ -445,6 +446,22 @@ export function sourceBudget(exercice: number, datasetId: string): Source {
   };
 }
 
+/** Transport scolaire d'un exercice : même jeu DGFiP que le budget, filtre propre (transport-constantes.ts). */
+export function sourceTransport(exercice: number, datasetId: string): Source {
+  return {
+    id: `transport_${exercice}`,
+    datasetId,
+    titre: `Balances comptables des collectivités, transport scolaire ${exercice}`,
+    producteur: "DGFiP",
+    pageUrl: `${PORTAIL_ECO}/explore/dataset/${datasetId}/information/`,
+    api: API_ECO,
+    filtre: FILTRE_TRANSPORT,
+    colonnesRequises: COLONNES_BUDGET,
+    referentiel: false,
+    millesime: { colonne: "exer", cles: ["categ", "ndept", "cregi", "lbudg", "siren", "fonction"] },
+  };
+}
+
 /** Sources de phase 1 + exercices budget connus + jeux découverts au catalogue (enregistrés dans le manifest). */
 export function toutesSources(manifest: Manifest): Source[] {
   const budgets = new Map<number, string>(Object.entries(EXERCICES_BUDGET).map(([e, d]) => [Number(e), d]));
@@ -452,5 +469,10 @@ export function toutesSources(manifest: Manifest): Source[] {
     const exercice = Number(id.replace("budget_", ""));
     if (!budgets.has(exercice)) budgets.set(exercice, datasetId);
   }
-  return [...Object.values(SOURCES), ...[...budgets].sort(([a], [b]) => a - b).map(([e, d]) => sourceBudget(e, d))];
+  const exercices = [...budgets].sort(([a], [b]) => a - b);
+  return [
+    ...Object.values(SOURCES),
+    ...exercices.map(([e, d]) => sourceBudget(e, d)),
+    ...exercices.map(([e, d]) => sourceTransport(e, d)),
+  ];
 }
