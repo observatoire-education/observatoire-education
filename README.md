@@ -1,6 +1,6 @@
 # Observatoire citoyen de l'éducation en France
 
-Les chiffres publics de chaque école, collège et lycée de France, public et privé sous contrat : sourcés, datés, sans palmarès.
+Toutes les données publiques sur chaque école, collège et lycée de France, public et privé sous contrat : recoupées, sourcées et datées, sans palmarès.
 
 Une page par établissement du second degré et par école, des pages par département, par académie, par région et par commune, une page France, le budget des collectivités en euros par élève, les résultats des examens et la valeur ajoutée, l'historique de l'IPS depuis 2016, les établissements fermés et leurs successeurs, une recherche, une fiche imprimable A4. Chaque chiffre est situé par rapport aux moyennes du département, de l'académie et de la France, et porte sa source, son millésime et un lien vers la donnée brute archivée. Le site ne commente pas les chiffres. Avec les écoles et les communes, le site compte environ 92 000 fichiers (estimation, à confirmer par le premier build réel ; le garde-fou s'arrête à 95 000).
 
