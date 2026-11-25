@@ -124,3 +124,19 @@ export function motifRejet(s: Source, d: Description, precedente?: Version): str
   }
   return null;
 }
+
+/** Sérialisation stable (clés triées) de ce qui compte pour le site : versions et version actuelle de chaque source.
+ * `vus` (date vue, qui bouge chaque jour pour l'annuaire) et `jeux` sont ignorés. */
+export function contenuUtile(json: string): string {
+  const { versions = {}, actuelles = {} } = JSON.parse(json) as Partial<Contenu>;
+  const trier = (x: unknown): unknown =>
+    Array.isArray(x) ? x.map(trier)
+    : x && typeof x === "object" ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => (a < b ? -1 : 1)).map(([k, v]) => [k, trier(v)]))
+    : x;
+  return JSON.stringify(trier({ versions, actuelles }));
+}
+
+/** Le site doit-il être republié ? `avant` est le manifeste de la dernière publication réussie (null : aucune). */
+export function donneesChangees(avant: string | null, apres: string): boolean {
+  return avant === null || contenuUtile(avant) !== contenuUtile(apres);
+}
