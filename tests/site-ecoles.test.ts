@@ -214,10 +214,14 @@ describe("rattachements d'une école", () => {
     expect(t).toContain("Circonscription : NANTES 1");
   });
 
-  test("les rattachements viennent juste après l'en-tête, en tête du sommaire", () => {
+  test("les rattachements viennent après les moyens, en fin de page avant les sources", () => {
     const d = doc(fiche("0440201A"));
-    expect(d.querySelector("main section")?.id).toBe("rattachements");
-    expect(liens(d.querySelector("nav.toc"))[0]).toBe("#rattachements");
+    const ids = [...d.querySelectorAll("main section")].map((s) => s.id);
+    expect(ids.indexOf("rattachements")).toBeGreaterThan(ids.indexOf("ens"));
+    expect(ids.indexOf("rattachements")).toBeLessThan(ids.indexOf("sources"));
+    const toc = liens(d.querySelector("nav.toc"));
+    expect(toc.indexOf("#rattachements")).toBeGreaterThan(toc.indexOf("#ens"));
+    expect(toc.indexOf("#rattachements")).toBeLessThan(toc.indexOf("#sources"));
   });
 
   test("école privée sous contrat non rapprochée : absence dite, note du privé", () => {
@@ -313,10 +317,12 @@ describe("collège : écoles de son secteur et PIAL", () => {
 const NOTE_DISTANCES = "Distances à vol d'oiseau, sans tenir compte du relief ni des routes.";
 
 describe("autour de l'école", () => {
-  test("juste après les rattachements, dans le sommaire", () => {
+  test("entre les rattachements et les sources, dans la page et le sommaire", () => {
     const d = doc(fiche("0440104D"));
-    expect([...d.querySelectorAll("main section")].slice(0, 2).map((s) => s.id)).toEqual(["rattachements", "autour"]);
-    expect(liens(d.querySelector("nav.toc")).slice(0, 2)).toEqual(["#rattachements", "#autour"]);
+    const ids = [...d.querySelectorAll("main section")].map((s) => s.id);
+    expect(ids.slice(ids.indexOf("rattachements"), ids.indexOf("sources") + 1)).toEqual(["rattachements", "autour", "sources"]);
+    const toc = liens(d.querySelector("nav.toc"));
+    expect(toc.slice(toc.indexOf("#rattachements"), toc.indexOf("#sources") + 1)).toEqual(["#rattachements", "#autour", "#sources"]);
     expect(propre(d.querySelector("#autour h2")?.textContent)).toBe("Autour de l'école");
   });
 

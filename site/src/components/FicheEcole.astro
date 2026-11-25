@@ -72,11 +72,8 @@ const sourcePersonnels = source(f, "personnels_ecoles");
 const REPARTITIONS = [["ages", "Âge"], ["anciennete", "Ancienneté dans l'école"]] as const;
 ---
 <nav class="toc" aria-label="Sommaire">
-  {f.rattachements && <a href="#rattachements">{LR.titre}</a>}{f.ecolesProches !== undefined && <a href="#autour">{LP.titre}</a>}<a href="#eleves">Élèves</a><a href="#classes">{LE.classes}</a><a href="#social">Composition sociale</a><a href="#ens">Enseignants</a>{f.budget.ecoles !== undefined && <a href="#moyens">Moyens</a>}<a href="#sources">Sources</a>
+  <a href="#eleves">Élèves</a><a href="#classes">{LE.classes}</a><a href="#social">Composition sociale</a><a href="#ens">Enseignants</a>{f.budget.ecoles !== undefined && <a href="#moyens">Moyens</a>}{f.rattachements && <a href="#rattachements">{LR.titre}</a>}{f.ecolesProches !== undefined && <a href="#autour">{LP.titre}</a>}<a href="#sources">Sources</a>
 </nav>
-
-{f.rattachements && <BlocRattachements r={f.rattachements} uai={f.uai} prive={f.secteur === "prive_sous_contrat"} />}
-{f.ecolesProches !== undefined && <BlocEcolesProches f={f} p={f.ecolesProches} />}
 
 <section id="eleves">
   <h2>Élèves</h2>
@@ -221,6 +218,9 @@ const REPARTITIONS = [["ages", "Âge"], ["anciennete", "Ancienneté dans l'écol
       evolution={false} niveau="ecoles" motif={f.budget.motif} />
   </section>
 )}
+
+{f.rattachements && <BlocRattachements r={f.rattachements} uai={f.uai} prive={f.secteur === "prive_sous_contrat"} />}
+{f.ecolesProches !== undefined && <BlocEcolesProches f={f} p={f.ecolesProches} />}
 
 <Sources f={f} />
 <FicheA4 f={f} />
