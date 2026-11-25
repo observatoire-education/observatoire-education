@@ -31,8 +31,8 @@ describe("alertes avec gh", () => {
 
   test("motif lu dans le dernier commentaire : pas de doublon", async () => {
     const gh = fauxGh([{
-      number: 4, body: marqueur("source:annuaire", "ancien"),
-      comments: [{ body: marqueur("source:annuaire", "colonne manquante") }],
+      number: 4, author: { login: "github-actions" }, body: marqueur("source:annuaire", "ancien"),
+      comments: [{ author: { login: "github-actions" }, body: marqueur("source:annuaire", "colonne manquante") }],
     }]);
     const actions = await executerAlertes(gh.lancer, "o/r", LABEL_SOURCE,
       [{ cle: "source:annuaire", enEchec: true, motif: "colonne manquante" }], declarees, LIEN);
@@ -41,9 +41,19 @@ describe("alertes avec gh", () => {
   });
 
   test("ferme l'issue d'une source revenue à la normale", async () => {
-    const gh = fauxGh([{ number: 4, body: marqueur("source:annuaire", "x"), comments: [] }]);
+    const gh = fauxGh([{ number: 4, author: { login: "github-actions" }, body: marqueur("source:annuaire", "x"), comments: [] }]);
     await executerAlertes(gh.lancer, "o/r", LABEL_SOURCE, [{ cle: "source:annuaire", enEchec: false }], declarees, LIEN);
     expect(gh.appels).toContainEqual(["issue", "close", "4", "--comment", `Revenu à la normale : ${LIEN}`, "--repo", "o/r"]);
+  });
+
+  test("marqueur d'un commentaire tiers ignoré", async () => {
+    const gh = fauxGh([{
+      number: 4, author: { login: "github-actions" }, body: marqueur("source:annuaire", "ancien"),
+      comments: [{ author: { login: "quelquun" }, body: marqueur("source:annuaire", "colonne manquante") }],
+    }]);
+    const actions = await executerAlertes(gh.lancer, "o/r", LABEL_SOURCE,
+      [{ cle: "source:annuaire", enEchec: true, motif: "colonne manquante" }], declarees, LIEN);
+    expect(actions.map((a) => a.type)).toEqual(["commenter"]);
   });
 
   test("issue sans marqueur : ignorée", async () => {

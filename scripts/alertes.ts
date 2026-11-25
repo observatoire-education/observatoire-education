@@ -13,7 +13,12 @@ import type { LigneJournal } from "../pipeline/src/collect.ts";
 import { type Lanceur, lanceurGh } from "../pipeline/src/depot.ts";
 import { toutesSources } from "../pipeline/src/sources.ts";
 
-interface IssueGh { number: number; body: string; comments: { body: string }[] }
+interface Auteur { login: string }
+interface IssueGh { number: number; author?: Auteur; body: string; comments: { author?: Auteur; body: string }[] }
+
+/** Seuls les marqueurs écrits par l'automatisation comptent : sur un dépôt public, n'importe qui peut commenter. */
+const BOTS = new Set(["github-actions", "github-actions[bot]", "app/github-actions"]);
+const parBot = (a?: Auteur) => !!a && BOTS.has(a.login);
 
 export async function executerAlertes(
   lancer: Lanceur, depot: string, label: string, etats: Etat[], declarees: Set<Cle>, lien: string,
@@ -25,11 +30,12 @@ export async function executerAlertes(
   };
   await gh(["label", "create", label, "--force"]);
   const issues = JSON.parse(
-    await gh(["issue", "list", "--label", label, "--state", "open", "--json", "number,body,comments", "--limit", "200"]),
+    await gh(["issue", "list", "--label", label, "--state", "open", "--json", "number,author,body,comments", "--limit", "200"]),
   ) as IssueGh[];
   const ouvertes: IssueOuverte[] = issues.flatMap((i) => {
     // Le motif courant est celui du dernier marqueur : commentaires d'abord, corps sinon.
-    const m = [...i.comments].reverse().map((c) => lireMarqueur(c.body)).find(Boolean) ?? lireMarqueur(i.body);
+    const m = [...i.comments].reverse().filter((c) => parBot(c.author)).map((c) => lireMarqueur(c.body)).find(Boolean)
+      ?? (parBot(i.author) ? lireMarqueur(i.body) : null);
     return m ? [{ numero: i.number, ...m }] : [];
   });
   const actions = planifier(etats, ouvertes, declarees, lien);
