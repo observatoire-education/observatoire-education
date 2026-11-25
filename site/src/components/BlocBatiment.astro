@@ -35,7 +35,7 @@ const surface = b.batiments.reduce((a, x) => a + (x.surface ?? 0), 0);
           <tbody>
             {b.batiments.map((x) => (
               <tr>
-                <td class="intitule">{x.libelle}{x.nom && <small class="mute"> · {x.nom}</small>}</td>
+                <td class="intitule">{x.libelle}</td>
                 <td>{x.fonction ?? "—"}</td>
                 <td class="n">{x.annee ?? "—"}</td>
                 <td class="n">{x.surface === null ? "—" : `${entier(x.surface)} m²`}</td>

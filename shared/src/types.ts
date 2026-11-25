@@ -362,8 +362,6 @@ export interface OperationVotee {
 export interface BatimentDetail {
   /** Libellé de la région (« A-EXTERNAT SCIENCES »). */
   libelle: string;
-  /** Nom d'usage, s'il en a un. */
-  nom: string | null;
   fonction: string | null;
   annee: number | null;
   /** Surface bâtie, en m². */

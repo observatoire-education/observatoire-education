@@ -38,7 +38,7 @@ describe("lignesTravaux", () => {
   });
 
   test("Bretagne : nombre de bâtiments, surface bâtie et plus ancien ; surface par décennie", () => {
-    const bat = (annee: number | null, surface: number | null) => ({ libelle: "x", nom: null, fonction: null, annee, surface, niveaux: null });
+    const bat = (annee: number | null, surface: number | null) => ({ libelle: "x", fonction: null, annee, surface, niveaux: null });
     const fiches = [
       f("D", "Lycée D", { anneeConstruction: 1962, batiments: [bat(1962, 3600), bat(1998, 3200), bat(1965, 400), bat(null, 100)], ppi: [], operations: [] }),
       f("E", "Lycée E", { anneeConstruction: 1990, batiments: [bat(1991, 1000)], ppi: [], operations: [] }),
@@ -87,7 +87,7 @@ describe("calculerBatiments", () => {
     expect(g.batiments.map((x) => [x.libelle, x.annee, x.surface])).toEqual([
       ["A-EXTERNAT", 1962, 3600], ["B-INTERNAT", 1998, 3200], ["M-ABRIS 2R", 2006, 60],
     ]);
-    expect(g.batiments[1]).toMatchObject({ nom: "Bâtiment Vauban", fonction: "Internat", niveaux: 4 });
+    expect(g.batiments[1]).toMatchObject({ fonction: "Internat", niveaux: 4 });
     expect(g.anneeConstruction).toBe(1962);
     expect(g.ppi).toEqual([]);
     expect(g.operations).toEqual([]);
@@ -95,7 +95,7 @@ describe("calculerBatiments", () => {
 
   test("Bretagne : bâtiment sans année ni surface, gardé, année du lycée inconnue", async () => {
     const g = (await calculerBatiments(await dbTest())).get("0350012M")!;
-    expect(g.batiments).toEqual([{ libelle: "A-EXTERNAT", nom: null, fonction: "Externat", annee: null, surface: null, niveaux: 2 }]);
+    expect(g.batiments).toEqual([{ libelle: "A-EXTERNAT", fonction: "Externat", annee: null, surface: null, niveaux: 2 }]);
     expect(g.anneeConstruction).toBeNull();
   });
 });

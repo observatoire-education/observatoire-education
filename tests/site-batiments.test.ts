@@ -43,7 +43,7 @@ describe("Bretagne : bâtiments un par un, sans travaux", () => {
     const t = bloc("etablissement/0350011L", "batiment");
     expect(t).toContain("Année de construction du plus grand bâtiment 1962");
     expect(t).toMatch(/6\s860 m² bâtis en 3 bâtiments/);
-    expect(t).toMatch(/B-INTERNAT · Bâtiment Vauban Internat 1998 3\s200 m² 4/);
+    expect(t).toMatch(/B-INTERNAT Internat 1998 3\s200 m² 4/);
     expect(t).not.toContain("X-GYMNASE ANNEXE"); // hors site
     expect(t).toContain("La région ne publie pas ses travaux lycée par lycée.");
     expect(t).not.toContain("aucune opération votée");

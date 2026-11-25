@@ -64,11 +64,11 @@ export async function calculerBatiments(db: Db): Promise<Map<string, Batiment>> 
   };
   // Bretagne : bâtiments un par un ; l'année du lycée est celle du plus grand en surface bâtie.
   const details = await db.sql<{
-    uai: string; libelle: string; nom: string | null; fonction: string | null; annee: number | null; surface: number | null; niveaux: number | null;
-  }>("select uai, libelle, nom, fonction, annee, surface, niveaux from batiments_detail order by uai, annee nulls last, libelle, code");
+    uai: string; libelle: string; fonction: string | null; annee: number | null; surface: number | null; niveaux: number | null;
+  }>("select uai, libelle, fonction, annee, surface, niveaux from batiments_detail order by uai, annee nulls last, libelle, code");
   for (const l of details) {
     const d: BatimentDetail = {
-      libelle: l.libelle, nom: l.nom, fonction: l.fonction, annee: entier(l.annee), surface: l.surface, niveaux: entier(l.niveaux),
+      libelle: l.libelle, fonction: l.fonction, annee: entier(l.annee), surface: l.surface, niveaux: entier(l.niveaux),
     };
     entree(l.uai).batiments.push(d);
   }

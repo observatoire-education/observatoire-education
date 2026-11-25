@@ -436,7 +436,7 @@ export const SOURCES: Record<SourceId, Source> = {
     pageUrl: "https://geobretagne.fr/geonetwork/srv/fre/catalog.search#/metadata/b4955d8e-3473-45e7-a3c7-a9d2cd53637b",
     api: API_FICHIER,
     url: "https://ows.region-bretagne.fr/geoserver/rb/ows?service=WFS&version=2.0.0&request=GetFeature&typeNames=rb:batiment_lycee&outputFormat=csv"
-      + "&propertyName=code_batiment,lycee,ville,lib_batiment,nom_batiment,fonction_principale,surface_emprise,nb_niv,surface_bati,annee_construction,hors_site",
+      + "&propertyName=code_batiment,lycee,ville,lib_batiment,fonction_principale,surface_emprise,nb_niv,surface_bati,annee_construction,hors_site",
     millesimeLe: "2025-05-26",
     colonnesRequises: noms("code_batiment,lib_batiment,fonction_principale,nb_niv,surface_bati,annee_construction,hors_site"),
     referentiel: true,

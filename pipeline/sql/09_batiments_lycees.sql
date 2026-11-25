@@ -47,12 +47,12 @@ from (
 group by uai, intitule;
 
 -- Bâtiments des lycées bretons : un par ligne, UAI = 8 premiers caractères du code ; hors site exclus.
+-- Seules les colonnes requises de la source sont lues : l'archive d'un référentiel ne garde qu'elles (collect.ts, reduire).
 create or replace table batiments_detail as
 select
   upper(substr(trim(code_batiment::varchar), 1, 8)) as uai,
   trim(code_batiment::varchar) as code,
   coalesce(nullif(trim(lib_batiment::varchar), ''), trim(code_batiment::varchar)) as libelle,
-  nullif(trim(nom_batiment::varchar), '') as nom,
   nullif(trim(fonction_principale::varchar), '') as fonction,
   case when try_cast(trim(annee_construction::varchar) as integer) between 1100 and 2100
     then try_cast(trim(annee_construction::varchar) as integer) end as annee,

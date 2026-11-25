@@ -27,7 +27,12 @@ export async function cheminsFixtures(dossier: string): Promise<Record<SourceId,
     const presentes = (await lignes<{ column_name: string }>(duck, `describe select * from ${csv}`)).map((c) => c.column_name);
     const ajouts = s.colonnesRequises.filter((c) => !presentes.includes(c)).map((c) => `null::varchar as ${ident(c)}`);
     const dest = join(dossier, `${s.id}.parquet`);
-    await executer(duck, `copy (select *${ajouts.map((a) => `, ${a}`).join("")} from ${csv}) to ${litteral(dest)} (format parquet)`);
+    // Référentiel : comme à l'archivage (collect.ts, reduire), seules les colonnes requises sont gardées ; une étape
+    // qui lirait une autre colonne échoue donc aussi en test (bzh_batiments.nom_batiment, build du 2026-11-26).
+    const colonnes = s.referentiel
+      ? s.colonnesRequises.map((c) => (presentes.includes(c) ? ident(c) : `null::varchar as ${ident(c)}`)).join(", ")
+      : `*${ajouts.map((a) => `, ${a}`).join("")}`;
+    await executer(duck, `copy (select ${colonnes} from ${csv}) to ${litteral(dest)} (format parquet)`);
     chemins[s.id] = dest;
   }
   duck.closeSync();
