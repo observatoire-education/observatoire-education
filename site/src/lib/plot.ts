@@ -63,19 +63,40 @@ export function svgPoints(rangs: RangPoints[], valeur: number | null, domaine: [
   return svg(p, `Établissement ${nombre(valeur)} ; ${desc}`);
 }
 
-/** Barres de l'historique (dernière année en encre, les autres en gris). */
-export function svgBarres(serie: [number, number][]): string {
-  const d = serie.map(([annee, v], i) => ({ annee: String(annee), v, dernier: i === serie.length - 1 }));
+/**
+ * Barres de l'historique (dernière année en encre, les autres en gris). Au-delà de huit années, une étiquette
+ * d'année sur deux, en comptant depuis la dernière (largeur 320 : les années entières ne tiennent plus).
+ * `extremes` : le maximum en rouge et le minimum en vert (barre et valeur), calculés sans la dernière année, qui
+ * reste en encre et peut être incomplète (année en cours). Sans effet si ces valeurs sont toutes égales.
+ */
+export function svgBarres(serie: [number, number][], { extremes = false }: { extremes?: boolean } = {}): string {
+  const anterieures = serie.slice(0, -1).map(([, v]) => v);
+  const max = Math.max(...anterieures);
+  const min = Math.min(...anterieures);
+  const marque = extremes && anterieures.length > 1 && max !== min;
+  type Barre = { annee: string; v: number; dernier: boolean; rang: "max" | "min" | null };
+  const d: Barre[] = serie.map(([annee, v], i) => ({
+    annee: String(annee),
+    v,
+    dernier: i === serie.length - 1,
+    rang: !marque || i === serie.length - 1 ? null : v === max ? "max" : v === min ? "min" : null,
+  }));
+  const annees = d.map((x) => x.annee);
+  const graduations = annees.length > 8 ? annees.filter((_, i) => (annees.length - 1 - i) % 2 === 0) : annees;
+  const remplissage = (x: Barre) => (x.dernier ? "var(--ink)" : x.rang ? `var(--${x.rang})` : "var(--line)");
+  const texte = (x: Barre) => `var(--${x.rang}-ink)`;
   const p = Plot.plot({
     document, width: 320, height: 110, marginLeft: 0, marginRight: 0, marginTop: 16, style: STYLE,
-    x: { domain: d.map((x) => x.annee), label: null, tickSize: 0, padding: 0.25 },
-    y: { axis: null, domain: [0, Math.max(...d.map((x) => x.v), 1) * 1.12] },
+    x: { domain: annees, ticks: graduations, label: null, tickSize: 0, padding: 0.25 },
+    y: { axis: null, domain: [0, Math.max(...serie.map(([, v]) => v), 1) * 1.12] },
     marks: [
-      Plot.barY(d, { x: "annee", y: "v", fill: (x: { dernier: boolean }) => (x.dernier ? "var(--ink)" : "var(--line)"), rx: 3 }),
-      Plot.text(d, { x: "annee", y: "v", text: (x: { v: number }) => nombre(x.v, 0), dy: -7, fill: "var(--muted)" }),
+      Plot.barY(d, { x: "annee", y: "v", fill: remplissage, rx: 3 }),
+      Plot.text(d.filter((x) => !x.rang), { x: "annee", y: "v", text: (x: Barre) => nombre(x.v, 0), dy: -7, fill: "var(--muted)" }),
+      Plot.text(d.filter((x) => x.rang), { x: "annee", y: "v", text: (x: Barre) => nombre(x.v, 0), dy: -7, fill: texte, fontWeight: 700 }),
     ],
   });
-  return svg(p, `Évolution : ${d.map((x) => `${x.annee} ${nombre(x.v, 0)}`).join(", ")}`);
+  const resume = marque ? ` ; maximum ${nombre(max, 0)}, minimum ${nombre(min, 0)}` : "";
+  return svg(p, `Évolution : ${d.map((x) => `${x.annee} ${nombre(x.v, 0)}`).join(", ")}${resume}`);
 }
 
 /** Séries de références (public, privé) et rentrées calculées, tirées de points d'IPS. Une valeur absente reste `null`. */

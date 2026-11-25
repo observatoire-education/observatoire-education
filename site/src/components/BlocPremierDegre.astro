@@ -68,7 +68,7 @@ const sansClassesRentree = p.sansClasses.find(([r]) => r === p.rentrees.eleves);
     <div class="cols2" style="margin-top:14px">
       <div class="card">
         <div class="lab"><span>{L.fermetures}</span><span class="yr">{fermetures[0]![0]} → {fermetures.at(-1)![0]}</span></div>
-        <Fragment set:html={svgBarres(fermetures)} />
+        <Fragment set:html={svgBarres(fermetures, { extremes: true })} />
         <p class="src">{L.noteFermetures}{enCours && ` ${enCours}.`}</p>
       </div>
     </div>
