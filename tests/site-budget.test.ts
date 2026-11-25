@@ -386,7 +386,8 @@ describe("écoles : dépenses de la commune pour ses écoles", () => {
   // élèves des écoles publiques de Nantes à la rentrée 2023 : 100 + 194 + 214 = 508.
   test("école publique (0440202B) : bloc de la commune, montants par élève des écoles publiques, source", () => {
     const d = doc("etablissement/0440202B");
-    expect([...d.querySelectorAll("nav.toc a")].map((a) => a.getAttribute("href"))).toContain("#moyens");
+    expect([...d.querySelectorAll("nav.onglets a")].map((a) => a.getAttribute("href"))).toContain("#o-moyens");
+    expect(d.querySelector("#o-moyens section#moyens")).not.toBeNull();
     const t = moyens("0440202B");
     expect(t).toContain(L.titreCommune);
     expect(t).toContain("Nantes");
@@ -406,7 +407,7 @@ describe("écoles : dépenses de la commune pour ses écoles", () => {
   test("école privée (0440203C) : pas de bloc Moyens", () => {
     const d = doc("etablissement/0440203C");
     expect(d.querySelector("section#moyens")).toBeNull();
-    expect([...d.querySelectorAll("nav.toc a")].map((a) => a.getAttribute("href"))).not.toContain("#moyens");
+    expect([...d.querySelectorAll("nav.onglets a")].map((a) => a.getAttribute("href"))).not.toContain("#o-moyens");
   });
 
   test("commune absente des balances (Saint-Aubin, 0440104D) : libellé exact, aucun montant", () => {

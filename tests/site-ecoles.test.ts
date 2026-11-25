@@ -14,6 +14,49 @@ const ECOLES = ["0440104D", "0440105E", "0440106F", "0440107G", "0440108H", "044
 const fiche = (uai: string) => `etablissement/${uai}`;
 const propre = (s: string | null | undefined) => (s ?? "").replace(/\s+/g, " ").trim();
 
+describe("fiche école en onglets", () => {
+  const barre = (uai: string) => [...doc(fiche(uai)).querySelectorAll("nav.onglets a")].map((a) => a.getAttribute("href"));
+
+  test("école publique : onglets dans l'ordre, Synthèse affichée d'emblée", () => {
+    const d = doc(fiche("0440202B"));
+    expect(barre("0440202B")).toEqual(["#o-synthese", "#o-eleves", "#o-social", "#o-enseignants", "#o-moyens", "#o-alentours", "#o-sources"]);
+    expect(d.querySelector("nav.toc")).toBeNull();
+    expect(d.querySelector("#o-synthese")!.hasAttribute("data-defaut")).toBe(true);
+    expect(d.querySelectorAll("[data-defaut]")).toHaveLength(1);
+  });
+
+  test("école privée : pas d'onglet Moyens", () => {
+    const b = barre("0440203C");
+    expect(b).not.toContain("#o-moyens");
+    expect(b[0]).toBe("#o-synthese");
+    expect(b.at(-1)).toBe("#o-sources");
+  });
+
+  test("les chiffres et la courbe sont dans la Synthèse, une seule fois (poids de la page)", () => {
+    for (const uai of ["0440202B", "0440203C"]) {
+      const d = doc(fiche(uai));
+      expect(d.querySelectorAll(".kpis.chiffres")).toHaveLength(1);
+      expect(d.querySelector("#o-synthese .kpis.chiffres")).not.toBeNull();
+      expect(d.querySelector("#o-eleves .kpis.chiffres")).toBeNull();
+      expect(d.querySelector("#o-eleves #eleves")).not.toBeNull();
+      expect(d.querySelector("#o-eleves #classes")).not.toBeNull();
+      expect(d.querySelector(".kpis.chiffres")!.closest("[id]")!.id).toBe("o-synthese");
+    }
+  });
+
+  test("Synthèse : case Moyens pour l'école publique seulement, courbe élèves et classes", () => {
+    const pub = doc(fiche("0440202B")).querySelector("#o-synthese")!;
+    expect(propre(pub.textContent)).toContain("Fonctionnement par élève");
+    expect(pub.querySelector("svg")).not.toBeNull();
+    expect(propre(doc(fiche("0440203C")).querySelector("#o-synthese")!.textContent)).not.toContain("Fonctionnement par élève");
+  });
+
+  test("les rattachements sont dans l'onglet Alentours", () => {
+    const d = doc(fiche("0440201A"));
+    expect(d.querySelector("#o-alentours #rattachements")).not.toBeNull();
+  });
+});
+
 describe("fiche école", () => {
   test("école à classe unique : dernière rentrée en évidence, élèves par classe, classe à plusieurs niveaux", () => {
     const t = texte(fiche("0440104D"));
@@ -60,7 +103,7 @@ describe("fiche école", () => {
 
   test("élèves par classe non disponible quand la dernière rentrée n'a pas de classe, jamais 0", () => {
     const d = doc(fiche("0440105E"));
-    const cle = new Map([...d.querySelectorAll("#eleves .chiffres > div")].map((x) => [propre(x.querySelector(".k")?.textContent), x]));
+    const cle = new Map([...d.querySelectorAll("#o-synthese .chiffres > div")].map((x) => [propre(x.querySelector(".k")?.textContent), x]));
     for (const k of ["Élèves par classe", "Classes"]) {
       expect(cle.get(k)!.querySelector(".v")).toBeNull();
       expect(propre(cle.get(k)!.querySelector(".na")?.textContent)).toBe("non disponible");
@@ -93,9 +136,10 @@ describe("fiche école", () => {
 
   // 25 000 octets jusqu'au lot 1 ; relevé à 26 000 par le bloc des rattachements, à 27 500 par le bloc
   // « Autour de l'école », puis à 30 000 (plafond permis) par le bloc « Moyens de la commune » (29 601) et la mention
-  // de correction du budget de Nantes que porte la fixture (29 932), puis à 30 100 par le bouton « Tout imprimer » (30 025).
-  test("poids : la fiche 0440202B fait 30 100 octets au plus", () => {
-    expect(octets(fiche("0440202B"))).toBeLessThanOrEqual(30_100);
+  // de correction du budget de Nantes que porte la fixture (29 932), puis à 30 100 par le bouton « Tout imprimer » (30 025),
+  // puis à 31 800 par la barre d'onglets, les panneaux, la case Moyens de la Synthèse et son chargement de onglets.js (31 716).
+  test("poids : la fiche 0440202B fait 31 800 octets au plus", () => {
+    expect(octets(fiche("0440202B"))).toBeLessThanOrEqual(31_800);
   });
 
   test("fiche A4 d'une école : « Fiche pour le conseil d'école »", () => {
@@ -219,9 +263,10 @@ describe("rattachements d'une école", () => {
     const ids = [...d.querySelectorAll("main section")].map((s) => s.id);
     expect(ids.indexOf("rattachements")).toBeGreaterThan(ids.indexOf("ens"));
     expect(ids.indexOf("rattachements")).toBeLessThan(ids.indexOf("sources"));
-    const toc = liens(d.querySelector("nav.toc"));
-    expect(toc.indexOf("#rattachements")).toBeGreaterThan(toc.indexOf("#ens"));
-    expect(toc.indexOf("#rattachements")).toBeLessThan(toc.indexOf("#sources"));
+    const barre = liens(d.querySelector("nav.onglets"));
+    expect(barre.indexOf("#o-alentours")).toBeGreaterThan(barre.indexOf("#o-enseignants"));
+    expect(barre.indexOf("#o-alentours")).toBeLessThan(barre.indexOf("#o-sources"));
+    expect(d.querySelector("#o-alentours #rattachements")).not.toBeNull();
   });
 
   test("école privée sous contrat non rapprochée : absence dite, note du privé", () => {
@@ -322,8 +367,8 @@ describe("autour de l'école", () => {
     const d = doc(fiche("0440104D"));
     const ids = [...d.querySelectorAll("main section")].map((s) => s.id);
     expect(ids.slice(ids.indexOf("rattachements"), ids.indexOf("sources") + 1)).toEqual(["rattachements", "autour", "sources"]);
-    const toc = liens(d.querySelector("nav.toc"));
-    expect(toc.slice(toc.indexOf("#rattachements"), toc.indexOf("#sources") + 1)).toEqual(["#rattachements", "#autour", "#sources"]);
+    expect(liens(d.querySelector("nav.onglets")).slice(-2)).toEqual(["#o-alentours", "#o-sources"]);
+    expect([...d.querySelectorAll("#o-alentours section")].map((s) => s.id)).toEqual(["rattachements", "autour"]);
     expect(propre(d.querySelector("#autour h2")?.textContent)).toBe("Autour de l'école");
   });
 

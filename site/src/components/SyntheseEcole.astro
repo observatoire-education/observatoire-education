@@ -1,0 +1,48 @@
+---
+// Synthèse d'une fiche d'école : les chiffres de l'école (élèves, classes, élèves par classe), le fonctionnement par
+// élève de la commune (école publique seulement) et la courbe des élèves et des classes. Ces blocs ne sont pas repris
+// dans l'onglet Élèves et classes : pour tenir le poids de la page, chaque chiffre n'est écrit qu'une fois.
+import { LIBELLES, LIBELLES_BUDGET, LIBELLES_ECOLES as LE, LIBELLES_SYNTHESE as LS } from "@obs/shared/libelles";
+import type { Fiche } from "@obs/shared/types";
+import { anneeScolaire, indicateur } from "../lib/affichage";
+import { svgElevesClasses } from "../lib/plot";
+import { moyensSynthese } from "../lib/synthese";
+import Absence from "./Absence.astro";
+import ChiffresEcole from "./ChiffresEcole.astro";
+
+interface Props { f: Fiche }
+const { f } = Astro.props;
+const nd = LIBELLES.nonDisponible;
+const iEleves = indicateur(f, "eleves");
+const iParClasse = indicateur(f, "eleves_par_classe");
+const rentree = iEleves.mesure.rentree ?? f.classes?.rentree ?? null;
+const parClasseCalculee = iParClasse.comparaisons.some((c) => c.calculee);
+const historique = f.classes?.historique ?? [];
+const courbe = svgElevesClasses(historique);
+const moyens = f.budget.ecoles !== undefined
+  ? moyensSynthese(f.budget.ecoles, f.budget.france.find((m) => m.niveau === "ecoles"), "public", "ecoles")
+  : null;
+---
+<div class="card">
+  <div class="lab"><span>{rentree !== null ? LE.derniereRentree(rentree) : nd}</span><span class="yr">{anneeScolaire(rentree)}</span></div>
+  <ChiffresEcole f={f} />
+  <div class="ecole-note">Écart à la moyenne départementale (moyenne entre parenthèses){parClasseCalculee && `, ${LIBELLES_BUDGET.moyenne.calculee}`}.</div>
+</div>
+{f.budget.ecoles !== undefined && (
+  <div class="kpis">
+    <div>
+      <div class="k">{LS.moyens}{moyens && ` · ${LIBELLES_BUDGET.interface.exercice(moyens.exercice)}`}</div>
+      {moyens === null ? <Absence texte={nd} /> : moyens.absent ? <Absence texte={moyens.texte} /> : <div class="v">{moyens.texte}</div>}
+      {moyens?.france && <div class="c"><span>France {moyens.france}</span></div>}
+    </div>
+  </div>
+)}
+<div class="card" style="margin-top:14px">
+  <div class="lab"><span>Élèves et classes</span><span class="yr">{historique.length > 1 ? `${historique[0]![0]} → ${historique.at(-1)![0]}` : anneeScolaire(rentree)}</span></div>
+  {courbe ? (
+    <>
+      <Fragment set:html={courbe} />
+      <div class="legend"><span class="me">élèves (axe de gauche)</span><span>- - - classes (axe de droite)</span></div>
+    </>
+  ) : <Absence texte={nd} />}
+</div>

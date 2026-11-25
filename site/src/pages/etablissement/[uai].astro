@@ -22,6 +22,6 @@ const secteur = ecole ? (prive ? "privée sous contrat" : "publique") : prive ? 
   description={`${FAMILLES[f.famille]} ${secteur} à ${f.commune} (UAI ${f.uai}) : chiffres publics sourcés et datés.`}>
   <Entete f={f} />
   {ecole ? <FicheEcole f={f} /> : <FicheSecondDegre f={f} />}
-  {!ecole && <script is:inline src="/js/onglets.js" defer></script>}
+  <script is:inline src="/js/onglets.js" defer></script>
   <script is:inline src="/js/fiche.js" defer></script>
 </Base>

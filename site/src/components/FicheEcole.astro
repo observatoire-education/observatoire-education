@@ -1,10 +1,10 @@
 ---
-// Corps de la fiche d'une école (maternelle, élémentaire, primaire), sous l'en-tête commun (spec, section 6.3) :
-// rattachements et écoles proches (école ouverte), élèves et classes, composition sociale, enseignants, moyens de la
-// commune (école publique seulement), sources. Une seule courbe (élèves et classes) pour tenir le poids de la page ;
+// Corps de la fiche d'une école (maternelle, élémentaire, primaire), sous l'en-tête commun, en onglets : synthèse
+// (chiffres, moyens de la commune, courbe), élèves et classes, composition sociale, enseignants, moyens de la commune
+// (école publique seulement), alentours (rattachements, écoles proches), sources. Une seule courbe pour tenir le poids ;
 // le bloc des moyens n'a pas de graphique d'évolution (il est sur la page de la commune).
 import { entier } from "@obs/shared/format";
-import { type CodeIndicateur, LIBELLES, LIBELLES_BUDGET, LIBELLES_ECOLES as LE, LIBELLES_ECOLES_PROCHES as LP, LIBELLES_RATTACHEMENTS as LR, libelleTypeClasse, NIVEAUX_TERRITORIAUX } from "@obs/shared/libelles";
+import { type CodeIndicateur, LIBELLES, LIBELLES_BUDGET, LIBELLES_ECOLES as LE, LIBELLES_ONGLETS as LO, libelleTypeClasse, NIVEAUX_TERRITORIAUX } from "@obs/shared/libelles";
 import type { Fiche, Niveau, Secteur, SourceId } from "@obs/shared/types";
 import Absence from "./Absence.astro";
 import BlocBudget from "./BlocBudget.astro";
@@ -14,9 +14,12 @@ import Cellule from "./Cellule.astro";
 import Empile from "./Empile.astro";
 import FicheA4 from "./FicheA4.astro";
 import LigneSource from "./LigneSource.astro";
+import Onglets from "./Onglets.astro";
+import Panneau from "./Panneau.astro";
 import Sources from "./Sources.astro";
+import SyntheseEcole from "./SyntheseEcole.astro";
 import { absente, anneeScolaire, comparaison, indicateur, reference, refAbsente, repartition, source, valeur } from "../lib/affichage";
-import { svgElevesClasses } from "../lib/plot";
+import { avecOnglets as plusieursOnglets, onglets } from "../lib/onglets";
 
 interface Props { f: Fiche }
 const { f } = Astro.props;
@@ -28,21 +31,15 @@ const present = (code: CodeIndicateur) => f.indicateurs.some((i) => i.code === c
 
 // Élèves et classes
 const iEleves = indicateur(f, "eleves");
-const iParClasse = indicateur(f, "eleves_par_classe");
 const cl = f.classes ?? null;
 const el = f.eleves;
 const rentree = iEleves.mesure.rentree ?? cl?.rentree ?? null;
-// 0 classe avec des élèves est une absence de donnée : jamais affiché comme un zéro.
-const nbClasses = cl?.total ? cl.total : null;
-const historique = cl?.historique ?? [];
-const courbe = svgElevesClasses(historique);
 const niveaux = (el?.niveaux ?? []).filter((n) => n.eleves !== 0);
 const lignesSpeciales = [
   ...(f.ulis || (el?.ulis ?? 0) > 0 ? [{ libelle: LE.ulis, eleves: el?.ulis ?? null }] : []),
   ...((el?.ueea ?? 0) > 0 ? [{ libelle: LE.ueea, eleves: el?.ueea ?? null }] : []),
 ];
 const idsEffectifs = [...new Set<SourceId>([...(el?.source ?? []), ...(cl?.source ?? [])])].filter((id) => id !== "classes_ecoles");
-const parClasseCalculee = iParClasse.comparaisons.some((c) => c.calculee);
 const types = cl?.types ?? null;
 const unNiveau = (types ?? []).filter((t) => t.niveaux === 1);
 const plusieursNiveaux = (types ?? []).filter((t) => t.niveaux > 1);
@@ -70,42 +67,27 @@ const etpEns = present("etp_enseignants") ? indicateur(f, "etp_enseignants").mes
 const sourcePersonnels = source(f, "personnels_ecoles");
 // La répartition femmes et hommes n'a que deux catégories : la ligne « Enseignantes » la dit déjà.
 const REPARTITIONS = [["ages", "Âge"], ["anciennete", "Ancienneté dans l'école"]] as const;
----
-<nav class="toc" aria-label="Sommaire">
-  <a href="#eleves">Élèves</a><a href="#classes">{LE.classes}</a><a href="#social">Composition sociale</a><a href="#ens">Enseignants</a>{f.budget.ecoles !== undefined && <a href="#moyens">Moyens</a>}{f.rattachements && <a href="#rattachements">{LR.titre}</a>}{f.ecolesProches !== undefined && <a href="#autour">{LP.titre}</a>}<a href="#sources">Sources</a>
-</nav>
 
+// Onglets : chaque bloc garde les `id` de ses sections. Alentours : rattachements et écoles proches, s'il y en a.
+const alentours = f.rattachements || f.ecolesProches !== undefined;
+const barre = onglets([
+  { id: "o-synthese", libelle: LO.synthese },
+  { id: "o-eleves", libelle: LO.elevesClasses },
+  { id: "o-social", libelle: LO.social },
+  { id: "o-enseignants", libelle: LO.enseignants },
+  ...(f.budget.ecoles !== undefined ? [{ id: "o-moyens", libelle: LO.moyensCommune }] : []),
+  ...(alentours ? [{ id: "o-alentours", libelle: LO.alentours }] : []),
+  { id: "o-sources", libelle: LO.sources },
+]);
+const avec = plusieursOnglets(barre);
+---
+<Onglets onglets={barre} />
+<Panneau id="o-synthese" libelle={LO.synthese} actif avecOnglets={avec}><SyntheseEcole f={f} /></Panneau>
+
+<Panneau id="o-eleves" libelle={LO.elevesClasses} avecOnglets={avec}>
 <section id="eleves">
   <h2>Élèves</h2>
   <div class="card">
-    <div class="lab"><span>{rentree !== null ? LE.derniereRentree(rentree) : nd}</span><span class="yr">{anneeScolaire(rentree)}</span></div>
-    <div class="kpis chiffres">
-      <div><div class="k">Élèves</div>{iEleves.mesure.statut === "ok" ? <div class="v">{valeur("eleves", iEleves.mesure)}</div> : <Absence texte={valeur("eleves", iEleves.mesure)} />}</div>
-      <div><div class="k">{LE.classes}</div>{nbClasses !== null ? <div class="v">{entier(nbClasses)}</div> : <Absence texte={nd} />}</div>
-      <div>
-        <div class="k">{LE.elevesParClasse}</div>
-        {!absente(iParClasse.mesure) ? <div class="v">{valeur("eleves_par_classe", iParClasse.mesure)}</div> : <Absence texte={valeur("eleves_par_classe", iParClasse.mesure)} />}
-        <div class="c">
-          {(["public", "prive_sous_contrat"] as const).map((s) => {
-            const r = reference(iParClasse, "departement", s);
-            return <span>dép. {s === "public" ? "public" : "privé"} <span class={refAbsente(r) ? "abs" : s === "public" ? "p" : "q"}>{r ? comparaison("eleves_par_classe", r, iParClasse.mesure) : nd}</span></span>;
-          })}
-        </div>
-      </div>
-    </div>
-    <div class="ecole-note">Écart à la moyenne départementale (moyenne entre parenthèses){parClasseCalculee && `, ${LIBELLES_BUDGET.moyenne.calculee}`}.</div>
-  </div>
-  <div class="cols2 ecole-sep">
-    <div class="card">
-      <div class="lab"><span>Élèves et classes</span><span class="yr">{historique.length > 1 ? `${historique[0]![0]} → ${historique.at(-1)![0]}` : anneeScolaire(rentree)}</span></div>
-      {courbe ? (
-        <>
-          <Fragment set:html={courbe} />
-          <div class="legend"><span class="me">élèves (axe de gauche)</span><span>- - - classes (axe de droite)</span></div>
-        </>
-      ) : <Absence texte={nd} />}
-    </div>
-    <div class="card">
       <div class="lab"><span>Par niveau</span><span class="yr">{el ? anneeScolaire(el.rentree) : ""}</span></div>
       {niveaux.length === 0 && lignesSpeciales.length === 0 ? <Absence texte="détail par niveau non disponible" /> : (
         <table class="mini-t">
@@ -118,7 +100,6 @@ const REPARTITIONS = [["ages", "Âge"], ["anciennete", "Ancienneté dans l'écol
         </table>
       )}
     </div>
-  </div>
   {idsEffectifs.map((id) => <LigneSource s={source(f, id)} complement={id === "effectifs_ecoles" ? "moyennes calculées (Σ / Σ)" : undefined} />)}
 </section>
 
@@ -141,7 +122,9 @@ const REPARTITIONS = [["ages", "Âge"], ["anciennete", "Ancienneté dans l'écol
     <LigneSource s={source(f, "classes_ecoles")} />
   </div>
 </section>
+</Panneau>
 
+<Panneau id="o-social" libelle={LO.social} avecOnglets={avec}>
 <section id="social">
   <h2>Composition sociale</h2>
   <div class="card">
@@ -170,7 +153,9 @@ const REPARTITIONS = [["ages", "Âge"], ["anciennete", "Ancienneté dans l'écol
     {ipsPublie && <LigneSource s={sourceIps} complement={ipsCalculee ? LIBELLES_BUDGET.moyenne.calculee : "moyennes publiées par la DEPP"} />}
   </div>
 </section>
+</Panneau>
 
+<Panneau id="o-enseignants" libelle={LO.enseignants} avecOnglets={avec}>
 <section id="ens">
   <h2>Enseignants</h2>
   <div class="cols2">
@@ -210,17 +195,24 @@ const REPARTITIONS = [["ages", "Âge"], ["anciennete", "Ancienneté dans l'écol
   </div>
   <LigneSource s={sourcePersonnels} complement="parts calculées sur les ETP ; moyennes Σ / Σ" />
 </section>
+</Panneau>
 
 {f.budget.ecoles !== undefined && (
-  <section id="moyens">
-    <h2>{LIBELLES_BUDGET.titreCommune}</h2>
-    <BlocBudget budget={f.budget.ecoles} france={f.budget.france.find((m) => m.niveau === "ecoles")} secteurEnPremier="public"
-      evolution={false} niveau="ecoles" motif={f.budget.motif} />
-  </section>
+<Panneau id="o-moyens" libelle={LO.moyensCommune} avecOnglets={avec}>
+    <section id="moyens">
+      <h2>{LIBELLES_BUDGET.titreCommune}</h2>
+      <BlocBudget budget={f.budget.ecoles} france={f.budget.france.find((m) => m.niveau === "ecoles")} secteurEnPremier="public"
+        evolution={false} niveau="ecoles" motif={f.budget.motif} />
+    </section>
+</Panneau>
 )}
 
+{alentours && (
+<Panneau id="o-alentours" libelle={LO.alentours} avecOnglets={avec}>
 {f.rattachements && <BlocRattachements r={f.rattachements} uai={f.uai} prive={f.secteur === "prive_sous_contrat"} />}
 {f.ecolesProches !== undefined && <BlocEcolesProches f={f} p={f.ecolesProches} />}
+</Panneau>
+)}
 
-<Sources f={f} />
+<Panneau id="o-sources" libelle={LO.sources} avecOnglets={avec}><Sources f={f} /></Panneau>
 <FicheA4 f={f} />

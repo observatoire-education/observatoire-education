@@ -1,0 +1,31 @@
+---
+// Les trois chiffres de l'école (élèves, classes, élèves par classe, avec l'écart à la moyenne départementale) :
+// affichés dans la Synthèse, d'où l'absence d'`id` (le bloc n'existe qu'une fois dans la page).
+import { entier } from "@obs/shared/format";
+import { LIBELLES, LIBELLES_ECOLES as LE } from "@obs/shared/libelles";
+import type { Fiche } from "@obs/shared/types";
+import { absente, comparaison, indicateur, reference, refAbsente, valeur } from "../lib/affichage";
+import Absence from "./Absence.astro";
+
+interface Props { f: Fiche }
+const { f } = Astro.props;
+const nd = LIBELLES.nonDisponible;
+const iEleves = indicateur(f, "eleves");
+const iParClasse = indicateur(f, "eleves_par_classe");
+// 0 classe avec des élèves est une absence de donnée : jamais affiché comme un zéro.
+const nbClasses = f.classes?.total ? f.classes.total : null;
+---
+<div class="kpis chiffres">
+  <div><div class="k">Élèves</div>{iEleves.mesure.statut === "ok" ? <div class="v">{valeur("eleves", iEleves.mesure)}</div> : <Absence texte={valeur("eleves", iEleves.mesure)} />}</div>
+  <div><div class="k">{LE.classes}</div>{nbClasses !== null ? <div class="v">{entier(nbClasses)}</div> : <Absence texte={nd} />}</div>
+  <div>
+    <div class="k">{LE.elevesParClasse}</div>
+    {!absente(iParClasse.mesure) ? <div class="v">{valeur("eleves_par_classe", iParClasse.mesure)}</div> : <Absence texte={valeur("eleves_par_classe", iParClasse.mesure)} />}
+    <div class="c">
+      {(["public", "prive_sous_contrat"] as const).map((s) => {
+        const r = reference(iParClasse, "departement", s);
+        return <span>dép. {s === "public" ? "public" : "privé"} <span class={refAbsente(r) ? "abs" : s === "public" ? "p" : "q"}>{r ? comparaison("eleves_par_classe", r, iParClasse.mesure) : nd}</span></span>;
+      })}
+    </div>
+  </div>
+</div>
