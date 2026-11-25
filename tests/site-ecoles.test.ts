@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { LIBELLES, LIBELLES_RATTACHEMENTS as LR, LIBELLES_RPI } from "@obs/shared/libelles";
+import { LIBELLES, LIBELLES_BUDGET as LB, LIBELLES_RATTACHEMENTS as LR, LIBELLES_RPI } from "@obs/shared/libelles";
 import { comparaison, mentionMoyennesA4 } from "../site/src/lib/affichage.ts";
 import { svgElevesClasses } from "../site/src/lib/plot.ts";
 import { DIST_TEST, doc, octets, page, siteTest, texte } from "./site.ts";
@@ -49,6 +49,36 @@ describe("fiche école en onglets", () => {
     expect(propre(pub.textContent)).toContain("Fonctionnement par élève");
     expect(pub.querySelector("svg")).not.toBeNull();
     expect(propre(doc(fiche("0440203C")).querySelector("#o-synthese")!.textContent)).not.toContain("Fonctionnement par élève");
+  });
+
+  test("Synthèse : l'IPS et le repère département sont ceux de l'onglet Composition sociale", () => {
+    for (const uai of ECOLES) {
+      const d = doc(fiche(uai));
+      const c = [...d.querySelectorAll("#o-synthese .kpis > div")].find((x) => propre(x.querySelector(".k")?.textContent).startsWith("IPS"))!;
+      expect(c).toBeDefined();
+      const social = propre(d.querySelector("#o-social")!.textContent);
+      const v = c.querySelector(".v");
+      if (v) {
+        expect(social).toContain(propre(v.textContent));
+        for (const r of c.querySelectorAll(".c > span > span")) expect(social).toContain(propre(r.textContent));
+      } else {
+        expect(propre(c.textContent)).toContain("IPS non publié pour cette école");
+        expect(social).toContain("IPS non publié pour cette école");
+      }
+    }
+    const ips = (uai: string) => ![...doc(fiche(uai)).querySelectorAll("#o-synthese .kpis > div")].find((x) => propre(x.querySelector(".k")?.textContent).startsWith("IPS"))!.querySelector(".v") === false;
+    expect(ECOLES.some((u) => ips(u))).toBe(true);
+    expect(ips("0440201A")).toBe(false);
+  });
+
+  test("Synthèse : le montant des moyens est celui de l'onglet Moyens", () => {
+    const d = doc(fiche("0440202B"));
+    const c = [...d.querySelectorAll("#o-synthese .kpis > div")].find((x) => propre(x.querySelector(".k")?.textContent).startsWith("Fonctionnement par élève"))!;
+    const montant = propre(c.querySelector(".v")!.textContent);
+    expect(montant).toBe("400");
+    const ligne = [...d.querySelectorAll("#o-moyens tr")].find((t) => propre(t.textContent).includes(LB.postes.horsPersonnel))!;
+    expect(ligne).toBeDefined();
+    expect(propre(ligne.textContent)).toContain(montant);
   });
 
   test("les rattachements sont dans l'onglet Alentours", () => {
@@ -137,9 +167,9 @@ describe("fiche école", () => {
   // 25 000 octets jusqu'au lot 1 ; relevé à 26 000 par le bloc des rattachements, à 27 500 par le bloc
   // « Autour de l'école », puis à 30 000 (plafond permis) par le bloc « Moyens de la commune » (29 601) et la mention
   // de correction du budget de Nantes que porte la fixture (29 932), puis à 30 100 par le bouton « Tout imprimer » (30 025),
-  // puis à 31 800 par la barre d'onglets, les panneaux, la case Moyens de la Synthèse et son chargement de onglets.js (31 716).
-  test("poids : la fiche 0440202B fait 31 800 octets au plus", () => {
-    expect(octets(fiche("0440202B"))).toBeLessThanOrEqual(31_800);
+  // puis à 32 000 par la barre d'onglets, les panneaux, la case Moyens de la Synthèse et son chargement de onglets.js (31 716), et la case IPS de la Synthèse (31 946).
+  test("poids : la fiche 0440202B fait 32 000 octets au plus", () => {
+    expect(octets(fiche("0440202B"))).toBeLessThanOrEqual(32_000);
   });
 
   test("fiche A4 d'une école : « Fiche pour le conseil d'école »", () => {

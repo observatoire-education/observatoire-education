@@ -523,4 +523,5 @@ export const LIBELLES_SYNTHESE = {
   horsFamilles: (f: string[]): string => `hors ${f.join(", ")} (effectif non publié)`,
   partPrive: "Part du privé sous contrat",
   ipsColleges: "IPS moyen des collèges",
+  ipsEcole: "IPS (repère département)",
 } as const;

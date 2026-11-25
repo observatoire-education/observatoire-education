@@ -4,7 +4,7 @@
 // dans l'onglet Élèves et classes : pour tenir le poids de la page, chaque chiffre n'est écrit qu'une fois.
 import { LIBELLES, LIBELLES_BUDGET, LIBELLES_ECOLES as LE, LIBELLES_SYNTHESE as LS } from "@obs/shared/libelles";
 import type { Fiche } from "@obs/shared/types";
-import { anneeScolaire, indicateur } from "../lib/affichage";
+import { anneeScolaire, comparaison, indicateur, reference, refAbsente, valeur } from "../lib/affichage";
 import { svgElevesClasses } from "../lib/plot";
 import { moyensSynthese } from "../lib/synthese";
 import Absence from "./Absence.astro";
@@ -17,6 +17,9 @@ const iEleves = indicateur(f, "eleves");
 const iParClasse = indicateur(f, "eleves_par_classe");
 const rentree = iEleves.mesure.rentree ?? f.classes?.rentree ?? null;
 const parClasseCalculee = iParClasse.comparaisons.some((c) => c.calculee);
+// IPS : même donnée et même formatage que l'onglet Composition sociale (valeur à la rentrée de l'école, repère département).
+const iIps = indicateur(f, "ips");
+const ipsPublie = iIps.mesure.statut === "ok" && iIps.mesure.valeur !== null;
 const historique = f.classes?.historique ?? [];
 const courbe = svgElevesClasses(historique);
 const moyens = f.budget.ecoles !== undefined
@@ -28,15 +31,24 @@ const moyens = f.budget.ecoles !== undefined
   <ChiffresEcole f={f} />
   <div class="ecole-note">Écart à la moyenne départementale (moyenne entre parenthèses){parClasseCalculee && `, ${LIBELLES_BUDGET.moyenne.calculee}`}.</div>
 </div>
-{f.budget.ecoles !== undefined && (
-  <div class="kpis">
+<div class="kpis">
+  <div>
+    <div class="k">{LS.ipsEcole}</div>
+    {ipsPublie ? <div class="v">{valeur("ips", iIps.mesure)}</div> : <Absence texte={LE.ipsNonPublie} />}
+    {ipsPublie && <div class="c">
+      {(["public", "prive_sous_contrat"] as const).map((s) => (
+        <span>dép. {s === "public" ? "public" : "privé"} <span class={refAbsente(reference(iIps, "departement", s)) ? "abs" : s === "public" ? "p" : "q"}>{comparaison("ips", reference(iIps, "departement", s), iIps.mesure)}</span></span>
+      ))}
+    </div>}
+  </div>
+  {f.budget.ecoles !== undefined && (
     <div>
       <div class="k">{LS.moyens}{moyens && ` · ${LIBELLES_BUDGET.interface.exercice(moyens.exercice)}`}</div>
       {moyens === null ? <Absence texte={nd} /> : moyens.absent ? <Absence texte={moyens.texte} /> : <div class="v">{moyens.texte}</div>}
       {moyens?.france && <div class="c"><span>France {moyens.france}</span></div>}
     </div>
-  </div>
-)}
+  )}
+</div>
 <div class="card" style="margin-top:14px">
   <div class="lab"><span>Élèves et classes</span><span class="yr">{historique.length > 1 ? `${historique[0]![0]} → ${historique.at(-1)![0]}` : anneeScolaire(rentree)}</span></div>
   {courbe ? (
