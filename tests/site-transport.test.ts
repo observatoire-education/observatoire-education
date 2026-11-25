@@ -47,6 +47,13 @@ describe("transport scolaire sur les pages", () => {
     const items = doc("departement/44").querySelectorAll("#transport details li");
     expect(items).toHaveLength(4);
     expect(items[0]!.textContent).toContain("CA PORNIC AGGLO PAYS DE RETZ");
+    // montants en euros sous le million, jamais « 0,0 M€ » ; chacun avec son propre dernier exercice
+    const ligne = (i: number) => items[i]!.textContent!.replace(/\s+/g, " ");
+    expect(ligne(0)).toMatch(/CA PORNIC AGGLO PAYS DE RETZ : 2,0\sM€/);
+    expect(ligne(1)).toMatch(/CC DE GRAND LIEU : −50\s000\s€/);
+    expect(ligne(3)).toMatch(/SYNDICAT TRANSPORTS SCOLAIRES DU PAYS DE RETZ : 800\s000\s€/);
+    expect(t).not.toContain("0,0 M€");
+    expect(t).toContain("loi NOTRe");
   });
 
   test("Corse-du-Sud : la Collectivité de Corse sur la page du département", () => {
