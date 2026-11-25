@@ -8,7 +8,7 @@ import type { Fiche, Identite, Indicateur } from "@obs/shared/types";
 import { assemblerFiches } from "../pipeline/src/fiches.ts";
 import {
   communesRetenues, ecolesDesCommunes, fichierCommune, type EcolesDUneCommune, exporterTerritoires, libelleListe, controlerPonderation, moyennePonderee,
-  verifierPonderation,
+  premiereRentreeDesSeries, verifierPonderation,
 } from "../pipeline/src/territoires.ts";
 import { partPrive } from "../site/src/lib/territoire.ts";
 import { dbAvecRegistre, dbTest, FIXTURES, identiteTest, manifestTest } from "./aide.ts";
@@ -237,6 +237,7 @@ describe("premier degré sur les territoires (spec, section 6.8)", () => {
   let aca: DonneesTerritoire;
   let region: DonneesTerritoire;
   let france: DonneesTerritoire;
+  let actives: Fiche[] = [];
   beforeAll(async () => {
     const db = await dbTest();
     const dossier = await mkdtemp(join(tmpdir(), "obs-premier-degre-"));
@@ -245,7 +246,8 @@ describe("premier degré sur les territoires (spec, section 6.8)", () => {
     try {
       const fiches = await assemblerFiches(db, manifestTest(dossier), {}, new Date("2026-11-23T02:17:00Z"));
       const sortie = join(dossier, "data");
-      await exporterTerritoires(fiches.filter((f) => f.disparuLe === null), db, sortie, 2025);
+      actives = fiches.filter((f) => f.disparuLe === null);
+      await exporterTerritoires(actives, db, sortie, 2025);
       const lire = (chemin: string): Promise<DonneesTerritoire> => Bun.file(join(sortie, chemin)).json();
       [dep, aca, region, france] = await Promise.all([
         lire("departements/44.json"), lire("academies/17.json"), lire("regions/52.json"), lire("france.json"),
@@ -255,6 +257,17 @@ describe("premier degré sur les territoires (spec, section 6.8)", () => {
       else process.env.OBS_CONTOURS = avant;
       await rm(dossier, { recursive: true, force: true });
     }
+  });
+
+  test("france.json : seriesDepuis = première rentrée des séries des fiches actives", () => {
+    const premieres = actives.flatMap((f) => [
+      ...f.indicateurs.map((i) => i.historique[0]?.[0]),
+      f.classes?.historique[0]?.[0],
+      ...f.resultats.map((r) => r.historique[0]?.[0]),
+    ]).filter((a): a is number => typeof a === "number");
+    expect(premieres.length).toBeGreaterThan(0);
+    expect((france as DonneesFrance).seriesDepuis).toBe(Math.min(...premieres));
+    expect(premiereRentreeDesSeries([])).toBeNull();
   });
 
   test("transport scolaire : région, département et France", () => {
