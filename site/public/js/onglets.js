@@ -12,6 +12,11 @@
     // « until-found » laisse la recherche dans la page ouvrir un panneau masqué ; sinon, repli sur hidden.
     var masque = "onbeforematch" in w.HTMLElement.prototype ? "until-found" : "";
 
+    // Ancre décodée ; un hash mal formé (« %E0%A4%A ») reste brut au lieu de lever une erreur.
+    function decoder(t) {
+      try { return decodeURIComponent(t); } catch (e) { return t; }
+    }
+
     // Panneau visé par un id : le panneau lui-même, ou celui qui contient l'élément.
     function panneauDe(id) {
       var el = id ? d.getElementById(id) : null;
@@ -48,7 +53,7 @@
 
     function idDeLien(a) {
       var h = a.getAttribute("href");
-      return h && h.length > 1 && h.charAt(0) === "#" ? decodeURIComponent(h.slice(1)) : null;
+      return h && h.length > 1 && h.charAt(0) === "#" ? decoder(h.slice(1)) : null;
     }
 
     d.addEventListener("click", function (e) {
@@ -64,7 +69,10 @@
     });
 
     w.addEventListener("hashchange", function () {
-      ouvrir(w.location.hash.slice(1));
+      var id = decoder(w.location.hash.slice(1));
+      // Ancre extérieure aux panneaux : l'onglet courant reste ouvert.
+      if (id && !panneauDe(id)) return;
+      ouvrir(id);
     });
 
     panneaux.forEach(function (p) {
@@ -88,9 +96,17 @@
       });
     }
 
-    ouvrir(decodeURIComponent(w.location.hash.slice(1)));
-    d.documentElement.classList.add("onglets-prets");
+    try {
+      ouvrir(decoder(w.location.hash.slice(1)));
+    } finally {
+      d.documentElement.classList.add("onglets-prets");
+    }
+    // Amène l'onglet actif dans la zone visible de la barre, sans faire défiler la page verticalement.
     var courant = d.querySelector('[role="tab"][aria-selected="true"]');
-    if (courant) courant.scrollIntoView({ block: "nearest", inline: "nearest" });
+    if (courant && barre) {
+      var g = courant.offsetLeft, dr = g + courant.offsetWidth;
+      if (dr > barre.scrollLeft + barre.clientWidth) barre.scrollLeft = dr - barre.clientWidth;
+      else if (g < barre.scrollLeft) barre.scrollLeft = g;
+    }
   });
 })(window);

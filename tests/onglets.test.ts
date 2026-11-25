@@ -112,4 +112,29 @@ describe("onglets.js", () => {
     expect(() => page({ sansOnglets: true })).not.toThrow();
     expect(page({ sansOnglets: true }).document.documentElement.classList.contains("onglets-prets")).toBe(false);
   });
+
+  test("hash mal formé : pas d'exception, page prête, premier onglet actif", () => {
+    const { visibles, document } = page({ hash: "#%E0%A4%A" });
+    expect(visibles()).toEqual(["o-a"]);
+    expect(document.documentElement.classList.contains("onglets-prets")).toBe(true);
+  });
+
+  test("hashchange vers une ancre hors panneaux : l'onglet courant reste", () => {
+    const { win, visibles } = page({ hash: "#o-b" });
+    win.location.hash = "#ailleurs";
+    win.dispatchEvent(new win.Event("hashchange"));
+    expect(visibles()).toEqual(["o-b"]);
+  });
+
+  test("hashchange décode l'ancre", () => {
+    const { win, visibles } = page();
+    win.location.hash = "#%6F-c";
+    win.dispatchEvent(new win.Event("hashchange"));
+    expect(visibles()).toEqual(["o-c"]);
+  });
+
+  test("chargement sans ancre : scrollIntoView non appelé sur l'onglet", () => {
+    const { defiler } = page();
+    expect(defiler).not.toHaveBeenCalled();
+  });
 });
