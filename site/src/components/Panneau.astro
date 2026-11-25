@@ -1,0 +1,19 @@
+---
+// Panneau d'une page à onglets ; sans onglets, simple conteneur sans rôle.
+interface Props {
+  id: string;
+  libelle: string;
+  /** Panneau affiché d'emblée (la Synthèse) : sert à l'anti-flash avant que le script ne tourne. */
+  actif?: boolean;
+  avecOnglets: boolean;
+}
+const { id, libelle, actif = false, avecOnglets } = Astro.props;
+---
+{avecOnglets ? (
+  <div class="panneau" id={id} role="tabpanel" aria-labelledby={"tab-" + id} data-onglet data-defaut={actif ? "" : undefined}>
+    <p class="titre-impression">{libelle}</p>
+    <slot />
+  </div>
+) : (
+  <div><slot /></div>
+)}

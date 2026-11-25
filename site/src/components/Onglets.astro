@@ -1,0 +1,19 @@
+---
+// Barre d'onglets : sans JavaScript, c'est un sommaire par ancres.
+import { LIBELLES_ONGLETS } from "@obs/shared/libelles";
+import { avecOnglets, type Onglet } from "../lib/onglets";
+
+interface Props {
+  onglets: Onglet[];
+}
+const { onglets } = Astro.props;
+---
+{avecOnglets(onglets) && (
+  <nav class="onglets" aria-label={LIBELLES_ONGLETS.barre}>
+    <div role="tablist">
+      {onglets.map((o) => (
+        <a role="tab" id={"tab-" + o.id} href={"#" + o.id} aria-controls={o.id}>{o.libelle}</a>
+      ))}
+    </div>
+  </nav>
+)}

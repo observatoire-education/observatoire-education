@@ -489,3 +489,23 @@ export const LIBELLES_SEGREGATION = {
   indicateur: "Indicateur",
   renvoi: "La DEPP publie la ségrégation sociale entre collèges par département seulement : voir les pages des départements.",
 } as const;
+
+/** Libellés des onglets des pages (territoires, communes, fiches). */
+export const LIBELLES_ONGLETS = {
+  synthese: "Synthèse",
+  eleves: "Élèves",
+  elevesClasses: "Élèves et classes",
+  social: "Composition sociale",
+  enseignants: "Enseignants",
+  resultats: "Résultats",
+  moyens: "Moyens",
+  moyensCommune: "Moyens de la commune",
+  alentours: "Alentours",
+  colleges: "Collèges",
+  lycees: "Lycées",
+  ecoles: "Écoles",
+  transport: "Transport",
+  territoires: "Territoires",
+  sources: "Sources",
+  barre: "Sections de la page",
+} as const;
