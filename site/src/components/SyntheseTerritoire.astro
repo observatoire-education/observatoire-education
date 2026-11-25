@@ -18,9 +18,14 @@ import Absence from "./Absence.astro";
 import CarteTerritoire from "./CarteTerritoire.astro";
 import CaseIps from "./CaseIps.astro";
 import CourbeIpsTerritoire from "./CourbeIpsTerritoire.astro";
+import Libelle from "./Libelle.astro";
 
-interface Props { d: DonneesTerritoire; familles: [FamilleSecondDegre, SyntheseFamille][]; niveau: NiveauTerritoire }
-const { d, familles, niveau } = Astro.props;
+interface Props { d: DonneesTerritoire; familles: [FamilleSecondDegre, SyntheseFamille][]; niveau: NiveauTerritoire; /** Onglets de la page (vide sans barre) : cibles des liens des cases. */ onglets: string[] }
+const { d, familles, niveau, onglets } = Astro.props;
+/** L'onglet s'il existe sur la page : les cases n'ont de lien que vers un onglet présent. */
+const vers = (id: string) => (onglets.includes(id) ? id : undefined);
+const versFamille = (f: FamilleSecondDegre) => vers(f === "college" ? "o-colleges" : "o-lycees");
+const versMoyens = vers(niveau === "commune" ? "o-moyens-commune" : niveau === "region" ? "o-lycees" : "o-colleges");
 const seulementEcoles = niveau === "commune" && familles.length === 0;
 const total = totalSecondDegre(familles);
 const college = d.familles.college;
@@ -41,7 +46,7 @@ const publiques = e ? e.ecoles.filter((x) => x.secteur === "public").length : 0;
 ---
 {!seulementEcoles && <div class="kpis">
   {familles.map(([f, s]) => (
-    <div><div class="k">{FAMILLES_PLURIEL[f]}</div><div class="v">{entier(s.compte.public + s.compte.prive)}</div>
+    <div><div class="k"><Libelle vers={versFamille(f)}>{FAMILLES_PLURIEL[f]}</Libelle></div><div class="v">{entier(s.compte.public + s.compte.prive)}</div>
       <div class="c"><span class="p">{entier(s.compte.public)} publics</span> · <span class="q">{entier(s.compte.prive)} privés s. c.</span></div></div>
   ))}
   <div><div class="k">Privé hors contrat</div><div class="v">{entier(d.horsContrat)} étab.</div><div class="c" style="font-family:var(--sans)">{LIBELLES.nonCouvert}</div></div>
@@ -64,10 +69,10 @@ const publiques = e ? e.ecoles.filter((x) => x.secteur === "public").length : 0;
       {total.nonPubliees.length > 0 && <div class="c" style="font-family:var(--sans)">{LS.horsFamilles(total.nonPubliees.map((f) => nomFamille(f, 2)))}</div>}
     </div>
   )}
-  {college && <CaseIps f="college" s={college} d={d} libelle={LS.ipsColleges} />}
+  {college && <CaseIps f="college" s={college} d={d} libelle={LS.ipsColleges} vers={vers("o-colleges")} />}
   {e && (
     <div class="ecoles-commune">
-      <div class="k">{LC.titre}</div>
+      <div class="k"><Libelle vers={vers("o-ecoles")}>{LC.titre}</Libelle></div>
       {e.ecoles.length > 0
         ? <><div class="v">{entier(e.ecoles.length)}</div><div class="c" style="font-family:var(--sans)">{LR.decompte(publiques, e.ecoles.length - publiques)}</div></>
         : e.plusDEcoleDepuis !== null ? <Absence texte={LC.plusDEcoleDepuis(e.plusDEcoleDepuis)} /> : <Absence texte={LIBELLES.nonDisponible} />}
@@ -75,7 +80,7 @@ const publiques = e ? e.ecoles.filter((x) => x.secteur === "public").length : 0;
   )}
   {avecMoyens && (
     <div class="moyens-synthese">
-      <div class="k">{moyens?.libelle ?? LS.moyens}{moyens && ` · ${LIBELLES_BUDGET.interface.exercice(moyens.exercice)}`}</div>
+      <div class="k"><Libelle vers={versMoyens}>{moyens?.libelle ?? LS.moyens}</Libelle>{moyens && ` · ${LIBELLES_BUDGET.interface.exercice(moyens.exercice)}`}</div>
       {moyens === null
         ? <Absence texte={absenceBudget(d.budget.motif ?? "collectivite_non_identifiee", "ecoles")} />
         : moyens.absent ? <Absence texte={moyens.texte} /> : <div class="v">{moyens.texte}</div>}
@@ -84,7 +89,7 @@ const publiques = e ? e.ecoles.filter((x) => x.secteur === "public").length : 0;
   )}
 </div>
 
-{college && <CourbeIpsTerritoire historique={college.ipsHistorique} titre={`Évolution de l'${LS.ipsColleges}`} />}
+{college && <CourbeIpsTerritoire historique={college.ipsHistorique} titre={`Évolution de l'${LS.ipsColleges}`} vers={vers("o-colleges")} />}
 
 {!seulementEcoles && (
   <section>

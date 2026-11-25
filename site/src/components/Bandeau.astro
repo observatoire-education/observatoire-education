@@ -5,6 +5,7 @@ import type { CodeIndicateur } from "@obs/shared/libelles";
 import type { Fiche } from "@obs/shared/types";
 import { annee, comparaison, indicateur, reference, refAbsente, texteCouverture, valeur } from "../lib/affichage";
 import Absence from "./Absence.astro";
+import Libelle from "./Libelle.astro";
 
 interface Props { f: Fiche }
 const { f } = Astro.props;
@@ -16,6 +17,8 @@ const CLES: [CodeIndicateur, string][] = [
   ["part_non_titulaires", "Non titulaires"],
   ["ips", "IPS"],
 ];
+/** Onglet de la fiche qui détaille chaque chiffre (Synthèse). */
+const onglet = (code: CodeIndicateur) => (code === "eleves" ? "o-eleves" : code === "ips" ? "o-social" : "o-enseignants");
 const cases = CLES.map(([code, libelle]) => {
   const i = indicateur(f, code);
   const pub = reference(i, "departement", "public");
@@ -27,7 +30,7 @@ const cases = CLES.map(([code, libelle]) => {
 <div class="kpis">
   {cases.map(({ code, libelle, i, pub, pri, precedent }) => (
     <div>
-      <div class="k">{libelle}{annee(i.mesure) && ` · ${annee(i.mesure)}`}</div>
+      <div class="k"><Libelle vers={onglet(code)}>{libelle}</Libelle>{annee(i.mesure) && ` · ${annee(i.mesure)}`}</div>
       {i.mesure.statut === "ok" ? <div class="v">{valeur(code, i.mesure)}</div> : <Absence texte={valeur(code, i.mesure)} />}
       {code === "part_filles" && texteCouverture(i.mesure) && <span class="couv">{texteCouverture(i.mesure)}</span>}
       <div class="c">

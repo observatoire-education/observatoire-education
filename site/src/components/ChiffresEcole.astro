@@ -6,6 +6,7 @@ import { LIBELLES, LIBELLES_ECOLES as LE } from "@obs/shared/libelles";
 import type { Fiche } from "@obs/shared/types";
 import { absente, comparaison, indicateur, reference, refAbsente, valeur } from "../lib/affichage";
 import Absence from "./Absence.astro";
+import Libelle from "./Libelle.astro";
 
 interface Props { f: Fiche }
 const { f } = Astro.props;
@@ -16,10 +17,10 @@ const iParClasse = indicateur(f, "eleves_par_classe");
 const nbClasses = f.classes?.total ? f.classes.total : null;
 ---
 <div class="kpis chiffres">
-  <div><div class="k">Élèves</div>{iEleves.mesure.statut === "ok" ? <div class="v">{valeur("eleves", iEleves.mesure)}</div> : <Absence texte={valeur("eleves", iEleves.mesure)} />}</div>
-  <div><div class="k">{LE.classes}</div>{nbClasses !== null ? <div class="v">{entier(nbClasses)}</div> : <Absence texte={nd} />}</div>
+  <div><div class="k"><Libelle vers="o-eleves">Élèves</Libelle></div>{iEleves.mesure.statut === "ok" ? <div class="v">{valeur("eleves", iEleves.mesure)}</div> : <Absence texte={valeur("eleves", iEleves.mesure)} />}</div>
+  <div><div class="k"><Libelle vers="o-eleves">{LE.classes}</Libelle></div>{nbClasses !== null ? <div class="v">{entier(nbClasses)}</div> : <Absence texte={nd} />}</div>
   <div>
-    <div class="k">{LE.elevesParClasse}</div>
+    <div class="k"><Libelle vers="o-eleves">{LE.elevesParClasse}</Libelle></div>
     {!absente(iParClasse.mesure) ? <div class="v">{valeur("eleves_par_classe", iParClasse.mesure)}</div> : <Absence texte={valeur("eleves_par_classe", iParClasse.mesure)} />}
     <div class="c">
       {(["public", "prive_sous_contrat"] as const).map((s) => {

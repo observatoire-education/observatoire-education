@@ -8,9 +8,10 @@ import { LIBELLES } from "@obs/shared/libelles";
 import type { Famille } from "@obs/shared/types";
 import { lireTerritoire } from "../lib/donnees";
 import { nomFamille } from "../lib/territoire";
+import Libelle from "./Libelle.astro";
 
-interface Props { f: Famille; s: SyntheseFamille; d: DonneesTerritoire; libelle: string }
-const { f, s, d, libelle } = Astro.props;
+interface Props { f: Famille; s: SyntheseFamille; d: DonneesTerritoire; libelle: string; /** Synthèse : onglet qui détaille la case. */ vers?: string | undefined }
+const { f, s, d, libelle, vers } = Astro.props;
 const niveau = d.ref.niveau;
 const dep = d.parents.find((p) => p.niveau === "departement");
 /** Commune : moyennes d'IPS publiées par la DEPP pour son département, en repère. */
@@ -27,7 +28,7 @@ const ipsCalcule = (ips: IpsMoyens, compte: number, sec: "public" | "prive") => 
 };
 ---
 {s.ipsMoyen.calculee ? (
-  <div class="ips-calcule"><div class="k">{libelle}</div>
+  <div class="ips-calcule"><div class="k"><Libelle vers={vers}>{libelle}</Libelle></div>
     {(["public", "prive"] as const).map((sec) => {
       const v = ipsCalcule(s.ipsMoyen, sec === "public" ? s.compte.public : s.compte.prive, sec);
       const r = repere?.[sec] ?? null;
@@ -41,7 +42,7 @@ const ipsCalcule = (ips: IpsMoyens, compte: number, sec: "public" | "prive") => 
     })}
   </div>
 ) : (
-  <div><div class="k">{libelle}</div>
+  <div><div class="k"><Libelle vers={vers}>{libelle}</Libelle></div>
     <div class="v" style="font-size:20px;padding-top:6px"><span style="color:var(--pub-ink)">{nombre(s.ipsMoyen.public)}</span> · <span style="color:var(--pri-ink)">{nombre(s.ipsMoyen.prive)}</span></div>
     <div class="c">public · privé s. c. (DEPP)</div></div>
 )}

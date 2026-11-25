@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import type { EntreeIndex } from "@obs/shared/donnees";
 import { estEcole, LIBELLES_ABSENCES, LIBELLES_BUDGET, LIBELLES_ONGLETS, LIBELLES_RESULTATS } from "@obs/shared/libelles";
-import { readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { DIST_TEST, doc, page, siteTest, texte } from "./site.ts";
 
@@ -384,5 +384,40 @@ describe("fiche en onglets", () => {
     // la fiche A4 reste hors des panneaux
     expect(d.querySelector("[data-onglet] .a4, [data-onglet] #fiche-a4")).toBeNull();
     expect(d.querySelector("script[src='/js/onglets.js']")).not.toBeNull();
+  });
+});
+
+describe("cases de la Synthèse cliquables", () => {
+  /** Cibles des liens de la Synthèse ; chacune est un onglet de la page. */
+  const cibles = (chemin: string) => {
+    const d = doc(chemin);
+    const panneaux = new Set([...d.querySelectorAll("[data-onglet]")].map((p) => `#${p.id}`));
+    const liens = [...d.querySelectorAll("#o-synthese a.vers")].map((a) => a.getAttribute("href")!);
+    for (const h of liens) expect(panneaux.has(h)).toBe(true);
+    return new Set(liens);
+  };
+
+  test("fiche de collège : chaque case mène à son onglet", () => {
+    const c = cibles("etablissement/0440001A");
+    for (const h of ["#o-eleves", "#o-enseignants", "#o-social", "#o-resultats", "#o-moyens"]) expect(c.has(h)).toBe(true);
+  });
+
+  test("fiche d'école : élèves, composition sociale, moyens", () => {
+    const c = cibles("etablissement/0440202B");
+    for (const h of ["#o-eleves", "#o-social", "#o-moyens"]) expect(c.has(h)).toBe(true);
+  });
+
+  test("territoires : familles, IPS et moyens vers leur onglet", () => {
+    const dep = cibles("departement/44");
+    for (const h of ["#o-colleges", "#o-lycees"]) expect(dep.has(h)).toBe(true);
+    expect(cibles("region/52").has("#o-lycees")).toBe(true);
+    expect(cibles("france").has("#o-colleges")).toBe(true);
+    expect(cibles("commune/44109").size).toBeGreaterThan(0);
+  });
+
+  test("le lien couvre toute la case, sans masquer les liens qu'elle contient", () => {
+    const css = readFileSync(join(import.meta.dir, "../site/src/styles/obs.css"), "utf8");
+    expect(css).toMatch(/a\.vers::after\s*\{[^}]*position:\s*absolute[^}]*inset:\s*0/);
+    expect(css).toMatch(/:has\(a\.vers\)[^{]*\{[^}]*position:\s*relative/);
   });
 });

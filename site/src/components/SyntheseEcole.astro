@@ -9,6 +9,7 @@ import { svgElevesClasses } from "../lib/plot";
 import { moyensSynthese } from "../lib/synthese";
 import Absence from "./Absence.astro";
 import ChiffresEcole from "./ChiffresEcole.astro";
+import Libelle from "./Libelle.astro";
 
 interface Props { f: Fiche }
 const { f } = Astro.props;
@@ -33,7 +34,7 @@ const moyens = f.budget.ecoles !== undefined
 </div>
 <div class="kpis">
   <div>
-    <div class="k">{LS.ipsEcole}</div>
+    <div class="k"><Libelle vers="o-social">{LS.ipsEcole}</Libelle></div>
     {ipsPublie ? <div class="v">{valeur("ips", iIps.mesure)}</div> : <Absence texte={LE.ipsNonPublie} />}
     {ipsPublie && <div class="c">
       {(["public", "prive_sous_contrat"] as const).map((s) => (
@@ -43,14 +44,14 @@ const moyens = f.budget.ecoles !== undefined
   </div>
   {f.budget.ecoles !== undefined && (
     <div>
-      <div class="k">{LS.moyens}{moyens && ` · ${LIBELLES_BUDGET.interface.exercice(moyens.exercice)}`}</div>
+      <div class="k"><Libelle vers="o-moyens">{LS.moyens}</Libelle>{moyens && ` · ${LIBELLES_BUDGET.interface.exercice(moyens.exercice)}`}</div>
       {moyens === null ? <Absence texte={nd} /> : moyens.absent ? <Absence texte={moyens.texte} /> : <div class="v">{moyens.texte}</div>}
       {moyens?.france && <div class="c"><span>France {moyens.france}</span></div>}
     </div>
   )}
 </div>
 <div class="card" style="margin-top:14px">
-  <div class="lab"><span>Élèves et classes</span><span class="yr">{historique.length > 1 ? `${historique[0]![0]} → ${historique.at(-1)![0]}` : anneeScolaire(rentree)}</span></div>
+  <div class="lab"><span><Libelle vers="o-eleves">Élèves et classes</Libelle></span><span class="yr">{historique.length > 1 ? `${historique[0]![0]} → ${historique.at(-1)![0]}` : anneeScolaire(rentree)}</span></div>
   {courbe ? (
     <>
       <Fragment set:html={courbe} />

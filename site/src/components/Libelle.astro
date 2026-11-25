@@ -1,0 +1,7 @@
+---
+// Libellé d'une case ou d'une carte de la Synthèse : lien vers l'onglet qui la détaille (le lien couvre toute la case,
+// voir `a.vers` dans obs.css) ; texte seul si la page n'a pas cet onglet.
+interface Props { vers?: string | undefined }
+const { vers } = Astro.props;
+---
+{vers ? <a class="vers" href={`#${vers}`}><slot /></a> : <slot />}

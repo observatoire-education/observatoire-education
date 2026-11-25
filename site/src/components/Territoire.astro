@@ -161,7 +161,7 @@ const badges = [
   <Onglets onglets={barre} />
   {avecSynthese && (
     <Panneau id="o-synthese" libelle={LO.synthese} actif={premier === "o-synthese"} avecOnglets={avec}>
-      <SyntheseTerritoire d={d} familles={familles} niveau={niveau} />
+      <SyntheseTerritoire d={d} familles={familles} niveau={niveau} onglets={avec ? barre.map((o) => o.id) : []} />
     </Panneau>
   )}
 

@@ -12,6 +12,7 @@ import { moyensSynthese, resultatsSynthese } from "../lib/synthese";
 import Absence from "./Absence.astro";
 import Bandeau from "./Bandeau.astro";
 import LegendeCourbeIps from "./LegendeCourbeIps.astro";
+import Libelle from "./Libelle.astro";
 
 interface Props { f: Fiche }
 const { f } = Astro.props;
@@ -31,7 +32,7 @@ const serieIps = seriesReferencesIps(refsIps);
 <Bandeau f={f} />
 <div class="kpis">
   <div class="resultats-synthese">
-    <div class="k">{LS.resultats}</div>
+    <div class="k"><Libelle vers="o-resultats">{LS.resultats}</Libelle></div>
     {resultats.length === 0 ? <Absence texte={LRES.aucun} /> : resultats.map((r) => (
       <div class="c">
         <span>{r.voie}, {LRES.session(r.session)}</span>
@@ -43,7 +44,7 @@ const serieIps = seriesReferencesIps(refsIps);
     ))}
   </div>
   <div>
-    <div class="k">{prive ? LS.moyensPrive : LS.moyens}{moyens && ` · ${LIBELLES_BUDGET.interface.exercice(moyens.exercice)}`}</div>
+    <div class="k"><Libelle vers="o-moyens">{prive ? LS.moyensPrive : LS.moyens}</Libelle>{moyens && ` · ${LIBELLES_BUDGET.interface.exercice(moyens.exercice)}`}</div>
     {moyens === null ? <Absence texte={LIBELLES.nonDisponible} /> : moyens.absent ? <Absence texte={moyens.texte} /> : <div class="v">{moyens.texte}</div>}
     {moyens?.france && <div class="c"><span>France {moyens.france}</span></div>}
   </div>
@@ -51,11 +52,11 @@ const serieIps = seriesReferencesIps(refsIps);
 
 <div class="cols2" style="margin-top:14px">
   <div class="card">
-    <div class="lab"><span>Effectif total</span><span class="yr">{iEleves.historique.length > 1 ? `${iEleves.historique[0]![0]} → ${iEleves.historique.at(-1)![0]}` : anneeScolaire(iEleves.mesure.rentree)}</span></div>
+    <div class="lab"><span><Libelle vers="o-eleves">Effectif total</Libelle></span><span class="yr">{iEleves.historique.length > 1 ? `${iEleves.historique[0]![0]} → ${iEleves.historique.at(-1)![0]}` : anneeScolaire(iEleves.mesure.rentree)}</span></div>
     {iEleves.historique.length > 0 ? <Fragment set:html={svgBarres(iEleves.historique)} /> : <Absence texte={LIBELLES.nonDisponible} />}
   </div>
   <div class="card">
-    <div class="lab"><span>Évolution de l'IPS</span><span class="yr">{iIps.historique.length ? `${iIps.historique[0]![0]} → ${iIps.historique.at(-1)![0]}` : ""}</span></div>
+    <div class="lab"><span><Libelle vers="o-social">Évolution de l'IPS</Libelle></span><span class="yr">{iIps.historique.length ? `${iIps.historique[0]![0]} → ${iIps.historique.at(-1)![0]}` : ""}</span></div>
     {iIps.historique.length > 1 ? (
       <>
         <Fragment set:html={svgCourbe(iIps.historique, serieIps.publique, serieIps.privee, serieIps.calculees)} />
