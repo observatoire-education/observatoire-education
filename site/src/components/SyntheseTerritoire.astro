@@ -1,0 +1,92 @@
+---
+// Synthèse d'une page de territoire (spec, 5.3 et 5.4) : la carte, les cases du territoire (établissements par famille,
+// privé hors contrat), les élèves en collège et lycée (somme des cases « Élèves » des familles), l'IPS moyen des
+// collèges (la case de l'onglet Collèges), une case Moyens et la courbe de l'IPS des collèges. Commune : ses écoles
+// et la dépense de la commune par élève ; commune sans second degré : ces deux cases seulement. Pas de case Résultats.
+import type { DonneesTerritoire, NiveauTerritoire, SyntheseFamille } from "@obs/shared/donnees";
+import { entier, part } from "@obs/shared/format";
+import {
+  FAMILLES_PLURIEL, LIBELLES, LIBELLES_BUDGET, LIBELLES_COMMUNE_ECOLES as LC, LIBELLES_RATTACHEMENTS as LR, LIBELLES_SYNTHESE as LS,
+} from "@obs/shared/libelles";
+import type { FamilleSecondDegre } from "@obs/shared/types";
+import { absenceBudget } from "../lib/budget";
+import { lireFrance } from "../lib/donnees";
+import { moyensSynthese, moyensTerritoire, totalSecondDegre, type MoyensSynthese } from "../lib/synthese";
+import { nomFamille } from "../lib/territoire";
+import Absence from "./Absence.astro";
+import CarteTerritoire from "./CarteTerritoire.astro";
+import CaseIps from "./CaseIps.astro";
+import CourbeIpsTerritoire from "./CourbeIpsTerritoire.astro";
+
+interface Props { d: DonneesTerritoire; familles: [FamilleSecondDegre, SyntheseFamille][]; niveau: NiveauTerritoire }
+const { d, familles, niveau } = Astro.props;
+const seulementEcoles = niveau === "commune" && familles.length === 0;
+const total = totalSecondDegre(familles);
+const college = d.familles.college;
+
+// Moyens : la collectivité du territoire (département, région) ou la moyenne France ; commune : la commune pour ses écoles.
+const budgetCommune = niveau === "commune" ? (d.budget.collectivites.find((c) => c.niveau === "ecoles") ?? null) : null;
+const avecBudgetCommune = budgetCommune !== null || d.budget.motif !== undefined;
+const moyens: (MoyensSynthese & { libelle: string }) | null = niveau === "commune"
+  ? (() => {
+    const m = moyensSynthese(budgetCommune, d.budget.france.find((x) => x.niveau === "ecoles"), "public", "ecoles");
+    return m && { ...m, libelle: LS.moyens };
+  })()
+  : moyensTerritoire(d);
+const avecMoyens = niveau === "commune" ? avecBudgetCommune : moyens !== null;
+
+const e = d.ecoles;
+const publiques = e ? e.ecoles.filter((x) => x.secteur === "public").length : 0;
+---
+{!seulementEcoles && (
+  <section>
+    <h2>Carte</h2>
+    <CarteTerritoire carte={d.carte} ref={d.ref} rentree={d.rentree} budget={niveau === "france" ? lireFrance().carteBudget : null} />
+  </section>
+)}
+
+{!seulementEcoles && <div class="kpis">
+  {familles.map(([f, s]) => (
+    <div><div class="k">{FAMILLES_PLURIEL[f]}</div><div class="v">{entier(s.compte.public + s.compte.prive)}</div>
+      <div class="c"><span class="p">{entier(s.compte.public)} publics</span> · <span class="q">{entier(s.compte.prive)} privés s. c.</span></div></div>
+  ))}
+  <div><div class="k">Privé hors contrat</div><div class="v">{entier(d.horsContrat)} étab.</div><div class="c" style="font-family:var(--sans)">{LIBELLES.nonCouvert}</div></div>
+</div>}
+
+<div class="kpis">
+  {!seulementEcoles && (
+    <div class="eleves-second-degre">
+      <div class="k">{LS.elevesSecondDegre} · {d.rentree}</div>
+      <div class="v">{total.eleves === null ? "—" : entier(total.eleves)}</div>
+      <div class="c" style="font-family:var(--sans)">{LS.sommeFamilles}</div>
+      {total.nonPubliees.length > 0 && <div class="c" style="font-family:var(--sans)">{LS.horsFamilles(total.nonPubliees.map((f) => nomFamille(f, 2)))}</div>}
+    </div>
+  )}
+  {!seulementEcoles && (
+    <div>
+      <div class="k">{LS.partPrive}</div>
+      <div class="v">{total.partPrive === null ? "—" : part(100 * total.partPrive)}</div>
+      {total.prive !== null && <div class="c"><span class="q">{entier(total.prive)} élèves</span></div>}
+    </div>
+  )}
+  {college && <CaseIps f="college" s={college} d={d} libelle={LS.ipsColleges} />}
+  {e && (
+    <div class="ecoles-commune">
+      <div class="k">{LC.titre}</div>
+      {e.ecoles.length > 0
+        ? <><div class="v">{entier(e.ecoles.length)}</div><div class="c" style="font-family:var(--sans)">{LR.decompte(publiques, e.ecoles.length - publiques)}</div></>
+        : e.plusDEcoleDepuis !== null ? <Absence texte={LC.plusDEcoleDepuis(e.plusDEcoleDepuis)} /> : <Absence texte={LIBELLES.nonDisponible} />}
+    </div>
+  )}
+  {avecMoyens && (
+    <div class="moyens-synthese">
+      <div class="k">{moyens?.libelle ?? LS.moyens}{moyens && ` · ${LIBELLES_BUDGET.interface.exercice(moyens.exercice)}`}</div>
+      {moyens === null
+        ? <Absence texte={absenceBudget(d.budget.motif ?? "collectivite_non_identifiee", "ecoles")} />
+        : moyens.absent ? <Absence texte={moyens.texte} /> : <div class="v">{moyens.texte}</div>}
+      {moyens?.france && <div class="c"><span>France {moyens.france}</span></div>}
+    </div>
+  )}
+</div>
+
+{college && <CourbeIpsTerritoire historique={college.ipsHistorique} titre={`Évolution de l'${LS.ipsColleges}`} />}

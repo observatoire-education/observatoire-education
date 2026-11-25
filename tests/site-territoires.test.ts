@@ -134,7 +134,8 @@ describe("premier degré sur les territoires", () => {
     expect(t).toContain("99,9"); // moyenne DEPP des écoles publiques du département
     expect(t).toContain("1 école");
     expect(t).toContain("non couvert par les statistiques publiques");
-    expect(doc("departement/44").querySelector("nav.tabs a[href='#premier-degre']")).not.toBeNull();
+    expect(doc("departement/44").querySelector("nav.onglets a[href='#o-ecoles']")).not.toBeNull();
+    expect(doc("departement/44").querySelector("#o-ecoles #premier-degre")).not.toBeNull();
   });
 
   test("département : aucune liste nominative d'écoles, renvoi au CSV du département", () => {
@@ -220,6 +221,105 @@ describe("évolution de l'IPS moyen", () => {
     for (const c of [...courbes("departement/44"), ...courbes("region/52")]) {
       const [a, b] = c.querySelector(".yr")!.textContent!.split(" → ").map(Number);
       expect(b! - a!).toBeGreaterThanOrEqual(1);
+    }
+  });
+});
+
+describe("territoires en onglets", () => {
+  const hrefs = (chemin: string) => [...doc(chemin).querySelectorAll("nav.onglets a")].map((a) => a.getAttribute("href"));
+  /** Nombre écrit avec des espaces de groupement (« 3 690 ») ; null pour « — ». */
+  const nombreDe = (t: string) => (/\d/.test(t) ? Number(t.replace(/[^\d]/g, "")) : null);
+
+  test("département : onglets des blocs présents (fixtures : ni Résultats ni Moyens de la commune)", () => {
+    expect(hrefs("departement/44")).toEqual(["#o-synthese", "#o-colleges", "#o-lycees", "#o-ecoles", "#o-transport", "#o-territoires", "#o-sources"]);
+    const d = doc("departement/44");
+    // chaque onglet a son panneau, la Synthèse est le panneau par défaut
+    for (const h of hrefs("departement/44")) expect(d.querySelector(`${h}[data-onglet][role=tabpanel]`)).not.toBeNull();
+    expect(d.querySelector("#o-synthese")!.hasAttribute("data-defaut")).toBe(true);
+    // anciennes ancres : dans le panneau de leur famille ou de leur thème
+    expect(d.querySelector("#o-colleges #college")).not.toBeNull();
+    for (const f of ["legt", "lpo", "erea"]) expect(d.querySelector(`#o-lycees #${f}`)).not.toBeNull();
+    expect(d.querySelector("#o-ecoles #premier-degre")).not.toBeNull();
+    expect(d.querySelector("#o-transport #transport")).not.toBeNull();
+    expect(d.querySelector("#o-territoires #communes")).not.toBeNull();
+    expect(d.querySelector("#o-sources #sources")).not.toBeNull();
+    // ni l'ancienne barre ni de carte hors de la Synthèse
+    expect(d.querySelector(".tabs")).toBeNull();
+    expect(d.querySelector("#o-synthese #carte-territoire")).not.toBeNull();
+    expect(d.querySelector("script[src='/js/onglets.js']")).not.toBeNull();
+  });
+
+  test("département : élèves en collège et lycée = somme des cases « Élèves » des familles, familles non publiées dites", () => {
+    const d = doc("departement/44");
+    const familles = [...d.querySelectorAll("#o-colleges > section[id], #o-lycees > section[id]")];
+    const eleves = familles.map((s) => nombreDe(s.querySelector(".kpis > div .v")!.textContent!));
+    const somme = eleves.reduce<number>((a, n) => a + (n ?? 0), 0);
+    const cas = d.querySelector("#o-synthese .eleves-second-degre")!;
+    expect(cas.querySelector(".k")!.textContent).toContain("Élèves en collège et lycée");
+    expect(nombreDe(cas.querySelector(".v")!.textContent!)).toBe(somme);
+    expect(cas.textContent).toContain("somme des familles d'établissements");
+    // l'EREA des fixtures n'a pas d'effectif publié : le total le dit
+    expect(eleves[familles.findIndex((s) => s.id === "erea")]).toBeNull();
+    expect(cas.textContent).toContain("hors EREA (effectif non publié)");
+    expect(d.querySelector("#o-synthese")!.textContent).toContain("Part du privé sous contrat");
+  });
+
+  test("département : la case IPS des collèges reprend celle de l'onglet Collèges", () => {
+    const d = doc("departement/44");
+    const v = (sel: string) => d.querySelector(sel)!.textContent!.replace(/\s+/g, " ").trim();
+    expect(v("#o-synthese .kpis .v[style*='font-size:20px']")).toBe(v("#college .kpis .v[style*='font-size:20px']"));
+  });
+
+  test("département : la case Moyens affiche le montant du bloc Moyens des collèges", () => {
+    const d = doc("departement/44");
+    const montant = d.querySelector("#o-synthese .moyens-synthese .v")!.textContent!.trim();
+    expect(montant).toMatch(/\d/);
+    const ligne = [...d.querySelectorAll("#college .moyens-territoire tr")].find((tr) => tr.textContent!.includes("Fonctionnement hors personnel"))!;
+    expect(ligne.textContent).toContain(montant);
+  });
+
+  test("académie : pas de case Moyens dans la Synthèse", () => {
+    const d = doc("academie/17");
+    expect(d.querySelector("#o-synthese")).not.toBeNull();
+    expect(d.querySelector("#o-synthese .moyens-synthese")).toBeNull();
+    expect(d.querySelector("#o-colleges #college .moyens-territoire")).not.toBeNull();
+  });
+
+  test("France : régions et académies dans l'onglet Territoires", () => {
+    const d = doc("france");
+    expect(d.querySelector("#o-territoires #regions")).not.toBeNull();
+    expect(d.querySelector("#o-territoires #territoires")).not.toBeNull();
+    expect(d.querySelector("#o-synthese .moyens-synthese")).not.toBeNull();
+  });
+
+  test("département à nuages : Résultats dans son onglet", () => {
+    expect(hrefs("departement/35")).toContain("#o-resultats");
+    expect(doc("departement/35").querySelector("#o-resultats #nuages")).not.toBeNull();
+  });
+
+  test("commune : moyens de la commune dans leur onglet, avant Sources ; écoles et dépense dans la Synthèse", () => {
+    const d = doc("commune/44109");
+    expect(d.querySelector("#moyens-commune")).not.toBeNull();
+    expect(d.querySelector("#o-moyens-commune #moyens-commune")).not.toBeNull();
+    expect(hrefs("commune/44109").slice(-2)).toEqual(["#o-moyens-commune", "#o-sources"]);
+    expect(d.querySelector("#o-ecoles #ecoles")).not.toBeNull();
+    const s = d.querySelector("#o-synthese")!;
+    expect(s.querySelector(".ecoles-commune")).not.toBeNull();
+    expect(s.querySelector(".moyens-synthese")).not.toBeNull();
+    expect(s.querySelector(".ips-calcule")).not.toBeNull();
+  });
+
+  test("commune sans second degré : barre seulement à partir de trois onglets, aucun bloc perdu", () => {
+    for (const c of ["44150", "44903", "44888"]) {
+      const d = doc(`commune/${c}`);
+      const n = hrefs(`commune/${c}`).length;
+      const panneaux = d.querySelectorAll("[data-onglet]").length;
+      // Fixtures : Synthèse (écoles de la commune), Écoles, Sources au moins ; la règle des trois onglets s'applique.
+      expect(n >= 3 ? panneaux : 0).toBe(n);
+      if (n < 3) expect(d.querySelector("nav.onglets")).toBeNull();
+      expect(d.querySelector("#ecoles")).not.toBeNull();
+      expect(d.querySelector("#o-synthese #carte-territoire")).toBeNull();
+      expect(d.querySelector("#o-synthese .eleves-second-degre")).toBeNull();
     }
   });
 });

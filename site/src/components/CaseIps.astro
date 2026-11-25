@@ -1,0 +1,47 @@
+---
+// Case « IPS moyen » d'une famille sur une page de territoire : moyennes publiées par la DEPP, ou moyennes calculées
+// par l'observatoire (commune, région) avec le repère DEPP du département. Le même rendu sert à l'onglet de la famille
+// et à la Synthèse, pour qu'un chiffre de Synthèse soit celui de son onglet.
+import type { DonneesTerritoire, IpsMoyens, SyntheseFamille } from "@obs/shared/donnees";
+import { entier, nombre } from "@obs/shared/format";
+import { LIBELLES } from "@obs/shared/libelles";
+import type { Famille } from "@obs/shared/types";
+import { lireTerritoire } from "../lib/donnees";
+import { nomFamille } from "../lib/territoire";
+
+interface Props { f: Famille; s: SyntheseFamille; d: DonneesTerritoire; libelle: string }
+const { f, s, d, libelle } = Astro.props;
+const niveau = d.ref.niveau;
+const dep = d.parents.find((p) => p.niveau === "departement");
+/** Commune : moyennes d'IPS publiées par la DEPP pour son département, en repère. */
+const repere = niveau === "commune" && dep ? lireTerritoire(dep).familles[f]?.ipsMoyen : undefined;
+/**
+ * IPS moyen calculé par l'observatoire (commune) : valeur, ou absence dite (« Aucun collège privé dans la
+ * commune » s'il n'y en a aucun ; « non disponible » si ceux qui existent n'ont pas d'IPS publié).
+ */
+const ipsCalcule = (ips: IpsMoyens, compte: number, sec: "public" | "prive") => {
+  const v = ips[sec];
+  if (v !== null) return { t: nombre(v), n: ips.n?.[sec] ?? null };
+  if (compte > 0) return { t: LIBELLES.nonDisponible, n: null };
+  return { t: `Aucun ${nomFamille(f, 1)} ${sec === "public" ? "public" : "privé"} dans ${niveau === "region" ? "la région" : "la commune"}`, n: null };
+};
+---
+{s.ipsMoyen.calculee ? (
+  <div class="ips-calcule"><div class="k">{libelle}</div>
+    {(["public", "prive"] as const).map((sec) => {
+      const v = ipsCalcule(s.ipsMoyen, sec === "public" ? s.compte.public : s.compte.prive, sec);
+      const r = repere?.[sec] ?? null;
+      return (
+        <div class="ips-secteur">
+          <div class="c"><span class={sec === "public" ? "p" : "q"}>{sec === "public" ? "public" : "privé s. c."} : {v.t}</span></div>
+          {v.n !== null && <div class="c mention">moyenne calculée par l'observatoire · {entier(v.n)} {nomFamille(f, v.n)}</div>}
+          {dep && r !== null && <div class="c mention">repère DEPP · {dep.libelle} : {nombre(r)}</div>}
+        </div>
+      );
+    })}
+  </div>
+) : (
+  <div><div class="k">{libelle}</div>
+    <div class="v" style="font-size:20px;padding-top:6px"><span style="color:var(--pub-ink)">{nombre(s.ipsMoyen.public)}</span> · <span style="color:var(--pri-ink)">{nombre(s.ipsMoyen.prive)}</span></div>
+    <div class="c">public · privé s. c. (DEPP)</div></div>
+)}

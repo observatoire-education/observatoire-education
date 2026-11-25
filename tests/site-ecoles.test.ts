@@ -567,7 +567,7 @@ describe("pages commune étendues", () => {
   test("pages commune du second degré : contenu existant gardé, bloc des écoles ajouté avant les sources", () => {
     const d = doc("commune/44109");
     const ids = [...d.querySelectorAll("main section")].map((s) => s.id);
-    expect(ids.slice(-4)).toEqual(["ecoles", "ecoles-fermees", "moyens-commune", ""]); // puis la section « Sources »
+    expect(ids.slice(-4)).toEqual(["ecoles", "ecoles-fermees", "moyens-commune", "sources"]); // la section « Sources » a désormais son id
     expect(d.querySelector('a[href="/commune/44109/etablissements.csv"]')).not.toBeNull();
     expect(propre(d.querySelector("#ecoles-fermees")!.textContent)).toContain("École maternelle des Peupliers · Fermée le 05/07/2013");
   });

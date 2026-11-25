@@ -1,0 +1,21 @@
+---
+// Courbe de l'IPS moyen public et privé d'une famille sur une page de territoire (deux rentrées au moins) :
+// la même dans l'onglet de la famille et dans la Synthèse.
+import type { PointIps } from "@obs/shared/donnees";
+import { aPointCalcule, seriesReferencesIps, svgCourbe } from "../lib/plot";
+import LegendeCourbeIps from "./LegendeCourbeIps.astro";
+
+interface Props { historique: PointIps[]; titre: string }
+const { historique, titre } = Astro.props;
+const r = seriesReferencesIps(historique);
+const rentrees = historique.map((p) => p.rentree);
+---
+{historique.length >= 2 && (
+  <div class="cols2" style="margin-top:14px">
+    <div class="card">
+      <div class="lab"><span>{titre}</span><span class="yr">{Math.min(...rentrees)} → {Math.max(...rentrees)}</span></div>
+      <Fragment set:html={svgCourbe([], r.publique, r.privee, r.calculees)} />
+      <LegendeCourbeIps rentrees={rentrees} calcule={aPointCalcule(historique)} />
+    </div>
+  </div>
+)}

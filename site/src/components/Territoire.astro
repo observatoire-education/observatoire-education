@@ -1,18 +1,21 @@
 ---
-// Gabarit des pages de territoire (France, région, académie, département, commune) : un onglet (ancre) par famille
-// d'établissement, car les moyennes n'ont de sens qu'à type égal. Les blocs affichés dépendent du niveau
-// (tableau 6.1 de la spécification de la phase 2).
-import type { DonneesTerritoire, IpsMoyens, NiveauTerritoire } from "@obs/shared/donnees";
+// Gabarit des pages de territoire (France, région, académie, département, commune), en onglets : Synthèse, Collèges,
+// Lycées (une section par famille, car les moyennes n'ont de sens qu'à type égal), Écoles, Transport, Résultats,
+// Territoires, Moyens de la commune, Sources. Les blocs affichés dépendent du niveau (tableau 6.1 de la spécification
+// de la phase 2) ; chacun garde l'`id` de sa section, pour que les anciennes ancres ouvrent le bon onglet.
+import type { DonneesTerritoire, NiveauTerritoire } from "@obs/shared/donnees";
 import { date, entier, libelleMillesime, nombre, part } from "@obs/shared/format";
 import {
-  academie, type CodeIndicateur, FAMILLES_PLURIEL, INDICATEURS, LIBELLES, LIBELLES_BUDGET, LIBELLES_COMMUNE_ECOLES, LIBELLES_SEGREGATION,
+  academie, type CodeIndicateur, FAMILLES_PLURIEL, INDICATEURS, LIBELLES, LIBELLES_BUDGET, LIBELLES_COMMUNE_ECOLES, LIBELLES_ONGLETS as LO,
+  LIBELLES_SEGREGATION,
 } from "@obs/shared/libelles";
 import { cheminTerritoire, communeDeRattachement, LIBELLES_PLM } from "@obs/shared/territoires";
 import type { Comparaison, Famille, Niveau, Secteur, SourceId } from "@obs/shared/types";
 import Base from "../layouts/Base.astro";
 import { anneeScolaire, formater } from "../lib/affichage";
-import { communesAvecCsv, communesDisponibles, lireFrance, lireSources, lireTerritoire } from "../lib/donnees";
-import { aPointCalcule, domaine, seriesReferencesIps, svgCourbe, svgDistribution, svgPoints } from "../lib/plot";
+import { communesAvecCsv, communesDisponibles, lireFrance, lireSources } from "../lib/donnees";
+import { avecOnglets as plusieursOnglets, onglets } from "../lib/onglets";
+import { domaine, svgDistribution, svgPoints } from "../lib/plot";
 import { famillesDe, nomFamille, partPrive, pluriel } from "../lib/territoire";
 import Absence from "./Absence.astro";
 import { absenceBudget, motifAbsenceTerritoire, niveauDe } from "../lib/budget";
@@ -22,12 +25,15 @@ import BlocEcolesCommune from "./BlocEcolesCommune.astro";
 import BlocPremierDegre from "./BlocPremierDegre.astro";
 import BlocSegregation from "./BlocSegregation.astro";
 import BlocTransport from "./BlocTransport.astro";
-import CarteTerritoire from "./CarteTerritoire.astro";
+import CaseIps from "./CaseIps.astro";
 import Cellule from "./Cellule.astro";
-import LegendeCourbeIps from "./LegendeCourbeIps.astro";
+import CourbeIpsTerritoire from "./CourbeIpsTerritoire.astro";
 import ListeEtablissements from "./ListeEtablissements.astro";
 import ListeTerritoires from "./ListeTerritoires.astro";
 import Nuage from "./Nuage.astro";
+import Onglets from "./Onglets.astro";
+import Panneau from "./Panneau.astro";
+import SyntheseTerritoire from "./SyntheseTerritoire.astro";
 import TableauBudget from "./TableauBudget.astro";
 
 interface Props { d: DonneesTerritoire }
@@ -95,19 +101,6 @@ const moyenneTexte = (code: CodeIndicateur, c: Comparaison[], n: Niveau, s: Sect
   return { t: formater(code, m.valeur), abs: false };
 };
 const somme = (a: number | null, b: number | null) => (a === null && b === null ? null : (a ?? 0) + (b ?? 0));
-/**
- * IPS moyen calculé par l'observatoire (commune) : valeur, ou absence dite (« Aucun collège privé dans la
- * commune » s'il n'y en a aucun ; « non disponible » si ceux qui existent n'ont pas d'IPS publié).
- */
-const ipsCalcule = (f: Famille, ips: IpsMoyens, compte: number, s: "public" | "prive") => {
-  const v = ips[s];
-  if (v !== null) return { t: nombre(v), n: ips.n?.[s] ?? null };
-  if (compte > 0) return { t: LIBELLES.nonDisponible, n: null };
-  return { t: `Aucun ${nomFamille(f, 1)} ${s === "public" ? "public" : "privé"} dans ${niveau === "region" ? "la région" : "la commune"}`, n: null };
-};
-/** Commune : moyennes d'IPS publiées par la DEPP pour son département, en repère. */
-const ipsDepartement = niveau === "commune" && dep ? lireTerritoire(dep).familles : {};
-
 // Communes (département) : une puce par commune de la liste (arrondissements rattachés à leur ville),
 // reconnue par son code INSEE ; un lien quand la commune a sa page.
 const pages = new Map(d.communes.filter((c) => communesDisponibles().has(c.code)).map((c) => [c.code, c]));
@@ -121,6 +114,29 @@ communes.sort((a, b) => a.c.localeCompare(b.c, "fr"));
 /** « Les 3 collèges » ; pour un seul : « Le collège » (« L'EREA », élidé). */
 const titreListe = (f: Famille, n: number) =>
   n === 1 ? (f === "erea" ? `L'${nomFamille(f, 1)}` : `Le ${nomFamille(f, 1)}`) : `Les ${entier(n)} ${nomFamille(f, n)}`;
+/** Onglets (spec, 5.3 et 5.4) : chaque bloc garde l'`id` de sa section ; un onglet sans contenu n'est pas rendu. */
+const groupesFamilles = [
+  { id: "o-colleges", libelle: LO.colleges, liste: familles.filter(([f]) => f === "college") },
+  { id: "o-lycees", libelle: LO.lycees, liste: familles.filter(([f]) => f !== "college") },
+];
+/** Commune sans second degré : la Synthèse n'a que ses écoles et la dépense de la commune, s'il y en a. */
+const avecSynthese = !seulementEcoles || !!d.ecoles || avecBudgetCommune;
+const avecEcoles = avecPremierDegre || !!d.ecoles;
+const transportRegions = niveau === "france" && (france.transportRegions ?? []).length > 0;
+const avecTransport = !!d.transport || transportRegions;
+const avecResultats = (d.nuages ?? []).length > 0;
+const avecTerritoires = niveau !== "commune";
+const barre = onglets([
+  avecSynthese && { id: "o-synthese", libelle: LO.synthese },
+  ...groupesFamilles.map((g) => g.liste.length > 0 && { id: g.id, libelle: g.libelle }),
+  avecEcoles && { id: "o-ecoles", libelle: LO.ecoles },
+  avecTransport && { id: "o-transport", libelle: LO.transport },
+  avecResultats && { id: "o-resultats", libelle: LO.resultats },
+  avecTerritoires && { id: "o-territoires", libelle: LO.territoires },
+  avecBudgetCommune && { id: "o-moyens-commune", libelle: LO.moyensCommune },
+  { id: "o-sources", libelle: LO.sources },
+]);
+const avec = plusieursOnglets(barre);
 const badges = [
   ...(niveau === "departement" || niveau === "commune") && aca ? [academie(aca.libelle)] : [],
   ...(niveau === "commune" && dep ? [dep.libelle] : []),
@@ -140,25 +156,16 @@ const badges = [
     <button class="btn primary" type="button" id="imprimer">⎙ Imprimer / PDF</button>
     <a class="btn" href={csv.href} download>⬇ {csv.texte}</a>
   </div>
-  {!seulementEcoles && <div class="kpis">
-    {familles.map(([f, s]) => (
-      <div><div class="k">{FAMILLES_PLURIEL[f]}</div><div class="v">{entier(s.compte.public + s.compte.prive)}</div>
-        <div class="c"><span class="p">{entier(s.compte.public)} publics</span> · <span class="q">{entier(s.compte.prive)} privés s. c.</span></div></div>
-    ))}
-    <div><div class="k">Privé hors contrat</div><div class="v">{entier(d.horsContrat)} étab.</div><div class="c" style="font-family:var(--sans)">{LIBELLES.nonCouvert}</div></div>
-  </div>}
+  <Onglets onglets={barre} />
+  {avecSynthese && (
+    <Panneau id="o-synthese" libelle={LO.synthese} actif avecOnglets={avec}>
+      <SyntheseTerritoire d={d} familles={familles} niveau={niveau} />
+    </Panneau>
+  )}
 
-  {!seulementEcoles && <section>
-    <h2>Carte</h2>
-    <CarteTerritoire carte={d.carte} ref={d.ref} rentree={d.rentree} budget={niveau === "france" ? lireFrance().carteBudget : null} />
-  </section>}
-
-  {!seulementEcoles && <nav class="tabs" aria-label="Types d'établissement">
-    {familles.map(([f]) => <a href={`#${f}`}>{FAMILLES_PLURIEL[f]}</a>)}
-    {avecPremierDegre && <a href="#premier-degre">Écoles</a>}
-  </nav>}
-
-  {familles.map(([f, s]) => {
+  {groupesFamilles.map(({ id, libelle, liste }) => liste.length > 0 && (
+  <Panneau id={id} libelle={libelle} avecOnglets={avec}>
+  {liste.map(([f, s]) => {
     const ips = s.moyennes.find((m) => m.code === "ips");
     const vs = s.moyennes.find((m) => m.code === "eleves_par_etp_vs");
     const vsPub = vs && NIVEAUX[0] ? ref(vs.comparaisons, NIVEAUX[0], "public") : undefined;
@@ -175,25 +182,7 @@ const badges = [
             <div class="c"><span class="p">{s.eleves.public === null ? LIBELLES.nonDisponible : entier(s.eleves.public)}</span> · <span class="q">{s.eleves.prive === null ? LIBELLES.nonDisponible : entier(s.eleves.prive)}</span></div></div>
           <div><div class="k">Part des élèves dans le privé s. c.</div><div class="v">{partPrive(s.eleves, s.compte.prive === 0) === null ? "—" : part(partPrive(s.eleves, s.compte.prive === 0))}</div>
             <div class="c">{pf && partPrive(pf.eleves) !== null && <>France : {part(partPrive(pf.eleves))}</>}</div></div>
-          {s.ipsMoyen.calculee ? (
-            <div class="ips-calcule"><div class="k">IPS moyen</div>
-              {(["public", "prive"] as const).map((sec) => {
-                const v = ipsCalcule(f, s.ipsMoyen, sec === "public" ? s.compte.public : s.compte.prive, sec);
-                const repere = ipsDepartement[f]?.ipsMoyen[sec] ?? null;
-                return (
-                  <div class="ips-secteur">
-                    <div class="c"><span class={sec === "public" ? "p" : "q"}>{sec === "public" ? "public" : "privé s. c."} : {v.t}</span></div>
-                    {v.n !== null && <div class="c mention">moyenne calculée par l'observatoire · {entier(v.n)} {nomFamille(f, v.n)}</div>}
-                    {dep && repere !== null && <div class="c mention">repère DEPP · {dep.libelle} : {nombre(repere)}</div>}
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div><div class="k">IPS moyen</div>
-              <div class="v" style="font-size:20px;padding-top:6px"><span style="color:var(--pub-ink)">{nombre(s.ipsMoyen.public)}</span> · <span style="color:var(--pri-ink)">{nombre(s.ipsMoyen.prive)}</span></div>
-              <div class="c">public · privé s. c. (DEPP)</div></div>
-          )}
+          <CaseIps f={f} s={s} d={d} libelle="IPS moyen" />
           {NIVEAUX.length > 0 && (
             <div><div class="k">Élèves par ETP de vie scolaire</div>
               <div class="v">{vsPub?.statut === "ok" ? nombre(vsPub.valeur) : "—"}</div>
@@ -222,19 +211,7 @@ const badges = [
           <p class="src" id="segregation-renvoi">{LIBELLES_SEGREGATION.renvoi}</p>
         )}
 
-        {s.ipsHistorique.length >= 2 && (() => {
-          const r = seriesReferencesIps(s.ipsHistorique);
-          const rentrees = s.ipsHistorique.map((p) => p.rentree);
-          return (
-            <div class="cols2" style="margin-top:14px">
-              <div class="card">
-                <div class="lab"><span>Évolution de l'IPS moyen</span><span class="yr">{Math.min(...rentrees)} → {Math.max(...rentrees)}</span></div>
-                <Fragment set:html={svgCourbe([], r.publique, r.privee, r.calculees)} />
-                <LegendeCourbeIps rentrees={rentrees} calcule={aPointCalcule(s.ipsHistorique)} />
-              </div>
-            </div>
-          );
-        })()}
+        <CourbeIpsTerritoire historique={s.ipsHistorique} titre="Évolution de l'IPS moyen" />
 
         {avecBudget(f) && (() => {
           const nb = niveauDe(f);
@@ -298,19 +275,33 @@ const badges = [
       </section>
     );
   })}
+  </Panneau>
+  ))}
 
-  {avecPremierDegre && <BlocPremierDegre p={pd!} territoire={d.ref} communes={d.communesEcoles} />}
-
-  {d.transport && <BlocTransport t={d.transport} region={niveau === "region" ? d.ref.code : undefined} />}
-  {niveau === "france" && (france.transportRegions ?? []).length > 0 && <BlocTransport regions={france.transportRegions} />}
-
-  {(d.nuages ?? []).length > 0 && (
-    <section id="nuages">
-      <h2>Résultats</h2>
-      {d.nuages!.map((n) => <Nuage n={n} />)}
-    </section>
+  {avecEcoles && (
+    <Panneau id="o-ecoles" libelle={LO.ecoles} avecOnglets={avec}>
+      {avecPremierDegre && <BlocPremierDegre p={pd!} territoire={d.ref} communes={d.communesEcoles} />}
+      {d.ecoles && <BlocEcolesCommune e={d.ecoles} commune={d.ref} />}
+    </Panneau>
   )}
 
+  {avecTransport && (
+    <Panneau id="o-transport" libelle={LO.transport} avecOnglets={avec}>
+      {d.transport && <BlocTransport t={d.transport} region={niveau === "region" ? d.ref.code : undefined} />}
+      {transportRegions && <BlocTransport regions={france.transportRegions} />}
+    </Panneau>
+  )}
+
+  {avecResultats && (
+    <Panneau id="o-resultats" libelle={LO.resultats} avecOnglets={avec}>
+      <section id="nuages">
+        <h2>Résultats</h2>
+        {d.nuages!.map((n) => <Nuage n={n} />)}
+      </section>
+    </Panneau>
+  )}
+
+  {avecTerritoires && <Panneau id="o-territoires" libelle={LO.territoires} avecOnglets={avec}>
   {niveau === "france" && (
     <section id="regions">
       <h2>Régions</h2>
@@ -335,7 +326,7 @@ const badges = [
   )}
 
   {niveau === "departement" && (
-    <section>
+    <section id="communes">
       <h2>Communes</h2>
       <div class="chips">{communes.map(({ c, n, page }) => {
         const t = n === null ? c : `${c} · ${n}`;
@@ -343,18 +334,20 @@ const badges = [
       })}</div>
     </section>
   )}
-
-  {d.ecoles && <BlocEcolesCommune e={d.ecoles} commune={d.ref} />}
+  </Panneau>}
 
   {avecBudgetCommune && (
+    <Panneau id="o-moyens-commune" libelle={LO.moyensCommune} avecOnglets={avec}>
     <section id="moyens-commune">
       <h2>{LIBELLES_BUDGET.titreCommune}</h2>
       <BlocBudget budget={budgetCommune} france={d.budget.france.find((m) => m.niveau === "ecoles")} secteurEnPremier="public"
         evolution={true} niveau="ecoles" motif={d.budget.motif} />
     </section>
+    </Panneau>
   )}
 
-  <section>
+  <Panneau id="o-sources" libelle={LO.sources} avecOnglets={avec}>
+  <section id="sources">
     <h2>Sources</h2>
     <div class="card" style="font-size:13px"><ul style="margin:0;padding-left:18px;line-height:1.9">
       {sources.map((s) => <li>{s.producteur}, <a href={s.pageUrl}>{s.titre}</a> · collecté le {date(s.actuelle!.collecteLe)} · <a href={s.actuelle!.url}>donnée brute</a></li>)}
@@ -363,6 +356,8 @@ const badges = [
       ))}
     </ul></div>
   </section>
+  </Panneau>
   <script is:inline src="/js/liste.js" defer></script>
+  <script is:inline src="/js/onglets.js" defer></script>
   <script is:inline src="/js/fiche.js" defer></script>
 </Base>
