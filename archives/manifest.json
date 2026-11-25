@@ -581,6 +581,17 @@
         "collecteLe": "2026-11-25T23:06:19.364Z",
         "lignes": 1567
       }
+    ],
+    "bzh_batiments": [
+      {
+        "sha256": "ed31dcfa92b60fd3231f0bba54f620f9460ed8b45760261c84e80623fbe8e954",
+        "tag": "archives-bzh_batiments-2026",
+        "fichier": "ed31dcfa92b60fd3.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-bzh_batiments-2026/ed31dcfa92b60fd3.parquet",
+        "modified": "2025-05-26",
+        "collecteLe": "2026-11-25T23:15:34.055Z",
+        "lignes": 1499
+      }
     ]
   },
   "vus": {
@@ -625,7 +636,8 @@
     "transport_2025": "2026-07-13T16:06:26+00:00",
     "idf_lycees": "2026-11-03T07:08:07.654000+00:00",
     "idf_ppi": "2018-01-26T16:48:20+00:00",
-    "idf_operations": "2024-03-20T17:12:03.285000+00:00"
+    "idf_operations": "2024-03-20T17:12:03.285000+00:00",
+    "bzh_batiments": "2025-05-26"
   },
   "actuelles": {
     "annuaire": "4f963575649fc5648bab043cfc121c63d7faec0e8bbf1ef59ef1d82d9540351d",
@@ -669,7 +681,8 @@
     "transport_2025": "bab0ec6d3ed04d568a1b4698253becb335344c32f2b060b471addd77347f920f",
     "idf_lycees": "805d985c1b0679c114daf9af95bb774ecadc979bd6e64c5e8f628421a5948936",
     "idf_ppi": "6cb6918f0ebebd1860d4e3e4963bf79675129be0bbe0d52a119dafa529331d83",
-    "idf_operations": "f214fe003546a3ebf8d406e352da598aea5e5720951f5e9a955323b98daa5430"
+    "idf_operations": "f214fe003546a3ebf8d406e352da598aea5e5720951f5e9a955323b98daa5430",
+    "bzh_batiments": "ed31dcfa92b60fd3231f0bba54f620f9460ed8b45760261c84e80623fbe8e954"
   },
   "jeux": {}
 }
