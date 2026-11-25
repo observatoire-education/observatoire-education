@@ -12,6 +12,7 @@ import {
 import { cheminTerritoire, communeDeRattachement, LIBELLES_PLM } from "@obs/shared/territoires";
 import type { Comparaison, Famille, Niveau, Secteur, SourceId } from "@obs/shared/types";
 import Base from "../layouts/Base.astro";
+import LienSignalement from "./LienSignalement.astro";
 import { anneeScolaire, formater } from "../lib/affichage";
 import { communesAvecCsv, communesDisponibles, lireFrance, lireSources } from "../lib/donnees";
 import { avecOnglets as plusieursOnglets, onglets } from "../lib/onglets";
@@ -157,6 +158,7 @@ const badges = [
   <div class="actions">
     <button class="btn primary" type="button" id="imprimer">⎙ Imprimer / PDF</button>
     <a class="btn" href={csv.href} download>⬇ {csv.texte}</a>
+    <LienSignalement contexte={{ page: chemin, nom, ...(niveau === "france" ? {} : { code: d.ref.code }) }} />
   </div>
   <Onglets onglets={barre} />
   {avecSynthese && (

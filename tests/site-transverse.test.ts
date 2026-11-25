@@ -89,7 +89,9 @@ describe("contrôles transverses du HTML", () => {
           .filter((l) => /stylesheet|icon|preload|modulepreload|manifest/.test(l.getAttribute("rel") ?? ""))
           .map((l) => l.getAttribute("href")!),
       ];
-      for (const url of charges.filter((u) => u !== UMAMI_TEST.SCRIPT)) expect(`${p} : ${url}`).not.toMatch(/ : (https?:)?\/\//);
+      // Seule exception : la vérification anti-robot du formulaire de contact (Cloudflare Turnstile), sur sa seule page.
+      const tiersPermis = (u: string) => u === UMAMI_TEST.SCRIPT || (p === "contact/index.html" && u.startsWith("https://challenges.cloudflare.com/turnstile/"));
+      for (const url of charges.filter((u) => !tiersPermis(u))) expect(`${p} : ${url}`).not.toMatch(/ : (https?:)?\/\//);
       expect(d.querySelector(`script[src="${UMAMI_TEST.SCRIPT}"]`)?.getAttribute("data-website-id")).toBe(UMAMI_TEST.ID);
     }
   });

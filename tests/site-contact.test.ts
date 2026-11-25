@@ -1,6 +1,9 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import { formulaireActif, MOTIFS } from "@obs/shared/signalement";
-import { doc, siteTest, texte } from "./site.ts";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join, relative } from "node:path";
+import { parseHTML } from "linkedom";
+import { DIST_TEST, doc, siteTest, texte } from "./site.ts";
 
 beforeAll(async () => {
   await siteTest();
@@ -66,5 +69,89 @@ describe("formulaireActif", () => {
     expect(formulaireActif({ ACTIF: false, TURNSTILE_SITEKEY: "k" })).toBe(false);
     expect(formulaireActif({ ACTIF: true, TURNSTILE_SITEKEY: "" })).toBe(false);
     expect(formulaireActif({ ACTIF: true, TURNSTILE_SITEKEY: "k" })).toBe(true);
+  });
+});
+
+describe("lien de signalement sur les fiches", () => {
+  const href = (chemin: string) => {
+    const a = doc(chemin).querySelector(".actions a[data-signalement]");
+    expect(a).not.toBeNull();
+    expect(a!.textContent).toContain("Signaler une erreur ou compléter");
+    const u = new URL(a!.getAttribute("href")!, "https://x.test");
+    expect(u.pathname).toBe("/contact/");
+    return u.searchParams;
+  };
+
+  test("établissement : page, code, nom", () => {
+    const p = href("etablissement/0440001A");
+    expect(p.get("page")).toBe("/etablissement/0440001A/");
+    expect(p.get("code")).toBe("0440001A");
+    expect(p.get("nom")).toBe(doc("etablissement/0440001A").querySelector("h1")!.textContent!.trim());
+  });
+
+  test.each([
+    ["commune/35238", "35238"],
+    ["departement/35", "35"],
+    ["academie/14", "14"],
+    ["region/11", "11"],
+  ])("%s : code %s", (chemin, code) => {
+    const p = href(chemin);
+    expect(p.get("page")).toBe(`/${chemin}/`);
+    expect(p.get("code")).toBe(code);
+    expect(p.get("nom")).toBeTruthy();
+  });
+
+  test("France : sans code", () => {
+    const p = href("france");
+    expect(p.get("page")).toBe("/france/");
+    expect(p.get("code")).toBeNull();
+  });
+
+  test("script chargé sur les fiches", () => {
+    for (const c of ["etablissement/0440001A", "commune/35238"]) {
+      expect(doc(c).querySelector('script[src="/js/signalement.js"]')).not.toBeNull();
+    }
+  });
+});
+
+describe("pied de page", () => {
+  test("lien Contact sur toutes les pages", () => {
+    const pages: string[] = [];
+    const parcourir = (d: string) => {
+      for (const f of readdirSync(d)) {
+        const p = join(d, f);
+        if (statSync(p).isDirectory()) parcourir(p);
+        else if (f.endsWith(".html")) pages.push(relative(DIST_TEST, p));
+      }
+    };
+    parcourir(DIST_TEST);
+    for (const p of pages) {
+      const a = parseHTML(readFileSync(join(DIST_TEST, p), "utf8")).document.querySelector('footer a[href="/contact/"]');
+      expect(a ? a.textContent!.trim() : `${p} : absent`).toBe("Contact");
+    }
+  });
+});
+
+describe("signalement.js", () => {
+  const SCRIPT = readFileSync("site/public/js/signalement.js", "utf8");
+  const page = (onglet: boolean) => {
+    const { window: w, document } = parseHTML(`<!doctype html><html><body>
+      ${onglet ? '<div role="tablist"><a role="tab" aria-selected="false">Synthèse</a><a role="tab" aria-selected="true"> Résultats </a></div>' : ""}
+      <a id="l" data-signalement href="/contact/?page=%2Fx%2F&amp;onglet=Ancien">x</a></body></html>`);
+    new Function("window", SCRIPT)(w);
+    const a = document.getElementById("l")!;
+    a.dispatchEvent(new (w as any).Event("click", { bubbles: true, cancelable: true }));
+    return new URL(a.getAttribute("href")!, "https://x.test");
+  };
+
+  test("ajoute l'onglet actif au clic", () => {
+    const u = page(true);
+    expect(u.pathname).toBe("/contact/");
+    expect(u.searchParams.get("page")).toBe("/x/");
+    expect(u.searchParams.get("onglet")).toBe("Résultats");
+  });
+
+  test("sans onglet : paramètre retiré", () => {
+    expect(page(false).searchParams.get("onglet")).toBeNull();
   });
 });
