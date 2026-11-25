@@ -31,6 +31,17 @@ export const PORTAIL = "https://data.education.gouv.fr";
 export const API = `${PORTAIL}/api/explore/v2.1/catalog/datasets`;
 export const PORTAIL_ECO = "https://data.economie.gouv.fr";
 export const API_ECO = `${PORTAIL_ECO}/api/explore/v2.1/catalog/datasets`;
+export const PORTAIL_IDF = "https://data.iledefrance.fr";
+export const API_IDF = `${PORTAIL_IDF}/api/explore/v2.1/catalog/datasets`;
+
+/** Jeu de la Région Île-de-France (lycées : bâtiments et travaux), retéléchargé quand sa date de modification change. */
+function sourceIdf(id: SourceId, datasetId: string, titre: string, colonnesRequises: string[]): Source {
+  return {
+    id, datasetId, titre, producteur: "Région Île-de-France",
+    pageUrl: `${PORTAIL_IDF}/explore/dataset/${datasetId}/information/`,
+    api: API_IDF, colonnesRequises, referentiel: false,
+  };
+}
 /** Pseudo-API des sources publiées comme un simple fichier CSV (Insee). */
 export const API_FICHIER = "fichier";
 
@@ -392,6 +403,44 @@ export const SOURCES: Record<SourceId, Source> = {
     "Code officiel géographique : liste des communes",
     noms("typecom,com,libelle,comparent"),
   ),
+  // --- Région Île-de-France, data.iledefrance.fr (champs vérifiés sur l'API le 2026-11-25) ---
+  // Année de construction des lycées, par UAI (seule région à la publier en données ouvertes à cette date).
+  idf_lycees: sourceIdf(
+    "idf_lycees",
+    "lycees-donnees-generales",
+    "Lycées – données générales",
+    noms("code_uai,statut,annee_construction,date_maj"),
+  ),
+  // Opérations de construction et de rénovation programmées dans un plan pluriannuel d'investissement (2001-2027).
+  idf_ppi: sourceIdf(
+    "idf_ppi",
+    "operations-de-construction-et-de-renovation-dans-les-lycees-francilens",
+    "Opérations de construction et de rénovation dans les lycées franciliens",
+    noms("codeuai,ppi,annee_d_individualisation,titreoperation,enveloppe_prev_en_meur,etat_d_avancement,annee_de_livraison"),
+  ),
+  // Opérations directes votées depuis 2021 (montant voté, pas réalisé ; UAI pas toujours renseigné).
+  idf_operations: sourceIdf(
+    "idf_operations",
+    "donnees-budgetaires-lycees-operations-directes",
+    "Données budgétaires des lycées – opérations directes votées",
+    noms("annee_de_la_decision,date_deliberation,code_uai_ex_rne,dossier,type_de_decision,montant_vote"),
+  ),
+  // --- Région Bretagne : bâtiments des lycées (couche WFS rb:batiment_lycee, Licence ouverte, vérifiée le 2026-11-25) ---
+  // Un bâtiment par ligne ; code_batiment = UAI (8 caractères) + numéro. Le serveur n'annonce pas de date : référentiel
+  // retéléchargé chaque nuit, une version n'est archivée que si son contenu change. Date : fiche de métadonnées.
+  bzh_batiments: {
+    id: "bzh_batiments",
+    datasetId: "rb:batiment_lycee",
+    titre: "Bâtiments des lycées gérés par la Région Bretagne",
+    producteur: "Région Bretagne",
+    pageUrl: "https://geobretagne.fr/geonetwork/srv/fre/catalog.search#/metadata/b4955d8e-3473-45e7-a3c7-a9d2cd53637b",
+    api: API_FICHIER,
+    url: "https://ows.region-bretagne.fr/geoserver/rb/ows?service=WFS&version=2.0.0&request=GetFeature&typeNames=rb:batiment_lycee&outputFormat=csv"
+      + "&propertyName=code_batiment,lycee,ville,lib_batiment,nom_batiment,fonction_principale,surface_emprise,nb_niv,surface_bati,annee_construction,hors_site",
+    millesimeLe: "2025-05-26",
+    colonnesRequises: noms("code_batiment,lib_batiment,fonction_principale,nb_niv,surface_bati,annee_construction,hors_site"),
+    referentiel: true,
+  },
 };
 
 // --- Budget des collectivités (DGFiP, data.economie.gouv.fr) : un jeu par exercice, extrait filtré ---

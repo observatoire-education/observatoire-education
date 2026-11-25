@@ -231,7 +231,7 @@ describe("territoires en onglets", () => {
   const nombreDe = (t: string) => (/\d/.test(t) ? Number(t.replace(/[^\d]/g, "")) : null);
 
   test("département : onglets des blocs présents (fixtures : ni Résultats ni Moyens de la commune)", () => {
-    expect(hrefs("departement/44")).toEqual(["#o-synthese", "#o-colleges", "#o-lycees", "#o-ecoles", "#o-transport", "#o-territoires", "#o-sources"]);
+    expect(hrefs("departement/44")).toEqual(["#o-synthese", "#o-colleges", "#o-lycees", "#o-ecoles", "#o-transport", "#o-travaux", "#o-territoires", "#o-sources"]);
     const d = doc("departement/44");
     // chaque onglet a son panneau, la Synthèse est le panneau par défaut
     for (const h of hrefs("departement/44")) expect(d.querySelector(`${h}[data-onglet][role=tabpanel]`)).not.toBeNull();
@@ -241,6 +241,7 @@ describe("territoires en onglets", () => {
     for (const f of ["legt", "lpo", "erea"]) expect(d.querySelector(`#o-lycees #${f}`)).not.toBeNull();
     expect(d.querySelector("#o-ecoles #premier-degre")).not.toBeNull();
     expect(d.querySelector("#o-transport #transport")).not.toBeNull();
+    expect(d.querySelector("#o-travaux #travaux")).not.toBeNull();
     expect(d.querySelector("#o-territoires #communes")).not.toBeNull();
     expect(d.querySelector("#o-sources #sources")).not.toBeNull();
     // ni l'ancienne barre ni de carte hors de la Synthèse

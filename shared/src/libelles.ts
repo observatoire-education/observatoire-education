@@ -355,6 +355,63 @@ export const LIBELLES_TRANSPORT = {
   colonnes: { collectivite: "Collectivité", fonctionnement: "Fonctionnement", investissement: "Investissement", produitsServices: "Produits des services" },
 } as const;
 
+/** Bâtiment et travaux des lycées (jeux de la Région Île-de-France). */
+export const LIBELLES_BATIMENT = {
+  titre: "Bâtiment et travaux",
+  titreTerritoire: "Bâtiments et travaux des lycées publics",
+  anneeConstruction: "Année de construction",
+  anneeNonPubliee: "année non publiée par la région",
+  anneeNote: "Année publiée par la région, propriétaire du bâtiment. Les extensions et reconstructions partielles ne sont pas datées séparément.",
+  anneePlusGrand: "Année de construction du plus grand bâtiment",
+  anneePlusGrandNote: "Année du bâtiment le plus grand en surface bâtie ; chaque bâtiment est daté ci-dessous.",
+  batiments: "Bâtiments",
+  batimentsNote: "Bâtiments tels que la région les recense, du plus ancien au plus récent, constructions légères comprises (abris, garages) ; bâtiments hors du site exclus. L'année est celle de la construction, pas d'une rénovation.",
+  surfaceTotale: (m2: string, n: number) => `${m2} m² bâtis en ${n} bâtiment${n > 1 ? "s" : ""}`,
+  travauxNonPublies: "La région ne publie pas ses travaux lycée par lycée.",
+  titreTerritoireSansTravaux: "Bâtiments des lycées publics",
+  surfaceParDecennie: "Surface bâtie par décennie de construction",
+  surfaceNote: "Surface bâtie de tous les bâtiments datés des lycées, selon leur année de construction : la part ancienne du parc se lit ici mieux que dans l'année d'un seul bâtiment.",
+  operations: "Opérations votées depuis 2021",
+  operationsNote:
+    "Montants votés par la région (affectations et revalorisations, moins les désaffectations) : ce sont des autorisations de dépense, pas des sommes dépensées. Intitulés tels que publiés, souvent abrégés.",
+  aucuneOperation: "aucune opération votée rattachée à cet établissement depuis 2021",
+  ppi: "Plans pluriannuels d'investissement",
+  ppiNote:
+    "Grosses opérations de construction et de rénovation programmées par la région. État d'avancement tel que publié par la région : ce jeu n'est plus mis à jour régulièrement (voir la méthode).",
+  colonnes: {
+    operation: "Opération",
+    annees: "Années",
+    montant: "Montant voté",
+    plan: "Plan",
+    etat: "État",
+    livraison: "Livraison",
+    enveloppe: "Enveloppe prévue",
+    lycee: "Lycée",
+    commune: "Commune",
+    construction: "Construction",
+    nbPpi: "Opérations PPI",
+    nbVotees: "Opérations votées",
+    derniere: "Dernière opération",
+    batiment: "Bâtiment",
+    fonction: "Fonction",
+    annee: "Année",
+    surface: "Surface bâtie",
+    niveaux: "Niveaux",
+    nbBatiments: "Bâtiments",
+    plusAncien: "Plus ancien",
+    plusGrand: "Plus grand bâtiment",
+  },
+  annees: (premiere: number | null, derniere: number | null) =>
+    premiere === null && derniere === null ? "—" : premiere === derniere || premiere === null ? `${derniere}` : derniere === null ? `${premiere}` : `${premiere}–${derniere}`,
+  decisions: (n: number) => `${n} décision${n > 1 ? "s" : ""}`,
+  methode: "Méthode",
+  /** Page région ou département : ce que couvre la liste. */
+  noteTerritoire: (n: number, detailles: boolean) =>
+    `${n} lycée${n > 1 ? "s" : ""} public${n > 1 ? "s" : ""} dont la région publie ${detailles ? "les bâtiments" : "l'année de construction ou des travaux"}. Cliquer un lycée pour le détail ${detailles ? "de ses bâtiments" : "des opérations"}.`,
+  sources: { "11": "Source : Région Île-de-France, data.iledefrance.fr", "53": "Source : Région Bretagne, couche « bâtiments des lycées »" } as Record<string, string>,
+  sourceGenerique: "Source : région (données ouvertes)",
+} as const;
+
 export const LIBELLES_BUDGET = {
   titre: "Moyens de la collectivité",
   /** Écoles : fiche d'une école publique et page commune. */
@@ -398,6 +455,9 @@ export const LIBELLES_BUDGET = {
     prive: "privé sous contrat",
     collectivite: "Collectivité",
     evolution: "Évolution",
+    evolutionInvestissement: "Investissement public",
+    moyenneFrance: "moyenne en France",
+    noteInvestissement: "L'investissement varie beaucoup d'un exercice à l'autre, au rythme des chantiers : une année haute ou basse ne dit rien à elle seule.",
     exercice: (n: number) => `exercice ${n}`,
     investissementPrive: "Investissement (privé)",
     sourceSansExercice: "DGFiP, balances comptables",
@@ -505,6 +565,9 @@ export const LIBELLES_ONGLETS = {
   lycees: "Lycées",
   ecoles: "Écoles",
   transport: "Transport",
+  batiment: "Bâtiment et travaux",
+  travaux: "Travaux des lycées",
+  batimentsLycees: "Bâtiments des lycées",
   territoires: "Territoires",
   sources: "Sources",
   barre: "Sections de la page",

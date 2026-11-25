@@ -39,6 +39,10 @@ export type SourceId =
   | "carte_scolaire"
   | "cog_mouvements"
   | "cog_communes"
+  | "idf_lycees"
+  | "idf_ppi"
+  | "idf_operations"
+  | "bzh_batiments"
   | `budget_${number}`
   | `transport_${number}`;
 
@@ -330,6 +334,58 @@ export interface EcolesProches {
   aucuneAMoinsDe: number | null;
 }
 
+/** Opération d'un plan pluriannuel d'investissement (PPI) de la région. */
+export interface OperationPpi {
+  /** Période du plan, par exemple « 2012/2022 ». */
+  ppi: string | null;
+  intitule: string;
+  /** Enveloppe prévisionnelle, en millions d'euros. */
+  enveloppeMeur: number | null;
+  /** État d'avancement tel que publié (« Opération livrée », « En chantier »…). */
+  etat: string | null;
+  anneeIndividualisation: number | null;
+  anneeLivraison: number | null;
+}
+
+/** Opération votée par la région (un dossier) : montants cumulés des décisions, votés et non réalisés. */
+export interface OperationVotee {
+  /** Intitulé du dossier tel que publié (abrégé par l'administration régionale). */
+  intitule: string;
+  premiereAnnee: number | null;
+  derniereAnnee: number | null;
+  /** En euros : affectations et revalorisations, moins les désaffectations. */
+  montantVote: number | null;
+  decisions: number;
+}
+
+/** Un bâtiment d'un lycée (Bretagne) : la région publie chacun avec sa fonction, son année et sa surface. */
+export interface BatimentDetail {
+  /** Libellé de la région (« A-EXTERNAT SCIENCES »). */
+  libelle: string;
+  /** Nom d'usage, s'il en a un. */
+  nom: string | null;
+  fonction: string | null;
+  annee: number | null;
+  /** Surface bâtie, en m². */
+  surface: number | null;
+  niveaux: number | null;
+}
+
+/** Bâtiment et travaux d'un lycée, publiés par sa région (Île-de-France et Bretagne à ce jour). */
+export interface Batiment {
+  /**
+   * Île-de-France : l'année publiée par la région. Bretagne : celle du plus grand bâtiment en surface bâtie
+   * (null si sa date n'est pas publiée).
+   */
+  anneeConstruction: number | null;
+  /** Bâtiments un par un (Bretagne), du plus ancien au plus récent ; [] quand la région ne les détaille pas. */
+  batiments: BatimentDetail[];
+  /** Triées de la plus récente à la plus ancienne (livraison, sinon individualisation). */
+  ppi: OperationPpi[];
+  /** Triées de la plus récente à la plus ancienne, puis par montant décroissant. */
+  operations: OperationVotee[];
+}
+
 export interface Fiche extends Identite {
   uai: string;
   /** Date ISO de la première collecte où l'établissement n'apparaissait plus dans le périmètre. */
@@ -363,6 +419,8 @@ export interface Fiche extends Identite {
    * du collège, triées par nom. null hors collège public ouvert présent dans la carte scolaire.
    */
   ecolesDuSecteur?: LigneEcole[] | null;
+  /** Bâtiment et travaux publiés par la région ; absent quand la région ne publie rien pour l'établissement. */
+  batiment?: Batiment;
   /** null = voisins non calculables (coordonnées absentes ou page disparue). */
   voisins: Voisin[] | null;
   /** Résultats aux examens, dans l'ordre brevet général, brevet pro, bac GT, bac pro ; [] si aucun. */
