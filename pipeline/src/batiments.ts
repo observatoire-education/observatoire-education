@@ -1,5 +1,5 @@
 // Bâtiment et travaux des lycées, par UAI, à partir des tables de 09_batiments_lycees.sql (Région Île-de-France).
-import type { LigneTravaux } from "@obs/shared/donnees";
+import type { LigneTravaux, SurfaceDecennie } from "@obs/shared/donnees";
 import type { Batiment, BatimentDetail, Fiche, OperationPpi, OperationVotee } from "@obs/shared/types";
 import type { Db } from "./db.ts";
 
@@ -21,15 +21,36 @@ export function lignesTravaux(fiches: Fiche[]): LigneTravaux[] | undefined {
         ...b.ppi.map((o) => o.anneeLivraison ?? o.anneeIndividualisation),
         ...b.operations.map((o) => o.derniereAnnee),
       ].filter((a) => a !== null);
+      const datees = b.batiments.map((x) => x.annee).filter((a) => a !== null);
       return {
         uai: f.uai, nom: f.nom, commune: f.commune, famille: f.famille, anneeConstruction: b.anneeConstruction,
         ppi: b.ppi.length, enveloppePpiMeur: somme(b.ppi.map((o) => o.enveloppeMeur)),
         operations: b.operations.length, montantVote: somme(b.operations.map((o) => o.montantVote)),
         derniereAnnee: annees.length ? Math.max(...annees) : null,
+        batiments: b.batiments.length,
+        surfaceBatie: somme(b.batiments.map((x) => x.surface)),
+        anneePlusAncien: datees.length ? Math.min(...datees) : null,
       };
     })
     .sort((a, b) => a.nom.localeCompare(b.nom, "fr") || a.uai.localeCompare(b.uai));
   return lignes.length ? lignes : undefined;
+}
+
+/**
+ * Surface bâtie par décennie de construction, sur les bâtiments datés et mesurés des établissements du groupe ;
+ * undefined si aucun (le champ est alors absent du JSON).
+ */
+export function surfacesParDecennie(fiches: Fiche[]): SurfaceDecennie[] | undefined {
+  const par = new Map<number, number>();
+  for (const f of fiches) {
+    for (const x of f.batiment?.batiments ?? []) {
+      if (x.annee === null || x.surface === null) continue;
+      const d = Math.floor(x.annee / 10) * 10;
+      par.set(d, (par.get(d) ?? 0) + x.surface);
+    }
+  }
+  const l = [...par].sort(([a], [b]) => a - b).map(([decennie, surface]) => ({ decennie, surface }));
+  return l.length ? l : undefined;
 }
 
 const entier = (v: unknown): number | null => (v === null || v === undefined ? null : Number(v));

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Batiment, Fiche } from "@obs/shared/types";
-import { calculerBatiments, lignesTravaux } from "../pipeline/src/batiments.ts";
+import { calculerBatiments, lignesTravaux, surfacesParDecennie } from "../pipeline/src/batiments.ts";
 import { SOURCES } from "../pipeline/src/sources.ts";
 import { dbTest } from "./aide.ts";
 
@@ -35,6 +35,18 @@ describe("lignesTravaux", () => {
     expect(l.map((x) => x.uai)).toEqual(["A", "B"]);
     expect(l[0]).toMatchObject({ anneeConstruction: 1990, ppi: 0, enveloppePpiMeur: null, operations: 0, montantVote: null, derniereAnnee: null });
     expect(l[1]).toMatchObject({ ppi: 2, enveloppePpiMeur: 10, operations: 1, montantVote: 500000, derniereAnnee: 2023 });
+  });
+
+  test("Bretagne : nombre de bâtiments, surface bâtie et plus ancien ; surface par décennie", () => {
+    const bat = (annee: number | null, surface: number | null) => ({ libelle: "x", nom: null, fonction: null, annee, surface, niveaux: null });
+    const fiches = [
+      f("D", "Lycée D", { anneeConstruction: 1962, batiments: [bat(1962, 3600), bat(1998, 3200), bat(1965, 400), bat(null, 100)], ppi: [], operations: [] }),
+      f("E", "Lycée E", { anneeConstruction: 1990, batiments: [bat(1991, 1000)], ppi: [], operations: [] }),
+    ];
+    expect(lignesTravaux(fiches)![0]).toMatchObject({ batiments: 4, surfaceBatie: 7300, anneePlusAncien: 1962 });
+    // bâtiment sans année : hors des décennies
+    expect(surfacesParDecennie(fiches)).toEqual([{ decennie: 1960, surface: 4000 }, { decennie: 1990, surface: 4200 }]);
+    expect(surfacesParDecennie([f("C", "Lycée C")])).toBeUndefined();
   });
 
   test("aucun établissement avec des données : undefined", () => {

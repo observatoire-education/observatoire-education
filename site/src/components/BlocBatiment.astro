@@ -1,7 +1,8 @@
 ---
-// Bâtiment et travaux d'un lycée public : année de construction, opérations votées depuis 2021, opérations des plans
-// pluriannuels d'investissement. Données de la région (Île-de-France seulement à ce jour).
-import { euros, nombre } from "@obs/shared/format";
+// Bâtiment et travaux d'un lycée public, publiés par sa région. Île-de-France : année de construction, opérations
+// votées depuis 2021, opérations des plans pluriannuels d'investissement. Bretagne : bâtiments un par un (année,
+// fonction, surface), sans travaux.
+import { entier, euros, nombre } from "@obs/shared/format";
 import { LIBELLES_BATIMENT as L } from "@obs/shared/libelles";
 import type { Fiche } from "@obs/shared/types";
 import Absence from "./Absence.astro";
@@ -11,37 +12,63 @@ import { source } from "../lib/affichage";
 interface Props { f: Fiche }
 const { f } = Astro.props;
 const b = f.batiment!;
+// La Bretagne détaille ses bâtiments mais ne publie pas ses travaux ; l'Île-de-France fait l'inverse.
+const detailles = b.batiments.length > 0;
+const surface = b.batiments.reduce((a, x) => a + (x.surface ?? 0), 0);
 ---
 <section id="batiment">
   <h2>{L.titre}</h2>
   <div class="cols2">
     <div class="card">
-      <div class="lab"><span>{L.anneeConstruction}</span></div>
+      <div class="lab"><span>{detailles ? L.anneePlusGrand : L.anneeConstruction}</span></div>
       {b.anneeConstruction !== null
-        ? <div class="val">{b.anneeConstruction}</div>
+        ? <div class="val">{b.anneeConstruction}{detailles && surface > 0 && <small>{L.surfaceTotale(entier(surface), b.batiments.length)}</small>}</div>
         : <div style="margin:8px 0"><Absence texte={L.anneeNonPubliee} /></div>}
-      <p class="mute mention-budget">{L.anneeNote}</p>
-      <LigneSource s={source(f, "idf_lycees")} />
+      <p class="mute mention-budget">{detailles ? L.anneePlusGrandNote : L.anneeNote}</p>
+      <LigneSource s={source(f, detailles ? "bzh_batiments" : "idf_lycees")} />
     </div>
-    <div class="card wide" style="grid-column:1/-1">
-      <div class="lab"><span>{L.operations}</span>{b.operations.length > 0 && <span class="yr">{euros(b.operations.reduce((a, o) => a + (o.montantVote ?? 0), 0))}</span>}</div>
-      {b.operations.length === 0 ? <Absence texte={L.aucuneOperation} /> : (
+    {detailles && (
+      <div class="card wide" style="grid-column:1/-1">
+        <div class="lab"><span>{L.batiments}</span><span class="yr">{b.batiments.length}</span></div>
         <div class="table-wrap"><table class="mini-t travaux">
-          <thead><tr><th>{L.colonnes.operation}</th><th class="n">{L.colonnes.annees}</th><th class="n">{L.colonnes.montant}</th></tr></thead>
+          <thead><tr><th>{L.colonnes.batiment}</th><th>{L.colonnes.fonction}</th><th class="n">{L.colonnes.annee}</th><th class="n">{L.colonnes.surface}</th><th class="n">{L.colonnes.niveaux}</th></tr></thead>
           <tbody>
-            {b.operations.map((o) => (
+            {b.batiments.map((x) => (
               <tr>
-                <td class="intitule">{o.intitule}{o.decisions > 1 && <small class="mute"> · {L.decisions(o.decisions)}</small>}</td>
-                <td class="n">{L.annees(o.premiereAnnee, o.derniereAnnee)}</td>
-                <td class="n">{euros(o.montantVote)}</td>
+                <td class="intitule">{x.libelle}{x.nom && <small class="mute"> · {x.nom}</small>}</td>
+                <td>{x.fonction ?? "—"}</td>
+                <td class="n">{x.annee ?? "—"}</td>
+                <td class="n">{x.surface === null ? "—" : `${entier(x.surface)} m²`}</td>
+                <td class="n">{x.niveaux ?? "—"}</td>
               </tr>
             ))}
           </tbody>
         </table></div>
-      )}
-      <p class="mute mention-budget">{L.operationsNote}</p>
-      <LigneSource s={source(f, "idf_operations")} />
-    </div>
+        <p class="mute mention-budget">{L.batimentsNote} {L.travauxNonPublies}</p>
+        <LigneSource s={source(f, "bzh_batiments")} />
+      </div>
+    )}
+    {!detailles && (
+      <div class="card wide" style="grid-column:1/-1">
+        <div class="lab"><span>{L.operations}</span>{b.operations.length > 0 && <span class="yr">{euros(b.operations.reduce((a, o) => a + (o.montantVote ?? 0), 0))}</span>}</div>
+        {b.operations.length === 0 ? <Absence texte={L.aucuneOperation} /> : (
+          <div class="table-wrap"><table class="mini-t travaux">
+            <thead><tr><th>{L.colonnes.operation}</th><th class="n">{L.colonnes.annees}</th><th class="n">{L.colonnes.montant}</th></tr></thead>
+            <tbody>
+              {b.operations.map((o) => (
+                <tr>
+                  <td class="intitule">{o.intitule}{o.decisions > 1 && <small class="mute"> · {L.decisions(o.decisions)}</small>}</td>
+                  <td class="n">{L.annees(o.premiereAnnee, o.derniereAnnee)}</td>
+                  <td class="n">{euros(o.montantVote)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table></div>
+        )}
+        <p class="mute mention-budget">{L.operationsNote}</p>
+        <LigneSource s={source(f, "idf_operations")} />
+      </div>
+    )}
     {b.ppi.length > 0 && (
       <div class="card wide" style="grid-column:1/-1">
         <div class="lab"><span>{L.ppi}</span></div>

@@ -33,8 +33,31 @@ describe("bâtiment et travaux sur la fiche d'un lycée", () => {
   });
 
   test("lycée absent des jeux de la région ou privé : pas d'onglet", () => {
-    expect(doc("etablissement/0350011L").querySelector("#o-batiment")).toBeNull();
+    expect(doc("etablissement/0350013N").querySelector("#o-batiment")).toBeNull();
     expect(doc("etablissement/0350014P").querySelector("#o-batiment")).toBeNull();
+  });
+});
+
+describe("Bretagne : bâtiments un par un, sans travaux", () => {
+  test("fiche : année du plus grand bâtiment, liste des bâtiments, pas de ligne « aucune opération »", () => {
+    const t = bloc("etablissement/0350011L", "batiment");
+    expect(t).toContain("Année de construction du plus grand bâtiment 1962");
+    expect(t).toMatch(/6\s860 m² bâtis en 3 bâtiments/);
+    expect(t).toMatch(/B-INTERNAT · Bâtiment Vauban Internat 1998 3\s200 m² 4/);
+    expect(t).not.toContain("X-GYMNASE ANNEXE"); // hors site
+    expect(t).toContain("La région ne publie pas ses travaux lycée par lycée.");
+    expect(t).not.toContain("aucune opération votée");
+  });
+
+  test("département : onglet Bâtiments des lycées, surface par décennie, colonnes des bâtiments", () => {
+    const d = doc("departement/35");
+    expect(d.querySelector("nav.onglets a[href='#o-travaux']")!.textContent).toBe("Bâtiments des lycées");
+    const t = bloc("departement/35", "travaux");
+    expect(t).toContain("Bâtiments des lycées publics");
+    expect(t).toContain("Surface bâtie par décennie de construction");
+    expect(t).toMatch(/1960–1969 52,5\s%/); // 3 600 m² sur 6 860
+    expect(t).not.toContain("Opérations votées");
+    expect(d.querySelector("#travaux thead")!.textContent).toContain("Plus ancien");
   });
 });
 
@@ -48,7 +71,7 @@ describe("travaux des lycées sur les pages de territoire", () => {
   });
 
   test("territoire sans données régionales : pas d'onglet", () => {
-    expect(doc("departement/35").querySelector("#o-travaux")).toBeNull();
+    expect(doc("departement/75").querySelector("#o-travaux")).toBeNull();
   });
 });
 

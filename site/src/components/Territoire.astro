@@ -127,6 +127,9 @@ const avecEcoles = avecPremierDegre || !!d.ecoles;
 const transportRegions = niveau === "france" && (france.transportRegions ?? []).length > 0;
 const avecTransport = !!d.transport || transportRegions;
 const avecTravaux = (d.travauxLycees ?? []).length > 0;
+// Onglet « Travaux » quand la région publie des travaux, sinon « Bâtiments » (Bretagne)
+const libelleTravaux = (d.travauxLycees ?? []).some((l) => l.operations > 0 || l.ppi > 0) ? LO.travaux : LO.batimentsLycees;
+const codeRegion = niveau === "region" ? d.ref.code : d.parents.find((p) => p.niveau === "region")?.code;
 const avecResultats = (d.nuages ?? []).length > 0;
 const avecTerritoires = niveau !== "commune";
 const barre = onglets([
@@ -134,7 +137,7 @@ const barre = onglets([
   ...groupesFamilles.map((g) => g.liste.length > 0 && { id: g.id, libelle: g.libelle }),
   avecEcoles && { id: "o-ecoles", libelle: LO.ecoles },
   avecTransport && { id: "o-transport", libelle: LO.transport },
-  avecTravaux && { id: "o-travaux", libelle: LO.travaux },
+  avecTravaux && { id: "o-travaux", libelle: libelleTravaux },
   avecResultats && { id: "o-resultats", libelle: LO.resultats },
   avecTerritoires && { id: "o-territoires", libelle: LO.territoires },
   avecBudgetCommune && { id: "o-moyens-commune", libelle: LO.moyensCommune },
@@ -300,8 +303,8 @@ const badges = [
   )}
 
   {avecTravaux && (
-    <Panneau id="o-travaux" libelle={LO.travaux} actif={premier === "o-travaux"} avecOnglets={avec}>
-      <BlocTravauxTerritoire lignes={d.travauxLycees!} />
+    <Panneau id="o-travaux" libelle={libelleTravaux} actif={premier === "o-travaux"} avecOnglets={avec}>
+      <BlocTravauxTerritoire lignes={d.travauxLycees!} surfaces={d.surfacesLycees} region={codeRegion} />
     </Panneau>
   )}
 

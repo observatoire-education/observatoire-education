@@ -20,6 +20,16 @@ export interface LigneTravaux {
   montantVote: number | null;
   /** Année la plus récente parmi les opérations (livraison ou individualisation PPI, décision votée). */
   derniereAnnee: number | null;
+  /** Bâtiments détaillés par la région (Bretagne ; 0 ailleurs), leur surface bâtie totale (m²) et le plus ancien. */
+  batiments: number;
+  surfaceBatie: number | null;
+  anneePlusAncien: number | null;
+}
+
+/** Surface bâtie des lycées d'un territoire par décennie de construction (bâtiments datés seulement). */
+export interface SurfaceDecennie {
+  decennie: number;
+  surface: number;
 }
 
 /** Une entrée de `index.json` (et de la recherche) : clés courtes. */
@@ -247,6 +257,8 @@ export interface DonneesTerritoire {
   transport?: TransportTerritoire;
   /** Pages région et département : bâtiment et travaux de chaque lycée publié par la région ; absent si aucun. */
   travauxLycees?: LigneTravaux[];
+  /** Pages région et département : surface bâtie par décennie, quand la région détaille ses bâtiments ; absent sinon. */
+  surfacesLycees?: SurfaceDecennie[];
   /** Page région : académies de la région ; sinon absent. */
   academies?: RefTerritoire[];
   /** Départements et académies : nuages IPS × réussite d'au moins 5 points ; absent sinon. */

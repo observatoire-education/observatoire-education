@@ -1,51 +1,91 @@
 ---
-// Pages région et département : bâtiment et travaux des lycées publics dont la région publie des données
-// (Île-de-France seulement à ce jour). Chiffres clés, lycées par décennie de construction, puis liste par lycée.
-import type { LigneTravaux } from "@obs/shared/donnees";
-import { entier, euros, nombre } from "@obs/shared/format";
+// Pages région et département : bâtiments (et travaux, quand la région les publie) des lycées publics.
+// Île-de-France : année par lycée, travaux. Bretagne : bâtiments un par un (surface bâtie par décennie), sans travaux.
+// Chiffres clés, répartitions par décennie, puis liste par lycée qui renvoie à l'onglet de sa fiche.
+import type { LigneTravaux, SurfaceDecennie } from "@obs/shared/donnees";
+import { entier, euros, nombre, part } from "@obs/shared/format";
 import { LIBELLES_BATIMENT as L } from "@obs/shared/libelles";
 
-interface Props { lignes: LigneTravaux[] }
-const { lignes } = Astro.props;
+interface Props {
+  lignes: LigneTravaux[];
+  surfaces?: SurfaceDecennie[];
+  /** Code de la région (source citée). */
+  region?: string;
+}
+const { lignes, surfaces = [], region } = Astro.props;
 
+const avecTravaux = lignes.some((l) => l.operations > 0 || l.ppi > 0);
+const detailles = lignes.some((l) => l.batiments > 0);
 const annees = lignes.map((l) => l.anneeConstruction).filter((a) => a !== null).sort((a, b) => a - b);
 const mediane = annees.length ? annees[Math.floor((annees.length - 1) / 2)]! : null;
-const decennies = [...Map.groupBy(annees, (a) => Math.floor(a / 10) * 10)].sort(([a], [b]) => a - b);
-const max = Math.max(1, ...decennies.map(([, l]) => l.length));
+const decennie = (a: number) => Math.floor(a / 10) * 10;
+const libelleDecennie = (d: number) => (d < 1900 ? "avant 1900" : `${d}–${d + 9}`);
+// Avant 1900 : une seule ligne
+const regrouper = <T,>(l: [number, T][], somme: (a: T, b: T) => T) => {
+  const m = new Map<number, T>();
+  for (const [d, v] of l) { const k = d < 1900 ? 0 : d; m.set(k, m.has(k) ? somme(m.get(k)!, v) : v); }
+  return [...m].sort(([a], [b]) => a - b);
+};
+const parLycees = regrouper(annees.map((a): [number, number] => [decennie(a), 1]), (a, b) => a + b);
+const parSurface = regrouper(surfaces.map((s): [number, number] => [s.decennie, s.surface]), (a, b) => a + b);
+const surfaceTotale = parSurface.reduce((a, [, s]) => a + s, 0);
+const largeur = (v: number, max: number) => `width:${nombre((100 * v) / Math.max(1, max), 1).replace(",", ".")}%`;
+const maxLycees = Math.max(1, ...parLycees.map(([, n]) => n));
+const maxSurface = Math.max(1, ...parSurface.map(([, s]) => s));
 const montant = lignes.reduce((a, l) => a + (l.montantVote ?? 0), 0);
 const avecOperations = lignes.filter((l) => l.operations > 0).length;
+const nbBatiments = lignes.reduce((a, l) => a + l.batiments, 0);
+const source = (region && L.sources[region]) ?? L.sourceGenerique;
 ---
 <section id="travaux">
-  <h2>{L.titreTerritoire}</h2>
+  <h2>{avecTravaux ? L.titreTerritoire : L.titreTerritoireSansTravaux}</h2>
   <p class="mute">{L.noteTerritoire(lignes.length)}</p>
   <div class="kpis">
-    <div><div class="k">{L.anneeConstruction} (médiane)</div><div class="v">{mediane ?? "—"}</div>
+    <div><div class="k">{detailles ? L.colonnes.plusGrand : L.anneeConstruction} (médiane)</div><div class="v">{mediane ?? "—"}</div>
       <div class="c">{entier(annees.length)} lycées datés sur {entier(lignes.length)}</div></div>
-    <div><div class="k">{L.operations}</div><div class="v">{euros(montant)}</div>
-      <div class="c">votés pour {entier(avecOperations)} lycée{avecOperations > 1 ? "s" : ""}</div></div>
+    {avecTravaux && (
+      <div><div class="k">{L.operations}</div><div class="v">{euros(montant)}</div>
+        <div class="c">votés pour {entier(avecOperations)} lycée{avecOperations > 1 ? "s" : ""}</div></div>
+    )}
+    {detailles && surfaceTotale > 0 && (
+      <div><div class="k">{L.colonnes.surface}</div><div class="v">{entier(surfaceTotale)} m²</div>
+        <div class="c">{entier(nbBatiments)} bâtiments recensés</div></div>
+    )}
   </div>
-  {decennies.length > 0 && (
-    <div class="card" style="margin-top:14px">
-      <div class="lab"><span>Lycées par décennie de construction</span></div>
-      <div class="table-wrap"><table class="mini-t decennies">
-        <tbody>
-          {decennies.map(([d, l]) => (
-            <tr>
-              <td>{d < 1900 ? `avant 1900` : `${d}–${d + 9}`}</td>
-              <td class="n">{l.length}</td>
-              <td class="barre"><span style={`width:${nombre((100 * l.length) / max, 1).replace(",", ".")}%`}></span></td>
-            </tr>
-          ))}
-        </tbody>
-      </table></div>
-      <p class="mute mention-budget">{L.anneeNote}</p>
-    </div>
-  )}
+  <div class="cols2" style="margin-top:14px">
+    {parSurface.length > 0 && (
+      <div class="card">
+        <div class="lab"><span>{L.surfaceParDecennie}</span></div>
+        <div class="table-wrap"><table class="mini-t decennies">
+          <tbody>
+            {parSurface.map(([d, s]) => (
+              <tr><td>{libelleDecennie(d)}</td><td class="n">{part((100 * s) / surfaceTotale)}</td><td class="barre"><span style={largeur(s, maxSurface)}></span></td></tr>
+            ))}
+          </tbody>
+        </table></div>
+        <p class="mute mention-budget">{L.surfaceNote}</p>
+      </div>
+    )}
+    {parLycees.length > 0 && (
+      <div class="card">
+        <div class="lab"><span>Lycées par décennie de construction{detailles ? " du plus grand bâtiment" : ""}</span></div>
+        <div class="table-wrap"><table class="mini-t decennies">
+          <tbody>
+            {parLycees.map(([d, n]) => (
+              <tr><td>{libelleDecennie(d)}</td><td class="n">{n}</td><td class="barre"><span style={largeur(n, maxLycees)}></span></td></tr>
+            ))}
+          </tbody>
+        </table></div>
+        <p class="mute mention-budget">{detailles ? L.anneePlusGrandNote : L.anneeNote}</p>
+      </div>
+    )}
+  </div>
   <div class="card" style="margin-top:14px;padding:4px 6px"><div class="table-wrap">
     <table class="mini-t travaux-liste">
       <thead><tr>
-        <th>{L.colonnes.lycee}</th><th>{L.colonnes.commune}</th><th class="n">{L.colonnes.construction}</th>
-        <th class="n">{L.colonnes.nbVotees}</th><th class="n">{L.colonnes.montant}</th><th class="n">{L.colonnes.nbPpi}</th><th class="n">{L.colonnes.derniere}</th>
+        <th>{L.colonnes.lycee}</th><th>{L.colonnes.commune}</th><th class="n">{detailles ? L.colonnes.plusGrand : L.colonnes.construction}</th>
+        {detailles && <><th class="n">{L.colonnes.plusAncien}</th><th class="n">{L.colonnes.nbBatiments}</th><th class="n">{L.colonnes.surface}</th></>}
+        {avecTravaux && <><th class="n">{L.colonnes.nbVotees}</th><th class="n">{L.colonnes.montant}</th><th class="n">{L.colonnes.nbPpi}</th><th class="n">{L.colonnes.derniere}</th></>}
       </tr></thead>
       <tbody>
         {lignes.map((l) => (
@@ -53,15 +93,22 @@ const avecOperations = lignes.filter((l) => l.operations > 0).length;
             <td><a href={`/etablissement/${l.uai}/#o-batiment`}>{l.nom}</a></td>
             <td>{l.commune}</td>
             <td class="n">{l.anneeConstruction ?? "—"}</td>
-            <td class="n">{l.operations || "—"}</td>
-            <td class="n">{l.operations ? euros(l.montantVote) : "—"}</td>
-            <td class="n">{l.ppi || "—"}</td>
-            <td class="n">{l.derniereAnnee ?? "—"}</td>
+            {detailles && <>
+              <td class="n">{l.anneePlusAncien ?? "—"}</td>
+              <td class="n">{l.batiments || "—"}</td>
+              <td class="n">{l.surfaceBatie === null ? "—" : `${entier(l.surfaceBatie)} m²`}</td>
+            </>}
+            {avecTravaux && <>
+              <td class="n">{l.operations || "—"}</td>
+              <td class="n">{l.operations ? euros(l.montantVote) : "—"}</td>
+              <td class="n">{l.ppi || "—"}</td>
+              <td class="n">{l.derniereAnnee ?? "—"}</td>
+            </>}
           </tr>
         ))}
       </tbody>
     </table>
   </div></div>
-  <p class="mute mention-budget">{L.operationsNote}</p>
-  <div class="src">{L.source} · <a href="/methode/#batiments">{L.methode}</a> · <a href="/sources/">Sources</a></div>
+  {avecTravaux ? <p class="mute mention-budget">{L.operationsNote}</p> : <p class="mute mention-budget">{L.travauxNonPublies}</p>}
+  <div class="src">{source} · <a href="/methode/#batiments">{L.methode}</a> · <a href="/sources/">Sources</a></div>
 </section>

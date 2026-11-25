@@ -362,6 +362,15 @@ export const LIBELLES_BATIMENT = {
   anneeConstruction: "Année de construction",
   anneeNonPubliee: "année non publiée par la région",
   anneeNote: "Année publiée par la région, propriétaire du bâtiment. Les extensions et reconstructions partielles ne sont pas datées séparément.",
+  anneePlusGrand: "Année de construction du plus grand bâtiment",
+  anneePlusGrandNote: "Année du bâtiment le plus grand en surface bâtie ; chaque bâtiment est daté ci-dessous.",
+  batiments: "Bâtiments",
+  batimentsNote: "Bâtiments tels que la région les recense, du plus ancien au plus récent, constructions légères comprises (abris, garages) ; bâtiments hors du site exclus. L'année est celle de la construction, pas d'une rénovation.",
+  surfaceTotale: (m2: string, n: number) => `${m2} m² bâtis en ${n} bâtiment${n > 1 ? "s" : ""}`,
+  travauxNonPublies: "La région ne publie pas ses travaux lycée par lycée.",
+  titreTerritoireSansTravaux: "Bâtiments des lycées publics",
+  surfaceParDecennie: "Surface bâtie par décennie de construction",
+  surfaceNote: "Surface bâtie de tous les bâtiments datés des lycées, selon leur année de construction : la part ancienne du parc se lit ici mieux que dans l'année d'un seul bâtiment.",
   operations: "Opérations votées depuis 2021",
   operationsNote:
     "Montants votés par la région (affectations et revalorisations, moins les désaffectations) : ce sont des autorisations de dépense, pas des sommes dépensées. Intitulés tels que publiés, souvent abrégés.",
@@ -383,6 +392,14 @@ export const LIBELLES_BATIMENT = {
     nbPpi: "Opérations PPI",
     nbVotees: "Opérations votées",
     derniere: "Dernière opération",
+    batiment: "Bâtiment",
+    fonction: "Fonction",
+    annee: "Année",
+    surface: "Surface bâtie",
+    niveaux: "Niveaux",
+    nbBatiments: "Bâtiments",
+    plusAncien: "Plus ancien",
+    plusGrand: "Plus grand bâtiment",
   },
   annees: (premiere: number | null, derniere: number | null) =>
     premiere === null && derniere === null ? "—" : premiere === derniere || premiere === null ? `${derniere}` : derniere === null ? `${premiere}` : `${premiere}–${derniere}`,
@@ -391,7 +408,8 @@ export const LIBELLES_BATIMENT = {
   /** Page région ou département : ce que couvre la liste. */
   noteTerritoire: (n: number) =>
     `${n} lycée${n > 1 ? "s" : ""} public${n > 1 ? "s" : ""} dont la région publie l'année de construction ou des travaux. Cliquer un lycée pour le détail des opérations.`,
-  source: "Source : Région Île-de-France, data.iledefrance.fr",
+  sources: { "11": "Source : Région Île-de-France, data.iledefrance.fr", "53": "Source : Région Bretagne, couche « bâtiments des lycées »" } as Record<string, string>,
+  sourceGenerique: "Source : région (données ouvertes)",
 } as const;
 
 export const LIBELLES_BUDGET = {
@@ -549,6 +567,7 @@ export const LIBELLES_ONGLETS = {
   transport: "Transport",
   batiment: "Bâtiment et travaux",
   travaux: "Travaux des lycées",
+  batimentsLycees: "Bâtiments des lycées",
   territoires: "Territoires",
   sources: "Sources",
   barre: "Sections de la page",

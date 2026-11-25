@@ -12,7 +12,7 @@ import type { Famille, Fiche, Identite, Indicateur, Mesure, Niveau, Secteur, Sou
 import type { Manifest } from "./archive.ts";
 import type { Budgets } from "./budget-eleves.ts";
 import { lireTransport, transportDepartement, transportRegion, transportRegions } from "./transport-export.ts";
-import { lignesTravaux } from "./batiments.ts";
+import { lignesTravaux, surfacesParDecennie } from "./batiments.ts";
 import { centreCommune, chargerCommunes, type TableCommunes } from "./communes.ts";
 import { ecolesProchesDesPoints } from "./ecoles.ts";
 import { lignesEcoles, rentreesEcoles } from "./fiches.ts";
@@ -659,9 +659,10 @@ export async function exporterTerritoires(
   };
   const depsDe = (groupe: Fiche[]) => new Set(groupe.map((f) => f.dep));
   /** Bâtiment et travaux des lycées publiés par la région (pages région et département). */
-  const travaux = (groupe: Fiche[]): Pick<DonneesTerritoire, "travauxLycees"> => {
+  const travaux = (groupe: Fiche[]): Pick<DonneesTerritoire, "travauxLycees" | "surfacesLycees"> => {
     const l = lignesTravaux(groupe);
-    return l ? { travauxLycees: l } : {};
+    const s = surfacesParDecennie(groupe);
+    return { ...(l ? { travauxLycees: l } : {}), ...(s ? { surfacesLycees: s } : {}) };
   };
 
   // Communes
