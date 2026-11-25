@@ -476,6 +476,78 @@
         "collecteLe": "2026-11-25T08:24:04.207Z",
         "lignes": 37496
       }
+    ],
+    "transport_2020": [
+      {
+        "sha256": "e07523a4e00377f2cb68f42aaaba08ad970b0e49c77cd32368353602f74c70e9",
+        "tag": "archives-transport_2020-2026",
+        "fichier": "e07523a4e00377f2.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-transport_2020-2026/e07523a4e00377f2.parquet",
+        "modified": "2021-12-17T08:18:43.488000+00:00",
+        "collecteLe": "2026-11-25T11:17:25.558Z",
+        "lignes": 3566,
+        "requete": "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/balances-comptables-des-collectivites-et-des-etablissements-publics-locaux-avec7/exports/parquet?where=cbudg%20%3D%20%221%22%20and%20categ%20in%20(%22REG%22%2C%22CTU%22%2C%22DEPT%22%2C%22ML%22%2C%22PARIS%22%2C%22GFP%22%2C%22SYND%22)%20and%20((nomen%20in%20(%22M57%22%2C%20%22M52%22)%20and%20fonction%20in%20(%2281%22%2C%229081%22%2C%229381%22%2C%22252%22%2C%2290252%22%2C%2293252%22))%20or%20(nomen%20%3D%20%22M14%22%20and%20fonction%20in%20(%22252%22%2C%2290252%22%2C%2293252%22))%20or%20(nomen%20%3D%20%22M71%22%20and%20categ%20%3D%20%22REG%22%20and%20fonction%20in%20(%2293811%22%2C%2293813%22%2C%2293815%22)))"
+      }
+    ],
+    "transport_2021": [
+      {
+        "sha256": "2f00fd19b91ae4d7b0029881ef8e4e538dbcf1dd9f281df904191f692ffb4e0c",
+        "tag": "archives-transport_2021-2026",
+        "fichier": "2f00fd19b91ae4d7.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-transport_2021-2026/2f00fd19b91ae4d7.parquet",
+        "modified": "2022-12-22T16:43:32+00:00",
+        "collecteLe": "2026-11-25T11:17:25.558Z",
+        "lignes": 3544,
+        "requete": "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/balances-comptables-des-collectivites-et-des-etablissements-publics-locaux-avec8/exports/parquet?where=cbudg%20%3D%20%221%22%20and%20categ%20in%20(%22REG%22%2C%22CTU%22%2C%22DEPT%22%2C%22ML%22%2C%22PARIS%22%2C%22GFP%22%2C%22SYND%22)%20and%20((nomen%20in%20(%22M57%22%2C%20%22M52%22)%20and%20fonction%20in%20(%2281%22%2C%229081%22%2C%229381%22%2C%22252%22%2C%2290252%22%2C%2293252%22))%20or%20(nomen%20%3D%20%22M14%22%20and%20fonction%20in%20(%22252%22%2C%2290252%22%2C%2293252%22))%20or%20(nomen%20%3D%20%22M71%22%20and%20categ%20%3D%20%22REG%22%20and%20fonction%20in%20(%2293811%22%2C%2293813%22%2C%2293815%22)))"
+      }
+    ],
+    "transport_2022": [
+      {
+        "sha256": "3bc0186565ca62dabe36912c857d1d14aa6ad9bd458499fc5c79b6507bd61950",
+        "tag": "archives-transport_2022-2026",
+        "fichier": "3bc0186565ca62da.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-transport_2022-2026/3bc0186565ca62da.parquet",
+        "modified": "2023-12-07T12:04:35+00:00",
+        "collecteLe": "2026-11-25T11:17:25.558Z",
+        "lignes": 3781,
+        "requete": "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/balances-comptables-des-collectivites-et-des-etablissements-publics-locaux-2022/exports/parquet?where=cbudg%20%3D%20%221%22%20and%20categ%20in%20(%22REG%22%2C%22CTU%22%2C%22DEPT%22%2C%22ML%22%2C%22PARIS%22%2C%22GFP%22%2C%22SYND%22)%20and%20((nomen%20in%20(%22M57%22%2C%20%22M52%22)%20and%20fonction%20in%20(%2281%22%2C%229081%22%2C%229381%22%2C%22252%22%2C%2290252%22%2C%2293252%22))%20or%20(nomen%20%3D%20%22M14%22%20and%20fonction%20in%20(%22252%22%2C%2290252%22%2C%2293252%22))%20or%20(nomen%20%3D%20%22M71%22%20and%20categ%20%3D%20%22REG%22%20and%20fonction%20in%20(%2293811%22%2C%2293813%22%2C%2293815%22)))"
+      }
+    ],
+    "transport_2023": [
+      {
+        "sha256": "0c4c9ad5e16516d9763c2fe4599543d2d166da64992c6564577fa2e694747b91",
+        "tag": "archives-transport_2023-2026",
+        "fichier": "0c4c9ad5e16516d9.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-transport_2023-2026/0c4c9ad5e16516d9.parquet",
+        "modified": "2024-12-06T13:57:17+00:00",
+        "collecteLe": "2026-11-25T11:17:25.558Z",
+        "lignes": 3692,
+        "requete": "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/balances-comptables-des-collectivites-et-des-epl-avec-fonction-2023/exports/parquet?where=cbudg%20%3D%20%221%22%20and%20categ%20in%20(%22REG%22%2C%22CTU%22%2C%22DEPT%22%2C%22ML%22%2C%22PARIS%22%2C%22GFP%22%2C%22SYND%22)%20and%20((nomen%20in%20(%22M57%22%2C%20%22M52%22)%20and%20fonction%20in%20(%2281%22%2C%229081%22%2C%229381%22%2C%22252%22%2C%2290252%22%2C%2293252%22))%20or%20(nomen%20%3D%20%22M14%22%20and%20fonction%20in%20(%22252%22%2C%2290252%22%2C%2293252%22))%20or%20(nomen%20%3D%20%22M71%22%20and%20categ%20%3D%20%22REG%22%20and%20fonction%20in%20(%2293811%22%2C%2293813%22%2C%2293815%22)))"
+      }
+    ],
+    "transport_2024": [
+      {
+        "sha256": "0149810abc561fa720e811675e518b918c8fdc5407ed91bbd13b25be6c6630f9",
+        "tag": "archives-transport_2024-2026",
+        "fichier": "0149810abc561fa7.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-transport_2024-2026/0149810abc561fa7.parquet",
+        "modified": "2025-12-09T16:38:00+00:00",
+        "collecteLe": "2026-11-25T11:17:25.558Z",
+        "lignes": 4046,
+        "requete": "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/balances-comptables-des-collectivites-et-des-etablissements-publics-locaux-avec-la-presentation-croisee-nature-fonction-2024/exports/parquet?where=cbudg%20%3D%20%221%22%20and%20categ%20in%20(%22REG%22%2C%22CTU%22%2C%22DEPT%22%2C%22ML%22%2C%22PARIS%22%2C%22GFP%22%2C%22SYND%22)%20and%20((nomen%20in%20(%22M57%22%2C%20%22M52%22)%20and%20fonction%20in%20(%2281%22%2C%229081%22%2C%229381%22%2C%22252%22%2C%2290252%22%2C%2293252%22))%20or%20(nomen%20%3D%20%22M14%22%20and%20fonction%20in%20(%22252%22%2C%2290252%22%2C%2293252%22))%20or%20(nomen%20%3D%20%22M71%22%20and%20categ%20%3D%20%22REG%22%20and%20fonction%20in%20(%2293811%22%2C%2293813%22%2C%2293815%22)))"
+      }
+    ],
+    "transport_2025": [
+      {
+        "sha256": "bab0ec6d3ed04d568a1b4698253becb335344c32f2b060b471addd77347f920f",
+        "tag": "archives-transport_2025-2026",
+        "fichier": "bab0ec6d3ed04d56.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-transport_2025-2026/bab0ec6d3ed04d56.parquet",
+        "modified": "2026-07-13T16:06:26+00:00",
+        "collecteLe": "2026-11-25T11:17:25.558Z",
+        "lignes": 3952,
+        "requete": "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/balances-comptables-des-collectivites-et-des-etablissements-publics-locaux-avec-la-presentation-croisee-nature-fonction-2025/exports/parquet?where=cbudg%20%3D%20%221%22%20and%20categ%20in%20(%22REG%22%2C%22CTU%22%2C%22DEPT%22%2C%22ML%22%2C%22PARIS%22%2C%22GFP%22%2C%22SYND%22)%20and%20((nomen%20in%20(%22M57%22%2C%20%22M52%22)%20and%20fonction%20in%20(%2281%22%2C%229081%22%2C%229381%22%2C%22252%22%2C%2290252%22%2C%2293252%22))%20or%20(nomen%20%3D%20%22M14%22%20and%20fonction%20in%20(%22252%22%2C%2290252%22%2C%2293252%22))%20or%20(nomen%20%3D%20%22M71%22%20and%20categ%20%3D%20%22REG%22%20and%20fonction%20in%20(%2293811%22%2C%2293813%22%2C%2293815%22)))"
+      }
     ]
   },
   "vus": {
@@ -511,7 +583,13 @@
     "ecoles_ep": "2026-01-29T18:36:59.885000+00:00",
     "carte_scolaire": "2026-10-09T15:00:57.180000+00:00",
     "cog_mouvements": "2026-01-01",
-    "cog_communes": "2026-01-01"
+    "cog_communes": "2026-01-01",
+    "transport_2020": "2021-12-17T08:18:43.488000+00:00",
+    "transport_2021": "2022-12-22T16:43:32+00:00",
+    "transport_2022": "2023-12-07T12:04:35+00:00",
+    "transport_2023": "2024-12-06T13:57:17+00:00",
+    "transport_2024": "2025-12-09T16:38:00+00:00",
+    "transport_2025": "2026-07-13T16:06:26+00:00"
   },
   "actuelles": {
     "annuaire": "4f963575649fc5648bab043cfc121c63d7faec0e8bbf1ef59ef1d82d9540351d",
@@ -546,7 +624,13 @@
     "ecoles_ep": "24afc8066e8dbd81de7ebfd8e44fe5a114067b01cda1955a151bf2760fc5fb17",
     "carte_scolaire": "2db3ab13e73aecb8e1dbaf35d415b5195981613edc2462aecbd3edd8d4e4203c",
     "cog_mouvements": "dfa0cdb9e258197b08469f6e5fd872a56245d4295bf2fb92c79367f28f413de3",
-    "cog_communes": "bdb5470c63066fc9cc27dac41fb75c5fb23aa2588a82598e7b51c08568725ecd"
+    "cog_communes": "bdb5470c63066fc9cc27dac41fb75c5fb23aa2588a82598e7b51c08568725ecd",
+    "transport_2020": "e07523a4e00377f2cb68f42aaaba08ad970b0e49c77cd32368353602f74c70e9",
+    "transport_2021": "2f00fd19b91ae4d7b0029881ef8e4e538dbcf1dd9f281df904191f692ffb4e0c",
+    "transport_2022": "3bc0186565ca62dabe36912c857d1d14aa6ad9bd458499fc5c79b6507bd61950",
+    "transport_2023": "0c4c9ad5e16516d9763c2fe4599543d2d166da64992c6564577fa2e694747b91",
+    "transport_2024": "0149810abc561fa720e811675e518b918c8fdc5407ed91bbd13b25be6c6630f9",
+    "transport_2025": "bab0ec6d3ed04d568a1b4698253becb335344c32f2b060b471addd77347f920f"
   },
   "jeux": {}
 }
