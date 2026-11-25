@@ -3,7 +3,8 @@ import type { EntreeIndex } from "@obs/shared/donnees";
 import { estEcole, LIBELLES_ABSENCES, LIBELLES_BUDGET, LIBELLES_ONGLETS, LIBELLES_RESULTATS } from "@obs/shared/libelles";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { DIST_TEST, doc, page, siteTest, texte } from "./site.ts";
+import { compterFabrique } from "../site/src/lib/fabrique.ts";
+import { DIST_TEST, DONNEES_TEST, doc, page, siteTest, texte } from "./site.ts";
 
 beforeAll(async () => {
   await siteTest();
@@ -76,12 +77,28 @@ describe("accueil et recherche", () => {
     expect(d.querySelector("title")!.textContent).toBe("Observatoire citoyen de l'éducation en France");
     expect(d.querySelector("a[href='/departement/44/']")).not.toBeNull();
     const t = texte("index.html");
-    expect(t).toContain("Les chiffres publics de chaque école, collège et lycée de France.");
+    expect(t).toContain("Toutes les données publiques sur l'école, rassemblées établissement par établissement.");
     expect(t).toContain("Nantes");
     expect(d.querySelector("a[href='/france/']")).not.toBeNull();
     expect(d.querySelector(".reg .aca-nom[href='/academie/17/']")!.textContent).toContain("Nantes");
     expect(t).toContain("Sans palmarès");
     expect(t).toContain("non couvert par les statistiques publiques");
+  });
+
+  test("accueil : fabrique, vitrine et comparatif", () => {
+    const d = doc("index.html");
+    const fabrique = compterFabrique(JSON.parse(readFileSync(join(DONNEES_TEST, "sources.json"), "utf8")));
+    expect(d.querySelector(".fabrique")!.textContent!.replace(/\s+/g, " ")).toContain(`${fabrique.jeux} jeux de données publiques`);
+    expect(d.querySelector(".vitrine a[href='/etablissement/0440001A/']")).not.toBeNull();
+    expect(d.querySelector("a[href='/sources/#fiche']")).not.toBeNull();
+    const titres = [...d.querySelectorAll(".compare h3")].map((h) => h.textContent);
+    expect(titres).toEqual(["Les portails officiels", "Les sites commerciaux", "L'observatoire"]);
+    // Ordre : chiffres, puis recherche, puis bandeau de la fabrique.
+    const html = page("index.html");
+    const [kpis, q, fab] = [html.indexOf('class="kpis"'), html.indexOf('id="q"'), html.indexOf('class="fabrique"')];
+    expect(kpis).toBeGreaterThan(-1);
+    expect(kpis).toBeLessThan(q);
+    expect(q).toBeLessThan(fab);
   });
 
   test("accueil : départements intégrés pour la recherche, script chargé", () => {
@@ -123,7 +140,9 @@ describe("accueil et recherche", () => {
   });
 
   test("accueil : le nombre d'établissements compte les écoles ouvertes", () => {
-    expect(texte("index.html")).toContain("des 32 établissements publics et privés sous contrat");
+    // Écoles + collèges + lycées + EREA de la rangée de chiffres : les 32 établissements ouverts des fixtures.
+    const v = [...doc("index.html").querySelectorAll(".kpis > div")].slice(0, 4).map((x) => Number(x.querySelector(".v")!.textContent!.replace(/\s/g, "")));
+    expect(v.reduce((a, b) => a + b, 0)).toBe(32);
   });
 });
 

@@ -99,7 +99,8 @@ export function tuilesVitrine(f: Fiche, sources: SourceVitrine[]): TuileVitrine[
       detail: null, numeros: numeros(["carte_scolaire"]), large: true,
     });
   }
-  return tuiles;
+  // Une tuile sans source citée par la fiche ne peut pas porter de pastille : elle n'a rien à démontrer ici.
+  return tuiles.filter((t) => t.numeros.length > 0);
 }
 
 /** Vitrine d'un UAI ; null (avec avertissement) si l'établissement n'a pas de page ouverte. Lecteurs injectables pour les tests. */

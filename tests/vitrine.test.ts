@@ -59,6 +59,19 @@ describe("tuiles de la vitrine", () => {
   });
 });
 
+describe("tuile sans source citée", () => {
+  test("une tuile dont aucune source n'est citée par la fiche est omise", () => {
+    const f = ficheMinimale({
+      sources: [ref("effectifs_colleges", "https://data.education.gouv.fr/e")],
+      indicateurs: [ind("eleves", mesure(452, "effectifs_colleges"))],
+      ecolesDuSecteur: [{ uai: "0440100A", nom: "École A" }] as unknown as Fiche["ecolesDuSecteur"],
+    });
+    const t = tuilesVitrine(f, sourcesVitrine(f));
+    expect(t.map((x) => x.libelle)).toEqual(["Élèves · 2025"]);
+    expect(t.every((x) => x.numeros.length > 0)).toBe(true);
+  });
+});
+
 describe("chargement", () => {
   test("UAI inconnu : pas de vitrine", () => {
     expect(vitrineDe("9999999Z", () => [], () => { throw new Error("absente"); })).toBeNull();
