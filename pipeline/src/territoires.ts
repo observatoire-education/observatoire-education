@@ -167,6 +167,15 @@ interface LigneFermee {
   dep: string; dep_libelle: string; aca: string; aca_libelle: string; fiche: boolean;
 }
 
+/** Code commune INSEE : 5 chiffres (outre-mer compris) ou 2A/2B suivi de 3 chiffres. */
+export const CODE_COMMUNE = /^(\d{5}|2[AB]\d{3})$/;
+
+/** Chemin du fichier de données d'une commune ; refuse un code hors format (il sert de nom de fichier). */
+export function fichierCommune(sortie: string, code: string): string {
+  if (!CODE_COMMUNE.test(code)) throw new Error(`code commune au format inattendu : ${JSON.stringify(code)}`);
+  return join(sortie, "communes", `${code}.json`);
+}
+
 const enSql = (fs: readonly string[]) => fs.map((f) => `'${f}'`).join(", ");
 const plusFrequent = <T>(valeurs: T[], cle: (v: T) => string): T | undefined => {
   const n = Map.groupBy(valeurs, cle);
@@ -235,6 +244,11 @@ export async function ecolesDesCommunes(db: Db, actives: Fiche[], table?: TableC
   const resultat = new Map<string, EcolesDUneCommune>();
   const sansEcole: { id: string; lat: number; lon: number }[] = [];
   for (const code of [...new Set([...ouvertesPar.keys(), ...fermeesPar.keys()])].sort()) {
+    // Le code sert de nom de fichier (site/data/communes/<code>.json) : format INSEE strict, sinon la commune est écartée.
+    if (!CODE_COMMUNE.test(code)) {
+      console.warn(`  commune écartée (code au format inattendu) : ${JSON.stringify(code)}`);
+      continue;
+    }
     const fo = ouvertesPar.get(code) ?? [];
     const ff = fermeesPar.get(code) ?? [];
     const ecoles = fo.map((f) => {
@@ -658,7 +672,7 @@ export async function exporterTerritoires(
       enfants: [], communes: [], carte: points(groupe),
       ...(ecolesCommunes.has(code) ? { ecoles: ecolesCommunes.get(code)!.ecoles } : {}),
     };
-    await ecrireJson(join(sortie, "communes", `${code}.json`), donnees);
+    await ecrireJson(fichierCommune(sortie, code), donnees);
     pagesCommune.set(code, ref.libelle);
   }
   // Communes qui ont, ou ont eu depuis 2012, une école, sans page pour le second degré : page des écoles seulement.
@@ -677,7 +691,7 @@ export async function exporterTerritoires(
       rentree, familles: {}, horsContrat: 0, enfants: [], communes: [], carte: { genre: "points", points: [] },
       ecoles: c.ecoles,
     };
-    await ecrireJson(join(sortie, "communes", `${code}.json`), donnees);
+    await ecrireJson(fichierCommune(sortie, code), donnees);
     pagesCommune.set(code, c.libelle);
   }
 

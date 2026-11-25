@@ -7,7 +7,7 @@ import type { DonneesTerritoire } from "@obs/shared/donnees";
 import type { Fiche, Identite, Indicateur } from "@obs/shared/types";
 import { assemblerFiches } from "../pipeline/src/fiches.ts";
 import {
-  communesRetenues, ecolesDesCommunes, type EcolesDUneCommune, exporterTerritoires, libelleListe, controlerPonderation, moyennePonderee,
+  communesRetenues, ecolesDesCommunes, fichierCommune, type EcolesDUneCommune, exporterTerritoires, libelleListe, controlerPonderation, moyennePonderee,
   verifierPonderation,
 } from "../pipeline/src/territoires.ts";
 import { partPrive } from "../site/src/lib/territoire.ts";
@@ -297,7 +297,7 @@ describe("premier degré sur les territoires (spec, section 6.8)", () => {
     expect(f).toContainEqual([2016, 1]);
     // fusion des Tilleuls : la maternelle et l'élémentaire ferment toutes deux le 2019-07-04
     expect(f).toContainEqual([2019, 2]);
-    expect(f).toEqual([[2013, 1], [2016, 1], [2018, 1], [2019, 2], [2020, 1]]);
+    expect(f).toEqual([[2013, 1], [2015, 1], [2016, 1], [2018, 1], [2019, 2], [2020, 1]]);
     expect(aca.premierDegre!.fermetures).toEqual(f);
   });
 
@@ -313,5 +313,22 @@ describe("premier degré sur les territoires (spec, section 6.8)", () => {
     for (const d of [dep, aca, region, france]) {
       expect(Object.keys(d.familles).filter((f) => ["maternelle", "elementaire", "primaire"].includes(f))).toEqual([]);
     }
+  });
+});
+
+describe("pages commune : robustesse des données des fermés", () => {
+  test("le code commune sert de nom de fichier : format INSEE strict", () => {
+    expect(fichierCommune("/s", "44109")).toBe(join("/s", "communes", "44109.json"));
+    expect(fichierCommune("/s", "2A004")).toBe(join("/s", "communes", "2A004.json"));
+    expect(fichierCommune("/s", "97411")).toBe(join("/s", "communes", "97411.json"));
+    for (const mauvais of ["../x", "4410", "44109/..", "2C004", ""]) expect(() => fichierCommune("/s", mauvais)).toThrow();
+  });
+
+  test("une école fermée sans appellation reçoit un nom explicite, sans faire échouer les pages commune", async () => {
+    const db = await dbTest();
+    const [l] = await db.sql<{ nom: string }>("select nom from fermes where uai = '0440113R'");
+    expect(l?.nom).toBe("Établissement sans nom publié");
+    const ecoles = await ecolesDesCommunes(db, []);
+    expect(ecoles.get("44888")?.ecoles.fermees.some((e) => e.uai === "0440113R" && e.nom === "Établissement sans nom publié")).toBe(true);
   });
 });

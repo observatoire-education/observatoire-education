@@ -54,7 +54,8 @@ select
 from (
   select
     upper(trim(f.numero_uai)) as uai,
-    trim(f.appellation_officielle) as nom,
+    -- Quelques fermés n'ont pas d'appellation : un nom explicite plutôt qu'un vide.
+    coalesce(nullif(trim(f.appellation_officielle), ''), 'Établissement sans nom publié') as nom,
     upper(trim(f.nature_uai_libe)) as nature,
     -- une école fermée n'est plus dans l'annuaire : sa famille vient de la nature (jamais primaire)
     coalesce(
