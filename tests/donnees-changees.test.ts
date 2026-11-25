@@ -43,6 +43,7 @@ describe("script", () => {
     const l = lanceur("abc", json(base));
     expect(await verifier(l.lancer, l.lancer, json({ ...base, vus: { annuaire: "M9" } }))).toBe(false);
     expect(l.appels).toContainEqual(["show", "abc:archives/manifest.json"]);
+    expect(l.appels[0]).toEqual(expect.arrayContaining(["--branch", "main"])); // pas une exécution d'une autre branche
   });
   test("aucune publication réussie : publication", async () => {
     const l = lanceur(null, null);

@@ -12,7 +12,7 @@ const lanceurGit: Lanceur = async (args) => {
 };
 
 export async function verifier(gh: Lanceur, git: Lanceur, courant: string): Promise<boolean> {
-  const runs = await gh(["run", "list", "--workflow", "publication.yml", "--status", "success", "--limit", "1", "--json", "headSha"]);
+  const runs = await gh(["run", "list", "--workflow", "publication.yml", "--branch", "main", "--status", "success", "--limit", "1", "--json", "headSha"]);
   const sha = runs.code === 0 ? (JSON.parse(runs.sortie) as { headSha: string }[])[0]?.headSha : undefined;
   if (!sha) return true;
   const avant = await git(["show", `${sha}:${CHEMINS.manifest}`]);

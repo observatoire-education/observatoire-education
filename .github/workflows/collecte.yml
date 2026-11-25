@@ -16,8 +16,10 @@ permissions:
   contents: write
   issues: write
 
+# Même groupe que publication.yml : les deux commitent dans archives/ (journal, manifeste) sur main, et les
+# alertes lisent la dernière exécution du journal ; en parallèle, le rebase des commits entrerait en conflit.
 concurrency:
-  group: collecte
+  group: deploiement
   cancel-in-progress: false
 
 jobs:

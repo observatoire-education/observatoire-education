@@ -58,9 +58,13 @@ describe("états des sources", () => {
   test("collecte locale de 91 jours : échec", () => {
     const e = etatsSources([ligne("bzh_batiments", "local", "m")], sources, { bzh_batiments: ilYa(91) } as never, maintenant);
     expect(e[0]!.enEchec).toBe(true);
+    // Sans le nombre de jours : le motif ne doit pas changer d'une nuit à l'autre (un commentaire par nuit sinon).
     expect(e[0]!.motif).toBe(
-      `dernière collecte manuelle le ${ilYa(91).slice(0, 10)}, il y a 91 jours : lancer bun run collect depuis un poste`,
+      `dernière collecte manuelle le ${ilYa(91).slice(0, 10)}, plus de 90 jours : lancer bun run collect depuis un poste`,
     );
+    const lendemain = new Date(maintenant.getTime() + 86_400_000);
+    expect(etatsSources([ligne("bzh_batiments", "local", "m")], sources, { bzh_batiments: ilYa(91) } as never, lendemain)[0]!.motif)
+      .toBe(e[0]!.motif);
   });
   test("collecte locale jamais faite : échec", () => {
     const e = etatsSources([ligne("bzh_batiments", "local", "m")], sources, {}, maintenant);
@@ -115,6 +119,11 @@ describe("plan d'actions", () => {
     expect(planifier([], [ouverte("x", "source:budget_2019")], declarees, LIEN))
       .toEqual([{ type: "fermer", numero: 7, commentaire: "source retirée du code" }]);
   });
+  test("source en échec non déclarée (exercice budget non découvert) : pas de fermeture", () => {
+    const etat: Etat = { cle: "source:budget_2026", enEchec: true, motif: "ECONNRESET" };
+    expect(planifier([etat], [ouverte("ECONNRESET", "source:budget_2026")], declarees, LIEN)).toEqual([]);
+  });
+
   test("issue sans état cette nuit : rien", () => {
     expect(planifier([], [ouverte("x", "source:budget_2025")], declarees, LIEN)).toEqual([]);
   });

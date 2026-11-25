@@ -42,7 +42,8 @@ export function etatsSources(
       if (!date) return { cle, enEchec: true, motif: `aucune collecte manuelle : ${RAPPEL_LOCAL}` };
       const jours = Math.floor((maintenant.getTime() - new Date(date).getTime()) / JOUR_MS);
       if (jours <= DELAI_COLLECTE_LOCALE_JOURS) return { cle, enEchec: false };
-      return { cle, enEchec: true, motif: `dernière collecte manuelle le ${date.slice(0, 10)}, il y a ${jours} jours : ${RAPPEL_LOCAL}` };
+      // Pas le nombre de jours : il change chaque nuit et commenterait l'issue chaque nuit.
+      return { cle, enEchec: true, motif: `dernière collecte manuelle le ${date.slice(0, 10)}, plus de ${DELAI_COLLECTE_LOCALE_JOURS} jours : ${RAPPEL_LOCAL}` };
     }
     const echecs = ls.filter((l) => l.action === "rejete" || l.action === "erreur");
     if (!echecs.length) return { cle, enEchec: false };
@@ -72,8 +73,11 @@ export function planifier(etats: Etat[], ouvertes: IssueOuverte[], declarees: Se
       } else if (issue.motif !== motif) actions.push({ type: "commenter", numero: issue.numero, corps: corps(e.cle, motif, lien) });
     } else if (issue) actions.push({ type: "fermer", numero: issue.numero, commentaire: `Revenu à la normale : ${lien}` });
   }
+  // Une clé en échec cette nuit n'est pas « retirée », même absente des sources déclarées : l'exercice budget
+  // suivant, non découvert (API en panne, plusieurs jeux), serait sinon fermé puis rouvert une nuit sur deux.
+  const enEchec = new Set(etats.filter((e) => e.enEchec).map((e) => e.cle));
   for (const i of ouvertes) {
-    if (!declarees.has(i.cle)) actions.push({ type: "fermer", numero: i.numero, commentaire: "source retirée du code" });
+    if (!declarees.has(i.cle) && !enEchec.has(i.cle)) actions.push({ type: "fermer", numero: i.numero, commentaire: "source retirée du code" });
   }
   return actions;
 }
