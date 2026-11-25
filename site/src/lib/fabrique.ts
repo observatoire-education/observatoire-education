@@ -40,7 +40,8 @@ export function compterFabrique(sources: Record<string, DonneesSource>, horsRegi
   };
 }
 
-/** « cette nuit » si la collecte date de moins de 24 h à `maintenant`, sinon « le JJ/MM/AAAA ». */
-export function libelleCollecte(iso: string, maintenant: Date): string {
-  return maintenant.getTime() - new Date(iso).getTime() < 24 * 3600 * 1000 ? "cette nuit" : `le ${date(iso)}`;
-}
+/**
+ * « le JJ/MM/AAAA ». Jamais « cette nuit » : le site n'est reconstruit que si un jeu a changé, une mention relative
+ * resterait figée sur la page en ligne pendant des jours.
+ */
+export const libelleCollecte = (iso: string): string => `le ${date(iso)}`;

@@ -9,7 +9,21 @@ import { lireFiche, lireIndex } from "./donnees";
 import { producteurCourt } from "./fabrique";
 import { resultatsSynthese, moyensSynthese } from "./synthese";
 
-export interface SourceVitrine { numero: number; id: SourceId; titre: string; producteur: string; portail: string; pageUrl: string }
+export interface SourceVitrine {
+  numero: number; id: SourceId; titre: string; producteur: string; portail: string; pageUrl: string;
+  /** Précision utile sur le jeu (/sources/), quand il y en a une. */
+  precision?: string;
+}
+
+/** Précisions affichées sur /sources/ à côté des jeux de la vitrine, dans le vocabulaire des producteurs. */
+function precisionDe(id: string): string | undefined {
+  if (id === "annuaire") return "relu chaque nuit";
+  if (id === "carte_scolaire") return "secteurs définis par le conseil départemental";
+  if (id.endsWith("_2016")) return "série 2016-2021, méthode d'avant 2022";
+  if (id.endsWith("_2022")) return "rentrée 2022, nouvelle méthode";
+  if (id.startsWith("budget_")) return "un jeu par exercice, extrait filtré";
+  return undefined;
+}
 export interface TuileVitrine { libelle: string; valeur: string; detail: string | null; numeros: number[]; large?: boolean }
 export interface Vitrine {
   uai: string; nom: string; sousTitre: string; lien: string;
@@ -23,7 +37,11 @@ export function sourcesVitrine(f: Fiche): SourceVitrine[] {
   for (const s of f.sources) {
     if (vues.has(s.pageUrl)) continue;
     vues.add(s.pageUrl);
-    out.push({ numero: out.length + 1, id: s.id, titre: s.titre, producteur: producteurCourt(s.producteur), portail: new URL(s.pageUrl).hostname, pageUrl: s.pageUrl });
+    const precision = precisionDe(s.id);
+    out.push({
+      numero: out.length + 1, id: s.id, titre: s.titre, producteur: producteurCourt(s.producteur), portail: new URL(s.pageUrl).hostname,
+      pageUrl: s.pageUrl, ...(precision ? { precision } : {}),
+    });
   }
   return out;
 }
@@ -99,7 +117,8 @@ export function tuilesVitrine(f: Fiche, sources: SourceVitrine[]): TuileVitrine[
       detail: null, numeros: numeros(["carte_scolaire"]), large: true,
     });
   }
-  // Une tuile sans source citée par la fiche ne peut pas porter de pastille : elle n'a rien à démontrer ici.
+  // Une tuile sans source citée par la fiche ne peut pas porter de pastille : elle est omise, et le build le dit.
+  for (const t of tuiles) if (t.numeros.length === 0) console.warn(`[vitrine] ${f.uai} : tuile « ${t.libelle} » omise, aucune source citée par la fiche.`);
   return tuiles.filter((t) => t.numeros.length > 0);
 }
 

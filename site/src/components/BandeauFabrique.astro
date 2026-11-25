@@ -12,6 +12,6 @@ const s = (n: number) => (n > 1 ? "s" : "");
   <span><b>{f.producteurs.length}</b> producteur{s(f.producteurs.length)} : {f.producteurs.join(", ")}</span>
   <span><b>{f.portails}</b> portail{s(f.portails)}</span>
   {depuis !== null && <span>séries depuis <b>{depuis}</b></span>}
-  {f.derniereCollecte && <span>dernière collecte <b>{libelleCollecte(f.derniereCollecte, new Date())}</b></span>}
+  {f.derniereCollecte && <span>dernière collecte <b>{libelleCollecte(f.derniereCollecte)}</b></span>}
   {lien && <a href="/sources/">Toutes les sources →</a>}
 </div>

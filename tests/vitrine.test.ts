@@ -27,6 +27,8 @@ describe("sources de la vitrine", () => {
     expect(s.map((x) => x.id)).toEqual(["annuaire", "budget_2024", "ivac"]);
     expect(s[1]!.portail).toBe("data.economie.gouv.fr");
     expect(s[2]!.producteur).toBe("DEPP");
+    expect(s[0]!.precision).toBe("relu chaque nuit");
+    expect(s[2]!.precision).toBeUndefined();
   });
 });
 
@@ -69,6 +71,21 @@ describe("tuile sans source citée", () => {
     const t = tuilesVitrine(f, sourcesVitrine(f));
     expect(t.map((x) => x.libelle)).toEqual(["Élèves · 2025"]);
     expect(t.every((x) => x.numeros.length > 0)).toBe(true);
+  });
+
+  test("une tuile perdue faute de source citée est signalée au build", () => {
+    const avertissements: string[] = [];
+    const avant = console.warn;
+    console.warn = (m: string) => { avertissements.push(m); };
+    try {
+      const f = ficheMinimale({
+        sources: [ref("effectifs_colleges", "https://data.education.gouv.fr/e")],
+        indicateurs: [ind("eleves", mesure(452, "effectifs_colleges"))],
+        ecolesDuSecteur: [{ uai: "0440100A", nom: "École A" }] as unknown as Fiche["ecolesDuSecteur"],
+      });
+      tuilesVitrine(f, sourcesVitrine(f));
+    } finally { console.warn = avant; }
+    expect(avertissements.some((m) => m.includes("Secteur de recrutement"))).toBe(true);
   });
 });
 

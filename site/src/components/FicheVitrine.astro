@@ -36,7 +36,7 @@ const jeux = `${n} jeu${n > 1 ? "x" : ""} de données`;
     ) : (
       <ol class="sources-vitrine">
         {v.sources.map((x) => (
-          <li><span><a href={`/sources/#${x.id}`}>{x.titre}</a><span class="p">{x.producteur} · {x.portail}</span></span></li>
+          <li><span><a href={`/sources/#${x.id}`}>{x.titre}</a><span class="p">{x.producteur} · {x.portail}{x.precision && ` · ${x.precision}`}</span></span></li>
         ))}
       </ol>
     )}

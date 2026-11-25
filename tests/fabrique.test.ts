@@ -46,8 +46,7 @@ describe("compteurs de la fabrique", () => {
     expect(producteurCourt("DGFiP")).toBe("DGFiP");
   });
 
-  test("dernière collecte : « cette nuit » sous 24 h, sinon la date", () => {
-    expect(libelleCollecte("2026-11-25T02:10:00Z", new Date("2026-11-25T09:00:00Z"))).toBe("cette nuit");
-    expect(libelleCollecte("2026-11-25T02:10:00Z", new Date("2026-11-27T09:00:00Z"))).toBe("le 25/11/2026");
+  test("dernière collecte : toujours la date (le site n'est pas reconstruit chaque nuit)", () => {
+    expect(libelleCollecte("2026-11-25T02:10:00Z")).toBe("le 25/11/2026");
   });
 });
