@@ -1,6 +1,6 @@
 // Aides des pages de territoire (France, académie, département, commune) : synthèses, lignes de liste, CSV.
 import { comparerCollectivites, type NiveauBudget } from "@obs/shared/collectivites";
-import type { BudgetCollectivite, DonneesTerritoire, LigneListe, LigneTerritoire, SyntheseFamille } from "@obs/shared/donnees";
+import type { BudgetCollectivite, CollectiviteTransport, DonneesTerritoire, LigneListe, LigneTerritoire, SyntheseFamille } from "@obs/shared/donnees";
 import { date, entier } from "@obs/shared/format";
 import { FAMILLES, FAMILLES_ECOLES, FAMILLES_SECOND_DEGRE, LIBELLES_PREMIER_DEGRE } from "@obs/shared/libelles";
 import type { Famille, FamilleSecondDegre, LigneEcole, ResumeResultat } from "@obs/shared/types";
@@ -114,6 +114,17 @@ const COLONNES_CSV_BUDGET = [
 ] as const;
 
 const arrondi = (v: number | null): number | null => (v === null ? null : Math.round(v * 100) / 100);
+
+const COLONNES_CSV_TRANSPORT = ["collectivite", "libelle", "exercice", "fonctionnement", "investissement", "produits_services"] as const;
+const euros = (v: number | null) => (v === null ? null : Math.round(v));
+
+/** Transport scolaire des régions et CTU, une ligne par collectivité et par exercice, en euros ; absence : cellule vide. */
+export function csvTransport(regions: CollectiviteTransport[]): string {
+  const lignes = regions.flatMap((c) => c.serie.map((e) => [
+    c.id, c.libelle, e.exercice, euros(e.fonctionnement), euros(e.investissement), euros(e.produitsServices),
+  ]));
+  return csv(COLONNES_CSV_TRANSPORT, lignes);
+}
 
 /**
  * Budget des collectivités d'un niveau, une ligne par collectivité et par exercice (tri par libellé puis exercice).

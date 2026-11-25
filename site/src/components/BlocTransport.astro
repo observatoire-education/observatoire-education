@@ -1,0 +1,128 @@
+---
+// Bloc « Transport scolaire » : dépenses que chaque collectivité impute au transport scolaire, en euros, jamais par
+// élève (spec Transport, section 6). Région et département : une carte par collectivité, avec l'évolution ; département :
+// intercommunalités et syndicats ayant leur siège dans le département ; France : tableau des régions et CSV.
+import type { CollectiviteTransport, ExerciceTransport, TransportTerritoire } from "@obs/shared/donnees";
+import { millions } from "@obs/shared/format";
+import { LIBELLES_TRANSPORT as L } from "@obs/shared/libelles";
+import { svgEvolutionTransport } from "../lib/plot";
+import Absence from "./Absence.astro";
+import Cellule from "./Cellule.astro";
+
+interface Props {
+  /** Pages région et département. */
+  t?: TransportTerritoire;
+  /** Page région : code, pour la phrase d'absence propre à la région. */
+  region?: string;
+  /** Page France : régions et CTU. */
+  regions?: CollectiviteTransport[];
+}
+const { t, region, regions } = Astro.props;
+
+const POSTES = [["fonctionnement", L.fonctionnement], ["investissement", L.investissement], ["produitsServices", L.produitsServices]] as const;
+const aDesDonnees = (e: ExerciceTransport) => e.fonctionnement !== null || e.investissement !== null || e.produitsServices !== null;
+/** Dernier exercice où la collectivité a au moins un poste. */
+const dernier = (serie: ExerciceTransport[]) => serie.findLast(aDesDonnees);
+/** Postes non nuls sur au moins un exercice. */
+const postesDe = (serie: ExerciceTransport[]) => POSTES.filter(([cle]) => serie.some((e) => e[cle] !== null && e[cle] !== 0));
+const montant = (v: number | null) => (v === null ? { texte: L.nonDisponible, absent: true } : { texte: millions(v), absent: false });
+
+const absenceRegion = region !== undefined ? (L.absencesRegion[region] ?? L.absenceRegion) : null;
+const derniereFrance = regions?.[0]?.serie.at(-1)?.exercice;
+---
+<section id="transport">
+  <h2>{L.titre}</h2>
+
+  {t && t.absence === "region_sans_ligne" && absenceRegion && (
+    <div class="card"><Absence texte={absenceRegion} /></div>
+  )}
+
+  {t && t.collectivites.map((c) => {
+    const e = dernier(c.serie);
+    const postes = postesDe(c.serie);
+    const svg = svgEvolutionTransport(c.serie);
+    const m71 = c.serie.filter((x) => x.nomenclatureM71);
+    return (
+      <div class="card transport" data-collectivite={c.id}>
+        <div class="lab"><span>{c.libelle}</span>{e && <span class="yr">{L.exercice(e.exercice)}</span>}</div>
+        {e ? (
+          <div class="table-wrap"><table class="cmp mini-t"><tbody>
+            {postes.map(([cle, libelle]) => {
+              const v = montant(e[cle]);
+              return <tr><td>{libelle}</td><td class="n"><Cellule texte={v.texte} absent={v.absent} gras={!v.absent} /></td></tr>;
+            })}
+          </tbody></table></div>
+        ) : m71.length === 0 && (
+          <div style="margin:8px 0"><Absence texte={L.absenceGenerique(c.serie.at(-1)?.exercice ?? 0)} /></div>
+        )}
+        {svg && (
+          <>
+            <div class="lab" style="margin-top:10px"><span>{L.evolution}</span><span class="yr">{c.serie[0]!.exercice} → {c.serie.at(-1)!.exercice}</span></div>
+            <Fragment set:html={svg} />
+          </>
+        )}
+        {m71.map((x) => <p class="mute mention-budget">{L.nomenclatureM71(x.exercice)}</p>)}
+      </div>
+    );
+  })}
+
+  {t?.groupements && (() => {
+    const g = t.groupements;
+    const e = dernier(g.total);
+    return (
+      <div class="card transport" style="margin-top:14px">
+        <div class="lab"><span>{L.groupements} · {L.groupementsNombre(g.liste.length)}</span>{e && <span class="yr">{L.exercice(e.exercice)}</span>}</div>
+        {e && (
+          <div class="table-wrap"><table class="cmp mini-t"><tbody>
+            {postesDe(g.total).map(([cle, libelle]) => {
+              const v = montant(e[cle]);
+              return <tr><td>{libelle}</td><td class="n"><Cellule texte={v.texte} absent={v.absent} gras={!v.absent} /></td></tr>;
+            })}
+          </tbody></table></div>
+        )}
+        <details>
+          <summary>{L.groupementsNombre(g.liste.length)}</summary>
+          <ul>
+            {g.liste.map((c) => {
+              const v = e ? montant(c.serie.find((x) => x.exercice === e.exercice)?.fonctionnement ?? null) : null;
+              return <li>{c.libelle}{v && <> : <Cellule texte={v.texte} absent={v.absent} /></>}</li>;
+            })}
+          </ul>
+        </details>
+      </div>
+    );
+  })()}
+
+  {regions && derniereFrance !== undefined && (
+    <>
+      <p><a class="btn" href="/france/transport-scolaire.csv" download>{L.csv}</a></p>
+      <div class="card" style="padding:4px 6px"><div class="table-wrap">
+        <table class="cmp">
+          <thead><tr>
+            <th>{L.colonnes.collectivite}</th>
+            <th class="n">{L.colonnes.fonctionnement} {derniereFrance}</th>
+            <th class="n">{L.colonnes.investissement} {derniereFrance}</th>
+            <th class="n">{L.colonnes.produitsServices} {derniereFrance}</th>
+          </tr></thead>
+          <tbody>
+            {regions.map((c) => {
+              const e = c.serie.find((x) => x.exercice === derniereFrance);
+              return (
+                <tr>
+                  <td>{c.libelle}</td>
+                  {POSTES.map(([cle]) => {
+                    const v = montant(e?.[cle] ?? null);
+                    return <td class="n"><Cellule texte={v.texte} absent={v.absent} /></td>;
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div></div>
+    </>
+  )}
+
+  <p class="mute mention-budget">{L.note} <a href="/methode/#transport-financement">{L.methode}</a></p>
+  <div class="src">{L.source} · <a href="/sources/">Voir les sources</a></div>
+</section>

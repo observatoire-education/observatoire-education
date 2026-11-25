@@ -329,6 +329,30 @@ export const NIVEAUX_TERRITORIAUX = {
 } as const;
 
 /** Libellés du bloc « Moyens de la collectivité » (budget des collèges et des lycées). */
+/** Transport scolaire (spec Transport, section 6) : montants en euros, jamais par élève. */
+export const LIBELLES_TRANSPORT = {
+  titre: "Transport scolaire",
+  fonctionnement: "Dépenses de fonctionnement",
+  investissement: "Dépenses d'investissement",
+  produitsServices: "Produits des services (dont participations des familles)",
+  groupements: "Intercommunalités et syndicats ayant leur siège dans le département",
+  groupementsNombre: (n: number) => `${n} ${n > 1 ? "groupements" : "groupement"}`,
+  evolution: "Évolution des dépenses de fonctionnement, en M€",
+  note: "Ces montants ne sont pas rapportés au nombre d'élèves : l'organisation du transport scolaire peut être déléguée (départements, intercommunalités, syndicats), la participation des familles varie d'une région à l'autre, et aucun nombre d'élèves transportés n'est publié en données ouvertes. Ce sont les montants que chaque collectivité impute au transport scolaire dans ses comptes.",
+  methode: "Méthode",
+  absenceGenerique: (e: number) => `Aucune dépense de transport scolaire n'apparaît dans les comptes de cette collectivité pour l'exercice ${e}.`,
+  absencesRegion: {
+    "11": "Le transport scolaire n'apparaît pas dans les comptes de la Région : en Île-de-France, il est organisé par Île-de-France Mobilités.",
+  } as Record<string, string>,
+  absenceRegion: "Le transport scolaire n'apparaît pas dans les comptes de la Région.",
+  nomenclatureM71: (e: number) => `${e} : comptes tenus selon la nomenclature M71, qui n'isole pas le transport scolaire.`,
+  nonDisponible: "non disponible",
+  exercice: (e: number) => `Exercice ${e}`,
+  source: "Source : DGFiP, balances comptables des collectivités",
+  csv: "⬇ Télécharger les dépenses de transport scolaire des régions (CSV)",
+  colonnes: { collectivite: "Collectivité", fonctionnement: "Fonctionnement", investissement: "Investissement", produitsServices: "Produits des services" },
+} as const;
+
 export const LIBELLES_BUDGET = {
   titre: "Moyens de la collectivité",
   /** Écoles : fiche d'une école publique et page commune. */
