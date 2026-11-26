@@ -127,6 +127,13 @@ export function page(chemin: string): string {
   return readFileSync(f, "utf8");
 }
 
+/** Fichiers listés par l'index du plan du site (`sitemap.xml`), dans l'ordre. */
+export const fichiersDuPlan = (): string[] =>
+  [...page("sitemap.xml").matchAll(/<sitemap><loc>[^<]*\/([^/<]+)<\/loc>/g)].map((m) => m[1]!);
+
+/** Plan du site complet : toutes les listes d'URLs de l'index, mises bout à bout. */
+export const planDuSite = (): string => fichiersDuPlan().map((f) => page(f)).join("\n");
+
 export const octets = (chemin: string): number => statSync(fichierDe(chemin)).size;
 
 export const doc = (chemin: string) => parseHTML(page(chemin)).document;

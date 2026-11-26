@@ -1,19 +1,6 @@
-// Plan du site : toutes les pages, avec pour date la collecte de source la plus récente.
+// Index du plan du site : renvoie vers une liste d'URLs par type de page (voir lib/plan-du-site).
 import type { APIRoute } from "astro";
-import { CONFIG } from "../lib/config";
-import { academiesDisponibles, communesDisponibles, departementsDisponibles, lireIndex, lireSources, regionsDisponibles } from "../lib/donnees";
+import { dateDuPlan, partiesDuPlan, SITE } from "../lib/contenu-du-plan";
+import { indexDuPlan, reponseXml } from "../lib/plan-du-site";
 
-export const GET: APIRoute = () => {
-  const dates = Object.values(lireSources()).flatMap((s) => (s.actuelle ? [s.actuelle.collecteLe] : [])).sort();
-  const lastmod = (dates.at(-1) ?? new Date().toISOString()).slice(0, 10);
-  const chemins = ["/", "/france/", "/sources/", "/methode/", "/a-propos/", "/mentions-legales/", ...regionsDisponibles().map((r) => `/region/${r}/`),
-    ...academiesDisponibles().map((a) => `/academie/${a}/`),
-    ...departementsDisponibles().map((d) => `/departement/${d}/`),
-    ...[...communesDisponibles()].sort().map((c) => `/commune/${c}/`),
-    ...lireIndex().map((e) => `/etablissement/${e.u}/`)];
-  const url = (c: string) => `<url><loc>${CONFIG.SITE_URL}${c}</loc><lastmod>${lastmod}</lastmod></url>`;
-  return new Response(
-    `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${chemins.map(url).join("\n")}\n</urlset>\n`,
-    { headers: { "Content-Type": "application/xml; charset=utf-8" } },
-  );
-};
+export const GET: APIRoute = () => reponseXml(indexDuPlan(SITE, partiesDuPlan().map((p) => p.fichier), dateDuPlan()));

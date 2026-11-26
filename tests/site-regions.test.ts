@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { DIST_TEST, doc, page, siteTest, texte } from "./site.ts";
+import { DIST_TEST, doc, page, planDuSite, siteTest, texte } from "./site.ts";
 
 beforeAll(async () => {
   await siteTest();
@@ -82,8 +82,8 @@ describe("maillage des régions", () => {
   });
 
   test("le sitemap contient /region/52/", () => {
-    expect(page("sitemap.xml")).toContain("/region/52/</loc>");
-    expect(page("sitemap.xml")).not.toContain("/region/975/");
+    expect(planDuSite()).toContain("/region/52/</loc>");
+    expect(planDuSite()).not.toContain("/region/975/");
   });
 
   test("la recherche propose « Pays de la Loire »", () => {

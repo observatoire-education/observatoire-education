@@ -40,6 +40,26 @@ export function normaliserCorps(html: string): string {
 
 type Fetch = (url: URL, init: RequestInit) => Promise<Response>;
 
+async function lireXml(url: URL, chercher: Fetch): Promise<string> {
+  const r = await chercher(url, { signal: AbortSignal.timeout(30_000) });
+  if (!r.ok) throw new Error(`${url.pathname} illisible : statut ${r.status}`);
+  return r.text();
+}
+
+/**
+ * Plan du site de `base`, toutes listes d'URLs mises bout à bout. Si `sitemap.xml` est un index, chaque liste est lue
+ * sur `base` (par son chemin) : l'index d'un aperçu pointe vers le domaine de production.
+ */
+export async function lireSitemap(base: string, chercher: Fetch = fetch): Promise<string> {
+  const racine = await lireXml(new URL("/sitemap.xml", base), chercher);
+  if (!racine.includes("<sitemapindex")) return racine;
+  const listes: string[] = [];
+  for (const m of racine.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/g)) {
+    listes.push(await lireXml(new URL(new URL(deséchapper(m[1]!)).pathname, base), chercher));
+  }
+  return listes.join("\n");
+}
+
 async function lire(base: string, chemin: string, chercher: Fetch): Promise<{ statut: number; location: string; corps: string }> {
   const r = await chercher(new URL(chemin, base), { redirect: "manual", signal: AbortSignal.timeout(30_000) });
   const location = r.status >= 300 && r.status < 400 ? (r.headers.get("location") ?? "") : "";
@@ -70,14 +90,9 @@ if (import.meta.main) {
   }
   let sitemap: string;
   try {
-    const r = await fetch(new URL("/sitemap.xml", a), { signal: AbortSignal.timeout(30_000) });
-    if (!r.ok) {
-      console.error(`sitemap.xml illisible sur ${a} : statut ${r.status}`);
-      process.exit(1);
-    }
-    sitemap = await r.text();
+    sitemap = await lireSitemap(a);
   } catch (e) {
-    console.error(`sitemap.xml inaccessible sur ${a} : ${e instanceof Error ? e.message : e}`);
+    console.error(`plan du site inaccessible sur ${a} : ${e instanceof Error ? e.message : e}`);
     process.exit(1);
   }
   const chemins = echantillonUrls(sitemap, Number(n));

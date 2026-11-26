@@ -3,9 +3,9 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { comparer, echantillonUrls, normaliserCorps } from "../scripts/comparer-hebergements.ts";
+import { comparer, echantillonUrls, lireSitemap, normaliserCorps } from "../scripts/comparer-hebergements.ts";
 import {
-  ecrireFichiersHebergement, LIMITES, OCTETS_COMMUNE_MAX, OCTETS_PAGE_MAX, OCTETS_RECHERCHE_MAX, poidsPages, verifierDist,
+  ecrireFichiersHebergement, LIMITES, OCTETS_COMMUNE_MAX, OCTETS_PAGE_MAX, OCTETS_RECHERCHE_MAX, poidsPages, URLS_PAR_SITEMAP_MAX, verifierDist,
 } from "../scripts/garde-fous.ts";
 
 async function dossierTemp<T>(f: (d: string) => Promise<T> | T): Promise<T> {
@@ -18,6 +18,17 @@ async function dossierTemp<T>(f: (d: string) => Promise<T> | T): Promise<T> {
 }
 
 describe("garde-fous de dist/ (Cloudflare Workers)", () => {
+  test("plan du site : au plus 50 000 URLs par fichier (protocole sitemaps.org)", () =>
+    dossierTemp(async (d) => {
+      expect(URLS_PAR_SITEMAP_MAX).toBe(50_000);
+      const urls = (n: number) => `<urlset>${"<url><loc>https://x.fr/p/</loc></url>".repeat(n)}</urlset>`;
+      await writeFile(join(d, "sitemap.xml"), "<sitemapindex><sitemap><loc>https://x.fr/sitemap-a.xml</loc></sitemap></sitemapindex>");
+      await writeFile(join(d, "sitemap-a.xml"), urls(50_000));
+      expect(verifierDist(d).fichiers).toBe(2);
+      await writeFile(join(d, "sitemap-a.xml"), urls(50_001));
+      expect(() => verifierDist(d)).toThrow(/sitemap-a\.xml.*50001 URLs.*50000/);
+    }));
+
   test("limites : 95 000 fichiers, 25 Mio par fichier", () => {
     expect(LIMITES).toEqual({ fichiers: 95_000, octetsParFichier: 25 * 1024 * 1024 });
   });
@@ -127,6 +138,20 @@ describe("garde-fous de dist/ (Cloudflare Workers)", () => {
   test("echantillonUrls déséchappe les entités XML des <loc>", () => {
     const sitemap = "<urlset><url><loc>https://x.fr/a?b=1&amp;c=2</loc></url></urlset>";
     expect(echantillonUrls(sitemap, 1)).toEqual(["/a?b=1&c=2"]);
+  });
+
+  test("lireSitemap suit l'index sur l'hôte comparé, liste simple lue telle quelle", async () => {
+    const reponses: Record<string, string> = {
+      "https://a.test/sitemap.xml":
+        "<sitemapindex><sitemap><loc>https://prod.fr/sitemap-pages.xml</loc></sitemap><sitemap><loc>https://prod.fr/sitemap-communes.xml</loc></sitemap></sitemapindex>",
+      "https://a.test/sitemap-pages.xml": "<urlset><url><loc>https://prod.fr/</loc></url></urlset>",
+      "https://a.test/sitemap-communes.xml": "<urlset><url><loc>https://prod.fr/commune/44109/</loc></url></urlset>",
+      "https://b.test/sitemap.xml": "<urlset><url><loc>https://prod.fr/seule/</loc></url></urlset>",
+    };
+    const stub = async (url: URL) => (reponses[url.href] ? new Response(reponses[url.href]) : new Response("", { status: 404 }));
+    expect(echantillonUrls(await lireSitemap("https://a.test", stub), 10)).toEqual(["/", "/commune/44109/"]);
+    expect(echantillonUrls(await lireSitemap("https://b.test", stub), 10)).toEqual(["/seule/"]);
+    await expect(lireSitemap("https://c.test", stub)).rejects.toThrow(/sitemap\.xml.*404/);
   });
 
   test("comparer signale erreur réseau, statut, redirection et corps", async () => {
