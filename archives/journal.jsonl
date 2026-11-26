@@ -237,3 +237,46 @@
 {"date":"2026-11-25T23:15:34.055Z","source":"transport_2023","action":"inchange","modified":"2024-12-06T13:57:17+00:00"}
 {"date":"2026-11-25T23:15:34.055Z","source":"transport_2024","action":"inchange","modified":"2025-12-09T16:38:00+00:00"}
 {"date":"2026-11-25T23:15:34.055Z","source":"transport_2025","action":"inchange","modified":"2026-07-13T16:06:26+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"annuaire","action":"inchange","modified":"2026-11-26T06:01:23.166000+00:00","sha256":"4f963575649fc5648bab043cfc121c63d7faec0e8bbf1ef59ef1d82d9540351d","lignes":63233,"motif":"contenu identique"}
+{"date":"2026-11-26T07:57:27.388Z","source":"ips_colleges","action":"inchange","modified":"2026-09-01T09:31:02.578000+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"ips_lycees","action":"inchange","modified":"2026-06-10T08:20:49.021000+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"effectifs_colleges","action":"inchange","modified":"2026-07-27T10:24:40.709000+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"effectifs_lycees_gt","action":"inchange","modified":"2026-07-27T08:15:52.712000+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"effectifs_lycees_pro","action":"inchange","modified":"2026-07-27T10:21:28.880000+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"personnels","action":"inchange","modified":"2026-10-26T12:56:29.896000+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"fermes","action":"inchange","modified":"2026-11-25T05:00:30.562000+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"ips_colleges_2016","action":"inchange","modified":"2026-07-24T15:01:11.134000+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"ips_colleges_2022","action":"inchange","modified":"2024-05-24T12:13:00+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"ips_lycees_2016","action":"inchange","modified":"2024-05-24T11:30:32+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"ips_lycees_2022","action":"inchange","modified":"2024-05-24T12:13:01+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"ips_erea_2016","action":"inchange","modified":"2024-05-24T12:30:47+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"ips_erea","action":"inchange","modified":"2026-08-03T08:34:49.986000+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"ivac","action":"inchange","modified":"2026-08-03T09:55:18.316000+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"ival_gt","action":"inchange","modified":"2026-06-10T10:17:27.564000+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"ival_pro","action":"inchange","modified":"2026-06-10T10:16:56.029000+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"segregation","action":"inchange","modified":"2026-07-02T08:21:24.489000+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"effectifs_ecoles","action":"inchange","modified":"2026-08-27T09:25:30.169000+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"ips_ecoles_2016","action":"inchange","modified":"2024-05-24T11:31:04+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"ips_ecoles","action":"inchange","modified":"2026-08-07T07:34:04.835000+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"personnels_ecoles","action":"inchange","modified":"2026-10-26T13:06:14.477000+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"classes_ecoles","action":"inchange","modified":"2026-10-05T12:03:50+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"ecoles_ep","action":"inchange","modified":"2026-01-29T18:36:59.885000+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"carte_scolaire","action":"inchange","modified":"2026-10-09T15:00:57.180000+00:00","sha256":"2db3ab13e73aecb8e1dbaf35d415b5195981613edc2462aecbd3edd8d4e4203c","lignes":499680,"motif":"contenu identique"}
+{"date":"2026-11-26T07:57:27.388Z","source":"cog_mouvements","action":"inchange","modified":"2026-01-01","sha256":"dfa0cdb9e258197b08469f6e5fd872a56245d4295bf2fb92c79367f28f413de3","lignes":13734,"motif":"contenu identique"}
+{"date":"2026-11-26T07:57:27.388Z","source":"cog_communes","action":"inchange","modified":"2026-01-01","sha256":"bdb5470c63066fc9cc27dac41fb75c5fb23aa2588a82598e7b51c08568725ecd","lignes":37496,"motif":"contenu identique"}
+{"date":"2026-11-26T07:57:27.388Z","source":"idf_lycees","action":"inchange","modified":"2026-11-03T07:08:07.654000+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"idf_ppi","action":"inchange","modified":"2018-01-26T16:48:20+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"idf_operations","action":"inchange","modified":"2024-03-20T17:12:03.285000+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"bzh_batiments","action":"local","motif":"collecte locale : serveur injoignable depuis GitHub, lancer bun run collect depuis un poste"}
+{"date":"2026-11-26T07:57:27.388Z","source":"budget_2020","action":"inchange","modified":"2021-12-17T08:18:43.488000+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"budget_2021","action":"inchange","modified":"2022-12-22T16:43:32+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"budget_2022","action":"inchange","modified":"2023-12-07T12:04:35+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"budget_2023","action":"inchange","modified":"2024-12-06T13:57:17+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"budget_2024","action":"inchange","modified":"2025-12-09T16:38:00+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"budget_2025","action":"inchange","modified":"2026-07-13T16:06:26+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"transport_2020","action":"inchange","modified":"2021-12-17T08:18:43.488000+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"transport_2021","action":"inchange","modified":"2022-12-22T16:43:32+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"transport_2022","action":"inchange","modified":"2023-12-07T12:04:35+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"transport_2023","action":"inchange","modified":"2024-12-06T13:57:17+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"transport_2024","action":"inchange","modified":"2025-12-09T16:38:00+00:00"}
+{"date":"2026-11-26T07:57:27.388Z","source":"transport_2025","action":"inchange","modified":"2026-07-13T16:06:26+00:00"}
