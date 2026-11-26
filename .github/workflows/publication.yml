@@ -84,7 +84,7 @@ jobs:
             git pull --rebase --autostash && git push
           fi
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: steps.change.outputs.changees == 'true'
         with:
           name: dist
@@ -99,7 +99,7 @@ jobs:
     timeout-minutes: 60 # envoi de dizaines de milliers de fichiers statiques
     steps:
       - uses: actions/checkout@v7 # wrangler.jsonc
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist
