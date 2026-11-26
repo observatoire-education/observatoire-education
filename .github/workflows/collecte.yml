@@ -1,0 +1,56 @@
+# Collecte quotidienne des sources, sans build ni déploiement (voir publication.yml).
+# - Les nouvelles versions sont archivées en GitHub Releases ; une version invalide est rejetée et le site
+#   reste sur la dernière version valide.
+# - Le journal est commité chaque nuit (une ligne par source) : le dépôt reste actif, la tâche planifiée
+#   n'est jamais suspendue.
+# - Une source rejetée, en erreur, ou à collecte locale non faite depuis 90 jours ouvre une issue
+#   (label alerte-source), fermée quand elle revient à la normale. Le workflow reste vert : l'issue fait foi.
+name: collecte
+
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+# Même groupe que publication.yml : les deux commitent dans archives/ (journal, manifeste) sur main, et les
+# alertes lisent la dernière exécution du journal ; en parallèle, le rebase des commits entrerait en conflit.
+concurrency:
+  group: deploiement
+  cancel-in-progress: false
+
+jobs:
+  collecter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.4.5"
+      - run: bun install --frozen-lockfile
+
+      - name: Identité du bot pour les commits de données
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+
+      - name: Collecte des sources
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # gh : publier les archives en Releases
+        run: bun run collect
+
+      - name: Commit des archives (manifest, journal, corrections)
+        run: |
+          git add archives/
+          git diff --cached --quiet || git commit -m "data: collecte du $(date -u +%F)"
+          git pull --rebase --autostash && git push
+
+      - name: Alertes (issues)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          URL_RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: bun scripts/alertes.ts sources "$URL_RUN"

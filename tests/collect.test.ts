@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { SourceId } from "@obs/shared/types";
 import { empreinte, Manifest } from "../pipeline/src/archive.ts";
-import { aiguiller, assurerCache, collecter, type ClientSources, MOTIF_COLLECTE_LOCALE } from "../pipeline/src/collect.ts";
+import { aiguiller, assurerCache, collecter, type ClientSources, MOTIF_COLLECTE_LOCALE, sourcesSansVersion } from "../pipeline/src/collect.ts";
 import { DepotGithub, DepotLocal, type Lanceur } from "../pipeline/src/depot.ts";
 import { connexion, executer, lignes, litteral } from "../pipeline/src/duck.ts";
 import { ErreurParquetInvalide } from "../pipeline/src/ods.ts";
@@ -98,7 +98,7 @@ afterAll(async () => {
   for (const d of dossiers) await rm(d, { recursive: true, force: true });
 });
 
-const opts = (client: ClientSources, extra: { journal?: string; distante?: boolean } = {}) => ({
+const opts = (client: ClientSources, extra: { journal?: string; distante?: boolean; manquantes?: boolean } = {}) => ({
   manifest,
   client,
   depot,
@@ -118,6 +118,26 @@ describe("collecte", () => {
     const l = await collecter(opts(f.client));
     expect(ligne(l, "bzh_batiments").action).toBe("telecharge");
     expect(f.telechargements).toContain("bzh_batiments");
+  });
+
+  test("--manquantes : seules les sources sans version sont collectées", async () => {
+    const f = fauxClient({});
+    await collecter(opts(f.client, { distante: true })); // tout sauf la source locale
+    const avant = f.telechargements.length;
+    const recherches = f.recherches.length;
+    const j = await collecter(opts(f.client, { manquantes: true }));
+    expect(f.recherches.length).toBe(recherches); // pas de découverte d'exercice budget
+    expect(f.telechargements.slice(avant)).toEqual(["bzh_batiments"]);
+    expect(j.map((l) => l.source)).toEqual(["bzh_batiments"]);
+    expect(sourcesSansVersion(manifest)).toEqual([]);
+  });
+
+  test("--manquantes : une source locale reste sans version sur serveur", async () => {
+    const f = fauxClient({});
+    await collecter(opts(f.client, { distante: true }));
+    const j = await collecter(opts(f.client, { distante: true, manquantes: true }));
+    expect(j).toEqual([expect.objectContaining({ source: "bzh_batiments", action: "local" })]);
+    expect(sourcesSansVersion(manifest)).toEqual(["bzh_batiments"]);
   });
 
   test("inchangé : aucun téléchargement", async () => {

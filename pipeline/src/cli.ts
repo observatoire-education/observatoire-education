@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { Manifest } from "./archive.ts";
 import { calculerBudgets, statutsDernierExercice } from "./budget-eleves.ts";
-import { aiguiller, assurerCache, collecter } from "./collect.ts";
+import { aiguiller, assurerCache, collecter, sourcesSansVersion } from "./collect.ts";
 import { lireCorrections } from "./corrections.ts";
 import { ouvrir } from "./db.ts";
 import { type Depot, DepotGithub, DepotLocal } from "./depot.ts";
@@ -43,10 +43,11 @@ export function choisirDepot(config: Config): Depot {
   return process.env.OBS_DEPOT === "local" ? new DepotLocal(CHEMINS.depotLocal) : new DepotGithub(config.DEPOT);
 }
 
-async function collect(): Promise<void> {
+async function collect(manquantes: boolean): Promise<void> {
   const config = lireConfig();
+  const manifest = Manifest.lire(CHEMINS.manifest);
   const journal = await collecter({
-    manifest: Manifest.lire(CHEMINS.manifest),
+    manifest,
     client: aiguiller(new OdsClient(), new FichierClient()),
     depot: choisirDepot(config),
     maintenant: new Date(),
@@ -55,12 +56,21 @@ async function collect(): Promise<void> {
     corrections: CHEMINS.corrections,
     // Sur GitHub Actions, les sources à collecte locale (serveur injoignable de là) sont sautées.
     distante: process.env.GITHUB_ACTIONS === "true",
+    manquantes,
   });
   for (const l of journal) {
     const detail = [l.lignes !== undefined ? `${l.lignes} lignes` : "", l.motif ?? ""].filter(Boolean).join(" · ");
     console.log(`${l.source.padEnd(22)} ${l.action.padEnd(10)} ${detail}`);
   }
-  // Toujours 0 : un rejet n'est pas un échec de la collecte, le journal fait foi.
+  // Collecte complète : toujours 0, un rejet n'est pas un échec de la collecte, le journal fait foi.
+  // --manquantes (publication) : 1 si une source déclarée reste sans version, le build ne pourrait pas la lire.
+  if (!manquantes) return;
+  const restantes = sourcesSansVersion(manifest);
+  for (const id of restantes) {
+    const motif = journal.findLast((l) => l.source === id)?.motif ?? "aucune ligne de journal";
+    console.error(`source sans version archivée : ${id} (${motif})`);
+  }
+  if (restantes.length) process.exit(1);
 }
 
 /** Croisement et export : site/data/ et registre des pages. */
@@ -141,10 +151,10 @@ async function data(): Promise<void> {
 
 if (import.meta.main) {
   const commande = process.argv[2];
-  if (commande === "collect") await collect();
+  if (commande === "collect") await collect(process.argv.includes("--manquantes"));
   else if (commande === "data") await data();
   else {
-    console.error("usage : bun pipeline/src/cli.ts collect | data");
+    console.error("usage : bun pipeline/src/cli.ts collect [--manquantes] | data");
     process.exit(2);
   }
 }
