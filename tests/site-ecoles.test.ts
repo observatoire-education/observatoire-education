@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { LIBELLES, LIBELLES_BUDGET as LB, LIBELLES_RATTACHEMENTS as LR, LIBELLES_RPI } from "@obs/shared/libelles";
 import { comparaison, mentionMoyennesA4 } from "../site/src/lib/affichage.ts";
 import { svgElevesClasses } from "../site/src/lib/plot.ts";
-import { DIST_TEST, doc, octets, page, siteTest, texte } from "./site.ts";
+import { DIST_TEST, doc, octets, page, planDuSite, siteTest, texte } from "./site.ts";
 
 beforeAll(async () => {
   await siteTest();
@@ -185,7 +185,7 @@ describe("fiche école", () => {
   });
 
   test("les pages des écoles sont dans le sitemap", () => {
-    for (const uai of ECOLES) expect(page("sitemap.xml")).toContain(`/etablissement/${uai}/</loc>`);
+    for (const uai of ECOLES) expect(planDuSite()).toContain(`/etablissement/${uai}/</loc>`);
   });
 });
 
@@ -479,7 +479,7 @@ describe("pages commune étendues", () => {
     expect(existe("commune/44903/index.html")).toBe(true); // seulement une école fermée (ancienne commune 44901)
     expect(existe("commune/44999/index.html")).toBe(false);
     expect(existe("commune/44901/index.html")).toBe(false);
-    for (const c of ["44150", "44903"]) expect(page("sitemap.xml")).toContain(`/commune/${c}/</loc>`);
+    for (const c of ["44150", "44903"]) expect(planDuSite()).toContain(`/commune/${c}/</loc>`);
   });
 
   test("Saint-Aubin (44150) : ses écoles, jamais « Plus d'école dans la commune », les écoles fermées de Le Moulin", () => {

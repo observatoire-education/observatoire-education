@@ -21,6 +21,18 @@ export const LIMITES: Limites = { fichiers: 95_000, octetsParFichier: 25 * 1024 
 export const OCTETS_RECHERCHE_MAX = 10_000_000;
 const FICHIERS_RECHERCHE = ["recherche.json", "recherche-communes.json"];
 
+/** URLs par liste du plan du site (`sitemap*.xml` à la racine) : plafond du protocole sitemaps.org. */
+export const URLS_PAR_SITEMAP_MAX = 50_000;
+
+function verifierPlanDuSite(dossier: string): void {
+  for (const nom of readdirSync(dossier).filter((f) => /^sitemap.*\.xml$/.test(f))) {
+    const urls = readFileSync(join(dossier, nom), "utf8").split("<url>").length - 1;
+    if (urls > URLS_PAR_SITEMAP_MAX) {
+      throw new Error(`${nom} liste ${urls} URLs, au-delà des ${URLS_PAR_SITEMAP_MAX} du protocole sitemaps.org : réduire URLS_PAR_FICHIER (site/src/lib/plan-du-site.ts)`);
+    }
+  }
+}
+
 /** Poids maximal (brut) d'une fiche (`etablissement/*\/index.html`). */
 export const OCTETS_PAGE_MAX = 150_000;
 /**
@@ -111,6 +123,7 @@ export function verifierDist(dossier: string, limites: Limites = LIMITES): { oct
     throw new Error(`dist/ contient trop de fichiers : ${fichiers} > ${limites.fichiers} (voir la marge R2, spec phase Écoles 6.9)`);
   }
   verifierPoidsPages(dossier);
+  verifierPlanDuSite(dossier);
   return { octets, fichiers };
 }
 

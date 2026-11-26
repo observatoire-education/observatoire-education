@@ -4,7 +4,7 @@ import { estEcole, LIBELLES_ABSENCES, LIBELLES_BUDGET, LIBELLES_ONGLETS, LIBELLE
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { compterFabrique } from "../site/src/lib/fabrique.ts";
-import { DIST_TEST, DONNEES_TEST, doc, page, siteTest, texte } from "./site.ts";
+import { DIST_TEST, DONNEES_TEST, doc, fichiersDuPlan, page, planDuSite, siteTest, texte } from "./site.ts";
 
 beforeAll(async () => {
   await siteTest();
@@ -137,7 +137,7 @@ describe("accueil et recherche", () => {
     expect(idx.filter((e) => estEcole(e.f)).length).toBe(11);
     expect(idx.find((e) => e.u === "0440202B")).toEqual({ u: "0440202B", n: "École élémentaire Jules-Ferry", c: "Nantes", d: "44", f: "elementaire", s: "public" });
     expect(page("etablissement/0440201A")).toContain("<h1>École maternelle Les Lilas</h1>");
-    expect(page("sitemap.xml")).toContain("/etablissement/0440201A/");
+    expect(planDuSite()).toContain("/etablissement/0440201A/");
   });
 
   test("accueil : le nombre d'établissements compte les écoles ouvertes", () => {
@@ -295,7 +295,7 @@ describe("sources, méthode, 404, sitemap", () => {
   });
 
   test("sitemap : toutes les pages, date de collecte", () => {
-    const s = page("sitemap.xml");
+    const s = planDuSite();
     expect(s).toContain("/etablissement/0440001A/");
     expect(s).toContain("/departement/2A/");
     expect(s).toContain("/methode/");
@@ -304,6 +304,18 @@ describe("sources, méthode, 404, sitemap", () => {
     expect(s).toContain("/commune/44109/");
     expect(s).not.toContain("/commune/2A004/");
     expect(s).toContain("<lastmod>2026-11-22</lastmod>");
+  });
+
+  test("sitemap : un index qui renvoie vers un fichier par type de page", () => {
+    const index = page("sitemap.xml");
+    expect(index).toContain("<sitemapindex");
+    expect(index).not.toContain("<urlset");
+    expect(fichiersDuPlan()).toEqual(["sitemap-pages.xml", "sitemap-communes.xml", "sitemap-etablissements.xml"]);
+    expect(page("sitemap-pages.xml")).toContain("/departement/2A/</loc>");
+    expect(page("sitemap-pages.xml")).not.toContain("/etablissement/");
+    expect(page("sitemap-communes.xml")).toContain("/commune/44109/</loc>");
+    expect(page("sitemap-etablissements.xml")).toContain("/etablissement/0440001A/</loc>");
+    expect(page("sitemap-etablissements.xml")).not.toContain("/commune/");
   });
 });
 
