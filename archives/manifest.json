@@ -36,6 +36,15 @@
         "modified": "2026-11-25T06:01:23.712000+00:00",
         "collecteLe": "2026-11-25T08:24:04.207Z",
         "lignes": 63233
+      },
+      {
+        "sha256": "01d30da658cf3a96a960d9e87f51785e24f11f58e3ab71f87d8098df74612ceb",
+        "tag": "archives-annuaire-2026",
+        "fichier": "01d30da658cf3a96.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-annuaire-2026/01d30da658cf3a96.parquet",
+        "modified": "2026-11-27T06:01:25.763000+00:00",
+        "collecteLe": "2026-11-27T10:54:25.095Z",
+        "lignes": 63233
       }
     ],
     "ips_colleges": [
@@ -595,9 +604,9 @@
     ]
   },
   "vus": {
-    "annuaire": "2026-11-26T06:01:23.166000+00:00",
-    "ips_colleges": "2026-09-01T09:31:02.578000+00:00",
-    "ips_lycees": "2026-06-10T08:20:49.021000+00:00",
+    "annuaire": "2026-11-27T06:01:25.763000+00:00",
+    "ips_colleges": "2026-11-27T09:52:44.314000+00:00",
+    "ips_lycees": "2026-11-27T09:36:19.220000+00:00",
     "effectifs_colleges": "2026-07-27T10:24:40.709000+00:00",
     "effectifs_lycees_gt": "2026-07-27T08:15:52.712000+00:00",
     "effectifs_lycees_pro": "2026-07-27T10:21:28.880000+00:00",
@@ -608,7 +617,7 @@
     "budget_2023": "2024-12-06T13:57:17+00:00",
     "budget_2024": "2025-12-09T16:38:00+00:00",
     "budget_2025": "2026-07-13T16:06:26+00:00",
-    "fermes": "2026-11-25T05:00:30.562000+00:00",
+    "fermes": "2026-11-27T05:00:32.998000+00:00",
     "ips_colleges_2016": "2026-07-24T15:01:11.134000+00:00",
     "ips_colleges_2022": "2024-05-24T12:13:00+00:00",
     "ips_lycees_2016": "2024-05-24T11:30:32+00:00",
@@ -640,7 +649,7 @@
     "bzh_batiments": "2025-05-26"
   },
   "actuelles": {
-    "annuaire": "4f963575649fc5648bab043cfc121c63d7faec0e8bbf1ef59ef1d82d9540351d",
+    "annuaire": "01d30da658cf3a96a960d9e87f51785e24f11f58e3ab71f87d8098df74612ceb",
     "ips_colleges": "7a4a1316bd2277c8a73ab77500a6e9f98dc2a1821ea27939badab7dfd8ef6e7c",
     "ips_lycees": "06dc158e506fefbb94f0655a5bb14ecf99a52f099b17f4e87cddbd2800490db8",
     "effectifs_colleges": "9071e44969f0046df5274895e4d13d8f2121fe6208fe3cfeaebb411e7c55f412",
