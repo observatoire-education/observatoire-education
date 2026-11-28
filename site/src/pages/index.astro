@@ -17,6 +17,8 @@ const france = lireFrance();
 const sources = Object.values(lireSources())
   .filter((s) => s.actuelle)
   .sort((a, b) => b.actuelle!.collecteLe.localeCompare(a.actuelle!.collecteLe));
+// L'accueil ne montre que les plus récentes ; la liste complète est sur /sources/.
+const MAJ_AFFICHEES = 6;
 const f = france.familles;
 const compte = (cles: (keyof typeof f)[]) => {
   const pub = cles.reduce((a, k) => a + (f[k]?.compte.public ?? 0), 0);
@@ -120,9 +122,9 @@ const portails = `${fabrique.portails} portail${fabrique.portails > 1 ? "s" : ""
     <section style="margin-top:8px">
       <h2>Dernières mises à jour des sources</h2>
       <ul class="upd">
-        {sources.map((s) => <li><span class="d">{date(s.actuelle!.collecteLe)}</span><span>{s.titre}</span></li>)}
+        {sources.slice(0, MAJ_AFFICHEES).map((s) => <li><span class="d">{date(s.actuelle!.collecteLe)}</span><span>{s.titre}</span></li>)}
       </ul>
-      <div class="src" style="border:0"><a href="/sources/">Toutes les sources et versions archivées</a> · collecte automatique chaque nuit</div>
+      <div class="src" style="border:0"><a href="/sources/">Les {sources.length} sources et leurs versions archivées</a> · collecte automatique chaque nuit</div>
     </section>
     <section style="margin-top:8px">
       <h2>Principes</h2>
