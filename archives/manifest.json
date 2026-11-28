@@ -45,6 +45,15 @@
         "modified": "2026-11-27T06:01:25.763000+00:00",
         "collecteLe": "2026-11-27T10:54:25.095Z",
         "lignes": 63233
+      },
+      {
+        "sha256": "6bcb5ec89de85fe15a647cf549a6f83c18d48982fcf4f87b089b8a63947afe6d",
+        "tag": "archives-annuaire-2026",
+        "fichier": "6bcb5ec89de85fe1.parquet",
+        "url": "https://github.com/observatoire-education/observatoire-education/releases/download/archives-annuaire-2026/6bcb5ec89de85fe1.parquet",
+        "modified": "2026-11-28T06:01:27.069000+00:00",
+        "collecteLe": "2026-11-28T10:29:43.960Z",
+        "lignes": 63233
       }
     ],
     "ips_colleges": [
@@ -604,7 +613,7 @@
     ]
   },
   "vus": {
-    "annuaire": "2026-11-27T06:01:25.763000+00:00",
+    "annuaire": "2026-11-28T06:01:27.069000+00:00",
     "ips_colleges": "2026-11-27T09:52:44.314000+00:00",
     "ips_lycees": "2026-11-27T09:36:19.220000+00:00",
     "effectifs_colleges": "2026-07-27T10:24:40.709000+00:00",
@@ -649,7 +658,7 @@
     "bzh_batiments": "2025-05-26"
   },
   "actuelles": {
-    "annuaire": "01d30da658cf3a96a960d9e87f51785e24f11f58e3ab71f87d8098df74612ceb",
+    "annuaire": "6bcb5ec89de85fe15a647cf549a6f83c18d48982fcf4f87b089b8a63947afe6d",
     "ips_colleges": "7a4a1316bd2277c8a73ab77500a6e9f98dc2a1821ea27939badab7dfd8ef6e7c",
     "ips_lycees": "06dc158e506fefbb94f0655a5bb14ecf99a52f099b17f4e87cddbd2800490db8",
     "effectifs_colleges": "9071e44969f0046df5274895e4d13d8f2121fe6208fe3cfeaebb411e7c55f412",
