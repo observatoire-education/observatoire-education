@@ -11,7 +11,7 @@ Un site statique régénéré chaque nuit par GitHub Actions et publié sur Clou
 1. **Collecte** (`bun run collect`) : pour chaque source, lecture de la date de modification sur data.education.gouv.fr ; téléchargement en Parquet seulement si elle a changé (l'Annuaire de l'éducation est relu chaque nuit). Chaque version est validée (colonnes requises, nombre de lignes), puis archivée telle quelle comme fichier joint d'une GitHub Release, avec son empreinte : elle reste téléchargeable à une adresse permanente. Le dépôt ne garde que `archives/manifest.json` et le journal `archives/journal.jsonl`.
 2. **Croisement** (`bun run data`) : DuckDB lit les archives, normalise (`pipeline/sql/01_normaliser.sql`), calcule élèves, indicateurs, moyennes Σ / Σ et voisins, puis écrit les fichiers de données du site dans `site/data/` et met à jour le registre des pages (`archives/registre-pages.json`).
 3. **Site** (Astro, sortie statique) : une page par établissement et par école, par commune, par département, par académie et par région, une page France, graphiques Observable Plot rendus en SVG au build ; JavaScript seulement pour la recherche, le tri des listes, le thème et la carte (chargée au clic).
-4. **Garde-fous** : le build échoue si `dist/` dépasse 95 000 fichiers, si un fichier pèse plus de 25 Mio (pas de plafond sur le poids total) ou si `recherche.json` dépasse 10 000 000 octets.
+4. **Garde-fous** : le build échoue si `dist/` dépasse 95 000 fichiers, si un fichier pèse plus de 25 Mio (pas de plafond sur le poids total) ou si les fichiers de la recherche (`recherche*.json`) dépassent ensemble 20 000 000 octets.
 
 `bun run build` enchaîne les étapes 2 à 4.
 
@@ -65,7 +65,7 @@ La phase Écoles est faite ; le Transport scolaire vient ensuite, selon le porte
 
 ## Hébergement
 
-Le garde-fou de fin de build (`scripts/garde-fous.ts`) limite `recherche.json` à 10 000 000 d'octets bruts (Cloudflare le sert compressé) ; si ce plafond est dépassé, l'index se découpe par département.
+Le garde-fou de fin de build (`scripts/garde-fous.ts`) limite les fichiers de la recherche (`recherche*.json`, chargés à la première saisie) à 20 000 000 d'octets bruts (Cloudflare le sert compressé) ; si ce plafond est dépassé, l'index se découpe par département.
 
 Configuration dans `observatoire.config.json` :
 

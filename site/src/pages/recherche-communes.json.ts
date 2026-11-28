@@ -1,4 +1,4 @@
-// Communes de la recherche, chargées avec l'index au premier focus : un tableau {i, l, d} (code, nom, département),
+// Communes de la recherche, chargées avec l'index à la première saisie : un tableau {i, l, d} (code, nom, département),
 // toutes les communes qui ont une page (second degré ou écoles).
 import type { APIRoute } from "astro";
 import { communesRecherche } from "../lib/donnees";

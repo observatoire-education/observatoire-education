@@ -33,22 +33,23 @@ describe("garde-fous de dist/ (Cloudflare Workers)", () => {
     expect(LIMITES).toEqual({ fichiers: 95_000, octetsParFichier: 25 * 1024 * 1024 });
   });
 
-  test("recherche.json : au plus 10 000 000 octets", () =>
+  test("recherche.json : au plus OCTETS_RECHERCHE_MAX octets (20 Mo)", () =>
     dossierTemp(async (d) => {
-      expect(OCTETS_RECHERCHE_MAX).toBe(10_000_000);
-      await writeFile(join(d, "recherche.json"), "x".repeat(10_000_000));
+      expect(OCTETS_RECHERCHE_MAX).toBe(20_000_000);
+      await writeFile(join(d, "recherche.json"), "x".repeat(OCTETS_RECHERCHE_MAX));
       expect(verifierDist(d).fichiers).toBe(1);
-      await writeFile(join(d, "recherche.json"), "x".repeat(10_000_001));
-      expect(() => verifierDist(d)).toThrow(/recherche\.json.*10000001 octets.*10000000/);
+      await writeFile(join(d, "recherche.json"), "x".repeat(OCTETS_RECHERCHE_MAX + 1));
+      expect(() => verifierDist(d)).toThrow(new RegExp(`recherche\\.json.*${OCTETS_RECHERCHE_MAX + 1} octets.*${OCTETS_RECHERCHE_MAX}`));
     }));
 
-  test("recherche.json et recherche-communes.json, chargés ensemble : au plus 10 000 000 octets à eux deux", () =>
+  test("fichiers de la recherche, chargés ensemble : au plus OCTETS_RECHERCHE_MAX octets à eux tous", () =>
     dossierTemp(async (d) => {
-      await writeFile(join(d, "recherche.json"), "x".repeat(9_000_000));
-      await writeFile(join(d, "recherche-communes.json"), "x".repeat(1_000_000));
-      expect(verifierDist(d).fichiers).toBe(2);
-      await writeFile(join(d, "recherche-communes.json"), "x".repeat(1_000_001));
-      expect(() => verifierDist(d)).toThrow(/recherche\.json et recherche-communes\.json pèsent 10000001 octets.*10000000/);
+      await writeFile(join(d, "recherche.json"), "x".repeat(OCTETS_RECHERCHE_MAX - 1_000_000));
+      await writeFile(join(d, "recherche-communes.json"), "x".repeat(990_000));
+      await writeFile(join(d, "recherche-territoires.json"), "x".repeat(10_000));
+      expect(verifierDist(d).fichiers).toBe(3);
+      await writeFile(join(d, "recherche-territoires.json"), "x".repeat(10_001));
+      expect(() => verifierDist(d)).toThrow(new RegExp(`recherche\\.json et recherche-communes\\.json et recherche-territoires\\.json pèsent ${OCTETS_RECHERCHE_MAX + 1} octets`));
     }));
 
   test("trop de fichiers", () =>

@@ -102,11 +102,17 @@ describe("accueil et recherche", () => {
     expect(q).toBeLessThan(fab);
   });
 
-  test("accueil : départements intégrés pour la recherche, script chargé", () => {
-    const d = doc("index.html");
-    const deps = JSON.parse(d.querySelector("script#departements")!.textContent!) as { d: string; l: string }[];
-    expect(deps).toContainEqual(expect.objectContaining({ d: "44", l: "Loire-Atlantique" }));
-    expect([...d.querySelectorAll("script[src]")].map((s) => s.getAttribute("src"))).toContain("/js/recherche.js");
+  test("recherche : régions et départements servis à part, script et panneau de l'en-tête sur toutes les pages", () => {
+    const { departements } = JSON.parse(page("recherche-territoires.json")) as { departements: { d: string; l: string; a: string }[] };
+    expect(departements).toContainEqual(expect.objectContaining({ d: "44", l: "Loire-Atlantique" }));
+    for (const chemin of ["index.html", "departement/44", "etablissement/0440001A"]) {
+      const d = doc(chemin);
+      expect([...d.querySelectorAll("script[src]")].map((s) => s.getAttribute("src"))).toContain("/js/recherche.js");
+      expect(d.querySelector("header #q-entete")).not.toBeNull();
+      expect(d.querySelector("header #res-entete")).not.toBeNull();
+    }
+    // Plus aucune donnée de recherche intégrée à l'accueil : tout est chargé à la première saisie.
+    expect(doc("index.html").querySelector("script#departements, script#regions")).toBeNull();
   });
 
   test("recherche-communes.json : toutes les communes qui ont une page (second degré ou écoles), et elles seules", () => {

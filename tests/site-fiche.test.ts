@@ -80,7 +80,7 @@ describe("fiche établissement", () => {
     expect(h).toContain('role="img"');
     expect(h).not.toContain("observablehq");
     expect([...doc("etablissement/0440001A").querySelectorAll("script")].map((s) => s.getAttribute("src"))).toEqual([
-      "/js/theme.js", UMAMI_TEST.SCRIPT, "/js/signalement.js", "/js/onglets.js", "/js/fiche.js",
+      "/js/theme.js", UMAMI_TEST.SCRIPT, "/js/signalement.js", "/js/onglets.js", "/js/fiche.js", "/js/recherche.js",
     ]);
   });
 

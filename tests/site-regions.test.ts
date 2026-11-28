@@ -87,8 +87,7 @@ describe("maillage des régions", () => {
   });
 
   test("la recherche propose « Pays de la Loire »", () => {
-    const d = doc("index.html");
-    const regions = JSON.parse(d.querySelector("script#regions")!.textContent!) as { r: string; l: string }[];
+    const { regions } = JSON.parse(page("recherche-territoires.json")) as { regions: { r: string; l: string }[] };
     expect(regions).toContainEqual({ r: "52", l: "Pays de la Loire" });
     const js = readFileSync(join(import.meta.dir, "..", "site", "public", "js", "recherche.js"), "utf8");
     expect(js).toContain("/region/");
