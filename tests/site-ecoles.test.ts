@@ -169,9 +169,10 @@ describe("fiche école", () => {
   // de correction du budget de Nantes que porte la fixture (29 932), puis à 30 100 par le bouton « Tout imprimer » (30 025),
   // puis à 32 000 par la barre d'onglets, les panneaux, la case Moyens de la Synthèse et son chargement de onglets.js (31 716), et la case IPS de la Synthèse (31 946),
   // puis à 32 300 par les liens des cases de la Synthèse vers leurs onglets (32 168),
-  // puis à 33 400 par le logo GitHub du pied de page et le lien « Signaler une erreur ou compléter » avec son script (33 327).
-  test("poids : la fiche 0440202B fait 33 400 octets au plus", () => {
-    expect(octets(fiche("0440202B"))).toBeLessThanOrEqual(33_400);
+  // puis à 33 400 par le logo GitHub du pied de page et le lien « Signaler une erreur ou compléter » avec son script (33 327),
+  // puis à 33 500 par la recherche de l'en-tête sur toutes les pages, son panneau et son script (33 432).
+  test("poids : la fiche 0440202B fait 33 500 octets au plus", () => {
+    expect(octets(fiche("0440202B"))).toBeLessThanOrEqual(33_500);
   });
 
   test("fiche A4 d'une école : « Fiche pour le conseil d'école »", () => {

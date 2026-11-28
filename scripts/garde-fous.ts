@@ -15,11 +15,12 @@ export interface Limites {
 export const LIMITES: Limites = { fichiers: 95_000, octetsParFichier: 25 * 1024 * 1024 };
 
 /**
- * Poids maximal (brut) de recherche.json et recherche-communes.json réunis, chargés ensemble au premier focus de la
- * recherche (Cloudflare les sert compressés). Au-delà : découper l'index par département.
+ * Poids maximal (brut) des fichiers de la recherche réunis, chargés ensemble à la première saisie dans la
+ * recherche (Cloudflare les sert compressés, environ 7 fois moins). Relevé de 10 à 20 Mo le 2026-11-28 (8,4 Mo à
+ * cette date) pour ne plus bloquer les builds. Au-delà : découper l'index par département.
  */
-export const OCTETS_RECHERCHE_MAX = 10_000_000;
-const FICHIERS_RECHERCHE = ["recherche.json", "recherche-communes.json"];
+export const OCTETS_RECHERCHE_MAX = 20_000_000;
+const FICHIERS_RECHERCHE = ["recherche.json", "recherche-communes.json", "recherche-territoires.json"];
 
 /** URLs par liste du plan du site (`sitemap*.xml` à la racine) : plafond du protocole sitemaps.org. */
 export const URLS_PAR_SITEMAP_MAX = 50_000;

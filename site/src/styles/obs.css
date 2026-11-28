@@ -226,6 +226,28 @@ td .abs, .kpis .c .abs { font:500 12px/1.3 var(--sans); color:var(--na); white-s
 .res .u { font:12px var(--mono); color:var(--muted); grid-row:span 2; align-self:center; }
 .res mark { background:var(--pub-soft); color:inherit; border-radius:3px; }
 .res .vide { padding:6px 16px 14px; font-size:14px; color:var(--muted); }
+.res a.actif { background:var(--surface-2); box-shadow:inset 3px 0 0 var(--pub); }
+/* Recherche de l'en-tête : panneau pleine largeur sous l'en-tête, aligné sur le conteneur ; territoires et
+   établissements côte à côte sur grand écran. */
+.res-entete { top:100%; border-width:0 0 1px; border-radius:0; box-shadow:0 24px 40px rgba(0,0,0,.14); max-height:calc(100vh - 56px);
+  padding:6px max(0px, calc((100% - 1120px) / 2)) 14px; }
+.res-entete.open:has(> .col) { display:grid; grid-template-columns:minmax(0,2fr) minmax(0,3fr); gap:0 8px; align-items:start; }
+.res-entete .col + .col { border-left:1px solid var(--line); }
+@media (max-width:720px){ .res-entete.open:has(> .col) { display:block; } .res-entete .col + .col { border-left:0; border-top:1px solid var(--line); margin-top:6px; } }
+/* Squelette pendant le chargement de l'index : lignes grisées parcourues d'un reflet. */
+.res .charge { display:contents; }
+.res-entete .charge { display:grid; grid-template-columns:minmax(0,2fr) minmax(0,3fr); gap:0 8px; grid-column:1 / -1; }
+@media (max-width:720px){ .res-entete .charge { display:block; } }
+.res .sq { padding:10px 16px; display:grid; gap:7px; }
+.res .sq span, .res .sq-titre { display:block; height:12px; border-radius:6px; width:min(60%, 260px);
+  background:linear-gradient(90deg, var(--surface-2) 0%, color-mix(in srgb, var(--line) 80%, var(--surface)) 50%, var(--surface-2) 100%) 0 0 / 200% 100%;
+  animation:reflet 1.3s ease-in-out infinite; }
+.res .sq span + span { height:9px; width:min(38%, 170px); }
+.res .sq:nth-child(3n) span:first-child { width:min(48%, 220px); }
+.res .sq:nth-child(3n+1) span:first-child { width:min(70%, 300px); }
+.res .sq-titre { height:8px; width:80px; margin:4px 0 2px; }
+@keyframes reflet { from { background-position:100% 0; } to { background-position:-100% 0; } }
+@media (prefers-reduced-motion: reduce) { .res .sq span, .res .sq-titre { animation:none; } }
 /* Accueil : la France en blocs région › académie › départements. Teintes t1–t6 hors violet (public) et ambre (privé). */
 :root { --t1:#0e8a8a; --t2:#c2447a; --t3:#2a6bd1; --t4:#3a8a3c; --t5:#c0532e; --t6:#56708a; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --t1:#4cc9c4; --t2:#f07fab; --t3:#7aa7ff; --t4:#7fcf7a; --t5:#f08f68; --t6:#9db3c9; } }

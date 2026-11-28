@@ -3,7 +3,7 @@
 // courte, comparatif « Pourquoi pas directement à la source ? », territoires, mises à jour des sources, principes.
 // Ton neutre : le site décrit ce qu'il fait, jamais ce qu'il faut penser des chiffres.
 import { date, entier, part } from "@obs/shared/format";
-import { academie, LIBELLES } from "@obs/shared/libelles";
+import { LIBELLES } from "@obs/shared/libelles";
 import BandeauFabrique from "../components/BandeauFabrique.astro";
 import BlocFrance from "../components/BlocFrance.astro";
 import FicheVitrine from "../components/FicheVitrine.astro";
@@ -30,8 +30,6 @@ const elevesTotal = eleves("public") + eleves("prive");
 const colleges = compte(["college"]);
 const lycees = compte(["legt", "lpo", "lp"]);
 const erea = compte(["erea"]);
-const regions = [...france.regions].sort((a, b) => a.libelle.localeCompare(b.libelle, "fr")).map((r) => ({ r: r.code, l: r.libelle }));
-const departements = france.academiesEtDepartements.flatMap((a) => a.departements.map((d) => ({ d: d.dep, l: d.libelle, a: academie(a.libelle) })));
 const millions = (n: number) => (n >= 1e6 ? `${(n / 1e6).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} M` : entier(n));
 // Premier degré : écoles ouvertes publiques et privées sous contrat, élèves de la dernière rentrée des effectifs des écoles.
 const pd = france.premierDegre;
@@ -69,7 +67,7 @@ const portails = `${fabrique.portails} portail${fabrique.portails > 1 ? "s" : ""
     <div class="bigsearch" role="search">
       <label class="visuel-masque" for="q">Rechercher un établissement, une commune, un département ou une UAI</label>
       <input class="search" id="q" placeholder="Votre école, votre collège, votre commune, votre département…" autocomplete="off" />
-      <div class="res" id="res" aria-live="polite"></div>
+      <div class="res" id="res"></div>
     </div>
     <div class="hint">Par exemple : <button type="button">Jules Verne Nantes</button> · <button type="button">Saint-Nazaire</button> · <button type="button">Loire-Atlantique</button></div>
   </div>
@@ -136,7 +134,4 @@ const portails = `${fabrique.portails} portail${fabrique.portails > 1 ? "s" : ""
       </div>
     </section>
   </div>
-  <script type="application/json" id="regions" set:html={JSON.stringify(regions)} />
-  <script type="application/json" id="departements" set:html={JSON.stringify(departements)} />
-  <script is:inline src="/js/recherche.js" defer></script>
 </Base>

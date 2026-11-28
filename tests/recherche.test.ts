@@ -3,26 +3,39 @@ import { parseHTML } from "linkedom";
 
 const SCRIPT = await Bun.file(new URL("../site/public/js/recherche.js", import.meta.url)).text();
 
-/** Exécute le vrai recherche.js dans un document linkedom, avec un index et une liste de communes servis par `fetch`. */
-async function rechercher(index: unknown[], saisie: string, deps: unknown[] = [], communes: unknown[] = []) {
+/** Monte le vrai recherche.js dans un document linkedom (champ de l'accueil et champ de l'en-tête), avec les index servis par `fetch`. */
+function monter(index: unknown[], deps: unknown[] = [], communes: unknown[] = [], regions: unknown[] = []) {
   const { document } = parseHTML(`<!doctype html><html><body>
-    <input id="q"><div id="res"></div>
-    <script type="application/json" id="departements">${JSON.stringify(deps)}</script></body></html>`);
-  const servis: Record<string, unknown[]> = { "/recherche.json": index, "/recherche-communes.json": communes };
+    <header><input id="q-entete"><div id="res-entete"></div></header>
+    <input id="q"><div id="res"></div></body></html>`);
+  const servis: Record<string, unknown> = {
+    "/recherche.json": index, "/recherche-communes.json": communes, "/recherche-territoires.json": { regions, departements: deps },
+  };
+  const demandes: string[] = [];
   const fetchFaux = async (url: string) => {
     if (!(url in servis)) throw new Error(`adresse inattendue : ${url}`);
-    return { json: async () => structuredClone(servis[url]) };
+    demandes.push(url);
+    return { ok: true, json: async () => structuredClone(servis[url]) };
   };
   new Function("document", "location", "fetch", "URLSearchParams", SCRIPT)(
     document, { search: "", href: "" }, fetchFaux, URLSearchParams,
   );
-  const q = document.getElementById("q") as unknown as HTMLInputElement;
   const Evenement = document.defaultView!.Event;
-  q.dispatchEvent(new Evenement("focus"));
-  await new Promise((r) => setTimeout(r, 0));
-  await new Promise((r) => setTimeout(r, 0));
-  q.value = saisie;
-  q.dispatchEvent(new Evenement("input"));
+  const saisir = (id: string, saisie: string) => {
+    const q = document.getElementById(id) as unknown as HTMLInputElement;
+    q.value = saisie;
+    q.dispatchEvent(new Evenement("input"));
+  };
+  return { document, demandes, saisir };
+}
+
+const attendre = async () => { for (let i = 0; i < 5; i++) await new Promise((r) => setTimeout(r, 0)); };
+
+/** Saisie dans le champ de l'accueil, une fois les index chargés. */
+async function rechercher(index: unknown[], saisie: string, deps: unknown[] = [], communes: unknown[] = []) {
+  const { document, saisir } = monter(index, deps, communes);
+  saisir("q", saisie);
+  await attendre();
   return document.getElementById("res")!;
 }
 
@@ -116,5 +129,60 @@ describe("recherche de l'accueil", () => {
       "Public · École maternelle · Nantes",
       "Public · École primaire · Nantes",
     ]);
+  });
+});
+
+describe("recherche de l'en-tête", () => {
+  test("index chargés à la première saisie seulement, squelette pendant le chargement", async () => {
+    const { document, demandes, saisir } = monter([entree("Collège Jules-Verne")]);
+    const q = document.getElementById("q-entete")!;
+    q.dispatchEvent(new (document.defaultView!.Event)("focus"));
+    await attendre();
+    expect(demandes).toEqual([]);
+    saisir("q-entete", "jules");
+    const res = document.getElementById("res-entete")!;
+    expect(res.classList.contains("open")).toBe(true);
+    expect(res.querySelectorAll(".sq").length).toBeGreaterThan(0);
+    expect(q.getAttribute("aria-expanded")).toBe("true");
+    await attendre();
+    expect(demandes.sort()).toEqual(["/recherche-communes.json", "/recherche-territoires.json", "/recherche.json"]);
+    expect(res.querySelector(".sq")).toBeNull();
+    expect(res.querySelector("a[href='/etablissement/0440001A/']")).not.toBeNull();
+    saisir("q-entete", "college");
+    await attendre();
+    expect(demandes).toHaveLength(3);
+  });
+
+  test("panneau en deux colonnes : territoires puis établissements", async () => {
+    const { document, saisir } = monter([entree("Collège Jules-Verne")], [], [{ i: "44109", l: "Nantes", d: "44" }]);
+    saisir("q-entete", "nantes");
+    await attendre();
+    const cols = document.querySelectorAll("#res-entete > .col");
+    expect(cols).toHaveLength(2);
+    expect(cols[0]!.querySelector("a[href='/commune/44109/']")).not.toBeNull();
+    expect(cols[1]!.querySelector("a[href='/etablissement/0440001A/']")).not.toBeNull();
+    // Le champ de l'accueil garde une seule colonne.
+    saisir("q", "nantes");
+    await attendre();
+    expect(document.querySelectorAll("#res > .col")).toHaveLength(0);
+  });
+
+  test("flèches pour parcourir les résultats, Échap pour fermer", async () => {
+    const { document, saisir } = monter([entree("Collège A", "0440001A"), entree("Collège B", "0440002B")]);
+    saisir("q-entete", "college");
+    await attendre();
+    const q = document.getElementById("q-entete")!;
+    // linkedom n'a pas de KeyboardEvent : un Event portant la touche suffit au script.
+    const touche = (key: string) => q.dispatchEvent(Object.assign(new (document.defaultView!.Event)("keydown", { cancelable: true }), { key }));
+    touche("ArrowDown");
+    touche("ArrowDown");
+    const actif = document.querySelector("#res-entete a.actif")!;
+    expect(actif.getAttribute("href")).toBe("/etablissement/0440002B/");
+    expect(q.getAttribute("aria-activedescendant")).toBe(actif.id);
+    touche("ArrowDown");
+    expect(document.querySelector("#res-entete a.actif")!.getAttribute("href")).toBe("/etablissement/0440001A/");
+    touche("Escape");
+    expect(q.getAttribute("aria-expanded")).toBe("false");
+    expect(document.querySelector("#res-entete a.actif")).toBeNull();
   });
 });
